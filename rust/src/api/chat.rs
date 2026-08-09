@@ -112,10 +112,10 @@ pub struct ChatModelInfo {
 }
 
 /// A request pushed from an app-state fit tool (`search_items`,
-/// `list_user_fits`, `load_fit`) to the Dart host over the session's
-/// callback channel (see [`ChatSession::open_callback_channel`]). Dart
-/// answers through [`ChatSession::deliver_callback_result`], keyed by
-/// `call_id`.
+/// `list_user_fits`, `load_fit`, `create_fit`, `apply_fit_edit`) to the Dart
+/// host over the session's callback channel (see
+/// [`ChatSession::open_callback_channel`]). Dart answers through
+/// [`ChatSession::deliver_callback_result`], keyed by `call_id`.
 pub enum ChatCallbackRequest {
     /// `search_items(query, language, kind)` — see the chat crate's
     /// `FitCallbacks::search_items` for the argument contract.
@@ -129,6 +129,16 @@ pub enum ChatCallbackRequest {
     ListFits { call_id: i32 },
     /// `load_fit(fit_id)`.
     LoadFit { call_id: i32, fit_id: String },
+    /// `create_fit(ship_id, name, description)`.
+    CreateFit {
+        call_id: i32,
+        ship_id: i32,
+        name: String,
+        description: Option<String>,
+    },
+    /// `apply_fit_edit(ops_json)` — `ops_json` is the serialized list of
+    /// validated `FitEditOp`s to persist onto the attached fit.
+    ApplyFitEdit { call_id: i32, ops_json: String },
 }
 
 /// Host-callback plumbing for the app-state fit tools.
@@ -213,6 +223,8 @@ fn build_fit_callbacks(registry: &Arc<CallbackRegistry>) -> FitCallbacks {
     let search_items = registry.clone();
     let list_fits = registry.clone();
     let load_fit = registry.clone();
+    let create_fit = registry.clone();
+    let apply_fit_edit = registry.clone();
     FitCallbacks {
         search_items: Arc::new(move |query, language, kind| {
             search_items.invoke(|call_id| ChatCallbackRequest::SearchItems {
@@ -227,6 +239,17 @@ fn build_fit_callbacks(registry: &Arc<CallbackRegistry>) -> FitCallbacks {
         }),
         load_fit: Arc::new(move |fit_id| {
             load_fit.invoke(|call_id| ChatCallbackRequest::LoadFit { call_id, fit_id })
+        }),
+        create_fit: Arc::new(move |ship_id, name, description| {
+            create_fit.invoke(|call_id| ChatCallbackRequest::CreateFit {
+                call_id,
+                ship_id,
+                name,
+                description,
+            })
+        }),
+        apply_fit_edit: Arc::new(move |ops_json| {
+            apply_fit_edit.invoke(|call_id| ChatCallbackRequest::ApplyFitEdit { call_id, ops_json })
         }),
     }
 }
@@ -399,7 +422,8 @@ impl ChatSession {
     }
 
     /// Open the session's host-callback channel: the app-state fit tools
-    /// (`search_items`, `list_user_fits`, `load_fit`) push
+    /// (`search_items`, `list_user_fits`, `load_fit`, `create_fit`,
+    /// `apply_fit_edit`) push
     /// [`ChatCallbackRequest`]s to [sink], and Dart returns each result as a
     /// JSON string through [`ChatSession::deliver_callback_result`]. Opening
     /// the channel also (re)registers the callbacks on the agent.

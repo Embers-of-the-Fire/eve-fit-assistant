@@ -3,13 +3,12 @@ use eve_fit_os::fit::{
     FitContainer, ItemBooster, ItemCharge, ItemDrone, ItemFighter, ItemImplant, ItemModule,
     ItemSlot, ItemSlotType, ItemState,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::FitToolError;
 
-/// A single requested edit to the attached fit. Edits are applied to a copy
-/// of the fit for what-if analysis; the user's real fit is never mutated.
-#[derive(Debug, Clone, Deserialize)]
+/// A single requested edit to the attached fit.
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum FitEditOp {
     AddModule {
@@ -88,6 +87,9 @@ pub struct FitEditResult {
     pub container: FitContainer,
     /// Human-readable description of each edit that was applied.
     pub applied: Vec<String>,
+    /// The ops that were applied, in order; forwarded to the app for
+    /// persistence so both sides apply exactly the same edits.
+    pub applied_ops: Vec<FitEditOp>,
     /// Edits that could not be applied, with the reason.
     pub rejected: Vec<String>,
 }
@@ -154,16 +156,18 @@ fn slot_matches(module: &ItemModule, slot_type: ItemSlotType, index: i32) -> boo
     module.slot.slot_type == slot_type && module.slot.index == index
 }
 
+/// The first slot index within [slot_type] not occupied in [container]
+/// (smallest non-negative free index, matching the app's fixed-slot layout,
+/// which can have gaps after removals).
 fn next_index_for(container: &FitContainer, slot_type: ItemSlotType) -> i32 {
-    container
+    let occupied: std::collections::HashSet<i32> = container
         .fit
         .modules
         .iter()
         .filter(|module| module.slot.slot_type == slot_type)
         .map(|module| module.slot.index)
-        .max()
-        .map(|index| index + 1)
-        .unwrap_or(0)
+        .collect();
+    (0..).find(|index| !occupied.contains(index)).unwrap_or(0)
 }
 
 /// Apply [ops] to a clone of [container], returning the edited container plus
@@ -171,6 +175,7 @@ fn next_index_for(container: &FitContainer, slot_type: ItemSlotType) -> i32 {
 pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditResult {
     let mut edited = container.clone();
     let mut applied = Vec::new();
+    let mut applied_ops = Vec::new();
     let mut rejected = Vec::new();
 
     for op in ops {
@@ -203,6 +208,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                         );
                         edited.fit.modules.push(module);
                         applied.push(description);
+                        applied_ops.push(op.clone());
                     }
                     Err(e) => rejected.push(format!("add_module {type_id}: {e}")),
                 }
@@ -219,6 +225,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                             .retain(|module| !slot_matches(module, parsed_slot, index));
                         if edited.fit.modules.len() < before {
                             applied.push(format!("remove module at {slot_type} slot {index}"));
+                            applied_ops.push(op.clone());
                         } else {
                             rejected.push(format!(
                                 "remove_module: no module at {slot_type} slot {index}"
@@ -249,6 +256,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                                 applied.push(format!(
                                     "set charge on {slot_type} slot {index} to {charge_type_id:?}"
                                 ));
+                                applied_ops.push(op.clone());
                             }
                             None => rejected.push(format!(
                                 "set_module_charge: no module at {slot_type} slot {index}"
@@ -280,6 +288,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                                 applied.push(format!(
                                     "set state of {slot_type} slot {index} to {state}"
                                 ));
+                                applied_ops.push(op.clone());
                             }
                             None => rejected.push(format!(
                                 "set_module_state: no module at {slot_type} slot {index}"
@@ -316,6 +325,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                             "space"
                         };
                         applied.push(format!("add drone {type_id} ({location})"));
+                        applied_ops.push(op.clone());
                     }
                     Err(e) => rejected.push(format!("add_drone {type_id}: {e}")),
                 }
@@ -327,6 +337,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                 let removed = before - edited.fit.drones.len();
                 if removed > 0 {
                     applied.push(format!("remove {removed} drone(s) of type {type_id}"));
+                    applied_ops.push(op.clone());
                 } else {
                     rejected.push(format!("remove_drone: no drone of type {type_id}"));
                 }
@@ -353,6 +364,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                         applied.push(format!(
                             "set state of {matched} drone(s) of type {type_id} to {location}"
                         ));
+                        applied_ops.push(op.clone());
                     } else {
                         rejected.push(format!("set_drone_state: no drone of type {type_id}"));
                     }
@@ -381,6 +393,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                             "add fighter {type_id} (ability {})",
                             ability.bits()
                         ));
+                        applied_ops.push(op.clone());
                     }
                     None => rejected.push(format!(
                         "add_fighter {type_id}: unsupported ability bits {bits:#06b} (only 0..=0b1111 are defined)"
@@ -397,6 +410,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                 let removed = before - edited.fit.fighters.len();
                 if removed > 0 {
                     applied.push(format!("remove {removed} fighter(s) of type {type_id}"));
+                    applied_ops.push(op.clone());
                 } else {
                     rejected.push(format!("remove_fighter: no fighter of type {type_id}"));
                 }
@@ -411,6 +425,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                             index: slot,
                         });
                         applied.push(format!("set implant slot {slot} to {type_id}"));
+                        applied_ops.push(op.clone());
                     }
                     Err(e) => rejected.push(format!("set_implant {type_id}: {e}")),
                 }
@@ -421,6 +436,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                 edited.fit.implants.retain(|implant| implant.index != *slot);
                 if edited.fit.implants.len() < before {
                     applied.push(format!("remove implant at slot {slot}"));
+                    applied_ops.push(op.clone());
                 } else {
                     rejected.push(format!("remove_implant: no implant at slot {slot}"));
                 }
@@ -435,6 +451,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                             index: slot,
                         });
                         applied.push(format!("set booster slot {slot} to {type_id}"));
+                        applied_ops.push(op.clone());
                     }
                     Err(e) => rejected.push(format!("set_booster {type_id}: {e}")),
                 }
@@ -445,6 +462,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
                 edited.fit.boosters.retain(|booster| booster.index != *slot);
                 if edited.fit.boosters.len() < before {
                     applied.push(format!("remove booster at slot {slot}"));
+                    applied_ops.push(op.clone());
                 } else {
                     rejected.push(format!("remove_booster: no booster at slot {slot}"));
                 }
@@ -455,6 +473,7 @@ pub fn apply_edit_ops(container: &FitContainer, ops: &[FitEditOp]) -> FitEditRes
     FitEditResult {
         container: edited,
         applied,
+        applied_ops,
         rejected,
     }
 }

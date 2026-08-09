@@ -94,7 +94,8 @@ pub type SearchItemsCallback =
     Arc<dyn Fn(String, Option<String>, Option<String>) -> FitToolFuture + Send + Sync>;
 
 /// App-provided callbacks backing the app-state fit tools (`search_items`,
-/// `list_user_fits`, `load_fit`). All callbacks return JSON strings.
+/// `list_user_fits`, `load_fit`, `create_fit`, `apply_fit_edit`). All
+/// callbacks return JSON strings.
 #[derive(Clone)]
 pub struct FitCallbacks {
     /// `(query, language, kind) -> [{type_id, name, group_id, category_id,
@@ -108,6 +109,15 @@ pub struct FitCallbacks {
     /// `(fit_id) -> FitPayload JSON (see `schema::FitPayload`) or
     /// `{"error": ...}`; on success the payload becomes the attached fit.`
     pub load_fit: Arc<dyn Fn(String) -> FitToolFuture + Send + Sync>,
+    /// `(ship_id, name, description) -> FitPayload JSON or `{"error": ...}`;
+    /// on success the new fit is saved by the app and becomes the attached
+    /// fit.`
+    pub create_fit: Arc<dyn Fn(i32, String, Option<String>) -> FitToolFuture + Send + Sync>,
+    /// `(ops_json) -> FitPayload JSON or `{"error": ...}`; `ops_json` is the
+    /// serialized list of edit ops (see `edit::FitEditOp`) that validated
+    /// against the attached fit. The app persists them onto the attached fit
+    /// and returns its updated payload, which becomes the attached fit.`
+    pub apply_fit_edit: Arc<dyn Fn(String) -> FitToolFuture + Send + Sync>,
 }
 
 /// Shared, cheaply-clonable handle through which the fit tools reach the
@@ -373,11 +383,11 @@ pub struct FitValidationReport {
     pub issues: Vec<ValidationIssueEntry>,
 }
 
-/// The projected outcome of a batch of fit edits, computed against a copy of
-/// the attached fit (the user's real fit is never mutated).
+/// The outcome of a batch of fit edits applied to the attached fit: the
+/// per-edit results plus the stats and validation of the edited fit.
 #[derive(Debug, Clone, Serialize)]
-pub struct FitEditProposal {
-    /// Human-readable description of each edit that was applied to the copy.
+pub struct FitEditApplyReport {
+    /// Human-readable description of each edit that was applied.
     pub applied: Vec<String>,
     /// Edits that could not be applied, with the reason.
     pub rejected: Vec<String>,
@@ -385,6 +395,9 @@ pub struct FitEditProposal {
     pub after: FitStatsReport,
     /// Validation issues of the fit after the edits.
     pub validation: FitValidationReport,
+    /// Whether the applied edits were persisted to the user's fit. `false`
+    /// only when every edit was rejected (nothing to persist).
+    pub persisted: bool,
 }
 
 fn state_name(state: ItemState) -> String {
@@ -770,24 +783,81 @@ impl FitToolContext {
         })
     }
 
-    /// Apply [ops] to a copy of the attached fit and project the outcome
-    /// (what-if analysis). The user's real fit is never mutated.
-    pub fn propose_edit(&self, ops: &[edit::FitEditOp]) -> Result<FitEditProposal, FitToolError> {
-        self.with_active(|fit| {
+    /// Apply [ops] to the attached fit and persist them through the app
+    /// callback. Ops are first validated against a copy of the fit; the
+    /// validated ops are then forwarded to the app, which applies them to the
+    /// stored fit and returns its updated payload, replacing the attached fit
+    /// for subsequent tool calls (including within the same turn).
+    pub async fn apply_edit(
+        &self,
+        ops: &[edit::FitEditOp],
+    ) -> Result<FitEditApplyReport, FitToolError> {
+        let (result, after, validation) = self.with_active(|fit| {
             let result = edit::apply_edit_ops(&fit.container, ops);
             let ship = calculate(&result.container, self.engine.as_ref());
             let after = self.stats_report(&ship);
             let issues =
                 eve_fit_os::validate::validate_fit(&result.container, &ship, self.engine.as_ref());
-            FitEditProposal {
-                applied: result.applied,
-                rejected: result.rejected,
+            (
+                result,
                 after,
-                validation: FitValidationReport {
+                FitValidationReport {
                     issues: issues.into_iter().map(validation_issue_entry).collect(),
                 },
-            }
-        })
+            )
+        })?;
+        let report = |persisted| FitEditApplyReport {
+            applied: result.applied,
+            rejected: result.rejected,
+            after,
+            validation,
+            persisted,
+        };
+        if result.applied_ops.is_empty() {
+            return Ok(report(false));
+        }
+        let Some(callbacks) = &self.callbacks else {
+            return Err(FitToolError::CallbacksUnavailable);
+        };
+        let ops_json = serde_json::to_string(&result.applied_ops)
+            .map_err(|e| FitToolError::BadPayload(e.to_string()))?;
+        let started = Instant::now();
+        let raw = (callbacks.apply_fit_edit)(ops_json).await;
+        log::debug!(
+            "[chat] apply_fit_edit: Dart callback returned in {}ms",
+            started.elapsed().as_millis()
+        );
+        let payload = parse_callback_fit_payload(&raw)?;
+        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
+        *guard = Some(payload.into_active());
+        Ok(report(true))
+    }
+
+    /// Create a new saved fit through the app callback, making it the
+    /// attached fit for subsequent tool calls (including within the same
+    /// turn).
+    pub async fn create_fit(
+        &self,
+        ship_id: i32,
+        name: &str,
+        description: Option<String>,
+    ) -> Result<FitSummary, FitToolError> {
+        let Some(callbacks) = &self.callbacks else {
+            return Err(FitToolError::CallbacksUnavailable);
+        };
+        let started = Instant::now();
+        let raw = (callbacks.create_fit)(ship_id, name.to_string(), description).await;
+        log::debug!(
+            "[chat] create_fit: Dart callback returned in {}ms",
+            started.elapsed().as_millis()
+        );
+        let payload = parse_callback_fit_payload(&raw)?;
+        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
+        let summary = {
+            let active = guard.insert(payload.into_active());
+            self.summarize(active)
+        };
+        Ok(summary)
     }
 
     /// Search the app's item database by (localized) name substring.
@@ -844,8 +914,7 @@ impl FitToolContext {
             "[chat] load_fit: Dart callback returned in {}ms",
             started.elapsed().as_millis()
         );
-        let payload: schema::FitPayload = serde_json::from_str(&raw)
-            .map_err(|e| FitToolError::BadPayload(format!("{e}; payload: {raw}")))?;
+        let payload = parse_callback_fit_payload(&raw)?;
         let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
         let summary = {
             let active = guard.insert(payload.into_active());
@@ -931,6 +1000,18 @@ impl FitToolContext {
             skills: None,
         }
     }
+}
+
+/// Parse a `FitPayload` returned by an app callback, surfacing the app's
+/// `{"error": ...}` envelope as an actionable error instead of a bare
+/// deserialization failure.
+fn parse_callback_fit_payload(raw: &str) -> Result<schema::FitPayload, FitToolError> {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+        if let Some(error) = value.get("error").and_then(|e| e.as_str()) {
+            return Err(FitToolError::BadPayload(error.to_string()));
+        }
+    }
+    serde_json::from_str(raw).map_err(|e| FitToolError::BadPayload(format!("{e}; payload: {raw}")))
 }
 
 fn hull_attr(ship: &Ship, attribute_id: i32) -> Option<f64> {

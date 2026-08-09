@@ -1,0 +1,1 @@
+为指定船体创建一个新的已保存装配。`ship_id` 是船体的 type id（先用 `search_items` 并指定 kind "ship" 将舰船名称解析为 type id）；`name` 必填，`description` 可选。新装配会立即保存，并成为后续所有工具调用的当前挂载装配（包括同一轮对话内的后续调用）；该工具返回其摘要。

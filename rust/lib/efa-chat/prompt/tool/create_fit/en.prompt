@@ -1,0 +1,1 @@
+Create a new saved fit for a ship hull. `ship_id` is the hull's type id (resolve a ship name with `search_items` using kind "ship"); `name` is required and `description` is optional. The new fit is saved immediately and becomes the attached fit for all subsequent tool calls, including within this same conversation turn; the tool returns its summary.
