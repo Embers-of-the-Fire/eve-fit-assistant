@@ -58,18 +58,46 @@ class StorageRootPreference {
   }
 }
 
+/// Error thrown when [migrateStorageRootContents] cannot move a source
+/// directory because its destination already exists. The migration is
+/// aborted before anything is moved, so the caller must not persist the new
+/// root: the destination storage is incomplete and the source data stays at
+/// the old root.
+class StorageRootMigrationConflictException implements Exception {
+  const StorageRootMigrationConflictException(this.conflictingPaths);
+
+  /// Destination directories that already exist and block the migration.
+  final List<String> conflictingPaths;
+
+  @override
+  String toString() =>
+      "StorageRootMigrationConflictException: destination directories already exist: "
+      "${conflictingPaths.join(", ")}";
+}
+
 /// Moves the app-owned storage directories from the current effective root to
 /// [newRoot], using the same rename-then-copy strategy as
 /// `StoragePathMigrator` (rename is atomic on the same volume; a copy
 /// fallback covers cross-volume targets).
 ///
-/// A directory that already exists at the destination is left untouched and
-/// its source is kept as well, so previously stored data at [newRoot] is
-/// never clobbered. Callers must restart the app afterwards: in-session
-/// services keep using the old root until the next launch.
+/// Throws [StorageRootMigrationConflictException] without moving anything
+/// when a destination directory already exists while its source also exists,
+/// so previously stored data at [newRoot] is never clobbered and a partial
+/// migration is never reported as complete. Callers must restart the app
+/// afterwards: in-session services keep using the old root until the next
+/// launch.
 Future<void> migrateStorageRootContents(String newRoot) async {
   final from = PathProvider.appSupportPath;
   if (p.equals(from, newRoot)) return;
+
+  final conflicts = [
+    for (final name in storageRootDirectories)
+      if (Directory(p.join(from, name)).existsSync() &&
+          Directory(p.join(newRoot, name)).existsSync())
+        p.join(newRoot, name),
+  ];
+  if (conflicts.isNotEmpty) throw StorageRootMigrationConflictException(conflicts);
+
   for (final name in storageRootDirectories) {
     await _moveStorageDir(p.join(from, name), p.join(newRoot, name));
   }
@@ -78,7 +106,10 @@ Future<void> migrateStorageRootContents(String newRoot) async {
 Future<void> _moveStorageDir(String sourcePath, String targetPath) async {
   final source = Directory(sourcePath);
   final target = Directory(targetPath);
-  if (p.equals(sourcePath, targetPath) || !source.existsSync() || target.existsSync()) return;
+  if (p.equals(sourcePath, targetPath) || !source.existsSync()) return;
+  if (target.existsSync()) {
+    throw StorageRootMigrationConflictException([targetPath]);
+  }
 
   final staging = Directory("$targetPath.migrating");
   try {
