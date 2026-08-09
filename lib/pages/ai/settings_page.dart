@@ -26,24 +26,34 @@ class AiChatSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Layout(
     title: context.l10n.aiChatSettingsTitle,
-    child: AiFeatureGate(
-      child: ConfigListView(
-        children: [
-          ConfigListTile.title(context.l10n.aiChatSettingsSectionConnection),
-          const ConfigListTile.custom(_ProviderTile()),
-          const ConfigListTile.custom(_BaseUrlTile()),
-          const ConfigListTile.custom(_ApiKeyTile()),
-          ConfigListTile.title(context.l10n.aiChatSettingsSectionModels),
-          const ConfigListTile.custom(_DefaultModelTile()),
-          const ConfigListTile.custom(_FetchModelsTile()),
-          const ConfigListTile.custom(_ModelListEditor()),
-          ConfigListTile.title(context.l10n.aiChatSettingsSectionActions),
-          const ConfigListTile.custom(_TestConnectionTile()),
-          const ConfigListTile.custom(_ClearConversationsTile()),
-          const ConfigListTile.custom(_RefreshAgentDbTile()),
-          const ConfigListTile.custom(_DisableAssistantTile()),
-        ],
-      ),
+    child: Column(
+      children: [
+        ConfigListTile.title(context.l10n.aiChatSettingsSectionConnection),
+        const ConfigListTile.custom(_ProviderTile()),
+        const Divider(height: 0, thickness: 0.5),
+        const ConfigListTile.custom(_BaseUrlTile()),
+        const Divider(height: 0, thickness: 0.5),
+        const ConfigListTile.custom(_ApiKeyTile()),
+        const Divider(height: 0, thickness: 0.5),
+        Expanded(
+          child: AiFeatureGate(
+            child: ConfigListView(
+              children: [
+                ConfigListTile.title(context.l10n.aiChatSettingsSectionModels),
+                const ConfigListTile.custom(_DefaultModelTile()),
+                const ConfigListTile.custom(_FetchModelsTile()),
+                const ConfigListTile.custom(_ModelListEditor()),
+                ConfigListTile.title(context.l10n.aiChatSettingsSectionActions),
+                const ConfigListTile.custom(_TestConnectionTile()),
+                const ConfigListTile.custom(_ClearConversationsTile()),
+                const ConfigListTile.custom(_RefreshAgentDbTile()),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 0, thickness: 0.5),
+        const ConfigListTile.custom(_DisableAssistantTile()),
+      ],
     ),
   );
 }
