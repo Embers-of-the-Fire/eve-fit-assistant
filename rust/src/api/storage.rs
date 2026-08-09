@@ -133,11 +133,8 @@ impl FitStorage {
         &self.container
     }
 
-    pub(crate) fn dynamic_item_base_type_id(&self, dynamic_item_id: i32) -> Option<i32> {
+    pub(crate) fn into_container(self) -> FitContainer {
         self.container
-            .dynamic
-            .get(&dynamic_item_id)
-            .map(|dynamic_item| dynamic_item.base_type)
     }
 }
 
@@ -179,21 +176,6 @@ impl Slot {
         ItemSlot {
             slot_type: self.slot_type.into_native(),
             index: self.index,
-        }
-    }
-
-    pub(crate) fn from_native(native: ItemSlot) -> Self {
-        Self {
-            slot_type: match native.slot_type {
-                ItemSlotType::High => SlotType::High,
-                ItemSlotType::Medium => SlotType::Medium,
-                ItemSlotType::Low => SlotType::Low,
-                ItemSlotType::Rig => SlotType::Rig,
-                ItemSlotType::SubSystem => SlotType::SubSystem,
-                ItemSlotType::Service => SlotType::Service,
-                ItemSlotType::TacticalMode => SlotType::TacticalMode,
-            },
-            index: native.index,
         }
     }
 }

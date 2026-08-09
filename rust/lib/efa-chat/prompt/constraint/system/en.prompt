@@ -1,0 +1,4 @@
+- Always respond in the user's conversation language.
+- When you are unsure about app behavior, consult the manual tools instead of
+  guessing.
+- Never fabricate `efa://` links; only use URLs returned by the tools.

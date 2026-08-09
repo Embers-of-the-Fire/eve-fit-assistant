@@ -2,11 +2,13 @@
 
 Compact repo guidance for future OpenCode sessions. Prefer executable config and `./x --help` over stale prose if anything conflicts.
 
+Detailed subsystem docs live in `docs/agents/` (index: @docs/agents/README) and are referenced from the relevant sections below with `@docs/agents/...` links.
+
 ## Workspace Shape
 
 - Flutter/Dart app code is under `lib/`; generated Dart outputs include `lib/native/`, `lib/data/l10n/`, protobuf outputs, `*.g.dart`, and `*.freezed.dart`.
   - `lib/storage/repo/` implements a content-addressed repository system for data versioning with checkout-based data management and diff chains.
-- Rust has two layers: FRB bridge crate in `rust/` (`rust/src/api/*`) and the fitting engine git-submodule crate in `rust/lib/eve-fit-os`.
+- Rust has three crates: FRB bridge crate in `rust/` (`rust/src/api/*`), the fitting engine git-submodule crate in `rust/lib/eve-fit-os`, and the AI chat crate in `rust/lib/efa-chat` (see @docs/agents/efa-chat).
 - Python in `bootstrap/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging. The top-level `data/` directory holds only raw EVE resources (`data/resources/`) and protobuf `.proto` schema sources (`data/schema/`).
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
@@ -25,6 +27,8 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 | Generation Navigation | `lib/storage/repo/generation_nav.dart` | `GenerationNavigationService` — channel → server browser for setup page |
 | Repo Collection | `lib/storage/repo/collection.dart` | `RepoCollectionService` — sole structural type-data source; pre-loads type data (ships, skills, items, icons) from active checkout's ResourceIndex. |
 | Localization DB | `lib/storage/repo/localization_db.dart` | `LocalizationDbService` — lazy localized-string lookups backed by the checkout's prebuilt SQLite `localization.db` (sqlite_async). Native opens the content-addressed blob read-only; web copies the blob once (per content hash) into sqlite3_web's OPFS path and opens it in a web worker (requires cross-origin isolation). `localizedNameProvider` resolves `(id, locale)` on demand. |
+| Checkout DB Transport | `lib/storage/repo/checkout_db*.dart` | Shared transport for prebuilt checkout SQLite databases: `CheckoutDbSpec` (resource id, OPFS name prefix, schema version, label) + native read-only open / web OPFS-copy + worker open + `meta.schema_version` check. |
+| Agent Resource DB | `lib/storage/repo/agent_resource_db.dart` | `AgentResourceDbService` — `agent_resource.db` (FORCE resource) backing AI chat tools; `type_names(locale, id, value, group_id, category_id, slot_index, slot_kind)` (schema v2) holds localized names keyed by real type id plus group/category and implant/booster slot metadata for `search_items`. Hard dependency: open/provider throw when absent or schema-mismatched. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
 | Settings | `lib/storage/setting/` | User settings including remote content configuration |
@@ -73,6 +77,7 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 - Sync canonical version to manifests: `./x release version sync`.
 - Bridge crate build/test: `cargo build -p rust_lib_eve_fit_assistant`, `cargo test -p rust_lib_eve_fit_assistant`.
 - Engine build/test: `cargo build -p eve-fit-os`, `cargo test -p eve-fit-os`.
+- Chat crate test: `cargo test -p efa-chat` (see @docs/agents/efa-chat).
 - Single Rust integration test file/function: `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture`; `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture`.
 - Python tests: `./x test python` or `uv run pytest`.
 - Flutter/Dart tests: `./x test dart` or `flutter test`.

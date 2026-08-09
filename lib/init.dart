@@ -14,7 +14,9 @@ import "package:eve_fit_assistant/features/app_update/state/app_version_state_no
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
+import "package:eve_fit_assistant/native/api/logging.dart" as native_logging;
 import "package:eve_fit_assistant/native/frb_generated.dart";
+import "package:eve_fit_assistant/storage/chat/service.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
@@ -78,10 +80,12 @@ Future<InitializedStores> initSingletons() async {
     await const StoragePathMigrator().migrateIfNeeded();
   }
   await AppSettingService.init();
+  await ChatStorageService.init();
   GlobalLogger.init(
     PathProvider.logsPath,
     enableDebugLog: AppSettingService.appSetting.enableDebugLog,
   );
+  _setupRustLogging();
   await RemoteCache.init();
   initErrorBoundary();
   GlobalLoading.init();
@@ -97,6 +101,34 @@ Future<InitializedStores> initSingletons() async {
     announcementStateStore: announcementStateStore,
     appVersionStateStore: appVersionStateStore,
   );
+}
+
+/// Forwards Rust `log` records into the app logger so native-side logs
+/// (e.g. chat tool timings) share the Dart console + file pipeline.
+///
+/// Best-effort: skipped when the native engine is unavailable (e.g. web
+/// without cross-origin isolation), where the FRB runtime never initializes.
+void _setupRustLogging() {
+  if (!NativeEngineAvailability.available) return;
+  try {
+    native_logging.createLogStream(debug: AppSettingService.appSetting.enableDebugLog).listen((
+      entry,
+    ) {
+      final message = "[${entry.target}] ${entry.message}";
+      switch (entry.level) {
+        case "ERROR":
+          error(message);
+        case "WARN":
+          warning(message);
+        case "INFO":
+          info(message);
+        default:
+          debug(message);
+      }
+    }, onError: (Object e) => debugPrint("Rust log stream error: $e"));
+  } on Object catch (e) {
+    debugPrint("Failed to set up Rust logging: $e");
+  }
 }
 
 Future<void> _deferredInit(

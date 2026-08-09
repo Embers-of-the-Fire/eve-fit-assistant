@@ -1,3 +1,5 @@
+pub mod chat;
+pub mod logging;
 pub mod output;
 pub mod server;
 pub mod storage;

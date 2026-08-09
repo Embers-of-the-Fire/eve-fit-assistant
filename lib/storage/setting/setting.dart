@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:riverpod/riverpod.dart" show ProviderListenableSelect;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "setting.freezed.dart";
@@ -27,6 +28,139 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
 
   factory RemoteContentSetting.fromJson(Map<String, dynamic> json) =>
       _$RemoteContentSettingFromJson(json);
+}
+
+@freezed
+abstract class AiChatModel with _$AiChatModel {
+  const factory AiChatModel({required String id, String? ownedBy}) = _AiChatModel;
+
+  factory AiChatModel.fromJson(Map<String, dynamic> json) => _$AiChatModelFromJson(json);
+}
+
+/// Chat completion providers supported by the AI assistant. Each provider
+/// keeps its own connection settings; blank `baseUrl`/`model` fall back to
+/// these defaults.
+enum ChatProvider {
+  openAiCompatible(defaultBaseUrl: "https://api.openai.com/v1", defaultModel: "gpt-4o-mini"),
+  anthropic(defaultBaseUrl: "https://api.anthropic.com", defaultModel: "claude-sonnet-4-5"),
+  deepSeek(defaultBaseUrl: "https://api.deepseek.com", defaultModel: "deepseek-chat");
+
+  const ChatProvider({required this.defaultBaseUrl, required this.defaultModel});
+
+  final String defaultBaseUrl;
+  final String defaultModel;
+}
+
+/// Per-provider connection settings for the AI assistant.
+@freezed
+abstract class AiChatConnection with _$AiChatConnection {
+  const factory AiChatConnection({
+    /// Blank selects the provider's default endpoint.
+    @Default("") String baseUrl,
+
+    /// Blank selects the provider's default model.
+    @Default("") String model,
+    @_AiChatModelsConverter() @Default([]) List<AiChatModel> models,
+  }) = _AiChatConnection;
+
+  factory AiChatConnection.fromJson(Map<String, dynamic> json) => _$AiChatConnectionFromJson(json);
+}
+
+List<AiChatModel> _aiChatModelsFromJson(List<dynamic> json) => [
+  for (final entry in json)
+    if (entry is String)
+      AiChatModel(id: entry)
+    else
+      AiChatModel.fromJson((entry as Map).cast<String, dynamic>()),
+];
+
+List<dynamic> _aiChatModelsToJson(List<AiChatModel> models) => [
+  for (final model in models) model.toJson(),
+];
+
+@Freezed(fromJson: true, toJson: true)
+abstract class AiChatSetting with _$AiChatSetting {
+  const factory AiChatSetting({
+    @JsonKey(unknownEnumValue: ChatProvider.openAiCompatible)
+    @Default(ChatProvider.openAiCompatible)
+    ChatProvider provider,
+    @_AiChatConnectionsConverter() @Default({}) Map<ChatProvider, AiChatConnection> connections,
+  }) = _AiChatSetting;
+
+  const AiChatSetting._();
+
+  /// Migrates the legacy flat `{baseUrl, model, models}` shape into the
+  /// OpenAI-compatible connection.
+  factory AiChatSetting.fromJson(Map<String, dynamic> json) {
+    final migrated = Map<String, dynamic>.of(json);
+    if (migrated["connections"] is! Map) {
+      migrated["connections"] = {
+        ChatProvider.openAiCompatible.name: {
+          "baseUrl": migrated["baseUrl"] ?? "",
+          "model": migrated["model"] ?? "",
+          "models": migrated["models"] ?? const <dynamic>[],
+        },
+      };
+    }
+    return _$AiChatSettingFromJson(migrated);
+  }
+
+  /// The active provider's stored connection (empty when never configured).
+  AiChatConnection get connection => connections[provider] ?? const AiChatConnection();
+
+  /// The effective base URL: the stored override or the provider default.
+  String get baseUrl {
+    final stored = connection.baseUrl.trim();
+    return stored.isEmpty ? provider.defaultBaseUrl : stored;
+  }
+
+  /// The effective model: the stored override or the provider default.
+  String get model {
+    final stored = connection.model.trim();
+    return stored.isEmpty ? provider.defaultModel : stored;
+  }
+
+  /// The active provider's predefined model choices.
+  List<AiChatModel> get models => connection.models;
+
+  /// Update one provider's connection, keeping the others untouched.
+  AiChatSetting withConnection(
+    ChatProvider target,
+    AiChatConnection Function(AiChatConnection) update,
+  ) => copyWith(
+    connections: {...connections, target: update(connections[target] ?? const AiChatConnection())},
+  );
+}
+
+class _AiChatConnectionsConverter
+    implements JsonConverter<Map<ChatProvider, AiChatConnection>, Map<String, dynamic>> {
+  const _AiChatConnectionsConverter();
+
+  @override
+  Map<ChatProvider, AiChatConnection> fromJson(Map<String, dynamic> json) {
+    final result = <ChatProvider, AiChatConnection>{};
+    for (final entry in json.entries) {
+      final provider = ChatProvider.values.asNameMap()[entry.key];
+      if (provider == null) continue;
+      result[provider] = AiChatConnection.fromJson(ensure(entry.value, <String, dynamic>{}));
+    }
+    return result;
+  }
+
+  @override
+  Map<String, dynamic> toJson(Map<ChatProvider, AiChatConnection> connections) => {
+    for (final entry in connections.entries) entry.key.name: entry.value.toJson(),
+  };
+}
+
+class _AiChatModelsConverter implements JsonConverter<List<AiChatModel>, List<dynamic>> {
+  const _AiChatModelsConverter();
+
+  @override
+  List<AiChatModel> fromJson(List<dynamic> json) => _aiChatModelsFromJson(json);
+
+  @override
+  List<dynamic> toJson(List<AiChatModel> models) => _aiChatModelsToJson(models);
 }
 
 @freezed
@@ -50,7 +184,10 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool ignoreBugfixUpdates,
     @Default(false) bool silentUpdate,
     @Default(false) bool welcomeCompleted,
+    @Default(false) bool aiAssistantEnabled,
+    @Default(false) bool aiAssistantDisclaimerAcked,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
+    @Default(AiChatSetting()) AiChatSetting aiChat,
     @Default("") String marketServerFallback,
     @Default(1.0) double fontScale,
     @JsonKey(
@@ -81,6 +218,13 @@ bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMod
 
 @riverpodSingleton
 bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attributeDebugView;
+
+/// Whether the AI assistant feature is enabled. Gated behind a one-time
+/// disclaimer acknowledgement ([AppSetting.aiAssistantDisclaimerAcked]) and,
+/// once on, makes the agent resource database a forced checkout dependency.
+@riverpodSingleton
+bool aiAssistantEnabled(Ref ref) =>
+    ref.watch(appSettingServiceProvider.select((s) => s.aiAssistantEnabled));
 
 @riverpodSingleton
 class AppSettingService extends _$AppSettingService {

@@ -24,6 +24,7 @@ class PathProvider {
   static String get runtimePath => p.join(appSupportPath, "runtime", "v2");
   static String get fittingsPath => p.join(runtimePath, "fittings");
   static String get charactersPath => p.join(runtimePath, "characters");
+  static String get chatPath => p.join(runtimePath, "chat");
 
   static String get logsPath => p.join(appSupportPath, "logs");
   static String get cacheResourcesPath => p.join(cachesPath, "resources");

@@ -1,0 +1,1 @@
+使用 1-5 个简短关键词搜索内置的 EVE Fit Assistant 用户手册。传入与用户对话语言一致的 `language`（例如 "en" 或 "zh"）可搜索对应的本地化版本；省略则搜索所有语言。返回匹配的页面及其 id、`efa://manual/...` URL 和正文片段。使用 `get_manual_doc` 加返回的 id 可完整阅读页面。

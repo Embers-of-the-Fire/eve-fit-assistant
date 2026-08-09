@@ -8,8 +8,11 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.12.0"
+efa-chat = { path = "lib/efa-chat" }
 eve-fit-os = { path = "lib/eve-fit-os" }
 anyhow = "1.0.100"
+futures = "0.3"
+log = "0.4"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

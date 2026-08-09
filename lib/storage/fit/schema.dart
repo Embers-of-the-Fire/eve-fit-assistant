@@ -390,11 +390,7 @@ List<native.Module> convertModulesToNative(FitStorage fitStorage) {
   return modules;
 }
 
-native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
-  final validDynamicIds = collectReferencedDynamicItemIds(
-    fitStorage,
-  ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
-
+native.Fit convertFitBodyToNative(FitStorage fitStorage) {
   final modules = convertModulesToNative(fitStorage);
 
   final drones = <native.Drone>[];
@@ -473,29 +469,37 @@ native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int>
     boosters.add(native.Booster(typeId: typeId, index: booster.index));
   }
 
-  return native.FitStorage(
-    fit: native.Fit(
-      shipTypeId: fitStorage.body.shipTypeId,
-      damageProfile: native.DamageProfile(
-        em: fitStorage.body.damageProfile.em,
-        explosive: fitStorage.body.damageProfile.explosive,
-        kinetic: fitStorage.body.damageProfile.kinetic,
-        thermal: fitStorage.body.damageProfile.thermal,
-      ),
-      modules: [
-        ...modules,
-        if (fitStorage.body.slots.tacticalMode case Some(:final value))
-          native.Module(
-            itemId: native.ItemID.item(value),
-            state: native.State.online,
-            slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
-          ),
-      ],
-      drones: drones,
-      fighters: fighters,
-      implants: implants,
-      boosters: boosters,
+  return native.Fit(
+    shipTypeId: fitStorage.body.shipTypeId,
+    damageProfile: native.DamageProfile(
+      em: fitStorage.body.damageProfile.em,
+      explosive: fitStorage.body.damageProfile.explosive,
+      kinetic: fitStorage.body.damageProfile.kinetic,
+      thermal: fitStorage.body.damageProfile.thermal,
     ),
+    modules: [
+      ...modules,
+      if (fitStorage.body.slots.tacticalMode case Some(:final value))
+        native.Module(
+          itemId: native.ItemID.item(value),
+          state: native.State.online,
+          slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
+        ),
+    ],
+    drones: drones,
+    fighters: fighters,
+    implants: implants,
+    boosters: boosters,
+  );
+}
+
+native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
+  final validDynamicIds = collectReferencedDynamicItemIds(
+    fitStorage,
+  ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
+
+  return native.FitStorage(
+    fit: convertFitBodyToNative(fitStorage),
     skills: characterSkills,
     dynamicItems: Map<int, native.DynamicItem>.fromEntries(
       fitStorage.dynamicRegistry.dynamicItems.entries

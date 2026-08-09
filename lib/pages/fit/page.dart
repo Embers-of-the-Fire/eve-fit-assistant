@@ -25,6 +25,7 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb_utils;
+import "package:eve_fit_assistant/features/chat/fit_context.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/features/market_price/ui/fit_price_tile.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
@@ -102,7 +103,65 @@ class FitPage extends StatelessWidget {
   final String fitId;
 
   @override
-  Widget build(BuildContext context) => _FitPage(fitId: fitId);
+  Widget build(BuildContext context) => _ChatFitAttach(
+    fitId: fitId,
+    child: _FitPage(fitId: fitId),
+  );
+}
+
+/// Registers the viewed fit as the chat session's attached fit while this
+/// page is in the tree, so the chatbot's fit tools operate on it.
+class _ChatFitAttach extends ConsumerStatefulWidget {
+  const _ChatFitAttach({required this.fitId, required this.child});
+
+  final String fitId;
+  final Widget child;
+
+  @override
+  ConsumerState<_ChatFitAttach> createState() => _ChatFitAttachState();
+}
+
+class _ChatFitAttachState extends ConsumerState<_ChatFitAttach> {
+  ChatAttachedFitId? _notifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifier = ref.read(chatAttachedFitIdProvider.notifier);
+    _attach();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChatFitAttach oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fitId != widget.fitId) _attach();
+  }
+
+  @override
+  void dispose() {
+    _detach();
+    super.dispose();
+  }
+
+  /// Riverpod forbids mutating a provider from a widget life-cycle, so defer
+  /// the state change until the tree has settled. The notifier is a singleton
+  /// and outlives this widget, so capturing it (even across [dispose]) is safe.
+  void _attach() {
+    final notifier = _notifier;
+    final fitId = widget.fitId;
+    if (notifier == null) return;
+    unawaited(Future(() => notifier.attach(fitId)));
+  }
+
+  void _detach() {
+    final notifier = _notifier;
+    final fitId = widget.fitId;
+    if (notifier == null) return;
+    unawaited(Future(() => notifier.detach(fitId)));
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _FitPage extends ConsumerWidget {

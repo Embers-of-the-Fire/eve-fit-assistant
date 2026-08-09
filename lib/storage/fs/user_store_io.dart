@@ -10,4 +10,5 @@ DocStore createUserDocStore(UserDataDomain domain) => FileDocStore(switch (domai
   UserDataDomain.fittings => PathProvider.fittingsPath,
   UserDataDomain.characters => PathProvider.charactersPath,
   UserDataDomain.settings => PathProvider.settingsPath,
+  UserDataDomain.chat => PathProvider.chatPath,
 });

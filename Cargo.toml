@@ -2,6 +2,7 @@
 members = [
     "pkgs/worker/release",
     "rust",
+    "rust/lib/efa-chat",
     "rust/lib/eve-fit-os",
 ]
 default-members = ["rust"]
