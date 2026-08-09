@@ -40,9 +40,13 @@ class ChatController extends _$ChatController {
   native_server.FitEngine? _attachedEngine;
   bool _attrNamesAttached = false;
   Future<void>? _manualCorpusReady;
+  Future<void>? _fitCallbacksReady;
 
   @override
-  ChatState build() => const ChatState();
+  ChatState build() {
+    ref.onDispose(cancelFitCallbacks);
+    return const ChatState();
+  }
 
   void newConversation() {
     _session?.clearHistory();
@@ -97,6 +101,9 @@ class ChatController extends _$ChatController {
     // The system prompt always advertises the manual tools, so the turn must
     // not start before the corpus is attached (failures degrade gracefully).
     await _manualCorpusReady;
+    // Same for the app-state fit tools (`search_items`/`list_user_fits`/
+    // `load_fit`): the callback channel must be open before the turn starts.
+    await _fitCallbacksReady;
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final userMessage = ChatMessage(
@@ -243,7 +250,7 @@ class ChatController extends _$ChatController {
       _attachedEngine = null;
       _attrNamesAttached = false;
       _manualCorpusReady = _attachManualCorpus(session);
-      unawaited(registerFitCallbacks(ref, session));
+      _fitCallbacksReady = registerFitCallbacks(ref, session);
       // The fit itself is re-pushed by `send()` right before each turn
       // (`await _syncFitContext`); doing it here too would only race the turn.
       return session;

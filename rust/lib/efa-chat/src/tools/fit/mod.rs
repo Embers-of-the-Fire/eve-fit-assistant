@@ -6,7 +6,10 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::Instant;
+
+// `web_time::Instant` is std's Instant on native targets and a
+// `performance.now()` shim on wasm32, where `std::time::Instant` panics.
+use web_time::Instant;
 
 use eve_fit_os::calculate::item::{Item, SlotType};
 use eve_fit_os::calculate::{Ship, calculate};

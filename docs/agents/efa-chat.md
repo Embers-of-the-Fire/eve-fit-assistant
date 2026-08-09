@@ -65,22 +65,32 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
 - `ChatConfig.provider` (`ChatProvider` enum) selects the rig provider; blank `base_url`
   means the provider default. `create`, `set_model`, `restore_history`, `clear_history`
   are `#[frb(sync)]` (cheap).
-- `prompt` and `list_available_models` are **normal** FRB fns that `block_on` the efa-chat
-  runtime on a pool thread — keeps rig/reqwest off FRB's executor.
-- `stream_prompt(sink, text)` pushes `ChatStreamEvent::{TextDelta, ToolCallStart,
-  ToolCallArgsDelta, ToolCallEnd, Done, Error}` over a `StreamSink`. Stream errors are delivered
-  as `Error` events, **not** a failed future, so Dart has a single error channel over the
-  stream's lifetime.
+- `prompt` and `list_available_models` are **async** FRB fns driven through the `drive_turn`
+  helper: on native the turn future is spawned onto the efa-chat tokio runtime (keeping
+  rig/reqwest off FRB's executor without blocking it); on wasm32 it is awaited directly —
+  FRB runs async fns on the browser event loop, where reqwest's fetch-based futures resolve
+  (`block_on` on wasm would deadlock the worker event loop).
+- `stream_prompt(sink, text)` (also async, same `drive_turn` split) pushes
+  `ChatStreamEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`
+  over a `StreamSink`. Stream errors are delivered as `Error` events, **not** a failed future,
+  so Dart has a single error channel over the stream's lifetime.
 - `ChatHistoryMessage` + `ChatRole` seed session history when resuming a persisted conversation.
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.
-- `ChatSession::set_fit_callbacks` (`#[frb(sync)]`) registers the app-state callbacks behind
-  `search_items`/`list_user_fits`/`load_fit`; `search_items` receives `(query, language?, kind?)`,
-  where `language` selects the name localization to search (omitted → app display language) and
-  `kind` optionally restricts results to one item kind (`ship`/`module`/`charge`/`drone`/
-  `fighter`/`implant`/`booster`). The kind filter is applied inside the agent resource database
-  query (schema v2 `type_names` columns `group_id`/`category_id`/`slot_index`/`slot_kind`);
-  implant and booster hits carry `slot_index` for `propose_fit_edit`'s `set_implant`/`set_booster`.
+- `ChatSession::open_callback_channel` + `deliver_callback_result` back the app-state tools
+  (`search_items`/`list_user_fits`/`load_fit`). FRB Dart closures (DartFn) are **not** used:
+  their invoke message crosses a `BroadcastChannel` as a raw `JSValue` that FRB's Dart port
+  manager cannot decode on dart2wasm (only dart2js auto-converts), crashing the port listener.
+  The bridge therefore runs its own request/response channel: a `StreamSink` pushes
+  `ChatCallbackRequest::{SearchItems, ListFits, LoadFit}` (each with a `call_id`) to Dart, and
+  the async `deliver_callback_result(call_id, result)` completes the oneshot the tool future
+  awaits (async so the wake happens on the browser event loop on web). `search_items` receives
+  `(query, language?, kind?)`, where `language` selects the name localization to search
+  (omitted → app display language) and `kind` optionally restricts results to one item kind
+  (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/`booster`). The kind filter is applied
+  inside the agent resource database query (schema v2 `type_names` columns `group_id`/
+  `category_id`/`slot_index`/`slot_kind`); implant and booster hits carry `slot_index` for
+  `propose_fit_edit`'s `set_implant`/`set_booster`.
 
 After changing these signatures run `./x generate rust`.
 
@@ -93,7 +103,7 @@ After changing these signatures run `./x generate rust`.
 | `lib/features/chat/api_key_store.dart` | Per-provider API keys in `flutter_secure_storage` (`ai_chat_api_key_<provider>`; the legacy provider-agnostic key migrates to OpenAI on first read). `aiChatApiKeyProvider` tracks the *active* provider's key. |
 | `lib/features/chat/system_prompt.dart` | `chatSystemPromptProvider` — extra system-prompt sections (the in-app link manifest; the persona + manual-tools base is bundled in the efa-chat crate under `prompt/`) shared by chat sessions and the settings connection test. The manifest is rendered (`render/prompt_renderer.dart`) from `linkSurfaceProvider`, which derives the linkable surface from `routeCollectionProvider` (overridden in `main.dart` with the real router's collection). Routes opt in via `DeepLinkMeta` annotations in `router.dart`. Assistant bubbles route link taps through `appLinkHandlerProvider`, which validates paths against the router before pushing. |
 | `lib/features/chat/manual_corpus.dart` | `chatManualCorpusProvider` — flattens the bundled manual (`manualTreeProvider` + `ManualRepository.loadContent`) into doc×locale `ChatManualDoc` rows covering **all** bundled locales; `ChatController` pushes them into each new session via `setManualDocs` (failures leave the session usable, just without the tools). |
-| `lib/features/chat/fit_context.dart` | Fit-context wiring: attaches the engine, attribute names, and the fit page's currently open fit (`pushAttachedFit`), and registers the app-state tool callbacks via `setFitCallbacks`. The `search_items` callback resolves the model-supplied `language` tag to a localization-db locale (zh*→zh, anything else→en; omitted/blank→app display locale). |
+| `lib/features/chat/fit_context.dart` | Fit-context wiring: attaches the engine, attribute names, and the fit page's currently open fit (`pushAttachedFit`), and registers the app-state tool callbacks by listening on `openCallbackChannel()` and answering each request with `deliverCallbackResult()`. The `search_items` callback resolves the model-supplied `language` tag to a localization-db locale (zh*→zh, anything else→en; omitted/blank→app display locale). |
 | `lib/features/chat/model_list.dart` | `refreshAvailableModels()` fetches the active provider's model list with a shared 30 s cooldown across entry points; persists results into that provider's connection and auto-selects the first model if none chosen. |
 | `lib/storage/chat/` | `ChatConversation`/`ChatMessage` freezed models + `ChatStorageService` — per-conversation JSON files via `createUserDocStore(UserDataDomain.chat)`, serialized writes through a `_pendingSync` chain, sorted by `updatedAt` desc. |
 | `lib/storage/setting/setting.dart` | `AiChatSetting` — `{provider, connections: Map<ChatProvider, AiChatConnection>}`; each provider keeps its own `{baseUrl, model, models}` (blank baseUrl/model resolve to provider defaults via getters, so `s.aiChat.baseUrl`/`.model`/`.models` keep working). Legacy flat `{baseUrl, model, models}` JSON migrates into the OpenAI-compatible connection in `fromJson`; unknown provider keys are skipped. |
