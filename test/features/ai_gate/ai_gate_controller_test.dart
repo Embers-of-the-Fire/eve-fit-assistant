@@ -38,6 +38,27 @@ class _CheckoutId extends Notifier<String?> {
   void set(String? value) => state = value;
 }
 
+final _blobWrittenProvider = NotifierProvider<_BlobWritten, bool>(_BlobWritten.new);
+
+class _BlobWritten extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void markWritten() => state = true;
+}
+
+class _TestAppSettingService extends AppSettingService {
+  _TestAppSettingService(this._initial);
+
+  final AppSetting _initial;
+
+  @override
+  AppSetting build() => _initial;
+
+  @override
+  void update(AppSetting Function(AppSetting) updater) => state = updater(state);
+}
+
 CheckoutRegistryEntry _entry(String checkoutId) => CheckoutRegistryEntry(
   channel: "tranquility",
   serverId: "server-$checkoutId",
@@ -60,7 +81,6 @@ void main() {
   late _MockRemoteCatalogService mockCatalog;
   late _MockAssetStore mockAssetStore;
   late ProviderContainer container;
-  late bool blobWritten;
 
   final blobBytes = Uint8List.fromList(List.generate(64, (i) => i));
   final blobHash = RepoHash.hashContent(blobBytes);
@@ -83,7 +103,6 @@ void main() {
 
     mockCatalog = _MockRemoteCatalogService();
     mockAssetStore = _MockAssetStore();
-    blobWritten = false;
 
     final proxy = ResourceBlobProxy(
       mockAssetStore,
@@ -97,7 +116,7 @@ void main() {
 
     container = ProviderContainer(
       overrides: [
-        appSettingServiceProvider.overrideWithValue(_setting()),
+        appSettingServiceProvider.overrideWith(() => _TestAppSettingService(_setting())),
         activeCheckoutProvider.overrideWith(
           (ref) => switch (ref.watch(_checkoutIdProvider)) {
             final id? => Some(_entry(id)),
@@ -110,8 +129,11 @@ void main() {
         resourceBlobProxyProvider.overrideWith((ref) async => proxy),
         agentDbAvailabilityProvider.overrideWith(
           // Availability is per-checkout: the fetched blob belongs to the
-          // checkout that started the download ("checkout-a").
-          (ref) async => blobWritten && ref.watch(_checkoutIdProvider) == "checkout-a"
+          // checkout that started the download ("checkout-a"). The blob flag
+          // lives in a notifier so flipping it re-derives availability through
+          // Riverpod's dependency tracking instead of a hidden invalidation.
+          (ref) async =>
+              ref.watch(_blobWrittenProvider) && ref.watch(_checkoutIdProvider) == "checkout-a"
               ? AgentDbAvailability.available
               : AgentDbAvailability.downloadable,
         ),
@@ -121,7 +143,7 @@ void main() {
     );
 
     when(() => mockAssetStore.writeBlobUncheckedAt(any(), any())).thenAnswer((_) async {
-      blobWritten = true;
+      container.read(_blobWrittenProvider.notifier).markWritten();
     });
   });
 
@@ -224,6 +246,163 @@ void main() {
       await container.read(agentDbAvailabilityProvider.future);
       await pumpEventQueue();
 
+      expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
+    });
+  });
+
+  group("AiGateController.acknowledgeDisclaimer", () {
+    test("moves the gate past the disclaimer once acknowledged", () async {
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container
+          .read(appSettingServiceProvider.notifier)
+          .update((s) => s.copyWith(aiAssistantDisclaimerAcked: false));
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDisclaimer>());
+
+      container.read(aiGateControllerProvider.notifier).acknowledgeDisclaimer();
+      await container.read(agentDbAvailabilityProvider.future);
+      await pumpEventQueue();
+
+      expect(container.read(aiGateControllerProvider), isA<AiGateDataRequiredDownload>());
+      verifyNever(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      );
+    });
+  });
+
+  group("AiGateController.enableAssistant", () {
+    test("enabling with a downloadable agent database downloads it and opens the gate", () async {
+      when(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).thenAnswer((_) async => Right(blobBytes));
+
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container
+          .read(appSettingServiceProvider.notifier)
+          .update((s) => s.copyWith(aiAssistantDisclaimerAcked: false, aiAssistantEnabled: false));
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDisclaimer>());
+
+      await container.read(aiGateControllerProvider.notifier).enableAssistant();
+      await container.read(agentDbAvailabilityProvider.future);
+      await pumpEventQueue();
+
+      expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
+      verify(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).called(1);
+    });
+
+    test("enabling without an active checkout does not fetch the agent database", () async {
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container.read(_checkoutIdProvider.notifier).set(null);
+      container
+          .read(appSettingServiceProvider.notifier)
+          .update((s) => s.copyWith(aiAssistantDisclaimerAcked: false, aiAssistantEnabled: false));
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDisclaimer>());
+
+      await container.read(aiGateControllerProvider.notifier).enableAssistant();
+      await pumpEventQueue();
+
+      expect(container.read(aiGateControllerProvider), isA<AiGateDataRequiredNoCheckout>());
+      verifyNever(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      );
+    });
+  });
+
+  group("AiGateController.disableAssistant", () {
+    test("disabling from the ready state falls back to the enable state", () async {
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container.read(_blobWrittenProvider.notifier).markWritten();
+      await container.read(agentDbAvailabilityProvider.future);
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
+
+      container.read(aiGateControllerProvider.notifier).disableAssistant();
+      await pumpEventQueue();
+
+      expect(container.read(aiGateControllerProvider), isA<AiGateEnable>());
+    });
+  });
+
+  group("AiGateController.refreshAgentDb", () {
+    test(
+      "a concurrent refresh while a download is in flight does not start a second fetch",
+      () async {
+        final completer = Completer<Either<CatalogError, Uint8List>>();
+        when(
+          () => mockCatalog.fetchBlob(
+            any(),
+            any(),
+            onReceiveProgress: any(named: "onReceiveProgress"),
+          ),
+        ).thenAnswer((_) => completer.future);
+
+        final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+        addTearDown(sub.close);
+
+        await container.read(agentDbAvailabilityProvider.future);
+        await pumpEventQueue();
+
+        final first = container.read(aiGateControllerProvider.notifier).refreshAgentDb();
+        await pumpEventQueue();
+        expect(container.read(aiGateControllerProvider), isA<AiGateDownloading>());
+
+        final second = container.read(aiGateControllerProvider.notifier).refreshAgentDb();
+        await pumpEventQueue();
+        expect(container.read(aiGateControllerProvider), isA<AiGateDownloading>());
+
+        completer.complete(Right(blobBytes));
+        await Future.wait([first, second]);
+        await container.read(agentDbAvailabilityProvider.future);
+        await pumpEventQueue();
+
+        verify(
+          () => mockCatalog.fetchBlob(
+            any(),
+            any(),
+            onReceiveProgress: any(named: "onReceiveProgress"),
+          ),
+        ).called(1);
+        expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
+      },
+    );
+
+    test("re-downloads the agent database even when it is already available", () async {
+      when(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).thenAnswer((_) async => Right(blobBytes));
+
+      final sub = container.listen(aiGateControllerProvider, (_, _) {}, fireImmediately: true);
+      addTearDown(sub.close);
+
+      container.read(_blobWrittenProvider.notifier).markWritten();
+      await container.read(agentDbAvailabilityProvider.future);
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
+
+      await container.read(aiGateControllerProvider.notifier).refreshAgentDb();
+      await pumpEventQueue();
+
+      verify(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).called(1);
       expect(container.read(aiGateControllerProvider), isA<AiGateReady>());
     });
   });
