@@ -171,6 +171,43 @@ void main() {
       expect(states.whereType<AiGateReady>(), isEmpty);
     });
 
+    test("checkout switch before a failed fetch re-derives state instead of failing", () async {
+      final completer = Completer<Either<CatalogError, Uint8List>>();
+      when(
+        () =>
+            mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).thenAnswer((_) => completer.future);
+
+      final states = <AiGateState>[];
+      final sub = container.listen(
+        aiGateControllerProvider,
+        (_, next) => states.add(next),
+        fireImmediately: true,
+      );
+      addTearDown(sub.close);
+
+      await container.read(agentDbAvailabilityProvider.future);
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDataRequiredDownload>());
+
+      final download = container.read(aiGateControllerProvider.notifier).downloadAgentDb();
+      await pumpEventQueue();
+      expect(container.read(aiGateControllerProvider), isA<AiGateDownloading>());
+
+      // Switch the active checkout while fetchBlob is still awaiting.
+      container.read(_checkoutIdProvider.notifier).set("checkout-b");
+      await pumpEventQueue();
+
+      completer.complete(const Left(CatalogNetworkError(message: "boom")));
+      await download;
+      await pumpEventQueue();
+
+      final state = container.read(aiGateControllerProvider);
+      expect(state, isNot(isA<AiGateDownloadFailed>()));
+      expect(state, isA<AiGateDataRequiredDownload>());
+      expect(states.whereType<AiGateDownloadFailed>(), isEmpty);
+    });
+
     test("download completion without a checkout switch opens the gate", () async {
       when(
         () =>
