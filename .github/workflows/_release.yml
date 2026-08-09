@@ -7,6 +7,10 @@ on:
         description: "Run in test mode (skip tag, remote publish, and remote side effects)"
         type: boolean
         default: false
+      deploy_web:
+        description: "Deploy the web bundle to Cloudflare Pages"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -207,6 +211,7 @@ jobs:
   site-deploy:
     name: Deploy web bundle
     needs: [verify, site]
+    if: inputs.deploy_web
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Test mode deploys to the nightly Pages project (and pins a comment on
