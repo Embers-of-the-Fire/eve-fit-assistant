@@ -348,16 +348,28 @@ impl PortableTool for ProposeFitEditTool {
                         "properties": {
                             "op": {
                                 "type": "string",
-                                "enum": ["add_module", "remove_module", "set_module_charge", "set_module_state"]
+                                "enum": [
+                                    "add_module", "remove_module", "set_module_charge", "set_module_state",
+                                    "add_drone", "remove_drone", "set_drone_state",
+                                    "add_fighter", "remove_fighter",
+                                    "set_implant", "remove_implant", "set_booster", "remove_booster"
+                                ]
                             },
                             "slot_type": {
                                 "type": "string",
-                                "enum": ["high", "medium", "low", "rig", "subsystem", "service"]
+                                "enum": ["high", "medium", "low", "rig", "subsystem", "service"],
+                                "description": "Module slot type (module ops only)"
                             },
-                            "index": { "type": "integer", "description": "Slot index within slot_type" },
-                            "type_id": { "type": "integer", "description": "Item type id (add_module)" },
-                            "state": { "type": "string", "enum": ["passive", "online", "active", "overload"] },
-                            "charge_type_id": { "type": "integer", "description": "Charge type id, or omit to clear" }
+                            "index": { "type": "integer", "description": "Slot index within slot_type (module ops only)" },
+                            "type_id": { "type": "integer", "description": "Item type id (add/set ops)" },
+                            "state": {
+                                "type": "string",
+                                "enum": ["passive", "online", "active", "overload", "bay", "space"],
+                                "description": "Module state, or drone location: bay (default for add_drone) vs space"
+                            },
+                            "charge_type_id": { "type": "integer", "description": "Charge type id, or omit to clear" },
+                            "slot": { "type": "integer", "description": "Implant (1-10) or booster (1-3) slot; take it from the search_items slot_index" },
+                            "ability": { "type": "integer", "minimum": 0, "maximum": 15, "description": "Fighter ability bitmask: 1 attack turret, 2 missiles, 4 attack missile, 8 bomb (default 0)" }
                         },
                         "required": ["op"]
                     }
@@ -392,6 +404,7 @@ impl SearchItemsTool {
 pub struct SearchItemsArgs {
     pub query: String,
     pub language: Option<String>,
+    pub kind: Option<String>,
 }
 
 impl PortableTool for SearchItemsTool {
@@ -418,6 +431,11 @@ impl PortableTool for SearchItemsTool {
                 "language": {
                     "type": "string",
                     "description": "Optional language code of the item name (e.g. \"en\", \"zh\"); omit to use the app's display language"
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": ["ship", "module", "charge", "drone", "fighter", "implant", "booster"],
+                    "description": "Optional item-kind filter; pass it whenever the intended kind is known (e.g. \"implant\") so unrelated items are excluded"
                 }
             },
             "required": ["query"]
@@ -431,7 +449,7 @@ impl PortableTool for SearchItemsTool {
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context
-            .search_items(&args.query, args.language.as_deref())
+            .search_items(&args.query, args.language.as_deref(), args.kind.as_deref())
             .await
     }
 }

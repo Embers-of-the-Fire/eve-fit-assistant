@@ -145,7 +145,7 @@ Set<int> referencedTypeIds(FitStorage fit) {
 Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) async {
   try {
     session.setFitCallbacks(
-      searchItems: (query, language) => _searchItems(ref, query, language),
+      searchItems: (query, language, kind) => _searchItems(ref, query, language, kind),
       listFits: () => _listFits(ref),
       loadFit: (fitId) => _loadFit(ref, fitId),
     );
@@ -154,9 +154,19 @@ Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) asyn
   }
 }
 
-Future<String> _searchItems(Ref ref, String query, String? language) async {
-  final collection = ref.read(repoCollectionProvider);
-  if (collection == null) return "[]";
+Future<String> _searchItems(Ref ref, String query, String? language, String? kind) async {
+  final AgentSearchKind? parsedKind;
+  if (kind == null || kind.trim().isEmpty) {
+    parsedKind = null;
+  } else {
+    parsedKind = AgentSearchKind.parse(kind);
+    if (parsedKind == null) {
+      return jsonEncode({
+        "error":
+            "unknown kind `$kind`; expected one of: ship, module, charge, drone, fighter, implant, booster",
+      });
+    }
+  }
   // Hard dependency, but Dart exceptions cannot cross the FRB callback
   // boundary (the generated binding panics on them), so an unavailable
   // database is reported to the model as an error payload instead.
@@ -169,19 +179,18 @@ Future<String> _searchItems(Ref ref, String query, String? language) async {
   }
   try {
     final locale = _searchLocale(ref, language);
-    final hits = await agentDb.searchTypeNames(query, locale, limit: 40);
-    final results = <Map<String, Object?>>[];
-    for (final entry in hits.entries) {
-      final type = collection.getType(entry.key);
-      if (type == null) continue;
-      results.add({
-        "type_id": entry.key,
-        "name": entry.value,
-        "group_id": type.groupId,
-        "category_id": collection.getGroup(type.groupId)?.categoryId,
-      });
-      if (results.length >= 20) break;
-    }
+    final hits = await agentDb.searchTypes(query, locale, kind: parsedKind);
+    final results = <Map<String, Object?>>[
+      for (final hit in hits)
+        {
+          "type_id": hit.typeId,
+          "name": hit.name,
+          "group_id": hit.groupId,
+          "category_id": hit.categoryId,
+          if (hit.slotIndex != null) "slot_index": hit.slotIndex,
+          if (hit.slotKind != null) "slot_kind": hit.slotKind,
+        },
+    ];
     return jsonEncode(results);
   } on Object catch (e, st) {
     warning("chat: search_items failed: $e", stackTrace: st);

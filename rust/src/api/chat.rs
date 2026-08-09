@@ -151,17 +151,18 @@ impl<F> ThreadSafeFn<F> {
         &self,
         query: String,
         language: Option<String>,
+        kind: Option<String>,
     ) -> efa_chat::tools::fit::FitToolFuture
     where
-        F: Fn(String, Option<String>) -> efa_chat::tools::fit::FitToolFuture,
+        F: Fn(String, Option<String>, Option<String>) -> efa_chat::tools::fit::FitToolFuture,
     {
-        (self.0)(query, language)
+        (self.0)(query, language, kind)
     }
 }
 
 /// Wrap the three FRB Dart closures into the shared [`FitCallbacks`].
 fn build_fit_callbacks(
-    search_items: impl Fn(String, Option<String>) -> DartFnFuture<String> + 'static,
+    search_items: impl Fn(String, Option<String>, Option<String>) -> DartFnFuture<String> + 'static,
     list_fits: impl Fn() -> DartFnFuture<String> + 'static,
     load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
 ) -> FitCallbacks {
@@ -169,8 +170,8 @@ fn build_fit_callbacks(
     let list_fits = ThreadSafeFn(list_fits);
     let load_fit = ThreadSafeFn(load_fit);
     FitCallbacks {
-        search_items: Arc::new(move |query, language| {
-            search_items.call_with_search(query, language)
+        search_items: Arc::new(move |query, language, kind| {
+            search_items.call_with_search(query, language, kind)
         }),
         list_fits: Arc::new(move || list_fits.call()),
         load_fit: Arc::new(move |fit_id| load_fit.call_with(fit_id)),
@@ -320,7 +321,8 @@ impl ChatSession {
     /// a JSON string; `load_fit` must return the fit payload JSON described
     /// by the chat crate's fit schema (or `{"error": ...}`). `search_items`
     /// receives the query plus an optional localization language code
-    /// (`None` defers to the app's display language).
+    /// (`None` defers to the app's display language) and an optional item-kind
+    /// filter (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/`booster`).
     ///
     /// Deliberately `#[frb(sync)]` with bare `impl Fn(...) -> DartFnFuture<...>`
     /// parameters: that shape is what flutter_rust_bridge recognizes as a Dart
@@ -330,7 +332,7 @@ impl ChatSession {
     #[frb(sync)]
     pub fn set_fit_callbacks(
         &self,
-        search_items: impl Fn(String, Option<String>) -> DartFnFuture<String> + 'static,
+        search_items: impl Fn(String, Option<String>, Option<String>) -> DartFnFuture<String> + 'static,
         list_fits: impl Fn() -> DartFnFuture<String> + 'static,
         load_fit: impl Fn(String) -> DartFnFuture<String> + 'static,
     ) {

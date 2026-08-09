@@ -3,6 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
 import "package:eve_fit_assistant/storage/chat/models.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
@@ -27,18 +28,22 @@ class ChatHistoryPage extends ConsumerWidget {
             onPressed: () => unawaited(_clearAll(context, ref)),
           ),
       ],
-      child: conversations.isEmpty
-          ? Center(
-              child: Text(
-                context.l10n.chatConversationEmpty,
-                style: context.theme.textTheme.bodyMedium?.copyWith(color: context.theme.hintColor),
+      child: AiFeatureGate(
+        child: conversations.isEmpty
+            ? Center(
+                child: Text(
+                  context.l10n.chatConversationEmpty,
+                  style: context.theme.textTheme.bodyMedium?.copyWith(
+                    color: context.theme.hintColor,
+                  ),
+                ),
+              )
+            : ListView.builder(
+                itemCount: conversations.length,
+                itemBuilder: (context, index) =>
+                    _ConversationTile(conversation: conversations[index]),
               ),
-            )
-          : ListView.builder(
-              itemCount: conversations.length,
-              itemBuilder: (context, index) =>
-                  _ConversationTile(conversation: conversations[index]),
-            ),
+      ),
     );
   }
 

@@ -4,6 +4,7 @@ import "dart:convert";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/features/ai_gate/ai_gate.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
@@ -72,7 +73,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           onPressed: () => unawaited(context.router.push(const ChatHistoryRoute())),
         ),
       ],
-      child: configured ? _buildChat(context, chatState) : _buildNotConfigured(context),
+      child: AiFeatureGate(
+        child: configured ? _buildChat(context, chatState) : _buildNotConfigured(context),
+      ),
     );
   }
 
