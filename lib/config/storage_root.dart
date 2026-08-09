@@ -33,7 +33,7 @@ class StorageRootPreference {
       final file = File(_configPath);
       if (!file.existsSync()) return null;
       final json = jsonDecode(await file.readAsString());
-      if (json is! Map) return null;
+      if (json is! Map<String, dynamic>) return null;
       final root = json[_key];
       if (root is! String) return null;
       final trimmed = root.trim();
