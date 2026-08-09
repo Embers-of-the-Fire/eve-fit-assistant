@@ -88,6 +88,18 @@ class AiGateController extends _$AiGateController {
         .update((s) => s.copyWith(aiAssistantEnabled: false));
   }
 
+  /// Publishes a terminal download state only when the active checkout is
+  /// still the one the download started for; otherwise the result belongs to
+  /// the former checkout and the gate state is re-derived for the current
+  /// checkout instead.
+  void _publishTerminal(String? checkoutId, AiGateState terminal) {
+    if (ref.read(activeCheckoutIdProvider).toNullable() != checkoutId) {
+      ref.invalidateSelf();
+      return;
+    }
+    state = terminal;
+  }
+
   Future<AgentDbAvailability?> _resolveAvailability() async {
     try {
       return await ref.read(agentDbAvailabilityProvider.future);
@@ -114,12 +126,13 @@ class AiGateController extends _$AiGateController {
   Future<void> downloadAgentDb() async {
     if (_downloadInFlight) return;
     _downloadInFlight = true;
+    final checkoutId = ref.read(activeCheckoutIdProvider).toNullable();
     state = const AiGateState.downloading(downloadedBytes: 0, totalBytes: 0);
     try {
       final proxy = await ref.read(resourceBlobProxyProvider.future);
       final entry = proxy?.entry(kAgentResourceDbResourceId);
       if (entry == null) {
-        state = const AiGateState.dataRequiredUpdate();
+        _publishTerminal(checkoutId, const AiGateState.dataRequiredUpdate());
         return;
       }
 
@@ -139,15 +152,21 @@ class AiGateController extends _$AiGateController {
           );
       if (result.isLeft()) {
         final err = result.getLeft().toNullable()!;
-        state = AiGateState.downloadFailed(
-          message: err is CatalogNetworkError ? err.message : "Failed to download agent database",
+        _publishTerminal(
+          checkoutId,
+          AiGateState.downloadFailed(
+            message: err is CatalogNetworkError ? err.message : "Failed to download agent database",
+          ),
         );
         return;
       }
 
       final bytes = result.getRight().toNullable()!;
       if (RepoHash.hashContent(bytes) != entry.contentHash) {
-        state = const AiGateState.downloadFailed(message: "Agent database content hash mismatch");
+        _publishTerminal(
+          checkoutId,
+          const AiGateState.downloadFailed(message: "Agent database content hash mismatch"),
+        );
         return;
       }
       await ref
@@ -159,9 +178,13 @@ class AiGateController extends _$AiGateController {
       ref
         ..invalidate(agentDbAvailabilityProvider)
         ..invalidate(agentResourceDbServiceProvider);
-      state = const AiGateState.ready();
+      // The active checkout may have changed while the download was in
+      // flight; the fetched blob belongs to the checkout that started it.
+      // Re-derive the gate state for the current checkout instead of
+      // opening the gate with the former checkout's database.
+      _publishTerminal(checkoutId, const AiGateState.ready());
     } on Object catch (e) {
-      state = AiGateState.downloadFailed(message: e.toString());
+      _publishTerminal(checkoutId, AiGateState.downloadFailed(message: e.toString()));
     } finally {
       _downloadInFlight = false;
     }

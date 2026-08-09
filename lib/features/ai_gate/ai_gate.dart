@@ -126,10 +126,7 @@ class _DownloadingView extends StatelessWidget {
               textAlign: .center,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: 280,
-              child: LinearProgressIndicator(value: fraction == 0.0 ? null : fraction),
-            ),
+            SizedBox(width: 280, child: LinearProgressIndicator(value: fraction)),
             if (fraction != null) ...[
               const SizedBox(height: 8),
               Text(
