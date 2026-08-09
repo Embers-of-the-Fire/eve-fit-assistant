@@ -155,6 +155,7 @@
   "settingTileAppSettingsTitle": "设置",
   "settingTileAiChatTitle": "AI 助手",
   "aiHubTitle": "AI 助手",
+  "aiHubNewChatEntry": "新对话",
   "aiDisclaimerTitle": "AI 服务须知",
   "aiDisclaimerDescription": "AI 助手是一项在线服务:你的对话内容与装配数据将发送给你配置的第三方服务商,其回答可能不准确或不安全。请在了解上述风险后继续使用。",
   "aiDisclaimerAcknowledge": "我已了解",

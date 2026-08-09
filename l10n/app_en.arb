@@ -70,6 +70,7 @@
   "settingTileAppSettingsTitle": "App Settings",
   "settingTileAiChatTitle": "AI Assistant",
   "aiHubTitle": "AI Assistant",
+  "aiHubNewChatEntry": "New conversation",
   "aiDisclaimerTitle": "About the AI Service",
   "aiDisclaimerDescription": "The AI assistant is an online service: your conversations and fit data are sent to the third-party provider you configure, and its answers may be inaccurate or unsafe. Continue only if you understand these risks.",
   "aiDisclaimerAcknowledge": "I Understand",

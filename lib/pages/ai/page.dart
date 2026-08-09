@@ -26,7 +26,7 @@ class AiPage extends ConsumerWidget {
           const ConfigListTile.space(20),
           ConfigListTile.item(
             icon: const Icon(Icons.add_comment_outlined),
-            title: context.l10n.chatNewConversationTooltip,
+            title: context.l10n.aiHubNewChatEntry,
             onTap: () => unawaited(context.router.push(const ChatRoute())),
           ),
           ConfigListTile.item(
