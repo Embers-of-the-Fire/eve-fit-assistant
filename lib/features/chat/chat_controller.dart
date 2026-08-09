@@ -43,7 +43,10 @@ class ChatController extends _$ChatController {
   Future<void>? _fitCallbacksReady;
 
   @override
-  ChatState build() => const ChatState();
+  ChatState build() {
+    ref.onDispose(cancelFitCallbacks);
+    return const ChatState();
+  }
 
   void newConversation() {
     _session?.clearHistory();

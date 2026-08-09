@@ -142,8 +142,17 @@ Set<int> referencedTypeIds(FitStorage fit) {
 }
 
 /// The live subscription of the active session's callback channel; only one
-/// chat session is active at a time (see `ChatController`).
-StreamSubscription<void>? _fitCallbackSub;
+/// chat session is active at a time (see `ChatController`). Cancelled when a
+/// new session registers its callbacks, and via [cancelFitCallbacks] when the
+/// owning `ChatController` provider is disposed.
+StreamSubscription<native_chat.ChatCallbackRequest>? _fitCallbackSub;
+
+/// Cancel the active session's callback-channel subscription, if any.
+/// Registered as a disposal hook by `ChatController`.
+void cancelFitCallbacks() {
+  unawaited(_fitCallbackSub?.cancel());
+  _fitCallbackSub = null;
+}
 
 /// Register the app-state callbacks backing the `search_items`,
 /// `list_user_fits`, and `load_fit` chat tools on [session].
@@ -154,7 +163,7 @@ StreamSubscription<void>? _fitCallbackSub;
 /// closures are not used: they cannot cross to Rust on dart2wasm.)
 Future<void> registerFitCallbacks(Ref ref, native_chat.ChatSession session) async {
   try {
-    await _fitCallbackSub?.cancel();
+    cancelFitCallbacks();
     _fitCallbackSub = session.openCallbackChannel().listen(
       (request) => unawaited(_dispatchCallbackRequest(ref, session, request)),
       onError: (Object e, StackTrace st) =>
