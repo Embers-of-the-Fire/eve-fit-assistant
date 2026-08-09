@@ -17,9 +17,6 @@ jobs:
     name: Build and test release
     permissions:
       contents: write
-      # _release.yml's site-deploy job declares pull-requests: write for its
-      # test-mode sticky comment; caller grants must cover it.
-      pull-requests: write
     if: |
       (
         contains(github.event.pull_request.labels.*.name, 'D-Full CI') ||
@@ -30,3 +27,4 @@ jobs:
     uses: ./.github/workflows/_release.yml
     with:
       test_mode: true
+      deploy_web: false
