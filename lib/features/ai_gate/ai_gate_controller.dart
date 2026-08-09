@@ -114,6 +114,7 @@ class AiGateController extends _$AiGateController {
   Future<void> downloadAgentDb() async {
     if (_downloadInFlight) return;
     _downloadInFlight = true;
+    final checkoutId = ref.read(activeCheckoutIdProvider).toNullable();
     state = const AiGateState.downloading(downloadedBytes: 0, totalBytes: 0);
     try {
       final proxy = await ref.read(resourceBlobProxyProvider.future);
@@ -159,6 +160,14 @@ class AiGateController extends _$AiGateController {
       ref
         ..invalidate(agentDbAvailabilityProvider)
         ..invalidate(agentResourceDbServiceProvider);
+      // The active checkout may have changed while the download was in
+      // flight; the fetched blob belongs to the checkout that started it.
+      // Re-derive the gate state for the current checkout instead of
+      // opening the gate with the former checkout's database.
+      if (ref.read(activeCheckoutIdProvider).toNullable() != checkoutId) {
+        ref.invalidateSelf();
+        return;
+      }
       state = const AiGateState.ready();
     } on Object catch (e) {
       state = AiGateState.downloadFailed(message: e.toString());
