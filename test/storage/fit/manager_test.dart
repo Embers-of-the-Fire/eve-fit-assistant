@@ -115,7 +115,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final metadata = await container.read(fitManagerProvider.notifier).newFit(1234, "Test Fit");
+      final (metadata, _) = await container
+          .read(fitManagerProvider.notifier)
+          .newFit(1234, "Test Fit");
 
       expect(metadata.checkoutRef.checkoutId, "checkout-abc");
       expect(metadata.checkoutRef.serverId, "Serenity");

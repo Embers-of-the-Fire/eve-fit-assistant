@@ -3,10 +3,12 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/chat/fit_edit_apply.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/storage/character/manager.dart";
+import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -186,6 +188,8 @@ Future<void> _dispatchCallbackRequest(
     native_chat.ChatCallbackRequest_SearchItems(:final callId) => callId,
     native_chat.ChatCallbackRequest_ListFits(:final callId) => callId,
     native_chat.ChatCallbackRequest_LoadFit(:final callId) => callId,
+    native_chat.ChatCallbackRequest_CreateFit(:final callId) => callId,
+    native_chat.ChatCallbackRequest_ApplyFitEdit(:final callId) => callId,
   };
   String result;
   try {
@@ -194,6 +198,9 @@ Future<void> _dispatchCallbackRequest(
         _searchItems(ref, query, language, kind),
       native_chat.ChatCallbackRequest_ListFits() => _listFits(ref),
       native_chat.ChatCallbackRequest_LoadFit(:final fitId) => _loadFit(ref, fitId),
+      native_chat.ChatCallbackRequest_CreateFit(:final shipId, :final name, :final description) =>
+        _createFit(ref, shipId, name, description),
+      native_chat.ChatCallbackRequest_ApplyFitEdit(:final opsJson) => _applyFitEdit(ref, opsJson),
     };
   } on Object catch (e, st) {
     warning("chat: callback handler failed: $e", stackTrace: st);
@@ -295,25 +302,116 @@ Future<String> _loadFit(Ref ref, String fitId) async {
     // turns follow it.
     ref.read(chatAttachedFitIdProvider.notifier).attach(fitId);
 
-    final collection = ref.read(repoCollectionProvider);
-    if (collection == null) {
-      return jsonEncode({"error": "static data is still loading"});
-    }
-    final skills = await ref
-        .read(characterRegistryManagerProvider.notifier)
-        .resolveCharacterSkills(fit.body.characterId, collection.getSkillTypeIds());
-
-    final locale = ref.read(localeProvider).name;
-    final localization = await ref.read(localizationDbServiceProvider.future);
-    final names = localization == null
-        ? const <int, String>{}
-        : await localization.localizedNames({...referencedTypeIds(fit), ...skills.keys}, locale);
-
-    return jsonEncode(encodeFitPayload(fit, characterSkills: skills, names: names));
+    return await _encodeFitPayloadResult(ref, fit);
   } on Object catch (e, st) {
     warning("chat: load_fit failed for $fitId: $e", stackTrace: st);
     return jsonEncode({"error": "$e"});
   }
+}
+
+Future<String> _createFit(Ref ref, int shipId, String name, String? description) async {
+  try {
+    // `newFit` returns the just-persisted fit, so no disk re-read is needed
+    // (a failed re-read would falsely report creation failure for a fit that
+    // already exists).
+    final (metadata, fit) = await ref
+        .read(fitManagerProvider.notifier)
+        .newFit(shipId, name, description: description);
+
+    // Make the new fit the attached one, so the app UI and subsequent turns
+    // follow it.
+    ref.read(chatAttachedFitIdProvider.notifier).attach(metadata.fitId);
+
+    final payload = await _encodeFitPayloadResult(ref, fit, extra: {"fit_id": metadata.fitId});
+    info("chat: created fit ${metadata.fitId} ($name) via create_fit");
+    return payload;
+  } on Object catch (e, st) {
+    warning("chat: create_fit failed for ship $shipId: $e", stackTrace: st);
+    return jsonEncode({"error": "$e"});
+  }
+}
+
+Future<String> _applyFitEdit(Ref ref, String opsJson) async {
+  try {
+    final fitId = ref.read(chatAttachedFitIdProvider);
+    if (fitId == null) {
+      return jsonEncode({"error": "no fit is attached to this chat session"});
+    }
+    final Object? decoded = jsonDecode(opsJson);
+    if (decoded is! List) {
+      return jsonEncode({"error": "invalid edit ops payload"});
+    }
+
+    // `fitProvider` is auto-dispose and view-scoped; keep it alive across the
+    // update even when no fit page is open.
+    final subscription = ref.listen(fitProvider(fitId), (_, _) {});
+    try {
+      var fitState = ref.read(fitProvider(fitId));
+      if (!fitState.isInitialized) {
+        await ref.read(fitProvider(fitId).notifier).reload();
+        fitState = ref.read(fitProvider(fitId));
+      }
+      if (!fitState.isInitialized) {
+        return jsonEncode({"error": "fit $fitId could not be loaded"});
+      }
+
+      // `Fit.update` only reports an incompatible checkout through the UI
+      // state; surface it to the model as an explicit error instead.
+      final compatibility = ref.read(fitCheckoutCompatibilityProvider(fitId));
+      if (compatibility != null && !compatibility.allowsEditing) {
+        return jsonEncode({
+          "error":
+              "fit $fitId is read-only: it was created on a different data checkout "
+              "and cannot be edited",
+        });
+      }
+
+      final slotsInfo = ref.read(repoCollectionProvider)?.slots;
+      if (slotsInfo == null) {
+        return jsonEncode({"error": "static data is still loading"});
+      }
+
+      await ref
+          .read(fitProvider(fitId).notifier)
+          .update((fit) => applyFitEditOps(fit, decoded, slotsInfo: slotsInfo));
+
+      final updated = ref.read(fitProvider(fitId));
+      if (!updated.isInitialized) {
+        return jsonEncode({"error": "fit $fitId could not be saved"});
+      }
+      return await _encodeFitPayloadResult(ref, updated.fit);
+    } finally {
+      subscription.close();
+    }
+  } on Object catch (e, st) {
+    warning("chat: apply_fit_edit failed: $e", stackTrace: st);
+    return jsonEncode({"error": "$e"});
+  }
+}
+
+/// Encodes [fit] into the `FitPayload` JSON the chat crate expects after a
+/// `load_fit`/`create_fit`/`apply_fit_edit` callback, resolving character
+/// skills and localized type names.
+Future<String> _encodeFitPayloadResult(
+  Ref ref,
+  FitStorage fit, {
+  Map<String, Object?> extra = const {},
+}) async {
+  final collection = ref.read(repoCollectionProvider);
+  if (collection == null) {
+    return jsonEncode({"error": "static data is still loading"});
+  }
+  final skills = await ref
+      .read(characterRegistryManagerProvider.notifier)
+      .resolveCharacterSkills(fit.body.characterId, collection.getSkillTypeIds());
+
+  final locale = ref.read(localeProvider).name;
+  final localization = await ref.read(localizationDbServiceProvider.future);
+  final names = localization == null
+      ? const <int, String>{}
+      : await localization.localizedNames({...referencedTypeIds(fit), ...skills.keys}, locale);
+
+  return jsonEncode({...encodeFitPayload(fit, characterSkills: skills, names: names), ...extra});
 }
 
 /// Reads and decodes a fit directly from the fits document store, bypassing

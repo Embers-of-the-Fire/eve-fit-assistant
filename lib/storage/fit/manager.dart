@@ -107,7 +107,7 @@ class FitManager extends _$FitManager {
         return CheckoutRef(checkoutId: checkoutId, serverId: entry.serverId);
       });
 
-  Future<FitMetadata> newFit(int shipId, String name) async {
+  Future<(FitMetadata, FitStorage)> newFit(int shipId, String name, {String? description}) async {
     final ship = ref.watch(repoCollectionProvider.select((c) => c?.getShip(shipId)));
     if (ship == null) {
       final text = "Ship with ID $shipId not found in repo collection.";
@@ -122,14 +122,14 @@ class FitManager extends _$FitManager {
       shipTypeId: shipId,
       name: name,
       lastModified: DateTime.now().millisecondsSinceEpoch,
-      description: "",
+      description: description ?? "",
       checkoutRef: _checkoutRefForActive(active),
     );
     final fit = FitStorage.empty(metadata, ship);
     final store = ref.read(fitsDocStoreProvider);
     await store.write("${fit.metadata.fitId}.json", jsonEncode(encodeFitStorage(fit)));
     ref.read(fitRegistryManagerProvider.notifier).updateFit(metadata);
-    return metadata;
+    return (metadata, fit);
   }
 
   Future<void> deleteFit(String fitId) async {

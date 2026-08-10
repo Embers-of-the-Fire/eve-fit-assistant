@@ -5,6 +5,7 @@ pub mod tools;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 // `web_time::Instant` is std's Instant on native targets and a
@@ -94,7 +95,8 @@ pub type SearchItemsCallback =
     Arc<dyn Fn(String, Option<String>, Option<String>) -> FitToolFuture + Send + Sync>;
 
 /// App-provided callbacks backing the app-state fit tools (`search_items`,
-/// `list_user_fits`, `load_fit`). All callbacks return JSON strings.
+/// `list_user_fits`, `load_fit`, `create_fit`, `apply_fit_edit`). All
+/// callbacks return JSON strings.
 #[derive(Clone)]
 pub struct FitCallbacks {
     /// `(query, language, kind) -> [{type_id, name, group_id, category_id,
@@ -108,6 +110,15 @@ pub struct FitCallbacks {
     /// `(fit_id) -> FitPayload JSON (see `schema::FitPayload`) or
     /// `{"error": ...}`; on success the payload becomes the attached fit.`
     pub load_fit: Arc<dyn Fn(String) -> FitToolFuture + Send + Sync>,
+    /// `(ship_id, name, description) -> FitPayload JSON or `{"error": ...}`;
+    /// on success the new fit is saved by the app and becomes the attached
+    /// fit.`
+    pub create_fit: Arc<dyn Fn(i32, String, Option<String>) -> FitToolFuture + Send + Sync>,
+    /// `(ops_json) -> FitPayload JSON or `{"error": ...}`; `ops_json` is the
+    /// serialized list of edit ops (see `edit::FitEditOp`) that validated
+    /// against the attached fit. The app persists them onto the attached fit
+    /// and returns its updated payload, which becomes the attached fit.`
+    pub apply_fit_edit: Arc<dyn Fn(String) -> FitToolFuture + Send + Sync>,
 }
 
 /// Shared, cheaply-clonable handle through which the fit tools reach the
@@ -116,9 +127,51 @@ pub struct FitCallbacks {
 pub struct FitToolContext {
     engine: Arc<Database>,
     active: Arc<RwLock<Option<ActiveFit>>>,
+    active_order: Arc<ActiveFitOrder>,
     attr_names: Arc<AttributeNames>,
     callbacks: Option<Arc<FitCallbacks>>,
     language: PromptLanguage,
+}
+
+/// Last-writer-wins (by request start order) ordering state for
+/// callback-backed active-fit replacements. `load_fit`, `create_fit`, and
+/// `apply_edit` each await an app callback before installing the returned
+/// fit; a ticket taken before the await ensures a stale callback response
+/// cannot overwrite a fit attached by a request that started later.
+#[derive(Debug, Default)]
+struct ActiveFitOrder {
+    next: AtomicU64,
+    committed: AtomicU64,
+}
+
+impl ActiveFitOrder {
+    /// Issue a ticket for a replacement that is about to await its app
+    /// callback. Tickets are monotonic in request start order.
+    fn begin(&self) -> u64 {
+        self.next.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    /// Claim the right to install the fit produced by the request holding
+    /// [ticket]. Succeeds only if no replacement that started later has
+    /// already committed; on success [ticket] becomes the latest committed
+    /// ticket.
+    fn try_commit(&self, ticket: u64) -> bool {
+        let mut current = self.committed.load(Ordering::Acquire);
+        loop {
+            if ticket <= current {
+                return false;
+            }
+            match self.committed.compare_exchange_weak(
+                current,
+                ticket,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return true,
+                Err(actual) => current = actual,
+            }
+        }
+    }
 }
 
 impl FitToolContext {
@@ -130,6 +183,7 @@ impl FitToolContext {
         Self {
             engine,
             active,
+            active_order: Arc::new(ActiveFitOrder::default()),
             attr_names,
             callbacks: None,
             language: PromptLanguage::default(),
@@ -162,6 +216,26 @@ impl FitToolContext {
             return Err(FitToolError::NoActiveFit);
         };
         Ok(f(fit))
+    }
+
+    /// Take a ticket for a callback-backed active-fit replacement. Call
+    /// before awaiting the app callback; pass the ticket to
+    /// [`Self::commit_active`] with the callback's fit.
+    fn begin_active_replacement(&self) -> u64 {
+        self.active_order.begin()
+    }
+
+    /// Install [fit] as the attached fit for the request holding [ticket].
+    /// Returns `false` — dropping the stale callback response — when a
+    /// replacement that started after [ticket] was taken has already
+    /// committed, so a slow callback cannot overwrite a newer attached fit.
+    fn commit_active(&self, ticket: u64, fit: ActiveFit) -> bool {
+        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
+        if !self.active_order.try_commit(ticket) {
+            return false;
+        }
+        *guard = Some(fit);
+        true
     }
 
     /// Run the engine on the active fit and hand the calculated ship to [f].
@@ -207,6 +281,8 @@ pub enum FitToolError {
     CallbacksUnavailable,
     #[error("invalid payload from the app: {0}")]
     BadPayload(String),
+    #[error("{0}")]
+    Superseded(String),
 }
 
 /// Surface fit tool failures to the model verbatim. rig's default
@@ -223,9 +299,9 @@ impl From<FitToolError> for ToolExecutionError {
             | FitToolError::IndexOutOfRange { .. }
             | FitToolError::UnknownAttribute { .. }
             | FitToolError::AttributeNotPresent(_) => Self::invalid_args(message),
-            FitToolError::CallbacksUnavailable | FitToolError::BadPayload(_) => {
-                Self::other(message)
-            }
+            FitToolError::CallbacksUnavailable
+            | FitToolError::BadPayload(_)
+            | FitToolError::Superseded(_) => Self::other(message),
         }
     }
 }
@@ -373,11 +449,11 @@ pub struct FitValidationReport {
     pub issues: Vec<ValidationIssueEntry>,
 }
 
-/// The projected outcome of a batch of fit edits, computed against a copy of
-/// the attached fit (the user's real fit is never mutated).
+/// The outcome of a batch of fit edits applied to the attached fit: the
+/// per-edit results plus the stats and validation of the edited fit.
 #[derive(Debug, Clone, Serialize)]
-pub struct FitEditProposal {
-    /// Human-readable description of each edit that was applied to the copy.
+pub struct FitEditApplyReport {
+    /// Human-readable description of each edit that was applied.
     pub applied: Vec<String>,
     /// Edits that could not be applied, with the reason.
     pub rejected: Vec<String>,
@@ -385,6 +461,9 @@ pub struct FitEditProposal {
     pub after: FitStatsReport,
     /// Validation issues of the fit after the edits.
     pub validation: FitValidationReport,
+    /// Whether the applied edits were persisted to the user's fit. `false`
+    /// only when every edit was rejected (nothing to persist).
+    pub persisted: bool,
 }
 
 fn state_name(state: ItemState) -> String {
@@ -494,38 +573,39 @@ impl FitToolContext {
             }
         };
 
+        let damage = |id: i32| Some(hull(id).unwrap_or(0.0));
         section(
             "damage",
             vec![
                 (
                     "dpsWithoutReload",
                     patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD,
-                    hull(patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD),
+                    damage(patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD),
                 ),
                 (
                     "dpsWithReload",
                     patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD,
-                    hull(patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD),
+                    damage(patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD),
                 ),
                 (
                     "volley",
                     patch_attr::ATTR_DAMAGE_VOLLEY,
-                    hull(patch_attr::ATTR_DAMAGE_VOLLEY),
+                    damage(patch_attr::ATTR_DAMAGE_VOLLEY),
                 ),
                 (
                     "alpha",
                     patch_attr::ATTR_DAMAGE_ALPHA,
-                    hull(patch_attr::ATTR_DAMAGE_ALPHA),
+                    damage(patch_attr::ATTR_DAMAGE_ALPHA),
                 ),
                 (
                     "droneDps",
                     patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND,
-                    hull(patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND),
+                    damage(patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND),
                 ),
                 (
                     "fighterDps",
                     patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND,
-                    hull(patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND),
+                    damage(patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND),
                 ),
             ],
         );
@@ -770,24 +850,134 @@ impl FitToolContext {
         })
     }
 
-    /// Apply [ops] to a copy of the attached fit and project the outcome
-    /// (what-if analysis). The user's real fit is never mutated.
-    pub fn propose_edit(&self, ops: &[edit::FitEditOp]) -> Result<FitEditProposal, FitToolError> {
-        self.with_active(|fit| {
-            let result = edit::apply_edit_ops(&fit.container, ops);
-            let ship = calculate(&result.container, self.engine.as_ref());
-            let after = self.stats_report(&ship);
-            let issues =
-                eve_fit_os::validate::validate_fit(&result.container, &ship, self.engine.as_ref());
-            FitEditProposal {
+    /// Apply [ops] to the attached fit and persist them through the app
+    /// callback. Ops are first validated against a copy of the fit; the
+    /// validated ops are then forwarded to the app, which applies them to the
+    /// stored fit and returns its updated payload, replacing the attached fit
+    /// for subsequent tool calls (including within the same turn). The
+    /// reported stats and validation describe the payload the app returned.
+    /// If a concurrent replacement attached a newer fit while the callback
+    /// was in flight, the stale response is dropped instead of overwriting
+    /// the newer fit, and a [`FitToolError::Superseded`] error tells the
+    /// model the edits were saved but the edited fit is not attached.
+    pub async fn apply_edit(
+        &self,
+        ops: &[edit::FitEditOp],
+    ) -> Result<FitEditApplyReport, FitToolError> {
+        let result = self
+            .with_active(|fit| edit::apply_edit_ops(&fit.container, ops, self.engine.as_ref()))?;
+        if !result.applied_ops.is_empty() {
+            let Some(callbacks) = &self.callbacks else {
+                return Err(FitToolError::CallbacksUnavailable);
+            };
+            let ticket = self.begin_active_replacement();
+            let ops_json = serde_json::to_string(&result.applied_ops)
+                .map_err(|e| FitToolError::BadPayload(e.to_string()))?;
+            let started = Instant::now();
+            let raw = (callbacks.apply_fit_edit)(ops_json).await;
+            log::debug!(
+                "[chat] apply_fit_edit: Dart callback returned in {}ms",
+                started.elapsed().as_millis()
+            );
+            let payload = parse_callback_fit_payload(&raw)?;
+            let active = payload.into_active();
+            let (after, validation) = self.calculate_report(&active.container);
+            if !self.commit_active(ticket, active) {
+                log::debug!(
+                    "[chat] apply_fit_edit: dropped stale callback response; \
+                     a newer fit was attached while the edit was in flight"
+                );
+                // The app already saved the edits; the message must make
+                // clear the report was discarded and the attached fit did
+                // not change.
+                return Err(FitToolError::Superseded(
+                    "the edits were applied and saved, but the edited fit is not the attached \
+                     fit: a newer fit was attached while the edit was in flight; call \
+                     get_current_fit to see the attached fit"
+                        .to_string(),
+                ));
+            }
+            return Ok(FitEditApplyReport {
                 applied: result.applied,
                 rejected: result.rejected,
                 after,
-                validation: FitValidationReport {
-                    issues: issues.into_iter().map(validation_issue_entry).collect(),
-                },
-            }
+                validation,
+                persisted: true,
+            });
+        }
+        let (after, validation) = self.calculate_report(&result.container);
+        Ok(FitEditApplyReport {
+            applied: result.applied,
+            rejected: result.rejected,
+            after,
+            validation,
+            persisted: false,
         })
+    }
+
+    /// Calculate [container] and build the stats and validation reports for
+    /// the resulting ship.
+    fn calculate_report(&self, container: &FitContainer) -> (FitStatsReport, FitValidationReport) {
+        let started = Instant::now();
+        let ship = calculate(container, self.engine.as_ref());
+        log::debug!(
+            "[chat] engine calculate finished in {}ms",
+            started.elapsed().as_millis()
+        );
+        let after = self.stats_report(&ship);
+        let issues = eve_fit_os::validate::validate_fit(container, &ship, self.engine.as_ref());
+        (
+            after,
+            FitValidationReport {
+                issues: issues.into_iter().map(validation_issue_entry).collect(),
+            },
+        )
+    }
+
+    /// Create a new saved fit through the app callback, making it the
+    /// attached fit for subsequent tool calls (including within the same
+    /// turn). If a concurrent replacement attached a newer fit while the
+    /// callback was in flight, the stale response is dropped instead of
+    /// overwriting the newer fit, and a [`FitToolError::Superseded`] error
+    /// tells the model the created fit is saved but not attached.
+    pub async fn create_fit(
+        &self,
+        ship_id: i32,
+        name: &str,
+        description: Option<String>,
+    ) -> Result<FitSummary, FitToolError> {
+        let Some(callbacks) = &self.callbacks else {
+            return Err(FitToolError::CallbacksUnavailable);
+        };
+        let ticket = self.begin_active_replacement();
+        let started = Instant::now();
+        let raw = (callbacks.create_fit)(ship_id, name.to_string(), description).await;
+        log::debug!(
+            "[chat] create_fit: Dart callback returned in {}ms",
+            started.elapsed().as_millis()
+        );
+        let payload = parse_callback_fit_payload(&raw)?;
+        let created_id = payload.fit_id.clone();
+        let active = payload.into_active();
+        let summary = self.summarize(&active);
+        if self.commit_active(ticket, active) {
+            return Ok(summary);
+        }
+        log::debug!(
+            "[chat] create_fit: dropped stale callback response; \
+             a newer fit was attached while the create was in flight"
+        );
+        // The app already saved the new fit; the message must steer the model
+        // away from retrying the create (which would save a duplicate).
+        let created = match &created_id {
+            Some(id) => format!("fit `{name}` (fit_id `{id}`)"),
+            None => format!("fit `{name}`"),
+        };
+        Err(FitToolError::Superseded(format!(
+            "{created} was created and saved, but is not the attached fit: a newer fit was \
+             attached while the create was in flight; use list_user_fits to find it instead of \
+             creating another one"
+        )))
     }
 
     /// Search the app's item database by (localized) name substring.
@@ -833,30 +1023,41 @@ impl FitToolContext {
     }
 
     /// Load one of the user's fits by id, replacing the attached fit for
-    /// subsequent tool calls (including within the same turn).
+    /// subsequent tool calls (including within the same turn). If a
+    /// concurrent replacement attached a newer fit while the callback was
+    /// in flight, the stale response is dropped instead of overwriting the
+    /// newer fit, and a [`FitToolError::Superseded`] error tells the model
+    /// the requested fit is not attached.
     pub async fn load_fit(&self, fit_id: &str) -> Result<FitSummary, FitToolError> {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
         };
+        let ticket = self.begin_active_replacement();
         let started = Instant::now();
         let raw = (callbacks.load_fit)(fit_id.to_string()).await;
         log::debug!(
             "[chat] load_fit: Dart callback returned in {}ms",
             started.elapsed().as_millis()
         );
-        let payload: schema::FitPayload = serde_json::from_str(&raw)
-            .map_err(|e| FitToolError::BadPayload(format!("{e}; payload: {raw}")))?;
-        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
-        let summary = {
-            let active = guard.insert(payload.into_active());
-            // Summarize straight from the input snapshot (no engine pass needed).
-            self.summarize(active)
-        };
+        let payload = parse_callback_fit_payload(&raw)?;
+        let active = payload.into_active();
+        // Summarize straight from the input snapshot (no engine pass needed).
+        let summary = self.summarize(&active);
+        if self.commit_active(ticket, active) {
+            log::debug!(
+                "[chat] load_fit: attached fit `{fit_id}` in {}ms",
+                started.elapsed().as_millis()
+            );
+            return Ok(summary);
+        }
         log::debug!(
-            "[chat] load_fit: attached fit `{fit_id}` in {}ms",
-            started.elapsed().as_millis()
+            "[chat] load_fit: dropped stale callback response for `{fit_id}`; \
+             a newer fit was attached while the load was in flight"
         );
-        Ok(summary)
+        Err(FitToolError::Superseded(format!(
+            "fit `{fit_id}` was loaded but is not the attached fit: a newer fit was attached \
+             while the load was in flight; call get_current_fit to see the attached fit"
+        )))
     }
 
     fn summarize(&self, fit: &ActiveFit) -> FitSummary {
@@ -931,6 +1132,18 @@ impl FitToolContext {
             skills: None,
         }
     }
+}
+
+/// Parse a `FitPayload` returned by an app callback, surfacing the app's
+/// `{"error": ...}` envelope as an actionable error instead of a bare
+/// deserialization failure.
+fn parse_callback_fit_payload(raw: &str) -> Result<schema::FitPayload, FitToolError> {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+        if let Some(error) = value.get("error").and_then(|e| e.as_str()) {
+            return Err(FitToolError::BadPayload(error.to_string()));
+        }
+    }
+    serde_json::from_str(raw).map_err(|e| FitToolError::BadPayload(format!("{e}; payload: {raw}")))
 }
 
 fn hull_attr(ship: &Ship, attribute_id: i32) -> Option<f64> {
@@ -1204,6 +1417,10 @@ mod tests {
             (FitToolError::CallbacksUnavailable, ToolErrorKind::Other),
             (
                 FitToolError::BadPayload("bad json".to_string()),
+                ToolErrorKind::Other,
+            ),
+            (
+                FitToolError::Superseded("superseded".to_string()),
                 ToolErrorKind::Other,
             ),
         ];

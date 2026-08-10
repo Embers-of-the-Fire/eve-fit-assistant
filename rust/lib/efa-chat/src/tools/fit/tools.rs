@@ -2,7 +2,7 @@ use rig::tool::{IntoToolOutput, PortableDynamicTool, PortableTool, ToolExecution
 use serde::Deserialize;
 
 use super::{
-    AttrDetail, FitEditProposal, FitStatsReport, FitSummary, FitToolContext, FitToolError,
+    AttrDetail, FitEditApplyReport, FitStatsReport, FitSummary, FitToolContext, FitToolError,
     FitValidationReport, ItemDetail, ToolTimer,
 };
 
@@ -37,12 +37,13 @@ pub fn fit_tools(context: FitToolContext) -> Vec<PortableDynamicTool> {
         erased(GetItemTool::new(context.clone())),
         erased(GetAttrTool::new(context.clone())),
         erased(ValidateFitTool::new(context.clone())),
-        erased(ProposeFitEditTool::new(context.clone())),
     ];
     if context.has_callbacks() {
         tools.push(erased(SearchItemsTool::new(context.clone())));
         tools.push(erased(ListUserFitsTool::new(context.clone())));
-        tools.push(erased(LoadFitTool::new(context)));
+        tools.push(erased(LoadFitTool::new(context.clone())));
+        tools.push(erased(CreateFitTool::new(context.clone())));
+        tools.push(erased(ApplyFitEditTool::new(context)));
     }
     tools
 }
@@ -308,31 +309,31 @@ impl PortableTool for ValidateFitTool {
 }
 
 #[derive(Clone)]
-pub struct ProposeFitEditTool {
+pub struct ApplyFitEditTool {
     context: FitToolContext,
 }
 
-impl ProposeFitEditTool {
+impl ApplyFitEditTool {
     pub fn new(context: FitToolContext) -> Self {
         Self { context }
     }
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ProposeFitEditArgs {
+pub struct ApplyFitEditArgs {
     pub edits: Vec<super::edit::FitEditOp>,
 }
 
-impl PortableTool for ProposeFitEditTool {
-    const NAME: &'static str = "propose_fit_edit";
-    type Args = ProposeFitEditArgs;
-    type Output = FitEditProposal;
+impl PortableTool for ApplyFitEditTool {
+    const NAME: &'static str = "apply_fit_edit";
+    type Args = ApplyFitEditArgs;
+    type Output = FitEditApplyReport;
     type Error = FitToolError;
 
     fn description(&self) -> String {
         self.context.tool_prompt(
-            include_str!("../../../prompt/tool/propose_fit_edit/en.prompt"),
-            include_str!("../../../prompt/tool/propose_fit_edit/zh.prompt"),
+            include_str!("../../../prompt/tool/apply_fit_edit/en.prompt"),
+            include_str!("../../../prompt/tool/apply_fit_edit/zh.prompt"),
         )
     }
 
@@ -342,7 +343,7 @@ impl PortableTool for ProposeFitEditTool {
             "properties": {
                 "edits": {
                     "type": "array",
-                    "description": "Ordered list of edit operations to apply to a copy of the fit",
+                    "description": "Ordered list of edit operations to apply to the attached fit",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -357,7 +358,7 @@ impl PortableTool for ProposeFitEditTool {
                             },
                             "slot_type": {
                                 "type": "string",
-                                "enum": ["high", "medium", "low", "rig", "subsystem", "service"],
+                                "enum": ["high", "medium", "low", "rig", "subsystem", "service", "tactical_mode"],
                                 "description": "Module slot type (module ops only)"
                             },
                             "index": { "type": "integer", "description": "Slot index within slot_type (module ops only)" },
@@ -385,7 +386,7 @@ impl PortableTool for ProposeFitEditTool {
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
-        self.context.propose_edit(&args.edits)
+        self.context.apply_edit(&args.edits).await
     }
 }
 
@@ -544,5 +545,69 @@ impl PortableTool for LoadFitTool {
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
         let _timer = ToolTimer::start(Self::NAME);
         self.context.load_fit(&args.fit_id).await
+    }
+}
+
+#[derive(Clone)]
+pub struct CreateFitTool {
+    context: FitToolContext,
+}
+
+impl CreateFitTool {
+    pub fn new(context: FitToolContext) -> Self {
+        Self { context }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateFitArgs {
+    pub ship_id: i32,
+    pub name: String,
+    pub description: Option<String>,
+}
+
+impl PortableTool for CreateFitTool {
+    const NAME: &'static str = "create_fit";
+    type Args = CreateFitArgs;
+    type Output = FitSummary;
+    type Error = FitToolError;
+
+    fn description(&self) -> String {
+        self.context.tool_prompt(
+            include_str!("../../../prompt/tool/create_fit/en.prompt"),
+            include_str!("../../../prompt/tool/create_fit/zh.prompt"),
+        )
+    }
+
+    fn parameters(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "ship_id": {
+                    "type": "integer",
+                    "description": "Type id of the ship hull; resolve a ship name with `search_items` (kind \"ship\")"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of the new fit"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Optional description of the new fit"
+                }
+            },
+            "required": ["ship_id", "name"]
+        })
+    }
+
+    fn map_error(&self, error: Self::Error) -> ToolExecutionError {
+        error.into()
+    }
+
+    async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        let _timer = ToolTimer::start(Self::NAME);
+        self.context
+            .create_fit(args.ship_id, &args.name, args.description)
+            .await
     }
 }

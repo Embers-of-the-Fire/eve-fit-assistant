@@ -38,9 +38,9 @@ The crate is organized into three top-level modules: `core` (the agent layer),
 | `mod.rs` | Re-exports `manual` and `fit`. |
 | `manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
 | `fit/mod.rs` | `FitToolContext`, `FitToolError`, and the fit summary/stat/attr/validation report structs backed by the fitting engine. |
-| `fit/schema.rs` | DTOs for the fit payload pushed by the app (used by `load_fit`). |
-| `fit/edit.rs` | What-if fit edit operations applied to a copy of the attached fit: module ops (`add_module`/`remove_module`/`set_module_charge`/`set_module_state`), drone ops (`add_drone`/`remove_drone`/`set_drone_state`; state is `bay`/`space`, same-type drones share a group), fighter ops (`add_fighter`/`remove_fighter`; `ability` bitmask 1/2/4/8 = attack turret/missiles/attack missile/bomb, default 0), and slot ops (`set_implant`/`remove_implant` slots 1-10, `set_booster`/`remove_booster` slots 1-3; `set_*` replaces the slot's current item). |
-| `fit/tools.rs` | The fit tool definitions (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`, `validate_fit`, `propose_fit_edit`, and the app-state `search_items`/`list_user_fits`/`load_fit`). |
+| `fit/schema.rs` | DTOs for the fit payload pushed by the app (used by `load_fit`, `create_fit`, `apply_fit_edit`). |
+| `fit/edit.rs` | Fit edit operations validated against a copy of the attached fit: module ops (`add_module`/`remove_module`/`set_module_charge`/`set_module_state`), drone ops (`add_drone`/`remove_drone`/`set_drone_state`; state is `bay`/`space`, same-type drones share a group), fighter ops (`add_fighter`/`remove_fighter`; `ability` bitmask 1/2/4/8 = attack turret/missiles/attack missile/bomb, default 0), and slot ops (`set_implant`/`remove_implant` slots 1-10, `set_booster`/`remove_booster` slots 1-3; `set_*` replaces the slot's current item). `apply_edit_ops` also returns the applied ops verbatim, which `apply_fit_edit` forwards to the app for persistence. |
+| `fit/tools.rs` | The fit tool definitions (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`, `validate_fit`, and the app-state `search_items`/`list_user_fits`/`load_fit`/`create_fit`/`apply_fit_edit`). |
 
 Behavioral notes:
 
@@ -78,11 +78,13 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
 - `ChatManualDoc` + `ChatSession::set_manual_docs` (`#[frb(sync)]`) hand the bundled manual
   corpus (flat doc×locale rows) to the agent, enabling the manual tools.
 - `ChatSession::open_callback_channel` + `deliver_callback_result` back the app-state tools
-  (`search_items`/`list_user_fits`/`load_fit`). FRB Dart closures (DartFn) are **not** used:
+  (`search_items`/`list_user_fits`/`load_fit`/`create_fit`/`apply_fit_edit`). FRB Dart closures
+  (DartFn) are **not** used:
   their invoke message crosses a `BroadcastChannel` as a raw `JSValue` that FRB's Dart port
   manager cannot decode on dart2wasm (only dart2js auto-converts), crashing the port listener.
   The bridge therefore runs its own request/response channel: a `StreamSink` pushes
-  `ChatCallbackRequest::{SearchItems, ListFits, LoadFit}` (each with a `call_id`) to Dart, and
+  `ChatCallbackRequest::{SearchItems, ListFits, LoadFit, CreateFit, ApplyFitEdit}` (each with a
+  `call_id`) to Dart, and
   the async `deliver_callback_result(call_id, result)` completes the oneshot the tool future
   awaits (async so the wake happens on the browser event loop on web). `search_items` receives
   `(query, language?, kind?)`, where `language` selects the name localization to search
@@ -90,7 +92,19 @@ Exposes the crate to Dart. Follows the FRB threading rules from AGENTS.md:
   (`ship`/`module`/`charge`/`drone`/`fighter`/`implant`/`booster`). The kind filter is applied
   inside the agent resource database query (schema v2 `type_names` columns `group_id`/
   `category_id`/`slot_index`/`slot_kind`); implant and booster hits carry `slot_index` for
-  `propose_fit_edit`'s `set_implant`/`set_booster`.
+  `apply_fit_edit`'s `set_implant`/`set_booster`.
+
+Fit mutation tools:
+
+- `create_fit(ship_id, name, description?)` asks the app to save a new fit
+  (`FitManager.newFit`), attaches it (like `load_fit`), and returns its summary.
+- `apply_fit_edit(edits)` validates the ops against a copy of the attached fit
+  (`apply_edit_ops`), then forwards the *applied* ops verbatim to the app's
+  `ApplyFitEdit` callback, which translates them onto the stored `FitStorage`
+  (`lib/features/chat/fit_edit_apply.dart`) and persists through `Fit.update`; the returned
+  `FitPayload` replaces the attached fit so subsequent tool calls in the same turn see the new
+  state. App `{"error": ...}` envelopes (e.g. read-only incompatible checkout) surface as
+  tool errors. There is no confirmation step by design.
 
 After changing these signatures run `./x generate rust`.
 
@@ -103,7 +117,8 @@ After changing these signatures run `./x generate rust`.
 | `lib/features/chat/api_key_store.dart` | Per-provider API keys in `flutter_secure_storage` (`ai_chat_api_key_<provider>`; the legacy provider-agnostic key migrates to OpenAI on first read). `aiChatApiKeyProvider` tracks the *active* provider's key. |
 | `lib/features/chat/system_prompt.dart` | `chatSystemPromptProvider` — extra system-prompt sections (the in-app link manifest; the persona + manual-tools base is bundled in the efa-chat crate under `prompt/`) shared by chat sessions and the settings connection test. The manifest is rendered (`render/prompt_renderer.dart`) from `linkSurfaceProvider`, which derives the linkable surface from `routeCollectionProvider` (overridden in `main.dart` with the real router's collection). Routes opt in via `DeepLinkMeta` annotations in `router.dart`. Assistant bubbles route link taps through `appLinkHandlerProvider`, which validates paths against the router before pushing. |
 | `lib/features/chat/manual_corpus.dart` | `chatManualCorpusProvider` — flattens the bundled manual (`manualTreeProvider` + `ManualRepository.loadContent`) into doc×locale `ChatManualDoc` rows covering **all** bundled locales; `ChatController` pushes them into each new session via `setManualDocs` (failures leave the session usable, just without the tools). |
-| `lib/features/chat/fit_context.dart` | Fit-context wiring: attaches the engine, attribute names, and the fit page's currently open fit (`pushAttachedFit`), and registers the app-state tool callbacks by listening on `openCallbackChannel()` and answering each request with `deliverCallbackResult()`. The `search_items` callback resolves the model-supplied `language` tag to a localization-db locale (zh*→zh, anything else→en; omitted/blank→app display locale). |
+| `lib/features/chat/fit_context.dart` | Fit-context wiring: attaches the engine, attribute names, and the fit page's currently open fit (`pushAttachedFit`), and registers the app-state tool callbacks by listening on `openCallbackChannel()` and answering each request with `deliverCallbackResult()`. The `search_items` callback resolves the model-supplied `language` tag to a localization-db locale (zh*→zh, anything else→en; omitted/blank→app display locale). The `create_fit` callback goes through `FitManager.newFit` (shipId + name + optional description) and attaches the new fit; the `apply_fit_edit` callback decodes the ops JSON, applies it via `fit_edit_apply.dart` onto the attached fit's `FitStorage` through `Fit.update` (holding the auto-dispose `fitProvider` alive with `ref.listen` across the update), and returns the updated `FitPayload`. |
+| `lib/features/chat/fit_edit_apply.dart` | Pure translator from chat edit ops (JSON) onto the storage-layer `FitStorage` model: fixed module slot lists (first-free index), quantity-based drone/fighter groups, implant slots resolved through bundle metadata (`collection.slots.implantSlots`), booster slots by stored index. Unapplicable ops are skipped (the chat crate already validated them). |
 | `lib/features/chat/model_list.dart` | `refreshAvailableModels()` fetches the active provider's model list with a shared 30 s cooldown across entry points; persists results into that provider's connection and auto-selects the first model if none chosen. |
 | `lib/storage/chat/` | `ChatConversation`/`ChatMessage` freezed models + `ChatStorageService` — per-conversation JSON files via `createUserDocStore(UserDataDomain.chat)`, serialized writes through a `_pendingSync` chain, sorted by `updatedAt` desc. |
 | `lib/storage/setting/setting.dart` | `AiChatSetting` — `{provider, connections: Map<ChatProvider, AiChatConnection>}`; each provider keeps its own `{baseUrl, model, models}` (blank baseUrl/model resolve to provider defaults via getters, so `s.aiChat.baseUrl`/`.model`/`.models` keep working). Legacy flat `{baseUrl, model, models}` JSON migrates into the OpenAI-compatible connection in `fromJson`; unknown provider keys are skipped. |
