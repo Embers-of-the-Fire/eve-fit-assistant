@@ -84,8 +84,14 @@ fn test_context() -> FitToolContext {
 /// A minimal valid `FitPayload` JSON for the callbacks that return the
 /// updated attached fit (`load_fit`, `create_fit`, `apply_fit_edit`).
 fn test_fit_payload_json() -> String {
+    fit_payload_json_named("updated fit")
+}
+
+/// [`test_fit_payload_json`] with a caller-chosen fit name, so concurrent
+/// replacements can tell whose response was attached.
+fn fit_payload_json_named(name: &str) -> String {
     serde_json::json!({
-        "name": "updated fit",
+        "name": name,
         "names": {"628": "Arbitrator"},
         "fit": {
             "ship_type_id": 628,
@@ -386,6 +392,94 @@ fn edit_tools_require_callbacks() {
     let tools = efa_chat::tools::fit::tools::fit_tools(context);
     assert!(tools.iter().any(|tool| tool.name() == "apply_fit_edit"));
     assert!(tools.iter().any(|tool| tool.name() == "create_fit"));
+}
+
+/// A `load_fit` response that arrives after a newer replacement committed
+/// must not overwrite the newer attached fit.
+#[test]
+fn stale_load_fit_response_does_not_overwrite_newer_active_fit() {
+    let (release_first, first_gate) = tokio::sync::oneshot::channel::<()>();
+    let (first_started_tx, first_started) = tokio::sync::oneshot::channel::<()>();
+    let first_gate = Arc::new(Mutex::new(Some(first_gate)));
+    let first_started_tx = Arc::new(Mutex::new(Some(first_started_tx)));
+    let mut callbacks = mock_callbacks().0;
+    callbacks.load_fit = Arc::new(move |fit_id| {
+        if fit_id == "first" {
+            let gate = first_gate.lock().unwrap().take().unwrap();
+            let started = first_started_tx.lock().unwrap().take().unwrap();
+            Box::pin(async move {
+                started.send(()).unwrap();
+                gate.await.unwrap();
+                fit_payload_json_named("first fit")
+            })
+        } else {
+            Box::pin(async move { fit_payload_json_named("second fit") })
+        }
+    });
+    let context = test_context().with_callbacks(Arc::new(callbacks));
+    runtime().block_on(async {
+        let first = tokio::spawn({
+            let context = context.clone();
+            async move { context.load_fit("first").await }
+        });
+        // Wait until the first request is parked on its gated callback.
+        first_started.await.unwrap();
+        // A newer replacement starts and commits while the first is pending.
+        context.load_fit("second").await.unwrap();
+        release_first.send(()).unwrap();
+        first.await.unwrap().unwrap();
+    });
+    assert_eq!(
+        context.current_fit(false).unwrap().name.as_deref(),
+        Some("second fit")
+    );
+}
+
+/// An `apply_edit` response that arrives after a concurrent `load_fit`
+/// attached a newer fit must not overwrite it.
+#[test]
+fn stale_apply_edit_response_does_not_overwrite_newer_active_fit() {
+    let (release_edit, edit_gate) = tokio::sync::oneshot::channel::<()>();
+    let (edit_started_tx, edit_started) = tokio::sync::oneshot::channel::<()>();
+    let edit_gate = Arc::new(Mutex::new(Some(edit_gate)));
+    let edit_started_tx = Arc::new(Mutex::new(Some(edit_started_tx)));
+    let mut callbacks = mock_callbacks().0;
+    callbacks.load_fit =
+        Arc::new(|_| Box::pin(async move { fit_payload_json_named("loaded fit") }));
+    callbacks.apply_fit_edit = Arc::new(move |_| {
+        let gate = edit_gate.lock().unwrap().take().unwrap();
+        let started = edit_started_tx.lock().unwrap().take().unwrap();
+        Box::pin(async move {
+            started.send(()).unwrap();
+            gate.await.unwrap();
+            fit_payload_json_named("edited fit")
+        })
+    });
+    let context = test_context().with_callbacks(Arc::new(callbacks));
+    runtime().block_on(async {
+        let edit = tokio::spawn({
+            let context = context.clone();
+            async move {
+                context
+                    .apply_edit(&[efa_chat::tools::fit::edit::FitEditOp::AddModule {
+                        slot_type: "medium".to_string(),
+                        type_id: 10850,
+                        state: None,
+                        charge_type_id: None,
+                    }])
+                    .await
+            }
+        });
+        // Wait until the edit is parked on its gated callback.
+        edit_started.await.unwrap();
+        context.load_fit("loaded").await.unwrap();
+        release_edit.send(()).unwrap();
+        edit.await.unwrap().unwrap();
+    });
+    assert_eq!(
+        context.current_fit(false).unwrap().name.as_deref(),
+        Some("loaded fit")
+    );
 }
 
 #[test]

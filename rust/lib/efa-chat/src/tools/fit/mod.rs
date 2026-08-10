@@ -5,6 +5,7 @@ pub mod tools;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 // `web_time::Instant` is std's Instant on native targets and a
@@ -126,9 +127,51 @@ pub struct FitCallbacks {
 pub struct FitToolContext {
     engine: Arc<Database>,
     active: Arc<RwLock<Option<ActiveFit>>>,
+    active_order: Arc<ActiveFitOrder>,
     attr_names: Arc<AttributeNames>,
     callbacks: Option<Arc<FitCallbacks>>,
     language: PromptLanguage,
+}
+
+/// Last-writer-wins (by request start order) ordering state for
+/// callback-backed active-fit replacements. `load_fit`, `create_fit`, and
+/// `apply_edit` each await an app callback before installing the returned
+/// fit; a ticket taken before the await ensures a stale callback response
+/// cannot overwrite a fit attached by a request that started later.
+#[derive(Debug, Default)]
+struct ActiveFitOrder {
+    next: AtomicU64,
+    committed: AtomicU64,
+}
+
+impl ActiveFitOrder {
+    /// Issue a ticket for a replacement that is about to await its app
+    /// callback. Tickets are monotonic in request start order.
+    fn begin(&self) -> u64 {
+        self.next.fetch_add(1, Ordering::Relaxed) + 1
+    }
+
+    /// Claim the right to install the fit produced by the request holding
+    /// [ticket]. Succeeds only if no replacement that started later has
+    /// already committed; on success [ticket] becomes the latest committed
+    /// ticket.
+    fn try_commit(&self, ticket: u64) -> bool {
+        let mut current = self.committed.load(Ordering::Acquire);
+        loop {
+            if ticket <= current {
+                return false;
+            }
+            match self.committed.compare_exchange_weak(
+                current,
+                ticket,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return true,
+                Err(actual) => current = actual,
+            }
+        }
+    }
 }
 
 impl FitToolContext {
@@ -140,6 +183,7 @@ impl FitToolContext {
         Self {
             engine,
             active,
+            active_order: Arc::new(ActiveFitOrder::default()),
             attr_names,
             callbacks: None,
             language: PromptLanguage::default(),
@@ -172,6 +216,26 @@ impl FitToolContext {
             return Err(FitToolError::NoActiveFit);
         };
         Ok(f(fit))
+    }
+
+    /// Take a ticket for a callback-backed active-fit replacement. Call
+    /// before awaiting the app callback; pass the ticket to
+    /// [`Self::commit_active`] with the callback's fit.
+    fn begin_active_replacement(&self) -> u64 {
+        self.active_order.begin()
+    }
+
+    /// Install [fit] as the attached fit for the request holding [ticket].
+    /// Returns `false` — dropping the stale callback response — when a
+    /// replacement that started after [ticket] was taken has already
+    /// committed, so a slow callback cannot overwrite a newer attached fit.
+    fn commit_active(&self, ticket: u64, fit: ActiveFit) -> bool {
+        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
+        if !self.active_order.try_commit(ticket) {
+            return false;
+        }
+        *guard = Some(fit);
+        true
     }
 
     /// Run the engine on the active fit and hand the calculated ship to [f].
@@ -789,6 +853,9 @@ impl FitToolContext {
     /// stored fit and returns its updated payload, replacing the attached fit
     /// for subsequent tool calls (including within the same turn). The
     /// reported stats and validation describe the payload the app returned.
+    /// If a concurrent replacement attached a newer fit while the callback
+    /// was in flight, the stale response is dropped instead of overwriting
+    /// the newer fit.
     pub async fn apply_edit(
         &self,
         ops: &[edit::FitEditOp],
@@ -798,6 +865,7 @@ impl FitToolContext {
             let Some(callbacks) = &self.callbacks else {
                 return Err(FitToolError::CallbacksUnavailable);
             };
+            let ticket = self.begin_active_replacement();
             let ops_json = serde_json::to_string(&result.applied_ops)
                 .map_err(|e| FitToolError::BadPayload(e.to_string()))?;
             let started = Instant::now();
@@ -809,8 +877,12 @@ impl FitToolContext {
             let payload = parse_callback_fit_payload(&raw)?;
             let active = payload.into_active();
             let (after, validation) = self.calculate_report(&active.container);
-            let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
-            *guard = Some(active);
+            if !self.commit_active(ticket, active) {
+                log::debug!(
+                    "[chat] apply_fit_edit: dropped stale callback response; \
+                     a newer fit was attached while the edit was in flight"
+                );
+            }
             return Ok(FitEditApplyReport {
                 applied: result.applied,
                 rejected: result.rejected,
@@ -850,7 +922,9 @@ impl FitToolContext {
 
     /// Create a new saved fit through the app callback, making it the
     /// attached fit for subsequent tool calls (including within the same
-    /// turn).
+    /// turn). If a concurrent replacement attached a newer fit while the
+    /// callback was in flight, the stale response is dropped instead of
+    /// overwriting the newer fit.
     pub async fn create_fit(
         &self,
         ship_id: i32,
@@ -860,6 +934,7 @@ impl FitToolContext {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
         };
+        let ticket = self.begin_active_replacement();
         let started = Instant::now();
         let raw = (callbacks.create_fit)(ship_id, name.to_string(), description).await;
         log::debug!(
@@ -867,11 +942,14 @@ impl FitToolContext {
             started.elapsed().as_millis()
         );
         let payload = parse_callback_fit_payload(&raw)?;
-        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
-        let summary = {
-            let active = guard.insert(payload.into_active());
-            self.summarize(active)
-        };
+        let active = payload.into_active();
+        let summary = self.summarize(&active);
+        if !self.commit_active(ticket, active) {
+            log::debug!(
+                "[chat] create_fit: dropped stale callback response; \
+                 a newer fit was attached while the create was in flight"
+            );
+        }
         Ok(summary)
     }
 
@@ -918,11 +996,15 @@ impl FitToolContext {
     }
 
     /// Load one of the user's fits by id, replacing the attached fit for
-    /// subsequent tool calls (including within the same turn).
+    /// subsequent tool calls (including within the same turn). If a
+    /// concurrent replacement attached a newer fit while the callback was
+    /// in flight, the stale response is dropped instead of overwriting the
+    /// newer fit.
     pub async fn load_fit(&self, fit_id: &str) -> Result<FitSummary, FitToolError> {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
         };
+        let ticket = self.begin_active_replacement();
         let started = Instant::now();
         let raw = (callbacks.load_fit)(fit_id.to_string()).await;
         log::debug!(
@@ -930,16 +1012,20 @@ impl FitToolContext {
             started.elapsed().as_millis()
         );
         let payload = parse_callback_fit_payload(&raw)?;
-        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
-        let summary = {
-            let active = guard.insert(payload.into_active());
-            // Summarize straight from the input snapshot (no engine pass needed).
-            self.summarize(active)
-        };
-        log::debug!(
-            "[chat] load_fit: attached fit `{fit_id}` in {}ms",
-            started.elapsed().as_millis()
-        );
+        let active = payload.into_active();
+        // Summarize straight from the input snapshot (no engine pass needed).
+        let summary = self.summarize(&active);
+        if self.commit_active(ticket, active) {
+            log::debug!(
+                "[chat] load_fit: attached fit `{fit_id}` in {}ms",
+                started.elapsed().as_millis()
+            );
+        } else {
+            log::debug!(
+                "[chat] load_fit: dropped stale callback response for `{fit_id}`; \
+                 a newer fit was attached while the load was in flight"
+            );
+        }
         Ok(summary)
     }
 
