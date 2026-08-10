@@ -22,10 +22,7 @@ class Cargo extends StatelessWidget {
       ListTile(
         minTileHeight: 0,
         minVerticalPadding: 0,
-        leading: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [Image(image: ImageAssets.attrTargetRange, height: 28)],
-        ),
+        leading: const Image(image: ImageAssets.attrCargoCapacity, height: 28),
         title: DefaultTextStyle.merge(
           style: const TextStyle(fontSize: 16),
           textAlign: TextAlign.end,
@@ -46,9 +43,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoFleet, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -72,9 +69,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoShip, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -98,9 +95,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoOre, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -124,9 +121,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoGas, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -150,9 +147,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoMineral, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -176,9 +173,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 26),
+                Image(image: ImageAssets.cargoIce, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -202,9 +199,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoCommandCenter, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -230,9 +227,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoPlanetaryMaterials, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -258,9 +255,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoInfrastructure, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
@@ -284,9 +281,9 @@ class Cargo extends StatelessWidget {
             leading: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image(image: ImageAssets.attrTargetRange, height: 28),
+                Image(image: ImageAssets.attrCargoCapacity, height: 28),
                 SizedBox(width: 6),
-                Image(image: ImageAssets.unknownIcon, height: 28),
+                Image(image: ImageAssets.cargoFuel, height: 28),
               ],
             ),
             title: DefaultTextStyle.merge(
