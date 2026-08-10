@@ -326,6 +326,19 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
       fit.body.slots.subsystem.length,
     );
 
+    final droneBayUsed =
+        fitContext.emulated?.hull.getAttribute(EveConstExtendedAttrID.droneCapacityLoad).round() ??
+        0;
+    final droneBayCapacity =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.droneCapacity).round() ?? 0;
+    final fighterHangarUsed =
+        fitContext.emulated?.hull
+            .getAttribute(EveConstExtendedAttrID.fighterCapacityLoad)
+            .round() ??
+        0;
+    final fighterHangarCapacity =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterCapacity).round() ?? 0;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -498,6 +511,10 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
         _EquipmentHeader(
           title: context.l10n.drone,
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
+          rightInfo: [
+            if (droneBayCapacity > 0 || droneBayUsed > 0)
+              _HeaderCapacityCounter(suffix: "m³", count: droneBayUsed, total: droneBayCapacity),
+          ],
           interactiveIssueIndicator: false,
         ),
         if (fit.body.drones.isEmpty)
@@ -530,7 +547,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               spacing: 10,
               children: [
-                _FighterHeaderCounter(
+                _HeaderCapacityCounter(
                   prefix: "H",
                   count: _fighterCountForGroup(const {1653, 4779}, fitContext, ref),
                   total:
@@ -539,7 +556,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _FighterHeaderCounter(
+                _HeaderCapacityCounter(
                   prefix: "L",
                   count: _fighterCountForGroup(const {1652, 4777}, fitContext, ref),
                   total:
@@ -548,7 +565,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _FighterHeaderCounter(
+                _HeaderCapacityCounter(
                   prefix: "S",
                   count: _fighterCountForGroup(const {1537, 4778}, fitContext, ref),
                   total:
@@ -557,11 +574,17 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _FighterHeaderCounter(
+                _HeaderCapacityCounter(
                   suffix: "x",
                   count: fit.body.fighters.length,
                   total: fitContext.ship.fighterTubes,
                 ),
+                if (fighterHangarCapacity > 0 || fighterHangarUsed > 0)
+                  _HeaderCapacityCounter(
+                    suffix: "m³",
+                    count: fighterHangarUsed,
+                    total: fighterHangarCapacity,
+                  ),
               ],
             ),
           ),

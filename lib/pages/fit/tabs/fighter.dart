@@ -19,6 +19,14 @@ class _FighterTab extends ConsumerWidget {
     final heavyLimit =
         fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterHeavySlots).round() ?? 0;
 
+    final hangarUsed =
+        fitContext.emulated?.hull
+            .getAttribute(EveConstExtendedAttrID.fighterCapacityLoad)
+            .round() ??
+        0;
+    final hangarCapacity =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.fighterCapacity).round() ?? 0;
+
     var lightCount = 0;
     var supportCount = 0;
     var heavyCount = 0;
@@ -71,14 +79,16 @@ class _FighterTab extends ConsumerWidget {
             ),
           ],
           rightInfo: [
-            _FighterHeaderCounter(prefix: "H", count: heavyCount, total: heavyLimit),
-            _FighterHeaderCounter(prefix: "L", count: lightCount, total: lightLimit),
-            _FighterHeaderCounter(prefix: "S", count: supportCount, total: supportLimit),
-            _FighterHeaderCounter(
+            _HeaderCapacityCounter(prefix: "H", count: heavyCount, total: heavyLimit),
+            _HeaderCapacityCounter(prefix: "L", count: lightCount, total: lightLimit),
+            _HeaderCapacityCounter(prefix: "S", count: supportCount, total: supportLimit),
+            _HeaderCapacityCounter(
               suffix: "x",
               count: fighters.length,
               total: fitContext.ship.fighterTubes,
             ),
+            if (hangarCapacity > 0 || hangarUsed > 0)
+              _HeaderCapacityCounter(suffix: "m³", count: hangarUsed, total: hangarCapacity),
           ],
         ),
         const Divider(),
@@ -116,37 +126,6 @@ class _FighterTab extends ConsumerWidget {
                 ),
         ),
       ],
-    );
-  }
-}
-
-class _FighterHeaderCounter extends StatelessWidget {
-  const _FighterHeaderCounter({required this.count, required this.total, this.prefix, this.suffix});
-
-  final String? prefix;
-  final String? suffix;
-  final int count;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = count > total ? Colors.red : null;
-    final textStyle = DefaultTextStyle.of(context).style;
-
-    return Text.rich(
-      TextSpan(
-        children: [
-          if (prefix != null) TextSpan(text: "$prefix "),
-          TextSpan(
-            text: "$count",
-            style: textStyle.copyWith(color: color),
-          ),
-          TextSpan(text: " / $total"),
-          if (suffix != null) TextSpan(text: " $suffix"),
-        ],
-      ),
-      softWrap: false,
-      overflow: TextOverflow.fade,
     );
   }
 }

@@ -100,6 +100,42 @@ class _EquipmentHeader extends StatelessWidget {
   );
 }
 
+class _HeaderCapacityCounter extends StatelessWidget {
+  const _HeaderCapacityCounter({
+    required this.count,
+    required this.total,
+    this.prefix,
+    this.suffix,
+  });
+
+  final String? prefix;
+  final String? suffix;
+  final int count;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = count > total ? Colors.red : null;
+    final textStyle = DefaultTextStyle.of(context).style;
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (prefix != null) TextSpan(text: "$prefix "),
+          TextSpan(
+            text: "$count",
+            style: textStyle.copyWith(color: color),
+          ),
+          TextSpan(text: " / $total"),
+          if (suffix != null) TextSpan(text: " $suffix"),
+        ],
+      ),
+      softWrap: false,
+      overflow: TextOverflow.fade,
+    );
+  }
+}
+
 class _EquipmentHeaderCounter extends StatelessWidget {
   const _EquipmentHeaderCounter({required this.icon, required this.count, required this.total});
 

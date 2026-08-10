@@ -20,10 +20,20 @@ class _DroneTab extends ConsumerWidget {
 
     final drones = fit.body.drones.toList();
 
+    final bayUsed =
+        fitContext.emulated?.hull.getAttribute(EveConstExtendedAttrID.droneCapacityLoad).round() ??
+        0;
+    final bayCapacity =
+        fitContext.emulated?.hull.getAttribute(EveConstAttrID.droneCapacity).round() ?? 0;
+
     return Column(
       children: [
         _EquipmentTitleRow(
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
+          rightInfo: [
+            if (bayCapacity > 0 || bayUsed > 0)
+              _HeaderCapacityCounter(suffix: "m³", count: bayUsed, total: bayCapacity),
+          ],
           leftActions: <Widget>[
             InkWell(
               onTap: interactionOptions.allowMutations
