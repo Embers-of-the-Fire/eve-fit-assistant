@@ -156,6 +156,7 @@ FitStorage _applyOp(FitStorage fit, Map<String, dynamic> op, Slots slotsInfo) {
     case "set_implant":
       final slot = asInt(op["slot"]);
       if (typeId == null || slot == null) return fit;
+      if (slotsInfo.implantSlots[typeId]?.slotIndex != slot) return fit;
       final implants = fit.body.implants.toList();
       final existing = _implantStorageIndex(fit, slot, slotsInfo);
       final implant = FitImplantItem(

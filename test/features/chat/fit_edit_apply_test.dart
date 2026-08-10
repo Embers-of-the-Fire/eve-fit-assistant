@@ -54,6 +54,7 @@ final _implantSlots = Slots(
   implantSlots: [
     MapEntry(500, Slots_ImplantSlot(slotIndex: 1)),
     MapEntry(501, Slots_ImplantSlot(slotIndex: 2)),
+    MapEntry(502, Slots_ImplantSlot(slotIndex: 2)),
   ],
 );
 
@@ -112,10 +113,7 @@ void main() {
       var updated = applyFitEditOps(fit, [
         {"op": "set_module_charge", "slot_type": "high", "index": 0, "charge_type_id": 900},
       ], slotsInfo: _emptySlots);
-      expect(
-        updated.body.slots.high[0].toNullable()!.charge.toNullable()?.typeId,
-        900,
-      );
+      expect(updated.body.slots.high[0].toNullable()!.charge.toNullable()?.typeId, 900);
       updated = applyFitEditOps(updated, [
         {"op": "set_module_charge", "slot_type": "high", "index": 0},
       ], slotsInfo: _emptySlots);
@@ -273,22 +271,32 @@ void main() {
       ], slotsInfo: _implantSlots);
       expect(fit.body.implants.length, 2);
 
-      // Type 501 occupies slot 2; replacing slot 2 with type 500 reuses its
+      // Type 502 occupies slot 2; replacing slot 2 with type 502 reuses its
       // storage position instead of appending.
       fit = applyFitEditOps(fit, [
-        {"op": "set_implant", "type_id": 500, "slot": 2},
+        {"op": "set_implant", "type_id": 502, "slot": 2},
       ], slotsInfo: _implantSlots);
       expect(fit.body.implants.length, 2);
-      expect(fit.body.implants[1].itemId, const FitStorageItemId.item(id: 500));
+      expect(fit.body.implants[1].itemId, const FitStorageItemId.item(id: 502));
+    });
+
+    test("set_implant with a type and slot mismatch is skipped", () {
+      final fit = _makeFit(
+        implants: IList(const [
+          FitImplantItem(itemId: FitStorageItemId.item(id: 501), state: FitItemState.online),
+        ]),
+      );
+      final updated = applyFitEditOps(fit, [
+        {"op": "set_implant", "type_id": 500, "slot": 2},
+      ], slotsInfo: _implantSlots);
+      expect(updated.body.implants.length, 1);
+      expect(updated.body.implants[0].itemId, const FitStorageItemId.item(id: 501));
     });
 
     test("remove_implant resolves the slot through bundle metadata", () {
       final fit = _makeFit(
         implants: IList([
-          const FitImplantItem(
-            itemId: FitStorageItemId.item(id: 501),
-            state: FitItemState.online,
-          ),
+          const FitImplantItem(itemId: FitStorageItemId.item(id: 501), state: FitItemState.online),
         ]),
       );
       final updated = applyFitEditOps(fit, [
