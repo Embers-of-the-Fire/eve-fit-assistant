@@ -787,50 +787,65 @@ impl FitToolContext {
     /// callback. Ops are first validated against a copy of the fit; the
     /// validated ops are then forwarded to the app, which applies them to the
     /// stored fit and returns its updated payload, replacing the attached fit
-    /// for subsequent tool calls (including within the same turn).
+    /// for subsequent tool calls (including within the same turn). The
+    /// reported stats and validation describe the payload the app returned.
     pub async fn apply_edit(
         &self,
         ops: &[edit::FitEditOp],
     ) -> Result<FitEditApplyReport, FitToolError> {
-        let (result, after, validation) = self.with_active(|fit| {
-            let result = edit::apply_edit_ops(&fit.container, ops);
-            let ship = calculate(&result.container, self.engine.as_ref());
-            let after = self.stats_report(&ship);
-            let issues =
-                eve_fit_os::validate::validate_fit(&result.container, &ship, self.engine.as_ref());
-            (
-                result,
+        let result = self.with_active(|fit| edit::apply_edit_ops(&fit.container, ops))?;
+        if !result.applied_ops.is_empty() {
+            let Some(callbacks) = &self.callbacks else {
+                return Err(FitToolError::CallbacksUnavailable);
+            };
+            let ops_json = serde_json::to_string(&result.applied_ops)
+                .map_err(|e| FitToolError::BadPayload(e.to_string()))?;
+            let started = Instant::now();
+            let raw = (callbacks.apply_fit_edit)(ops_json).await;
+            log::debug!(
+                "[chat] apply_fit_edit: Dart callback returned in {}ms",
+                started.elapsed().as_millis()
+            );
+            let payload = parse_callback_fit_payload(&raw)?;
+            let active = payload.into_active();
+            let (after, validation) = self.calculate_report(&active.container);
+            let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
+            *guard = Some(active);
+            return Ok(FitEditApplyReport {
+                applied: result.applied,
+                rejected: result.rejected,
                 after,
-                FitValidationReport {
-                    issues: issues.into_iter().map(validation_issue_entry).collect(),
-                },
-            )
-        })?;
-        let report = |persisted| FitEditApplyReport {
+                validation,
+                persisted: true,
+            });
+        }
+        let (after, validation) = self.calculate_report(&result.container);
+        Ok(FitEditApplyReport {
             applied: result.applied,
             rejected: result.rejected,
             after,
             validation,
-            persisted,
-        };
-        if result.applied_ops.is_empty() {
-            return Ok(report(false));
-        }
-        let Some(callbacks) = &self.callbacks else {
-            return Err(FitToolError::CallbacksUnavailable);
-        };
-        let ops_json = serde_json::to_string(&result.applied_ops)
-            .map_err(|e| FitToolError::BadPayload(e.to_string()))?;
+            persisted: false,
+        })
+    }
+
+    /// Calculate [container] and build the stats and validation reports for
+    /// the resulting ship.
+    fn calculate_report(&self, container: &FitContainer) -> (FitStatsReport, FitValidationReport) {
         let started = Instant::now();
-        let raw = (callbacks.apply_fit_edit)(ops_json).await;
+        let ship = calculate(container, self.engine.as_ref());
         log::debug!(
-            "[chat] apply_fit_edit: Dart callback returned in {}ms",
+            "[chat] engine calculate finished in {}ms",
             started.elapsed().as_millis()
         );
-        let payload = parse_callback_fit_payload(&raw)?;
-        let mut guard = self.active.write().unwrap_or_else(|e| e.into_inner());
-        *guard = Some(payload.into_active());
-        Ok(report(true))
+        let after = self.stats_report(&ship);
+        let issues = eve_fit_os::validate::validate_fit(container, &ship, self.engine.as_ref());
+        (
+            after,
+            FitValidationReport {
+                issues: issues.into_iter().map(validation_issue_entry).collect(),
+            },
+        )
     }
 
     /// Create a new saved fit through the app callback, making it the

@@ -265,6 +265,18 @@ fn apply_edit_adds_module_and_persists() {
     assert!(report.applied[0].contains("medium"));
     assert!(report.persisted);
     assert!(!report.after.sections.is_empty());
+    // The report describes the fit the app returned (no modules or drones),
+    // not the local pre-persistence result, which still had the launchers
+    // and drones and would report positive dps.
+    let dps = report
+        .after
+        .sections
+        .iter()
+        .find(|s| s.section == "damage")
+        .and_then(|s| s.entries.iter().find(|e| e.key == "dpsWithReload"))
+        .map(|e| e.value)
+        .unwrap_or(0.0);
+    assert_eq!(dps, 0.0);
     // The validated op was forwarded to the app for persistence.
     let forwarded = recorded.lock().unwrap();
     assert_eq!(forwarded.len(), 1);
