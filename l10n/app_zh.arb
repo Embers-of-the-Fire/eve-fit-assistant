@@ -646,6 +646,124 @@
     }
   },
   "fitIssueMissingCharge": "缺少弹药。",
+  "fitIssuePowergridExceeded": "能量栅格需求超出舰船输出。",
+  "fitIssuePowergridExceededDetails": "输出：{expected} MW；需求：{actual} MW。",
+  "@fitIssuePowergridExceededDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueCpuExceeded": "CPU 需求超出舰船输出。",
+  "fitIssueCpuExceededDetails": "输出：{expected} tf；需求：{actual} tf。",
+  "@fitIssueCpuExceededDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueCalibrationExceeded": "改装件校准值超出上限。",
+  "fitIssueCalibrationExceededDetails": "上限：{expected}；已使用：{actual}。",
+  "@fitIssueCalibrationExceededDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueDroneBandwidthExceeded": "无人机带宽超出上限。",
+  "fitIssueDroneBandwidthExceededDetails": "上限：{expected} MB/s；已使用：{actual} MB/s。",
+  "@fitIssueDroneBandwidthExceededDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueDroneBayExceeded": "无人机挂舱容积超出上限。",
+  "fitIssueDroneBayExceededDetails": "上限：{expected} m³；已使用：{actual} m³。",
+  "@fitIssueDroneBayExceededDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueTooManyActiveDrones": "激活无人机数量过多。",
+  "fitIssueTooManyActiveDronesDetails": "最大数量：{expected}；实际数量：{actual}。",
+  "@fitIssueTooManyActiveDronesDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueTooMuchFighterTube": "舰载机发射管数量不足。",
+  "fitIssueTooMuchFighterTubeDetails": "最大数量：{expected}；实际数量：{actual}。",
+  "@fitIssueTooMuchFighterTubeDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueTooMuchFighterSquadron": "{category}中队数量过多。",
+  "@fitIssueTooMuchFighterSquadron": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "fitIssueTooMuchFighterSquadronDetails": "最大数量：{expected}；实际数量：{actual}。",
+  "@fitIssueTooMuchFighterSquadronDetails": {
+    "placeholders": {
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "fitIssueFighterSquadronLight": "轻型舰载机",
+  "fitIssueFighterSquadronSupport": "后勤舰载机",
+  "fitIssueFighterSquadronHeavy": "重型舰载机",
+  "fitIssueStateExceedsMax": "装备状态超出其支持的最大状态。",
+  "fitIssueStateExceedsMaxDetails": "当前状态：{state}；最大状态：{maxState}。",
+  "@fitIssueStateExceedsMaxDetails": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      },
+      "maxState": {
+        "type": "String"
+      }
+    }
+  },
   "fitIssueUnknownValidationIssue": "未知配置校验问题。",
   "fitTabsCharacter": "角色",
   "fitTabsEquipment": "装备",

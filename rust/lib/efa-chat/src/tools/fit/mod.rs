@@ -1316,6 +1316,7 @@ fn validation_issue_entry(issue: eve_fit_os::validate::ValidationIssue) -> Valid
         eve_fit_os::validate::ValidationSlotType::Booster => "booster",
         eve_fit_os::validate::ValidationSlotType::Drone => "drone",
         eve_fit_os::validate::ValidationSlotType::Fighter => "fighter",
+        eve_fit_os::validate::ValidationSlotType::Ship => "ship",
     }
     .to_string();
     let (severity, code, details) = match issue.kind {
@@ -1369,6 +1370,72 @@ fn validation_issue_entry(issue: eve_fit_os::validate::ValidationIssue) -> Valid
             "incompatible_rig_size",
             serde_json::json!({ "expected": expected, "actual": actual }),
         ),
+        ValidationIssueKind::Error(E::PowergridExceeded { expected, actual }) => (
+            "error",
+            "powergrid_exceeded",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::CpuExceeded { expected, actual }) => (
+            "error",
+            "cpu_exceeded",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::CalibrationExceeded { expected, actual }) => (
+            "error",
+            "calibration_exceeded",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::DroneBandwidthExceeded { expected, actual }) => (
+            "error",
+            "drone_bandwidth_exceeded",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::DroneBayExceeded { expected, actual }) => (
+            "error",
+            "drone_bay_exceeded",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::TooManyActiveDrones { expected, actual }) => (
+            "error",
+            "too_many_active_drones",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::TooMuchFighterTube { expected, actual }) => (
+            "error",
+            "too_much_fighter_tube",
+            serde_json::json!({ "expected": expected, "actual": actual }),
+        ),
+        ValidationIssueKind::Error(E::TooMuchFighterSquadron {
+            category,
+            expected,
+            actual,
+        }) => {
+            let category = match category {
+                eve_fit_os::validate::FighterSquadron::Light => "light",
+                eve_fit_os::validate::FighterSquadron::Support => "support",
+                eve_fit_os::validate::FighterSquadron::Heavy => "heavy",
+            };
+            (
+                "error",
+                "too_much_fighter_squadron",
+                serde_json::json!({ "category": category, "expected": expected, "actual": actual }),
+            )
+        }
+        ValidationIssueKind::Error(E::StateExceedsMax { state, max_state }) => {
+            fn state_name(state: eve_fit_os::validate::ValidationState) -> &'static str {
+                match state {
+                    eve_fit_os::validate::ValidationState::Passive => "passive",
+                    eve_fit_os::validate::ValidationState::Online => "online",
+                    eve_fit_os::validate::ValidationState::Active => "active",
+                    eve_fit_os::validate::ValidationState::Overload => "overload",
+                }
+            }
+            (
+                "error",
+                "state_exceeds_max",
+                serde_json::json!({ "state": state_name(state), "max_state": state_name(max_state) }),
+            )
+        }
         ValidationIssueKind::Warning(W::MissingCharge) => {
             ("warning", "missing_charge", serde_json::json!({}))
         }

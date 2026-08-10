@@ -593,13 +593,13 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
   }
 }
 
-class _ScreenshotAttributeColumn extends StatelessWidget {
+class _ScreenshotAttributeColumn extends ConsumerWidget {
   const _ScreenshotAttributeColumn({required this.fitContext});
 
   final FitContext fitContext;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final emulated = fitContext.emulated;
     if (emulated == null) {
       return const SizedBox.shrink();
@@ -612,7 +612,10 @@ class _ScreenshotAttributeColumn extends StatelessWidget {
         const Divider(height: 0),
         Capacitor(ship: emulated),
         Weapon(ship: emulated),
-        Resource(ship: emulated),
+        _Resource(
+          ship: emulated,
+          issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.ship),
+        ),
         Hp(ship: emulated, interactionOptions: FitInteractionOptions.screenshot),
         Miscellaneous(ship: emulated),
         Cargo(ship: emulated),

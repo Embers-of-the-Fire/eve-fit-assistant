@@ -14,6 +14,7 @@ enum _FitIssueSection {
   fighter,
   implant,
   booster,
+  ship,
 }
 
 class _FitIssue {
@@ -154,6 +155,8 @@ List<_FitIssue> _collectFitIssuesForSection(
       for (final slot in fit.body.boosters) {
         addItemIssue(slot.itemId, context.l10n.boosterSlot, slot.index - 1);
       }
+    case _FitIssueSection.ship:
+      break;
   }
 
   issues.addAll(_collectNativeValidationIssuesForSection(context, ref, fitContext, section));
@@ -300,6 +303,85 @@ _FitIssue _localizeValidationError(
         actual: _sizeName(context, actual),
       ),
     ),
+  native_validation.ValidationErrorKey_PowergridExceeded(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssuePowergridExceeded,
+      details: context.l10n.fitIssuePowergridExceededDetails(
+        expected: expected.toStringAsMaxDecimals(1),
+        actual: actual.toStringAsMaxDecimals(1),
+      ),
+    ),
+  native_validation.ValidationErrorKey_CpuExceeded(:final expected, :final actual) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueCpuExceeded,
+    details: context.l10n.fitIssueCpuExceededDetails(
+      expected: expected.toStringAsMaxDecimals(1),
+      actual: actual.toStringAsMaxDecimals(1),
+    ),
+  ),
+  native_validation.ValidationErrorKey_CalibrationExceeded(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueCalibrationExceeded,
+      details: context.l10n.fitIssueCalibrationExceededDetails(
+        expected: expected.toStringAsMaxDecimals(1),
+        actual: actual.toStringAsMaxDecimals(1),
+      ),
+    ),
+  native_validation.ValidationErrorKey_DroneBandwidthExceeded(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueDroneBandwidthExceeded,
+      details: context.l10n.fitIssueDroneBandwidthExceededDetails(
+        expected: expected.toStringAsMaxDecimals(1),
+        actual: actual.toStringAsMaxDecimals(1),
+      ),
+    ),
+  native_validation.ValidationErrorKey_DroneBayExceeded(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueDroneBayExceeded,
+      details: context.l10n.fitIssueDroneBayExceededDetails(
+        expected: expected.toStringAsMaxDecimals(1),
+        actual: actual.toStringAsMaxDecimals(1),
+      ),
+    ),
+  native_validation.ValidationErrorKey_TooManyActiveDrones(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueTooManyActiveDrones,
+      details: context.l10n.fitIssueTooManyActiveDronesDetails(expected: expected, actual: actual),
+    ),
+  native_validation.ValidationErrorKey_TooMuchFighterTube(:final expected, :final actual) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueTooMuchFighterTube,
+      details: context.l10n.fitIssueTooMuchFighterTubeDetails(expected: expected, actual: actual),
+    ),
+  native_validation.ValidationErrorKey_TooMuchFighterSquadron(
+    :final category,
+    :final expected,
+    :final actual,
+  ) =>
+    _FitIssue(
+      severity: _FitIssueSeverity.error,
+      title: context.l10n.fitIssueTooMuchFighterSquadron(
+        category: _fighterSquadronName(context, category),
+      ),
+      details: context.l10n.fitIssueTooMuchFighterSquadronDetails(
+        expected: expected,
+        actual: actual,
+      ),
+    ),
+  native_validation.ValidationErrorKey_StateExceedsMax(:final state, :final maxState) => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueStateExceedsMax,
+    details: context.l10n.fitIssueStateExceedsMaxDetails(
+      state: _validationStateName(context, state),
+      maxState: _validationStateName(context, maxState),
+    ),
+  ),
 };
 
 _FitIssue _localizeValidationWarning(
@@ -326,6 +408,7 @@ native_validation.ValidationSlotType? _validationSlotTypeForSection(_FitIssueSec
       _FitIssueSection.fighter => native_validation.ValidationSlotType.fighter,
       _FitIssueSection.implant => native_validation.ValidationSlotType.implant,
       _FitIssueSection.booster => native_validation.ValidationSlotType.booster,
+      _FitIssueSection.ship => native_validation.ValidationSlotType.ship,
     };
 
 native_validation.ValidationSlotType? _validationSlotTypeForIdentifier(SlotIdentifier slotIdent) =>
@@ -366,6 +449,21 @@ String _sizeName(BuildContext context, int size) => switch (size) {
   4 => context.l10n.dogmaUnitSizeXLarge,
   _ => context.l10n.dogmaUnitSizeUnknown(value: "$size"),
 };
+
+String _validationStateName(BuildContext context, native_validation.ValidationState state) =>
+    switch (state) {
+      native_validation.ValidationState.passive => context.l10n.itemDetailEffectCategoryPassive,
+      native_validation.ValidationState.online => context.l10n.itemDetailEffectCategoryOnline,
+      native_validation.ValidationState.active => context.l10n.itemDetailEffectCategoryActive,
+      native_validation.ValidationState.overload => context.l10n.itemDetailEffectCategoryOverload,
+    };
+
+String _fighterSquadronName(BuildContext context, native_validation.FighterSquadron category) =>
+    switch (category) {
+      native_validation.FighterSquadron.light => context.l10n.fitIssueFighterSquadronLight,
+      native_validation.FighterSquadron.support => context.l10n.fitIssueFighterSquadronSupport,
+      native_validation.FighterSquadron.heavy => context.l10n.fitIssueFighterSquadronHeavy,
+    };
 
 class _FitIssueTrigger extends StatelessWidget {
   const _FitIssueTrigger({required this.issues, this.interactive = true});
