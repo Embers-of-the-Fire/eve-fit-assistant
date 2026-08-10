@@ -1,0 +1,13 @@
+id: home
+name:
+  zh: 主界面
+  en: Home
+description:
+  zh: 应用主界面及其各个标签页。
+  en: The app's main screen and its tabs.
+children:
+  - workspace
+  - fit-list
+  - character
+  - character-edit
+  - setting

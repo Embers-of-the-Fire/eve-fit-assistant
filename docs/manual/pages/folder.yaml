@@ -1,0 +1,14 @@
+id: pages
+name:
+  zh: 页面
+  en: Pages
+description:
+  zh: 逐一介绍应用中的每个页面。
+  en: A page-by-page guide to every screen in the app.
+children:
+  - home
+  - fitting
+  - ai
+  - data
+  - settings
+  - content

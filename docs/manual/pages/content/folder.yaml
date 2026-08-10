@@ -1,0 +1,12 @@
+id: content
+name:
+  zh: 内容
+  en: Content
+description:
+  zh: 浏览公告与阅读手册的页面。
+  en: Pages for browsing announcements and reading the manual.
+children:
+  - announcements
+  - manual-browser
+  - manual-topic
+  - manual-feedback
