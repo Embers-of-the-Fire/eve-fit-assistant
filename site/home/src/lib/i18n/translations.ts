@@ -133,6 +133,7 @@ export const en = {
     "report.form.agent.body": "Feedback",
     "report.form.agent.body.placeholder":
         "Describe your experience, issues, or suggestions for the AI assistant",
+    "report.form.agent.prefix": "[Feedback/Agent]: ",
 
     "report.form.labels": "Labels",
     "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
@@ -339,6 +340,7 @@ export const zh: Record<TranslationKey, string> = {
 
     "report.form.agent.body": "反馈内容",
     "report.form.agent.body.placeholder": "描述你对 AI 助手的使用体验、问题或建议",
+    "report.form.agent.prefix": "[Feedback/Agent]: ",
 
     "report.form.labels": "标签",
     "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",

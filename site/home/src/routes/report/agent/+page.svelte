@@ -122,12 +122,17 @@ async function handleSubmit(e: Event) {
 
                 <div class="rounded-lg border border-eve-border bg-eve-surface p-6 sm:p-8 space-y-6">
                     <label class="block">
-                        <input
-                            type="text"
-                            bind:value={title}
-                            placeholder={t("report.form.title.placeholder")}
-                            class="w-full rounded border {hasFieldError('title') ? 'border-eve-red' : 'border-eve-border'} bg-eve-bg px-3.5 py-3 text-base font-semibold text-eve-text placeholder:text-eve-text-muted/40 focus:border-eve-gold focus:outline-none transition-colors"
-                        />
+                        <div class="flex items-stretch rounded border {hasFieldError('title') ? 'border-eve-red' : 'border-eve-border'} bg-eve-bg focus-within:border-eve-gold transition-colors">
+                            <span class="flex items-center px-3.5 py-3 text-base font-semibold text-eve-gold whitespace-nowrap select-none border-r border-eve-border">
+                                {t("report.form.agent.prefix")}
+                            </span>
+                            <input
+                                type="text"
+                                bind:value={title}
+                                placeholder={t("report.form.title.placeholder")}
+                                class="flex-1 bg-transparent px-3.5 py-3 text-base font-semibold text-eve-text placeholder:text-eve-text-muted/40 focus:outline-none transition-colors min-w-0"
+                            />
+                        </div>
                         {#if hasFieldError("title")}
                             <span class="mt-1 block text-xs text-eve-red">{getFieldError("title")}</span>
                         {/if}
