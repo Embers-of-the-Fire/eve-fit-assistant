@@ -281,7 +281,7 @@ fn apply_edit_adds_module_and_persists() {
         .find(|s| s.section == "damage")
         .and_then(|s| s.entries.iter().find(|e| e.key == "dpsWithReload"))
         .map(|e| e.value)
-        .unwrap_or(0.0);
+        .expect("returned-fit report must include the damage/dpsWithReload metric");
     assert_eq!(dps, 0.0);
     // The validated op was forwarded to the app for persistence.
     let forwarded = recorded.lock().unwrap();

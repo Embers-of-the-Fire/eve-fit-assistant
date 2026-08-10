@@ -571,38 +571,39 @@ impl FitToolContext {
             }
         };
 
+        let damage = |id: i32| Some(hull(id).unwrap_or(0.0));
         section(
             "damage",
             vec![
                 (
                     "dpsWithoutReload",
                     patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD,
-                    hull(patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD),
+                    damage(patch_attr::ATTR_DAMAGE_PER_SECOND_WITHOUT_RELOAD),
                 ),
                 (
                     "dpsWithReload",
                     patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD,
-                    hull(patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD),
+                    damage(patch_attr::ATTR_DAMAGE_PER_SECOND_WITH_RELOAD),
                 ),
                 (
                     "volley",
                     patch_attr::ATTR_DAMAGE_VOLLEY,
-                    hull(patch_attr::ATTR_DAMAGE_VOLLEY),
+                    damage(patch_attr::ATTR_DAMAGE_VOLLEY),
                 ),
                 (
                     "alpha",
                     patch_attr::ATTR_DAMAGE_ALPHA,
-                    hull(patch_attr::ATTR_DAMAGE_ALPHA),
+                    damage(patch_attr::ATTR_DAMAGE_ALPHA),
                 ),
                 (
                     "droneDps",
                     patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND,
-                    hull(patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND),
+                    damage(patch_attr::ATTR_DRONE_DAMAGE_PER_SECOND),
                 ),
                 (
                     "fighterDps",
                     patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND,
-                    hull(patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND),
+                    damage(patch_attr::ATTR_FIGHTER_DAMAGE_PER_SECOND),
                 ),
             ],
         );
