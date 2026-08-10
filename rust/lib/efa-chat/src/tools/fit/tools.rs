@@ -358,7 +358,7 @@ impl PortableTool for ApplyFitEditTool {
                             },
                             "slot_type": {
                                 "type": "string",
-                                "enum": ["high", "medium", "low", "rig", "subsystem", "service"],
+                                "enum": ["high", "medium", "low", "rig", "subsystem", "service", "tactical_mode"],
                                 "description": "Module slot type (module ops only)"
                             },
                             "index": { "type": "integer", "description": "Slot index within slot_type (module ops only)" },
