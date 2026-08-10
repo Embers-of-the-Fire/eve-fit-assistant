@@ -1,0 +1,4 @@
+Load the full instructions of a skill by its name. Skills are reusable
+instruction packs for multi-step tasks; the available skills are listed in the
+system prompt's Skills section. When the user's request matches a skill, call
+this tool first and follow the returned instructions.

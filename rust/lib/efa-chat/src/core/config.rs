@@ -1,4 +1,5 @@
 use crate::core::error::ChatError;
+use crate::core::prompt::SystemPromptContext;
 
 pub const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
 
@@ -38,16 +39,13 @@ impl PromptLanguage {
     }
 }
 
-/// The prompt sections bundled for one (provider, language) pair. The
-/// `system/{lang}.prompt` header is a rust-fmt template taking the other
-/// three as `{constraint_system}` / `{constraint_provider}` /
-/// `{appendix_provider}` args, so wrappers (section headers, "must be
-/// followed" notes) live in the template while the content lives in the
-/// per-scope files.
-struct PromptBundle {
-    constraint_system: &'static str,
-    constraint_provider: &'static str,
-    appendix_provider: &'static str,
+/// The prompt fragments bundled for one (provider, language) pair. The
+/// section headers and assembly live in [`crate::core::prompt`]; these are
+/// only the per-scope content pieces.
+pub(crate) struct PromptBundle {
+    pub(crate) constraint_system: &'static str,
+    pub(crate) constraint_provider: &'static str,
+    pub(crate) appendix_provider: &'static str,
 }
 
 /// The chat completion provider backing a session.
@@ -80,7 +78,7 @@ impl ChatProviderKind {
         }
     }
 
-    fn prompt_bundle(&self, language: PromptLanguage) -> PromptBundle {
+    pub(crate) fn prompt_bundle(&self, language: PromptLanguage) -> PromptBundle {
         use PromptLanguage::{En, Zh};
         match (*self, language) {
             (Self::OpenAiCompatible, En) => PromptBundle {
@@ -190,34 +188,12 @@ impl ChatProviderConfig {
         self
     }
 
-    /// The full system prompt: the bundled `system/{lang}.prompt` rust-fmt
-    /// template rendered with the shared and provider-specific sections,
-    /// plus the configured extra sections appended last.
-    pub fn full_system_prompt(&self) -> String {
-        let bundle = self.provider.prompt_bundle(self.language);
-        let constraint_system = bundle.constraint_system.trim();
-        let constraint_provider = bundle.constraint_provider.trim();
-        let appendix_provider = bundle.appendix_provider.trim();
-        let rendered = match self.language {
-            PromptLanguage::En => format!(
-                include_str!("../../prompt/system/en.prompt"),
-                constraint_system = constraint_system,
-                constraint_provider = constraint_provider,
-                appendix_provider = appendix_provider,
-            ),
-            PromptLanguage::Zh => format!(
-                include_str!("../../prompt/system/zh.prompt"),
-                constraint_system = constraint_system,
-                constraint_provider = constraint_provider,
-                appendix_provider = appendix_provider,
-            ),
-        };
-        let mut prompt = rendered.trim_end().to_string();
-        if !self.system_prompt.is_empty() {
-            prompt.push_str("\n\n");
-            prompt.push_str(&self.system_prompt);
-        }
-        prompt
+    /// The full system prompt: the bundled sections assembled by
+    /// [`crate::core::prompt::render_system_prompt`] according to the
+    /// session's actual tool attachments ([context]), plus the configured
+    /// extra sections appended last.
+    pub fn full_system_prompt(&self, context: &SystemPromptContext) -> String {
+        crate::core::prompt::render_system_prompt(self, context)
     }
 
     /// Override the multi-turn depth. Zero is ignored, keeping the default.

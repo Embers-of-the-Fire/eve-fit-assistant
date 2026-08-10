@@ -1,0 +1,3 @@
+回答应用使用方法的问题时，遵循 `app-usage` 技能：用 `search_manual`
+搜索内置手册，用 `get_manual_doc` 阅读完整页面，并链接到工具返回的
+`efa://manual/...` URL。
