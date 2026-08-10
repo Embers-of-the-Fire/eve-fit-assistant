@@ -240,7 +240,7 @@ class EveConstAttrID {
 
   /// - Name: fighterCapacity
   /// - High is good: True
-  static const int fighterCapacity = 2205;
+  static const int fighterCapacity = 2055;
 
   /// - Name: capacity
   /// - High is good: True
