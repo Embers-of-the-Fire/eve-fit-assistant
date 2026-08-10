@@ -194,6 +194,10 @@ class EveConstAttrID {
   /// - High is good: True
   static const int droneBandwidthLoad = 1273;
 
+  /// - Name: droneCapacity
+  /// - High is good: True
+  static const int droneCapacity = 283;
+
   /// - Name: maxRange
   /// - High is good: True
   static const int maxRange = 54;
@@ -233,6 +237,10 @@ class EveConstAttrID {
   /// - Name: fighterSquadronMaxSize
   /// - High is good: True
   static const int fighterSquadronMaxSize = 2215;
+
+  /// - Name: fighterCapacity
+  /// - High is good: True
+  static const int fighterCapacity = 2205;
 
   /// - Name: capacity
   /// - High is good: True
