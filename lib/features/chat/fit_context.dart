@@ -311,18 +311,16 @@ Future<String> _loadFit(Ref ref, String fitId) async {
 
 Future<String> _createFit(Ref ref, int shipId, String name, String? description) async {
   try {
-    final metadata = await ref
+    // `newFit` returns the just-persisted fit, so no disk re-read is needed
+    // (a failed re-read would falsely report creation failure for a fit that
+    // already exists).
+    final (metadata, fit) = await ref
         .read(fitManagerProvider.notifier)
         .newFit(shipId, name, description: description);
 
     // Make the new fit the attached one, so the app UI and subsequent turns
     // follow it.
     ref.read(chatAttachedFitIdProvider.notifier).attach(metadata.fitId);
-
-    final fit = await _readFitFromDisk(ref, metadata.fitId);
-    if (fit == null) {
-      return jsonEncode({"error": "the new fit could not be loaded"});
-    }
 
     final payload = await _encodeFitPayloadResult(ref, fit, extra: {"fit_id": metadata.fitId});
     info("chat: created fit ${metadata.fitId} ($name) via create_fit");

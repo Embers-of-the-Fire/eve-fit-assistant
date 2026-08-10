@@ -281,6 +281,8 @@ pub enum FitToolError {
     CallbacksUnavailable,
     #[error("invalid payload from the app: {0}")]
     BadPayload(String),
+    #[error("{0}")]
+    Superseded(String),
 }
 
 /// Surface fit tool failures to the model verbatim. rig's default
@@ -297,9 +299,9 @@ impl From<FitToolError> for ToolExecutionError {
             | FitToolError::IndexOutOfRange { .. }
             | FitToolError::UnknownAttribute { .. }
             | FitToolError::AttributeNotPresent(_) => Self::invalid_args(message),
-            FitToolError::CallbacksUnavailable | FitToolError::BadPayload(_) => {
-                Self::other(message)
-            }
+            FitToolError::CallbacksUnavailable
+            | FitToolError::BadPayload(_)
+            | FitToolError::Superseded(_) => Self::other(message),
         }
     }
 }
@@ -861,7 +863,8 @@ impl FitToolContext {
         &self,
         ops: &[edit::FitEditOp],
     ) -> Result<FitEditApplyReport, FitToolError> {
-        let result = self.with_active(|fit| edit::apply_edit_ops(&fit.container, ops))?;
+        let result = self
+            .with_active(|fit| edit::apply_edit_ops(&fit.container, ops, self.engine.as_ref()))?;
         if !result.applied_ops.is_empty() {
             let Some(callbacks) = &self.callbacks else {
                 return Err(FitToolError::CallbacksUnavailable);
@@ -925,7 +928,8 @@ impl FitToolContext {
     /// attached fit for subsequent tool calls (including within the same
     /// turn). If a concurrent replacement attached a newer fit while the
     /// callback was in flight, the stale response is dropped instead of
-    /// overwriting the newer fit.
+    /// overwriting the newer fit, and a [`FitToolError::Superseded`] error
+    /// tells the model the created fit is saved but not attached.
     pub async fn create_fit(
         &self,
         ship_id: i32,
@@ -943,15 +947,27 @@ impl FitToolContext {
             started.elapsed().as_millis()
         );
         let payload = parse_callback_fit_payload(&raw)?;
+        let created_id = payload.fit_id.clone();
         let active = payload.into_active();
         let summary = self.summarize(&active);
-        if !self.commit_active(ticket, active) {
-            log::debug!(
-                "[chat] create_fit: dropped stale callback response; \
-                 a newer fit was attached while the create was in flight"
-            );
+        if self.commit_active(ticket, active) {
+            return Ok(summary);
         }
-        Ok(summary)
+        log::debug!(
+            "[chat] create_fit: dropped stale callback response; \
+             a newer fit was attached while the create was in flight"
+        );
+        // The app already saved the new fit; the message must steer the model
+        // away from retrying the create (which would save a duplicate).
+        let created = match &created_id {
+            Some(id) => format!("fit `{name}` (fit_id `{id}`)"),
+            None => format!("fit `{name}`"),
+        };
+        Err(FitToolError::Superseded(format!(
+            "{created} was created and saved, but is not the attached fit: a newer fit was \
+             attached while the create was in flight; use list_user_fits to find it instead of \
+             creating another one"
+        )))
     }
 
     /// Search the app's item database by (localized) name substring.
@@ -1000,7 +1016,8 @@ impl FitToolContext {
     /// subsequent tool calls (including within the same turn). If a
     /// concurrent replacement attached a newer fit while the callback was
     /// in flight, the stale response is dropped instead of overwriting the
-    /// newer fit.
+    /// newer fit, and a [`FitToolError::Superseded`] error tells the model
+    /// the requested fit is not attached.
     pub async fn load_fit(&self, fit_id: &str) -> Result<FitSummary, FitToolError> {
         let Some(callbacks) = &self.callbacks else {
             return Err(FitToolError::CallbacksUnavailable);
@@ -1021,13 +1038,16 @@ impl FitToolContext {
                 "[chat] load_fit: attached fit `{fit_id}` in {}ms",
                 started.elapsed().as_millis()
             );
-        } else {
-            log::debug!(
-                "[chat] load_fit: dropped stale callback response for `{fit_id}`; \
-                 a newer fit was attached while the load was in flight"
-            );
+            return Ok(summary);
         }
-        Ok(summary)
+        log::debug!(
+            "[chat] load_fit: dropped stale callback response for `{fit_id}`; \
+             a newer fit was attached while the load was in flight"
+        );
+        Err(FitToolError::Superseded(format!(
+            "fit `{fit_id}` was loaded but is not the attached fit: a newer fit was attached \
+             while the load was in flight; call get_current_fit to see the attached fit"
+        )))
     }
 
     fn summarize(&self, fit: &ActiveFit) -> FitSummary {
@@ -1387,6 +1407,10 @@ mod tests {
             (FitToolError::CallbacksUnavailable, ToolErrorKind::Other),
             (
                 FitToolError::BadPayload("bad json".to_string()),
+                ToolErrorKind::Other,
+            ),
+            (
+                FitToolError::Superseded("superseded".to_string()),
                 ToolErrorKind::Other,
             ),
         ];

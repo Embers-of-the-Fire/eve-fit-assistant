@@ -395,7 +395,8 @@ fn edit_tools_require_callbacks() {
 }
 
 /// A `load_fit` response that arrives after a newer replacement committed
-/// must not overwrite the newer attached fit.
+/// must not overwrite the newer attached fit, and the caller is told the
+/// requested fit was superseded instead of receiving a misleading success.
 #[test]
 fn stale_load_fit_response_does_not_overwrite_newer_active_fit() {
     let (release_first, first_gate) = tokio::sync::oneshot::channel::<()>();
@@ -427,11 +428,67 @@ fn stale_load_fit_response_does_not_overwrite_newer_active_fit() {
         // A newer replacement starts and commits while the first is pending.
         context.load_fit("second").await.unwrap();
         release_first.send(()).unwrap();
-        first.await.unwrap().unwrap();
+        let stale = first.await.unwrap().unwrap_err();
+        assert!(matches!(stale, FitToolError::Superseded(_)));
+        assert!(stale.to_string().contains("first"));
     });
     assert_eq!(
         context.current_fit(false).unwrap().name.as_deref(),
         Some("second fit")
+    );
+}
+
+/// A stale `create_fit` response must report that the fit was created and
+/// saved but is not attached, so the model does not retry the create.
+#[test]
+fn stale_create_fit_response_reports_superseded() {
+    let (release_create, create_gate) = tokio::sync::oneshot::channel::<()>();
+    let (create_started_tx, create_started) = tokio::sync::oneshot::channel::<()>();
+    let create_gate = Arc::new(Mutex::new(Some(create_gate)));
+    let create_started_tx = Arc::new(Mutex::new(Some(create_started_tx)));
+    let mut callbacks = mock_callbacks().0;
+    callbacks.create_fit = Arc::new(move |_, name, _| {
+        let gate = create_gate.lock().unwrap().take().unwrap();
+        let started = create_started_tx.lock().unwrap().take().unwrap();
+        Box::pin(async move {
+            started.send(()).unwrap();
+            gate.await.unwrap();
+            serde_json::json!({
+                "name": name,
+                "fit_id": "created-fit-id",
+                "names": {"628": "Arbitrator"},
+                "fit": {
+                    "ship_type_id": 628,
+                    "damage_profile": {"em": 0.25, "explosive": 0.25, "kinetic": 0.25, "thermal": 0.25},
+                },
+                "skills": {},
+                "dynamic_items": {},
+            })
+            .to_string()
+        })
+    });
+    callbacks.load_fit =
+        Arc::new(|_| Box::pin(async move { fit_payload_json_named("loaded fit") }));
+    let context = test_context().with_callbacks(Arc::new(callbacks));
+    runtime().block_on(async {
+        let create = tokio::spawn({
+            let context = context.clone();
+            async move { context.create_fit(628, "brand new fit", None).await }
+        });
+        // Wait until the create is parked on its gated callback.
+        create_started.await.unwrap();
+        context.load_fit("loaded").await.unwrap();
+        release_create.send(()).unwrap();
+        let stale = create.await.unwrap().unwrap_err();
+        assert!(matches!(stale, FitToolError::Superseded(_)));
+        let message = stale.to_string();
+        assert!(message.contains("was created and saved"));
+        assert!(message.contains("created-fit-id"));
+        assert!(message.contains("brand new fit"));
+    });
+    assert_eq!(
+        context.current_fit(false).unwrap().name.as_deref(),
+        Some("loaded fit")
     );
 }
 
@@ -666,10 +723,10 @@ fn apply_edit_sets_and_removes_implants_and_boosters() {
                 type_id: 33516,
                 slot: 1,
             },
-            // Replacing the same slot succeeds.
+            // Slotting another implant succeeds in its own slot.
             Op::SetImplant {
                 type_id: 33525,
-                slot: 1,
+                slot: 2,
             },
             Op::SetBooster {
                 type_id: 81083,
@@ -715,5 +772,173 @@ fn apply_edit_rejects_out_of_range_slots() {
         .unwrap();
     assert!(report.applied.is_empty());
     assert_eq!(report.rejected.len(), 3);
+    assert!(!report.persisted);
+}
+
+/// An implant can only go into its own slot (the app keys implants by the
+/// type's implant-slot attribute and would silently drop a mismatch).
+#[test]
+fn apply_edit_rejects_implant_slot_mismatch() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let report = runtime()
+        .block_on(context.apply_edit(&[
+            // Type 33516 occupies implant slot 1.
+            Op::SetImplant {
+                type_id: 33516,
+                slot: 2,
+            },
+            // Type 1877 is a module, not an implant.
+            Op::SetImplant {
+                type_id: 1877,
+                slot: 1,
+            },
+        ]))
+        .unwrap();
+    assert!(report.applied.is_empty());
+    assert_eq!(report.rejected.len(), 2);
+    assert!(report.rejected[0].contains("occupies slot 1"));
+    assert!(report.rejected[1].contains("is not an implant"));
+    assert!(!report.persisted);
+}
+
+/// The test ship (Arbitrator, type 628) has 4 high slots and the test fit
+/// occupies three of them; only one more high module fits.
+#[test]
+fn apply_edit_rejects_module_beyond_slot_capacity() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let (callbacks, _) = mock_callbacks();
+    let context = test_context().with_callbacks(Arc::new(callbacks));
+    let report = runtime()
+        .block_on(context.apply_edit(&[
+            Op::AddModule {
+                slot_type: "high".to_string(),
+                type_id: 1877,
+                state: None,
+                charge_type_id: None,
+            },
+            Op::AddModule {
+                slot_type: "high".to_string(),
+                type_id: 1877,
+                state: None,
+                charge_type_id: None,
+            },
+        ]))
+        .unwrap();
+    assert_eq!(report.applied.len(), 1);
+    assert_eq!(report.rejected.len(), 1);
+    assert!(report.rejected[0].contains("no free high slots"));
+    assert!(report.persisted);
+}
+
+/// With subsystems fitted, the high/medium/low capacity comes from the
+/// subsystems' slot-modifier attributes instead of the ship's (which are 0
+/// for the Tengu, type 29984; subsystem 30050 provides 3 medium slots).
+#[test]
+fn apply_edit_subsystems_redefine_slot_capacity() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let container = FitContainer::new(
+        ItemFit {
+            ship_type_id: 29984,
+            damage_profile: DamageProfile::default(),
+            modules: vec![],
+            drones: vec![],
+            fighters: vec![],
+            implants: vec![],
+            boosters: vec![],
+        },
+        test_skills(),
+        HashMap::new(),
+    );
+    let context = || {
+        let active = ActiveFit {
+            name: Some("tengu".to_string()),
+            container: container.clone(),
+            names: HashMap::new(),
+        };
+        FitToolContext::new(
+            Arc::new(test_database()),
+            Arc::new(RwLock::new(Some(active))),
+            Arc::new(AttributeNames::default()),
+        )
+    };
+
+    // Bare Tengu: no medium slots at all.
+    let report = runtime()
+        .block_on(context().apply_edit(&[Op::AddModule {
+            slot_type: "medium".to_string(),
+            type_id: 10850,
+            state: None,
+            charge_type_id: None,
+        }]))
+        .unwrap();
+    assert!(report.applied.is_empty());
+    assert_eq!(report.rejected.len(), 1);
+    assert!(report.rejected[0].contains("no free medium slots"));
+
+    // Fitting the subsystem redefines the topology: 3 medium slots.
+    let (callbacks, _) = mock_callbacks();
+    let report = runtime().block_on(context().with_callbacks(Arc::new(callbacks)).apply_edit(&[
+        Op::AddModule {
+            slot_type: "subsystem".to_string(),
+            type_id: 30050,
+            state: None,
+            charge_type_id: None,
+        },
+        Op::AddModule {
+            slot_type: "medium".to_string(),
+            type_id: 10850,
+            state: None,
+            charge_type_id: None,
+        },
+        Op::AddModule {
+            slot_type: "medium".to_string(),
+            type_id: 10850,
+            state: None,
+            charge_type_id: None,
+        },
+        Op::AddModule {
+            slot_type: "medium".to_string(),
+            type_id: 10850,
+            state: None,
+            charge_type_id: None,
+        },
+        Op::AddModule {
+            slot_type: "medium".to_string(),
+            type_id: 10850,
+            state: None,
+            charge_type_id: None,
+        },
+    ]));
+    let report = report.unwrap();
+    assert_eq!(report.applied.len(), 4);
+    assert_eq!(report.rejected.len(), 1);
+    assert!(report.rejected[0].contains("no free medium slots"));
+}
+
+/// The tactical mode lives outside the app's fixed module slot lists; module
+/// ops targeting it would apply here but be silently dropped on persistence.
+#[test]
+fn apply_edit_rejects_tactical_mode_ops() {
+    use efa_chat::tools::fit::edit::FitEditOp as Op;
+    let context = test_context();
+    let report = runtime()
+        .block_on(context.apply_edit(&[
+            Op::AddModule {
+                slot_type: "tactical_mode".to_string(),
+                type_id: 1877,
+                state: None,
+                charge_type_id: None,
+            },
+            Op::SetModuleState {
+                slot_type: "tactical_mode".to_string(),
+                index: 0,
+                state: "active".to_string(),
+            },
+        ]))
+        .unwrap();
+    assert!(report.applied.is_empty());
+    assert_eq!(report.rejected.len(), 2);
+    assert!(report.rejected.iter().all(|r| r.contains("tactical mode")));
     assert!(!report.persisted);
 }

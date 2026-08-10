@@ -12,7 +12,7 @@ Future<String?> _showShipCreateDialog(
   if (out == null || out.isEmpty) return null;
   info('Creating ship $shipId with name "$out"');
 
-  final newFitMetadata = await ref.watch(fitManagerProvider.notifier).newFit(shipId, out);
+  final (newFitMetadata, _) = await ref.watch(fitManagerProvider.notifier).newFit(shipId, out);
 
   return newFitMetadata.fitId;
 }

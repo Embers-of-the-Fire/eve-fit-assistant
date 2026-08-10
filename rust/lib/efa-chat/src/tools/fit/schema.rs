@@ -16,6 +16,9 @@ use super::ActiveFit;
 pub struct FitPayload {
     #[serde(default)]
     pub name: Option<String>,
+    /// The saved fit's id; only the `create_fit` callback includes it.
+    #[serde(default)]
+    pub fit_id: Option<String>,
     #[serde(default)]
     pub names: HashMap<i32, String>,
     pub fit: FitDto,
