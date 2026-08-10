@@ -612,7 +612,7 @@ class _ScreenshotAttributeColumn extends StatelessWidget {
         const Divider(height: 0),
         Capacitor(ship: emulated),
         Weapon(ship: emulated),
-        Resource(ship: emulated),
+        _Resource(ship: emulated),
         Hp(ship: emulated, interactionOptions: FitInteractionOptions.screenshot),
         Miscellaneous(ship: emulated),
         Cargo(ship: emulated),

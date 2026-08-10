@@ -40,7 +40,15 @@ class _AttributeTabState extends ConsumerState<_AttributeTab> with AutomaticKeep
             const Divider(height: 0),
             Capacitor(ship: emulated),
             Weapon(ship: emulated),
-            Resource(ship: emulated),
+            _Resource(
+              ship: emulated,
+              issues: _collectFitIssuesForSection(
+                context,
+                ref,
+                widget.fitContext,
+                _FitIssueSection.ship,
+              ),
+            ),
             Hp(
               ship: emulated,
               fitId: widget.fitContext.fitId,

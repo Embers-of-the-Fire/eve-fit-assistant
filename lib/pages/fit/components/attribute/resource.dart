@@ -1,9 +1,10 @@
 part of "../../page.dart";
 
-class Resource extends StatelessWidget {
-  const Resource({required this.ship, super.key});
+class _Resource extends StatelessWidget {
+  const _Resource({required this.ship, this.issues = const []});
 
   final native.Ship ship;
+  final List<_FitIssue> issues;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +21,11 @@ class Resource extends StatelessWidget {
         child: Column(
           spacing: 10,
           children: [
+            if (issues.isNotEmpty)
+              Align(
+                alignment: .centerRight,
+                child: _FitIssueTrigger(issues: issues),
+              ),
             _ResourceRow(icon: ImageAssets.attrCpu, used: cpuUse, all: cpuCap, unit: "tf"),
             _ResourceRow(icon: ImageAssets.attrPower, used: powerUse, all: powerCap, unit: "MW"),
             Row(
