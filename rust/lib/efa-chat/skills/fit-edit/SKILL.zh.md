@@ -33,8 +33,9 @@ description: 修改当前挂载的装配——添加、更换或移除模块、�
   `index`（省略 `charge_type_id` 表示卸下载药）。
 - 无人机：`add_drone`（`state` 默认 "bay"，"space" 表示放出）；
   `remove_drone` / `set_drone_state` 作用于该类型的所有无人机。
-- 舰载机：`add_fighter` 可带 `ability` 位掩码（1 攻击炮台、2 导弹、
-  4 攻击导弹、8 炸弹）；`remove_fighter` 按类型移除。
+- 舰载机：`add_fighter` 可带 `ability` 位掩码（1 = 攻击炮台、2 = 导
+  弹、4 = 攻击导弹、8 = 炸弹，相加可组合多项能力）；
+  `remove_fighter` 按类型移除。
 - 植入体：`set_implant`，`slot` 1-10（替换该槽位现有植入体）；
   `remove_implant` 按槽位移除。增效剂同理，槽位为 1-3。
 

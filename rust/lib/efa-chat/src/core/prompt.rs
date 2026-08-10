@@ -3,9 +3,9 @@
 //! never advertises tools the model cannot call.
 //!
 //! Section order: identity, capabilities, workflow, skills, constraint,
-//! appendix, then the volatile context block (attached fit) and any
-//! app-supplied extra sections last, keeping the stable prefix long for
-//! provider prompt caching.
+//! appendix (only when the provider bundle has real appendix content), then
+//! the volatile context block (attached fit) and any app-supplied extra
+//! sections last, keeping the stable prefix long for provider prompt caching.
 
 use crate::core::config::{ChatProviderConfig, PromptLanguage};
 use crate::core::skill::SkillMeta;
@@ -130,7 +130,9 @@ pub fn render_system_prompt(config: &ChatProviderConfig, context: &SystemPromptC
         sections.push(skills);
     }
     sections.push(render_constraint(config));
-    sections.push(render_appendix(config));
+    if let Some(appendix) = render_appendix(config) {
+        sections.push(appendix);
+    }
     if let Some(context_section) = render_context(language, context.active_fit.as_ref()) {
         sections.push(context_section);
     }
@@ -253,8 +255,8 @@ fn render_constraint(config: &ChatProviderConfig) -> String {
     let bundle = config.provider.prompt_bundle(language);
     let header = language.pick("## Constraint", "## 约束");
     let note = language.pick(
-        "Items in this section must be followed as-is.",
-        "本节内容必须原样遵守。",
+        "The rules in this section always apply.",
+        "本节的规则始终适用。",
     );
     let parts = [
         bundle.constraint_system.trim(),
@@ -263,11 +265,18 @@ fn render_constraint(config: &ChatProviderConfig) -> String {
     format!("{header}\n\n{note}\n\n{}", parts.join("\n\n"))
 }
 
-fn render_appendix(config: &ChatProviderConfig) -> String {
+/// The appendix only renders when the provider bundle ships real content;
+/// providers without provider-specific notes leave the file empty and the
+/// section is omitted entirely.
+fn render_appendix(config: &ChatProviderConfig) -> Option<String> {
     let language = config.language;
     let bundle = config.provider.prompt_bundle(language);
+    let body = bundle.appendix_provider.trim();
+    if body.is_empty() {
+        return None;
+    }
     let header = language.pick("## Appendix", "## 附录");
-    format!("{header}\n\n{}", bundle.appendix_provider.trim())
+    Some(format!("{header}\n\n{body}"))
 }
 
 fn render_context(language: PromptLanguage, fit: Option<&ActiveFitSummary>) -> Option<String> {
@@ -311,6 +320,12 @@ mod tests {
             "gpt-4o-mini",
         )
         .unwrap()
+    }
+
+    /// DeepSeek is the provider whose bundle ships a non-empty appendix.
+    fn deepseek_config() -> ChatProviderConfig {
+        ChatProviderConfig::new(ChatProviderKind::DeepSeek, "test-key", "", "deepseek-chat")
+            .unwrap()
     }
 
     fn full_context() -> SystemPromptContext {
@@ -359,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn bare_context_renders_identity_constraint_appendix_only() {
+    fn bare_context_renders_identity_and_constraint_only() {
         let prompt = render_system_prompt(&config(), &SystemPromptContext::default());
         assert!(prompt.starts_with("You are a helpful assistant"));
         assert!(!prompt.contains("## Capabilities"));
@@ -367,14 +382,14 @@ mod tests {
         assert!(!prompt.contains("## Skills"));
         assert!(!prompt.contains("## Context"));
         assert!(!prompt.contains("search_manual"));
-        let constraint = prompt.find("## Constraint").unwrap();
-        let appendix = prompt.find("## Appendix").unwrap();
-        assert!(constraint < appendix);
+        assert!(prompt.contains("## Constraint"));
+        // Providers without appendix content omit the section entirely.
+        assert!(!prompt.contains("## Appendix"));
     }
 
     #[test]
     fn full_context_renders_every_section_in_order() {
-        let prompt = render_system_prompt(&config(), &full_context());
+        let prompt = render_system_prompt(&deepseek_config(), &full_context());
         let capabilities = prompt.find("## Capabilities").unwrap();
         let workflow = prompt.find("## Workflow").unwrap();
         let skills = prompt.find("## Skills").unwrap();
@@ -449,7 +464,7 @@ mod tests {
 
     #[test]
     fn zh_sections_and_content_render_in_chinese() {
-        let config = config().with_language(PromptLanguage::Zh);
+        let config = deepseek_config().with_language(PromptLanguage::Zh);
         let context = SystemPromptContext {
             fit_engine: true,
             manual: true,

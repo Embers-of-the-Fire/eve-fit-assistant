@@ -35,8 +35,9 @@ with `load_fit` (or create one with the `fit-create` skill) first.
   `get_current_fit` (omit `charge_type_id` to unload the charge).
 - Drones: `add_drone` (`state` "bay" by default, "space" to launch);
   `remove_drone` / `set_drone_state` apply to every drone of that type.
-- Fighters: `add_fighter` with optional `ability` bitmask (1 attack turret,
-  2 missiles, 4 attack missile, 8 bomb); `remove_fighter` by type.
+- Fighters: `add_fighter` with optional `ability` bitmask (1 = attack
+  turret, 2 = missiles, 4 = attack missile, 8 = bomb; add the values to
+  combine several abilities); `remove_fighter` by type.
 - Implants: `set_implant` with `slot` 1-10 (replaces whatever is in that
   slot); `remove_implant` by slot. Boosters: same, with slots 1-3.
 

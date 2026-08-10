@@ -605,15 +605,15 @@ mod tests {
     }
 
     #[test]
-    fn base_prompt_wraps_sections_in_constraint_and_appendix_headers() {
+    fn base_prompt_wraps_rules_in_constraint_header() {
         let base = test_config().full_system_prompt(&SystemPromptContext::default());
         let constraint = base.find("## Constraint").unwrap();
         let system = base.find("Never fabricate").unwrap();
         let provider = base.find("OpenAI-compatible").unwrap();
-        let appendix = base.find("## Appendix").unwrap();
         assert!(constraint < system);
         assert!(system < provider);
-        assert!(provider < appendix);
+        // Providers without appendix content omit the section entirely.
+        assert!(!base.contains("## Appendix"));
     }
 
     #[test]
@@ -621,8 +621,9 @@ mod tests {
         let config = test_config().with_language(crate::core::config::PromptLanguage::Zh);
         let full = config.full_system_prompt(&SystemPromptContext::default());
         assert!(full.contains("## 约束"));
-        assert!(full.contains("## 附录"));
         assert!(full.contains("不要编造"));
+        // The OpenAI-compatible bundle ships no appendix content.
+        assert!(!full.contains("## 附录"));
     }
 
     #[test]
