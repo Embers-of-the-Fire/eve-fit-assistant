@@ -858,7 +858,8 @@ impl FitToolContext {
     /// reported stats and validation describe the payload the app returned.
     /// If a concurrent replacement attached a newer fit while the callback
     /// was in flight, the stale response is dropped instead of overwriting
-    /// the newer fit.
+    /// the newer fit, and a [`FitToolError::Superseded`] error tells the
+    /// model the edits were saved but the edited fit is not attached.
     pub async fn apply_edit(
         &self,
         ops: &[edit::FitEditOp],
@@ -886,6 +887,15 @@ impl FitToolContext {
                     "[chat] apply_fit_edit: dropped stale callback response; \
                      a newer fit was attached while the edit was in flight"
                 );
+                // The app already saved the edits; the message must make
+                // clear the report was discarded and the attached fit did
+                // not change.
+                return Err(FitToolError::Superseded(
+                    "the edits were applied and saved, but the edited fit is not the attached \
+                     fit: a newer fit was attached while the edit was in flight; call \
+                     get_current_fit to see the attached fit"
+                        .to_string(),
+                ));
             }
             return Ok(FitEditApplyReport {
                 applied: result.applied,

@@ -493,7 +493,9 @@ fn stale_create_fit_response_reports_superseded() {
 }
 
 /// An `apply_edit` response that arrives after a concurrent `load_fit`
-/// attached a newer fit must not overwrite it.
+/// attached a newer fit must not overwrite it, and the caller is told the
+/// edits were saved but the edited fit is not attached instead of receiving
+/// a misleading success report.
 #[test]
 fn stale_apply_edit_response_does_not_overwrite_newer_active_fit() {
     let (release_edit, edit_gate) = tokio::sync::oneshot::channel::<()>();
@@ -531,7 +533,11 @@ fn stale_apply_edit_response_does_not_overwrite_newer_active_fit() {
         edit_started.await.unwrap();
         context.load_fit("loaded").await.unwrap();
         release_edit.send(()).unwrap();
-        edit.await.unwrap().unwrap();
+        let stale = edit.await.unwrap().unwrap_err();
+        assert!(matches!(stale, FitToolError::Superseded(_)));
+        let message = stale.to_string();
+        assert!(message.contains("applied and saved"));
+        assert!(message.contains("not the attached fit"));
     });
     assert_eq!(
         context.current_fit(false).unwrap().name.as_deref(),
