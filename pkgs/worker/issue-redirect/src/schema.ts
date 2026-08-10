@@ -53,3 +53,9 @@ export const DocsQuestionSchema = z.object({
     ...DocsCommonFields,
     content: z.string().min(1, "content is required"),
 });
+
+export const AgentFeedbackSchema = z.object({
+    ...CommonFields,
+    body: z.string().min(1, "body is required"),
+    dialog: z.string().optional(),
+});

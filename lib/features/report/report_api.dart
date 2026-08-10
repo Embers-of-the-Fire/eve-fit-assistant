@@ -55,6 +55,21 @@ class ReportApi {
     return _post("feature-request", data);
   }
 
+  Future<IssueResult> submitAgentFeedback(
+    AgentFeedback feedback,
+    String language, {
+    bool includeMetadata = true,
+  }) async {
+    final data = <String, dynamic>{
+      "language": language,
+      "title": feedback.title,
+      "body": feedback.body,
+      if (includeMetadata) "metadata": await _collectMetadata(),
+      if (feedback.dialog != null && feedback.dialog!.isNotEmpty) "dialog": feedback.dialog,
+    };
+    return _post("agent-feedback", data);
+  }
+
   Future<IssueResult> _post(String endpoint, Map<String, dynamic> data) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(

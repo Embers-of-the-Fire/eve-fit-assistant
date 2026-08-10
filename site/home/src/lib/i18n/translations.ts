@@ -85,6 +85,10 @@ export const en = {
     "report.feature.description":
         "Have an idea to improve the app? Tell us what you need and why it matters.",
 
+    "report.agent.title": "AI Feedback",
+    "report.agent.description":
+        "Share your experience with the AI assistant — report issues or suggest improvements.",
+
     "report.form.title": "Title",
     "report.form.title.placeholder": "Short, descriptive title for this submission",
     "report.form.bug.prefix": "[Bug]: ",
@@ -125,6 +129,10 @@ export const en = {
     "report.form.feature.extra": "Mockups / References / Extra Context",
     "report.form.feature.extra.placeholder":
         "Links to mockups, references, or any additional context",
+
+    "report.form.agent.body": "Feedback",
+    "report.form.agent.body.placeholder":
+        "Describe your experience, issues, or suggestions for the AI assistant",
 
     "report.form.labels": "Labels",
     "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
@@ -289,6 +297,9 @@ export const zh: Record<TranslationKey, string> = {
     "report.feature.title": "功能请求",
     "report.feature.description": "有改进应用的想法？告诉我们你需要的功能以及为什么重要。",
 
+    "report.agent.title": "AI 反馈",
+    "report.agent.description": "分享你使用 AI 助手的体验 — 报告问题或提出改进建议。",
+
     "report.form.title": "标题",
     "report.form.title.placeholder": "简短的描述性标题",
     "report.form.bug.prefix": "[Bug]: ",
@@ -325,6 +336,9 @@ export const zh: Record<TranslationKey, string> = {
     "report.form.feature.alternatives.placeholder": "你考虑过的变通方案或替代方法",
     "report.form.feature.extra": "原型 / 参考 / 其他补充",
     "report.form.feature.extra.placeholder": "原型链接、参考资料或任何补充上下文",
+
+    "report.form.agent.body": "反馈内容",
+    "report.form.agent.body.placeholder": "描述你对 AI 助手的使用体验、问题或建议",
 
     "report.form.labels": "标签",
     "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",

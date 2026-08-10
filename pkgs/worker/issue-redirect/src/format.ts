@@ -1,4 +1,5 @@
 import type {
+    AgentFeedback,
     BugReport,
     DocsFlag,
     DocsQuestion,
@@ -147,6 +148,40 @@ function formatDocsQuestionZh(req: DocsQuestion): string {
     return lines.join("\n");
 }
 
+function formatAgentFeedbackEn(req: AgentFeedback): string {
+    const lines: string[] = [];
+    if (req.dialog) {
+        lines.push("## Description");
+        lines.push(req.body);
+        lines.push("");
+        lines.push("## Dialog");
+        lines.push("<details>");
+        lines.push("  <summary/>");
+        lines.push(req.dialog);
+        lines.push("</details>");
+    } else {
+        lines.push(req.body);
+    }
+    return lines.join("\n");
+}
+
+function formatAgentFeedbackZh(req: AgentFeedback): string {
+    const lines: string[] = [];
+    if (req.dialog) {
+        lines.push("## 描述");
+        lines.push(req.body);
+        lines.push("");
+        lines.push("## 对话记录");
+        lines.push("<details>");
+        lines.push("  <summary/>");
+        lines.push(req.dialog);
+        lines.push("</details>");
+    } else {
+        lines.push(req.body);
+    }
+    return lines.join("\n");
+}
+
 function formatFooter(req: IssueRequest): string {
     const parts: string[] = [];
     if (req.metadata) {
@@ -159,6 +194,20 @@ function formatFooter(req: IssueRequest): string {
         return "";
     }
     return `\n\n---\n*${parts.join("  \n")}*`;
+}
+
+function formatFooterSmall(req: IssueRequest): string {
+    const parts: string[] = [];
+    if (req.metadata) {
+        const entries = Object.entries(req.metadata);
+        if (entries.length > 0) {
+            parts.push(entries.map(([k, v]) => `${k}: ${v}`).join(" | "));
+        }
+    }
+    if (parts.length === 0) {
+        return "";
+    }
+    return `\n\n---\n<small>${parts.join("<br/>")}</small>`;
 }
 
 export function formatIssueBody(type: TemplateType, req: IssueRequest): string {
@@ -178,6 +227,13 @@ export function formatIssueBody(type: TemplateType, req: IssueRequest): string {
             req.language === "zh"
                 ? formatDocsFlagZh(req as DocsFlag)
                 : formatDocsFlagEn(req as DocsFlag);
+    } else if (type === "agent_feedback") {
+        body =
+            req.language === "zh"
+                ? formatAgentFeedbackZh(req as AgentFeedback)
+                : formatAgentFeedbackEn(req as AgentFeedback);
+        const footer = formatFooterSmall(req);
+        return footer ? body + footer : body;
     } else {
         body =
             req.language === "zh"
@@ -193,11 +249,15 @@ const DefaultLabels: Record<string, string[]> = {
     feature_request: ["T-Feature", "V-Needs Triage"],
     docs_flag: ["F-App", "T-Docs", "T-Bug", "V-Needs Triage"],
     docs_question: ["F-App", "T-Docs", "T-Question", "V-Needs Triage"],
+    agent_feedback: ["C-Feedback", "V-Needs Triage"],
 };
 
 export function resolveTitle(type: TemplateType, req: IssueRequest): string {
     if ("topic" in req) {
         return `[Docs] ${req.topic}`;
+    }
+    if (type === "agent_feedback") {
+        return `[Feedback/Agent]: ${req.title}`;
     }
     return req.title;
 }

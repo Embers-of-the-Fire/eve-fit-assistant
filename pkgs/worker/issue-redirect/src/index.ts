@@ -4,6 +4,7 @@ import type { z } from "zod";
 import { formatIssueBody, resolveLabels, resolveTitle } from "./format.js";
 import { createIssue, validateConfig } from "./github.js";
 import {
+    AgentFeedbackSchema,
     BugReportSchema,
     DocsFlagSchema,
     DocsQuestionSchema,
@@ -87,6 +88,8 @@ app.post("/feature-request", (c) => handleCreateIssue(c, "feature_request", Feat
 app.post("/docs-flag", (c) => handleCreateIssue(c, "docs_flag", DocsFlagSchema));
 
 app.post("/docs-question", (c) => handleCreateIssue(c, "docs_question", DocsQuestionSchema));
+
+app.post("/agent-feedback", (c) => handleCreateIssue(c, "agent_feedback", AgentFeedbackSchema));
 
 app.onError((err, c) => {
     const message = err instanceof Error ? err.message : String(err);

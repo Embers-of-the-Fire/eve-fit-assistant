@@ -77,6 +77,29 @@ Ask a question about the docs. The issue title is derived server-side as
 }
 ```
 
+### `POST /agent-feedback`
+
+Create an AI-usage feedback issue. The issue title is derived server-side as
+`[Feedback/Agent]: <title>`. Default labels: `C-Feedback`, `V-Needs Triage`.
+
+`body` is the user's feedback text. `dialog` is optional: when present (an exported chat
+transcript in markdown), the issue body is structured as `## Description` / `## Dialog`
+with the transcript wrapped in a collapsed `<details>` block; otherwise the body is used
+as-is. The metadata footer is rendered with a `<small>` tag.
+
+```json
+{
+    "title": "Agent suggested the wrong module",
+    "language": "en",
+    "body": "The agent kept recommending a module that does not fit the ship.",
+    "dialog": "**User:**\n...\n\n**Assistant:**\n...",
+    "metadata": {
+        "os_version": "Android 14",
+        "app_version": "0.1.0"
+    }
+}
+```
+
 ### Response
 
 #### Success (201)

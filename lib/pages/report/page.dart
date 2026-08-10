@@ -14,9 +14,12 @@ import "package:url_launcher/url_launcher.dart";
 
 @RoutePage()
 class ReportFeedbackPage extends ConsumerStatefulWidget {
-  const ReportFeedbackPage({super.key, this.initialTab = 0});
+  const ReportFeedbackPage({super.key, this.initialTab = 0, this.dialog});
 
   final int initialTab;
+
+  /// Pre-attached chat dialog transcript (markdown) for in-dialog AI feedback.
+  final String? dialog;
 
   @override
   ConsumerState<ReportFeedbackPage> createState() => _ReportFeedbackPageState();
@@ -45,15 +48,20 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   final _featureAlternativesCtrl = TextEditingController();
   final _featureExtraCtrl = TextEditingController();
 
+  final _agentFormKey = GlobalKey<FormState>();
+  final _agentTitleCtrl = TextEditingController();
+  final _agentBodyCtrl = TextEditingController();
+
   bool _submitting = false;
   bool _includeMetadata = true;
+  late bool _dialogAttached = widget.dialog != null && widget.dialog!.isNotEmpty;
 
   final _api = ReportApi();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTab);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
   }
 
   @override
@@ -70,6 +78,8 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureImpactCtrl.dispose();
     _featureAlternativesCtrl.dispose();
     _featureExtraCtrl.dispose();
+    _agentTitleCtrl.dispose();
+    _agentBodyCtrl.dispose();
     super.dispose();
   }
 
@@ -77,7 +87,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   Widget build(BuildContext context) => PopScope(
     canPop: !_submitting,
     child: DefaultTabController(
-      length: 2,
+      length: 3,
       child: Layout(
         title: context.l10n.reportPageTitle,
         actions: [
@@ -94,6 +104,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           tabs: [
             Tab(text: context.l10n.reportTabBug),
             Tab(text: context.l10n.reportTabFeature),
+            Tab(text: context.l10n.reportTabAgent),
           ],
         ),
         child: Column(
@@ -101,7 +112,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [_buildBugForm(), _buildFeatureForm()],
+                children: [_buildBugForm(), _buildFeatureForm(), _buildAgentForm()],
               ),
             ),
             _buildSubmitButton(),
@@ -221,6 +232,46 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     ),
   );
 
+  Widget _buildAgentForm() => Form(
+    key: _agentFormKey,
+    child: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildCard([
+          _buildField(
+            context.l10n.reportFieldTitle,
+            _agentTitleCtrl,
+            hint: context.l10n.reportFieldTitleHint,
+            required: context.l10n.reportFieldTitleRequired,
+          ),
+          const SizedBox(height: 16),
+          _buildField(
+            context.l10n.reportFieldBody,
+            _agentBodyCtrl,
+            minLines: 4,
+            hint: context.l10n.reportFieldBodyHint,
+            required: context.l10n.reportFieldBodyRequired,
+          ),
+          if (_dialogAttached) ...[
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(context.l10n.reportAgentDialogAttached),
+              trailing: TextButton(
+                onPressed: _submitting ? null : () => setState(() => _dialogAttached = false),
+                child: Text(context.l10n.reportAgentDialogDetach),
+              ),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+          const SizedBox(height: 16),
+          _buildMetadataToggle(),
+        ]),
+        const SizedBox(height: 32),
+      ],
+    ),
+  );
+
   Widget _buildCard(List<Widget> children) => Card(
     child: Padding(
       padding: const EdgeInsets.all(20),
@@ -295,8 +346,12 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   };
 
   Future<void> _submit() async {
-    final isBug = _tabController.index == 0;
-    final formKey = isBug ? _bugFormKey : _featureFormKey;
+    final tabIndex = _tabController.index;
+    final formKey = switch (tabIndex) {
+      0 => _bugFormKey,
+      1 => _featureFormKey,
+      _ => _agentFormKey,
+    };
     if (!formKey.currentState!.validate()) return;
 
     final includeMetadata = _includeMetadata;
@@ -307,7 +362,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
       final language = locale.startsWith("zh") ? "zh" : "en";
 
       final IssueResult result;
-      if (isBug) {
+      if (tabIndex == 0) {
         result = await _api.submitBugReport(
           BugReport(
             title: _bugTitleCtrl.text.trim(),
@@ -320,7 +375,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
           language,
           includeMetadata: includeMetadata,
         );
-      } else {
+      } else if (tabIndex == 1) {
         result = await _api.submitFeatureRequest(
           FeatureRequest(
             title: _featureTitleCtrl.text.trim(),
@@ -329,6 +384,16 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
             impact: _featureImpactCtrl.text.trim(),
             alternatives: _featureAlternativesCtrl.text.trim(),
             extra: _featureExtraCtrl.text.trim(),
+          ),
+          language,
+          includeMetadata: includeMetadata,
+        );
+      } else {
+        result = await _api.submitAgentFeedback(
+          AgentFeedback(
+            title: _agentTitleCtrl.text.trim(),
+            body: _agentBodyCtrl.text.trim(),
+            dialog: _dialogAttached ? widget.dialog : null,
           ),
           language,
           includeMetadata: includeMetadata,
@@ -362,6 +427,8 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
     _featureImpactCtrl.clear();
     _featureAlternativesCtrl.clear();
     _featureExtraCtrl.clear();
+    _agentTitleCtrl.clear();
+    _agentBodyCtrl.clear();
     setState(() => _includeMetadata = true);
   }
 
