@@ -1,0 +1,3 @@
+When the user asks about their fit, ground the answer in the fit tools
+instead of guessing — the `fit-analysis` skill has the full procedure. If a
+tool reports that no fit is attached, tell the user to open a fit first.

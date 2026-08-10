@@ -12,8 +12,11 @@ use rig::streaming::{StreamedAssistantContent, StreamedUserContent, ToolCallDelt
 use crate::core::config::{ChatProviderConfig, ChatProviderKind};
 use crate::core::error::ChatError;
 use crate::core::event::ChatEvent;
+use crate::core::prompt::{ActiveFitSummary, SystemPromptContext};
+use crate::core::skill::SkillRegistry;
 use crate::tools::fit::{ActiveFit, AttributeNames, FitCallbacks, FitToolContext};
 use crate::tools::manual::{ManualCorpus, ManualDocTool, ManualSearchTool};
+use crate::tools::skill::LoadSkillTool;
 
 pub struct ChatAgent {
     config: ChatProviderConfig,
@@ -23,6 +26,7 @@ pub struct ChatAgent {
     attr_names: Arc<AttributeNames>,
     active_fit: Arc<RwLock<Option<ActiveFit>>>,
     fit_callbacks: Option<Arc<FitCallbacks>>,
+    skills: Arc<SkillRegistry>,
 }
 
 /// A per-turn agent for one of the supported providers (enum dispatch over
@@ -44,6 +48,7 @@ impl ChatAgent {
             attr_names: Arc::new(AttributeNames::default()),
             active_fit: Arc::new(RwLock::new(None)),
             fit_callbacks: None,
+            skills: Arc::new(SkillRegistry::bundled()),
         })
     }
 
@@ -109,11 +114,40 @@ impl ChatAgent {
         self.fit_callbacks = Some(Arc::new(callbacks));
     }
 
+    /// Replace the skill registry, exposing the skills' manifest in the
+    /// system prompt and the `load_skill` tool on subsequent turns. Passing
+    /// an empty registry hides both.
+    pub fn set_skill_registry(&mut self, registry: SkillRegistry) {
+        self.skills = Arc::new(registry);
+    }
+
+    /// Snapshot the session state that shapes the system prompt: which tool
+    /// groups are attached, the skill manifest, and the attached fit.
+    fn prompt_context(&self) -> SystemPromptContext {
+        let guard = self.active_fit.read().unwrap_or_else(|e| e.into_inner());
+        let active_fit = guard.as_ref().map(|fit| {
+            let hull_type_id = fit.container.fit.ship_type_id;
+            ActiveFitSummary {
+                name: fit.name.clone(),
+                hull_name: fit.names.get(&hull_type_id).cloned(),
+                hull_type_id,
+            }
+        });
+        drop(guard);
+        SystemPromptContext {
+            fit_engine: self.fit_engine.is_some(),
+            fit_data: self.fit_engine.is_some() && self.fit_callbacks.is_some(),
+            manual: self.manual_corpus.is_some(),
+            skills: self.skills.list(self.config.language),
+            active_fit,
+        }
+    }
+
     fn attach_tools<M>(&self, builder: rig::agent::AgentBuilder<M>) -> Agent<M>
     where
         M: CompletionModel + 'static,
     {
-        let builder = builder.preamble(&self.config.full_system_prompt());
+        let builder = builder.preamble(&self.config.full_system_prompt(&self.prompt_context()));
         // The static `.tool()` builder is type-state based and cannot be
         // conditional, so the fit toolset goes through the dynamic-tool path.
         let mut builder = match &self.fit_engine {
@@ -140,6 +174,12 @@ impl ChatAgent {
             builder = builder
                 .tool(ManualSearchTool::new(corpus.clone(), self.config.language))
                 .tool(ManualDocTool::new(corpus.clone(), self.config.language));
+        }
+        if !self.skills.is_empty() {
+            builder = builder.tool(LoadSkillTool::new(
+                self.skills.clone(),
+                self.config.language,
+            ));
         }
         builder.build()
     }
@@ -535,7 +575,7 @@ mod tests {
     #[test]
     fn custom_system_prompt_is_appended_to_base() {
         let config = test_config().with_system_prompt("custom prompt");
-        let full = config.full_system_prompt();
+        let full = config.full_system_prompt(&SystemPromptContext::default());
         assert!(full.starts_with("You are a helpful assistant"));
         assert!(full.ends_with("custom prompt"));
     }
@@ -543,36 +583,47 @@ mod tests {
     #[test]
     fn blank_system_prompt_keeps_base_only() {
         let config = test_config().with_system_prompt("   ");
-        assert!(!config.full_system_prompt().ends_with("   "));
+        assert!(
+            !config
+                .full_system_prompt(&SystemPromptContext::default())
+                .ends_with("   ")
+        );
     }
 
     #[test]
-    fn base_prompt_covers_persona_and_manual_tools() {
-        let base = test_config().full_system_prompt();
-        assert!(base.contains("EVE Fit Assistant"));
-        assert!(base.contains("search_manual"));
-        assert!(base.contains("get_manual_doc"));
+    fn prompt_advertises_manual_tools_only_when_attached() {
+        let config = test_config();
+        let bare = config.full_system_prompt(&SystemPromptContext::default());
+        assert!(!bare.contains("search_manual"));
+        let context = SystemPromptContext {
+            manual: true,
+            ..SystemPromptContext::default()
+        };
+        let with_manual = config.full_system_prompt(&context);
+        assert!(with_manual.contains("search_manual"));
+        assert!(with_manual.contains("get_manual_doc"));
     }
 
     #[test]
-    fn base_prompt_wraps_sections_in_constraint_and_appendix_headers() {
-        let base = test_config().full_system_prompt();
+    fn base_prompt_wraps_rules_in_constraint_header() {
+        let base = test_config().full_system_prompt(&SystemPromptContext::default());
         let constraint = base.find("## Constraint").unwrap();
         let system = base.find("Never fabricate").unwrap();
         let provider = base.find("OpenAI-compatible").unwrap();
-        let appendix = base.find("## Appendix").unwrap();
         assert!(constraint < system);
         assert!(system < provider);
-        assert!(provider < appendix);
+        // Providers without appendix content omit the section entirely.
+        assert!(!base.contains("## Appendix"));
     }
 
     #[test]
-    fn zh_language_renders_zh_template_and_sections() {
+    fn zh_language_renders_zh_sections() {
         let config = test_config().with_language(crate::core::config::PromptLanguage::Zh);
-        let full = config.full_system_prompt();
+        let full = config.full_system_prompt(&SystemPromptContext::default());
         assert!(full.contains("## 约束"));
-        assert!(full.contains("## 附录"));
         assert!(full.contains("不要编造"));
+        // The OpenAI-compatible bundle ships no appendix content.
+        assert!(!full.contains("## 附录"));
     }
 
     #[test]
@@ -591,7 +642,7 @@ mod tests {
             ChatProviderConfig::new(ChatProviderKind::DeepSeek, "key", "", "deepseek-chat")
                 .unwrap()
                 .with_system_prompt("custom prompt");
-        let full = config.full_system_prompt();
+        let full = config.full_system_prompt(&SystemPromptContext::default());
         assert!(full.contains("DSML"));
         assert!(full.contains("U+FF5C"));
         assert!(full.ends_with("custom prompt"));
@@ -658,5 +709,53 @@ mod tests {
             agent.config.provider = provider;
             assert!(agent.build_agent().is_ok());
         }
+    }
+
+    #[test]
+    fn prompt_context_reflects_attachments() {
+        let mut agent = ChatAgent::new(test_config()).unwrap();
+        let bare = agent.prompt_context();
+        assert!(!bare.fit_engine);
+        assert!(!bare.fit_data);
+        assert!(!bare.manual);
+        // The bundled skills are always on offer.
+        let bundled_len = SkillRegistry::bundled()
+            .list(crate::core::config::PromptLanguage::En)
+            .len();
+        assert_eq!(bare.skills.len(), bundled_len);
+        assert!(bare.active_fit.is_none());
+
+        agent.set_manual_corpus(ManualCorpus::from_rows(vec![(
+            "a".to_string(),
+            crate::tools::manual::ManualDocText {
+                locale: "en".to_string(),
+                title: "A".to_string(),
+                summary: String::new(),
+                body: "alpha".to_string(),
+            },
+        )]));
+        assert!(agent.prompt_context().manual);
+        // An empty corpus detaches the manual tools again.
+        agent.set_manual_corpus(ManualCorpus::new(vec![]));
+        assert!(!agent.prompt_context().manual);
+    }
+
+    #[test]
+    fn skill_registry_enters_prompt_context() {
+        let mut agent = ChatAgent::new(test_config()).unwrap();
+        agent.set_skill_registry(crate::core::skill::SkillRegistry::new(vec![
+            crate::core::skill::Skill::from_raw(
+                "---\nname: fit-analysis\ndescription: Analyze the attached fit\n---\n\nBody.\n",
+                None,
+            )
+            .unwrap(),
+        ]));
+        let skills = agent.prompt_context().skills;
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, "fit-analysis");
+        let prompt = agent.config.full_system_prompt(&agent.prompt_context());
+        assert!(prompt.contains("## Skills"));
+        assert!(prompt.contains("`load_skill`"));
+        assert!(agent.build_agent().is_ok());
     }
 }

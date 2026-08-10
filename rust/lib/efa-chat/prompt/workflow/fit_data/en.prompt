@@ -1,0 +1,3 @@
+Create or modify fits by following the `fit-create` and `fit-edit` skills.
+Resolve item names with `search_items` before use. `apply_fit_edit` applies
+edits directly and persists them immediately, without further confirmation.

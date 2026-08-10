@@ -17,9 +17,11 @@ The crate is organized into three top-level modules: `core` (the agent layer),
 
 | File | Contents |
 | ------ | ---------- |
-| `mod.rs` | Re-exports `config`, `agent`, `error`, `event`, `models`. |
-| `config.rs` | `ChatProviderKind` (`OpenAiCompatible`/`Anthropic`/`DeepSeek`, each with a default base URL and a `prompt_dir()` name: `openai`/`anthropic`/`deepseek`); `PromptLanguage` (`En`/`Zh`, `from_locale` maps any non-`zh*` tag to `En`); `ChatProviderConfig` (provider / api_key / base_url / model / language / system_prompt / max_turns) with eager validation. A blank `base_url` resolves to the provider default (`resolved_base_url`). Prompts are bundled from `prompt/` at compile time (`include_str!`): `prompt/system/{en,zh}.prompt` is the shared header **and** a rust-fmt template (`format!(include_str!(...), constraint_system = ..., constraint_provider = ..., appendix_provider = ...)`) whose wrappers (e.g. a `## Constraint` section marked "must be followed as-is") frame three section args — `prompt/constraint/system/{lang}.prompt` (shared rules), `prompt/constraint/provider/<dir>/{lang}.prompt` and `prompt/appendix/provider/<dir>/{lang}.prompt` (per-provider, e.g. the DeepSeek DSML strict-ASCII rule plus its examples appendix). `system_prompt` holds *extra sections* appended after the rendered template (`with_system_prompt`, blank ignored); `full_system_prompt()` composes template + extra sections; `max_turns` is the multi-turn depth (tool-call roundtrips per turn, `DEFAULT_MAX_TURNS` = 20, `with_max_turns` overrides, 0 ignored). Tool descriptions are bundled the same way under `prompt/tool/<tool-name>/{en,zh}.prompt` (one directory per rig tool, named by the tool's `NAME`) and selected by the session language via `PromptLanguage::pick`. |
-| `agent.rs` | `ChatAgent` — stores the config plus a `Vec<Message>` history and builds a fresh provider agent per turn (`TurnAgent` enum over `Agent<openai::CompletionModel>` / `Agent<anthropic::…>` / `Agent<deepseek::…>`; each arm attaches the manual tools when a corpus is set). `chat_turn` is a one-shot completion; `stream_turn` drives each provider's multi-turn stream through the generic `drive_stream` helper and reports via `FnMut(ChatEvent)`. |
+| `mod.rs` | Re-exports `config`, `agent`, `error`, `event`, `models`, `prompt`, `skill`. |
+| `config.rs` | `ChatProviderKind` (`OpenAiCompatible`/`Anthropic`/`DeepSeek`, each with a default base URL and a `prompt_dir()` name: `openai`/`anthropic`/`deepseek`); `PromptLanguage` (`En`/`Zh`, `from_locale` maps any non-`zh*` tag to `En`); `ChatProviderConfig` (provider / api_key / base_url / model / language / system_prompt / max_turns) with eager validation. A blank `base_url` resolves to the provider default (`resolved_base_url`). Prompts are bundled from `prompt/` at compile time (`include_str!`); `prompt_bundle()` yields the per-(provider, language) constraint/appendix fragments — `prompt/constraint/system/{lang}.prompt` (shared rules), `prompt/constraint/provider/<dir>/{lang}.prompt` and `prompt/appendix/provider/<dir>/{lang}.prompt` (per-provider, e.g. the DeepSeek DSML strict-ASCII rule plus its examples appendix). `system_prompt` holds *extra sections* appended last (`with_system_prompt`, blank ignored); `full_system_prompt(context)` delegates assembly to `prompt::render_system_prompt`; `max_turns` is the multi-turn depth (tool-call roundtrips per turn, `DEFAULT_MAX_TURNS` = 20, `with_max_turns` overrides, 0 ignored). Tool descriptions are bundled the same way under `prompt/tool/<tool-name>/{en,zh}.prompt` (one directory per rig tool, named by the tool's `NAME`) and selected by the session language via `PromptLanguage::pick`. |
+| `prompt.rs` | System-prompt assembly. `render_system_prompt(config, context)` joins the sections in order: identity (`prompt/system/{lang}.prompt`), `## Capabilities` (generated bullets from the *actually attached* tools, blurbs from the `TOOL_BLURBS` table — a test pins it to every tool's `NAME` constant), `## Workflow` (conditional guidance fragments from `prompt/workflow/{fit,fit_data,manual}/{lang}.prompt`), `## Skills` (manifest, only when non-empty), `## Constraint`, `## Appendix` (only when the provider bundle ships real appendix content — empty appendix files omit the section), then the volatile `## Context` block (attached-fit name/hull) and the Dart-supplied extras last, keeping the stable prefix long for provider prompt caching. `SystemPromptContext` carries which tool groups are attached (fit engine / fit data / manual), the `SkillMeta` list, and the `ActiveFitSummary`. |
+| `skill.rs` | Agent skills: reusable, progressively-disclosed instruction packs. A skill is a markdown doc with `---` frontmatter (`name`, `description`) bundled under `skills/<name>/SKILL.{en,zh}.md`; `parse_skill` parses one document, `Skill::from_raw` combines localizations (names must agree; English required as the fallback), `SkillRegistry` (`new` / `bundled` / `list` / `get`) serves the manifest for the prompt and the full body for the `load_skill` tool. Only name+description enter the system prompt; the body loads on demand. |
+| `agent.rs` | `ChatAgent` — stores the config plus a `Vec<Message>` history and builds a fresh provider agent per turn (`TurnAgent` enum over `Agent<openai::CompletionModel>` / `Agent<anthropic::…>` / `Agent<deepseek::…>`; each arm attaches the manual tools when a corpus is set and `load_skill` when the skill registry is non-empty). `prompt_context()` snapshots the attachment state + skill manifest + attached-fit summary that shape the system prompt. `chat_turn` is a one-shot completion; `stream_turn` drives each provider's multi-turn stream through the generic `drive_stream` helper and reports via `FnMut(ChatEvent)`. |
 | `models.rs` | `list_models(provider, api_key, base_url)` — thin wrapper over rig's native `ModelListingClient` per provider (auth headers and pagination handled by rig); results sorted and deduped by id. Note: OpenAI-compatible listing goes through `openai::Client` (the Responses-ext client), because rig's `OpenAIModelLister` is bound to that client type. |
 | `event.rs` | `ChatEvent::{TextDelta, ToolCallStart, ToolCallArgsDelta, ToolCallEnd, Done, Error}`; `ToolCallEnd` carries the flattened textual tool result (text items joined, JSON items serialized, images skipped). |
 | `error.rs` | `ChatError` (thiserror): `InvalidConfig`, `Client`, `Completion`, `Stream`, `ModelListing`. |
@@ -35,12 +37,13 @@ The crate is organized into three top-level modules: `core` (the agent layer),
 
 | File | Contents |
 | ------ | ---------- |
-| `mod.rs` | Re-exports `manual` and `fit`. |
+| `mod.rs` | Re-exports `manual`, `fit` and `skill`. |
 | `manual.rs` | In-memory manual corpus + rig `PortableTool`s. `ManualCorpus` groups `ManualDocText` localizations by path-joined doc id (`from_rows`); `search(keywords, language, limit)` does case-insensitive substring matching (zh-safe) ranked by distinct-keyword count then title>summary>body field weight, with a char-window snippet; `get(id, language)` returns the full body. Locale resolution mirrors Dart's `resolveLocalizedKey` (exact → language prefix → `en` → first); `language: None` searches all locales. Tools: `search_manual` (`{keywords[], language?, limit?}` → hits with `id`/`url`/`snippet`/`matched_keywords`) and `get_manual_doc` (`{id, language?}` → full content); hit `url` is `efa://manual/<doc-id>`, which the in-app router already resolves. |
 | `fit/mod.rs` | `FitToolContext`, `FitToolError`, and the fit summary/stat/attr/validation report structs backed by the fitting engine. |
 | `fit/schema.rs` | DTOs for the fit payload pushed by the app (used by `load_fit`, `create_fit`, `apply_fit_edit`). |
 | `fit/edit.rs` | Fit edit operations validated against a copy of the attached fit: module ops (`add_module`/`remove_module`/`set_module_charge`/`set_module_state`), drone ops (`add_drone`/`remove_drone`/`set_drone_state`; state is `bay`/`space`, same-type drones share a group), fighter ops (`add_fighter`/`remove_fighter`; `ability` bitmask 1/2/4/8 = attack turret/missiles/attack missile/bomb, default 0), and slot ops (`set_implant`/`remove_implant` slots 1-10, `set_booster`/`remove_booster` slots 1-3; `set_*` replaces the slot's current item). `apply_edit_ops` also returns the applied ops verbatim, which `apply_fit_edit` forwards to the app for persistence. |
 | `fit/tools.rs` | The fit tool definitions (`get_current_fit`, `get_fit_stats`, `get_item`, `get_attr`, `validate_fit`, and the app-state `search_items`/`list_user_fits`/`load_fit`/`create_fit`/`apply_fit_edit`). |
+| `skill.rs` | `LoadSkillTool` (`load_skill`, `{name}` → full `SkillContent`), attached only when the session's `SkillRegistry` is non-empty; `SkillToolError::NotFound` lists the available skill names and reaches the model verbatim (same `ToolExecutionError` pattern as the manual tools). |
 
 Behavioral notes:
 
@@ -48,14 +51,21 @@ Behavioral notes:
   assistant reply to `self.history` on success; a failed turn leaves history untouched.
 - `set_model` keeps history (model is just a field; a fresh `Agent` is built per turn).
 - The system prompt is baked in per-turn via `Agent::preamble`, not stored in history. It is
-  composed as: the bundled `prompt/system/{lang}.prompt` template rendered with the shared +
-  provider constraint/appendix sections, plus Dart-supplied extra sections appended last.
+  assembled by `prompt::render_system_prompt` from the session's `prompt_context()` (which tool
+  groups are attached, the skill manifest, the attached-fit summary), so tools are only
+  advertised when actually attached; Dart-supplied extra sections append last.
   `ChatConfig.language` (the app locale via `localeProvider`) selects the prompt language, and
   the same language selects the bundled tool descriptions (`prompt/tool/<tool-name>/{lang}.prompt`)
   when the per-turn agent is built — fit tools receive it through `FitToolContext::with_language`,
-  manual tools through their constructors.
+  manual/skill tools through their constructors.
   The Dart side passes only the dynamic in-app link manifest through `ChatConfig.system_prompt`;
   the bridge forwards it via `with_system_prompt`.
+- Skills: `ChatAgent::set_skill_registry` replaces the registry (default `SkillRegistry::bundled()`,
+  which ships `app-usage`, `fit-analysis`, `fit-create` and `fit-edit` in en/zh under
+  `skills/<name>/SKILL.{en,zh}.md`). A non-empty registry adds the `## Skills` manifest to the
+  prompt and attaches the `load_skill` tool; the model loads full skill bodies on demand
+  (progressive disclosure). The skills carry the tool-chaining procedures and interpretation
+  knowledge, so the system prompt's `## Workflow` fragments stay minimal routing/grounding rules.
 
 ## FRB bridge (`rust/src/api/chat.rs`)
 

@@ -6,3 +6,5 @@ pub mod config;
 pub mod error;
 pub mod event;
 pub mod models;
+pub mod prompt;
+pub mod skill;

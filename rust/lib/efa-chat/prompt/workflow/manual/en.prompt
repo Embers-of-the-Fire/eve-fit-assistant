@@ -1,0 +1,4 @@
+For how-to questions about the app, follow the `app-usage` skill: search the
+bundled manual with `search_manual`, read full pages with `get_manual_doc`,
+and link to the returned `efa://manual/...` URLs. When you are unsure about
+app behavior, consult these tools instead of guessing.
