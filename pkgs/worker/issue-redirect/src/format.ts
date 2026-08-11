@@ -156,8 +156,10 @@ function formatAgentFeedbackEn(req: AgentFeedback): string {
         lines.push("");
         lines.push("## Dialog");
         lines.push("<details>");
-        lines.push("  <summary/>");
+        lines.push("<summary>Dialog transcript</summary>");
+        lines.push("");
         lines.push(req.dialog);
+        lines.push("");
         lines.push("</details>");
     } else {
         lines.push(req.body);
@@ -173,8 +175,10 @@ function formatAgentFeedbackZh(req: AgentFeedback): string {
         lines.push("");
         lines.push("## 对话记录");
         lines.push("<details>");
-        lines.push("  <summary/>");
+        lines.push("<summary>对话记录</summary>");
+        lines.push("");
         lines.push(req.dialog);
+        lines.push("");
         lines.push("</details>");
     } else {
         lines.push(req.body);
@@ -183,31 +187,23 @@ function formatAgentFeedbackZh(req: AgentFeedback): string {
 }
 
 function formatFooter(req: IssueRequest): string {
-    const parts: string[] = [];
     if (req.metadata) {
         const entries = Object.entries(req.metadata);
         if (entries.length > 0) {
-            parts.push(entries.map(([k, v]) => `${k}: ${v}`).join(" | "));
+            return `\n\n---\n*${entries.map(([k, v]) => `${k}: ${v}`).join(" | ")}*`;
         }
     }
-    if (parts.length === 0) {
-        return "";
-    }
-    return `\n\n---\n*${parts.join("  \n")}*`;
+    return "";
 }
 
 function formatFooterSmall(req: IssueRequest): string {
-    const parts: string[] = [];
     if (req.metadata) {
         const entries = Object.entries(req.metadata);
         if (entries.length > 0) {
-            parts.push(entries.map(([k, v]) => `${k}: ${v}`).join(" | "));
+            return `\n\n---\n<small>${entries.map(([k, v]) => `${k}: ${v}`).join(" | ")}</small>`;
         }
     }
-    if (parts.length === 0) {
-        return "";
-    }
-    return `\n\n---\n<small>${parts.join("<br/>")}</small>`;
+    return "";
 }
 
 export function formatIssueBody(type: TemplateType, req: IssueRequest): string {
