@@ -54,7 +54,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
 
   bool _submitting = false;
   bool _includeMetadata = true;
-  late bool _dialogAttached = widget.dialog != null && widget.dialog!.isNotEmpty;
+  late bool _dialogAttached;
 
   final _api = ReportApi();
 
@@ -62,6 +62,7 @@ class _ReportFeedbackPageState extends ConsumerState<ReportFeedbackPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
+    _dialogAttached = widget.dialog != null && widget.dialog!.isNotEmpty;
   }
 
   @override
