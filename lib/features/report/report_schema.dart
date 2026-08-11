@@ -54,6 +54,14 @@ abstract class FeatureRequest with _$FeatureRequest {
 }
 
 @freezed
+abstract class AgentFeedback with _$AgentFeedback {
+  const factory AgentFeedback({required String title, required String body, String? dialog}) =
+      _AgentFeedback;
+
+  factory AgentFeedback.fromJson(Map<String, dynamic> json) => _$AgentFeedbackFromJson(json);
+}
+
+@freezed
 abstract class IssueResult with _$IssueResult {
   const factory IssueResult({
     @JsonKey(name: "issue_url") required String issueUrl,

@@ -35,6 +35,11 @@ class AiPage extends ConsumerWidget {
             onTap: () => unawaited(context.router.push(const ChatHistoryRoute())),
           ),
           ConfigListTile.item(
+            icon: const Icon(Icons.rate_review_outlined),
+            title: context.l10n.reportTabAgent,
+            onTap: () => unawaited(context.router.push(ReportFeedbackRoute(initialTab: 2))),
+          ),
+          ConfigListTile.item(
             icon: const Icon(Icons.settings_outlined),
             title: context.l10n.aiChatSettingsTitle,
             onTap: () => unawaited(context.router.push(const AiChatSettingsRoute())),

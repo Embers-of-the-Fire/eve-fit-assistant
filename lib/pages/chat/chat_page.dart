@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/features/chat/api_key_store.dart";
 import "package:eve_fit_assistant/features/chat/chat_controller.dart";
+import "package:eve_fit_assistant/features/chat/chat_feedback_export.dart";
 import "package:eve_fit_assistant/features/chat/model_list.dart";
 import "package:eve_fit_assistant/features/deeplink/deeplink.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -79,11 +80,24 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               ? () => unawaited(context.router.push(const ChatHistoryRoute()))
               : null,
         ),
+        IconButton(
+          icon: const Icon(Icons.rate_review_outlined),
+          tooltip: context.l10n.chatFeedbackTooltip,
+          onPressed: gateReady ? _openFeedback : null,
+        ),
       ],
       child: AiFeatureGate(
         child: configured ? _buildChat(context, chatState) : _buildNotConfigured(context),
       ),
     );
+  }
+
+  void _openFeedback() {
+    final conversation = ref.read(chatControllerProvider).conversation;
+    final dialog = conversation != null && conversation.messages.isNotEmpty
+        ? exportConversationMarkdown(conversation)
+        : null;
+    unawaited(context.router.push(ReportFeedbackRoute(initialTab: 2, dialog: dialog)));
   }
 
   Widget _buildNotConfigured(BuildContext context) => Center(
