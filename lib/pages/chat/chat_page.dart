@@ -94,15 +94,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   void _openFeedback() {
     final conversation = ref.read(chatControllerProvider).conversation;
-    final hasMessages = conversation != null && conversation.messages.isNotEmpty;
-    unawaited(
-      context.router.push(
-        ReportFeedbackRoute(
-          initialTab: 2,
-          dialog: hasMessages ? exportConversationMarkdown(conversation) : null,
-        ),
-      ),
-    );
+    final dialog = conversation != null && conversation.messages.isNotEmpty
+        ? exportConversationMarkdown(conversation)
+        : null;
+    unawaited(context.router.push(ReportFeedbackRoute(initialTab: 2, dialog: dialog)));
   }
 
   Widget _buildNotConfigured(BuildContext context) => Center(
