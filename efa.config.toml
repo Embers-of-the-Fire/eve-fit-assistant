@@ -8,11 +8,11 @@ zh = "简体中文"
 
 [version]
 major = 0
-minor = 8
+minor = 9
 patch = 0
 # pre_label = "alpha"
 # pre_num = 0
-build = 20
+build = 21
 data_schema = 2
 
 [data_schema]
