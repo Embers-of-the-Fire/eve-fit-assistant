@@ -374,8 +374,8 @@ void main() {
       statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
     );
     final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
-    unawaited(
-      versionStore.setPendingInstall(
+    await tester.runAsync(
+      () => versionStore.setPendingInstall(
         PendingInstall(
           releaseId: release.releaseId,
           version: release.version,
@@ -419,8 +419,8 @@ void main() {
       statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
     );
     final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
-    unawaited(
-      versionStore.setPendingInstall(
+    await tester.runAsync(
+      () => versionStore.setPendingInstall(
         PendingInstall(
           releaseId: release.releaseId,
           version: release.version,
