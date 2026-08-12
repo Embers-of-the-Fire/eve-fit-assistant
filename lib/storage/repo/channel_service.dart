@@ -22,7 +22,9 @@ import "package:fpdart/fpdart.dart";
 /// All local persistence goes through a [BlobStore], so every read/write is
 /// asynchronous (OPFS on web is async-only).
 class ChannelService {
-  const ChannelService({required this.remoteCatalogService, required this._store});
+  const ChannelService({required this.remoteCatalogService, required BlobStore store})
+    // ignore: prefer_initializing_formals
+    : _store = store;
 
   final RemoteCatalogService remoteCatalogService;
   final BlobStore _store;

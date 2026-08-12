@@ -16,7 +16,10 @@ final announcementRemoteServiceProvider = Provider<AnnouncementRemoteService>(
 );
 
 class AnnouncementRemoteService {
-  AnnouncementRemoteService({required this._ref, Dio? dio}) : _dio = dio ?? createRemoteDio();
+  AnnouncementRemoteService({required Ref ref, Dio? dio})
+    // ignore: prefer_initializing_formals
+    : _ref = ref,
+      _dio = dio ?? createRemoteDio();
 
   final Ref _ref;
   final Dio _dio;

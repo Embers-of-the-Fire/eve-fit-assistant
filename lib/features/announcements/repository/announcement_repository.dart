@@ -31,7 +31,8 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>(
 );
 
 class AnnouncementRepository {
-  AnnouncementRepository({required this._ref});
+  // ignore: prefer_initializing_formals
+  AnnouncementRepository({required Ref ref}) : _ref = ref;
 
   final Ref _ref;
 

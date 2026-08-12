@@ -5,7 +5,8 @@ import "package:eve_fit_assistant/features/app_update/models/app_version_state.d
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 
 class AppVersionStateStore {
-  AppVersionStateStore({required this._store});
+  // ignore: prefer_initializing_formals
+  AppVersionStateStore({required DocStore store}) : _store = store;
 
   static const int _currentVersion = 1;
   static const String _key = "app_version_state.json";

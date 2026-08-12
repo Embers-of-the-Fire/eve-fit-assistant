@@ -18,7 +18,11 @@ import "package:fpdart/fpdart.dart";
 /// In-flight fetches are deduplicated by blob identity, so concurrent
 /// readers of the same missing blob trigger exactly one download.
 class OnDemandBlobFetcher {
-  OnDemandBlobFetcher({required this._assetStore, required this._remoteCatalog});
+  OnDemandBlobFetcher({required AssetStore assetStore, required RemoteCatalogService remoteCatalog})
+    // ignore: prefer_initializing_formals
+    : _assetStore = assetStore,
+      // ignore: prefer_initializing_formals
+      _remoteCatalog = remoteCatalog;
 
   final AssetStore _assetStore;
   final RemoteCatalogService _remoteCatalog;

@@ -22,6 +22,8 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "collection.g.dart";
 
+// ignore_for_file: prefer_initializing_formals
+
 /// Pre-loaded type data from the active checkout's resource snapshot.
 ///
 /// Built on checkout activation via [DataReadinessNotifier] which decodes
@@ -41,24 +43,40 @@ RepoCollectionService? repoCollection(Ref ref) {
 /// via `LocalizationDbService`.
 class RepoCollectionService {
   const RepoCollectionService._({
-    required this._collection,
-    required this._ships,
-    required this._types,
-    required this._skillTypeIds,
-    required this._skillProfiles,
-    required this._categories,
-    required this._groups,
-    required this._marketGroups,
-    required this._metaGroups,
-    required this._dogmaUnits,
-    required this._dogmaAttributes,
-    required this._subsystems,
-    required this._typeMaterials,
-    required this._dynamicMutators,
-    required this._dynamicTypeOptions,
-    required this._implantSets,
-    required this._implantTypeToSet,
-  });
+    required Collection collection,
+    required IMap<int, Ship> ships,
+    required IMap<int, pb_types.Type> types,
+    required IList<int> skillTypeIds,
+    required IMap<String, IMap<int, int>> skillProfiles,
+    required IMap<int, pb_categories.Category> categories,
+    required IMap<int, pb_groups.Group> groups,
+    required IMap<int, pb_market.MarketGroup> marketGroups,
+    required IMap<int, pb_meta.MetaGroup> metaGroups,
+    required IMap<int, pb_units.DogmaUnit> dogmaUnits,
+    required IMap<int, pb_attrs.DogmaAttribute> dogmaAttributes,
+    required IMap<int, Subsystem> subsystems,
+    required IMap<int, pb_materials.TypeMaterial> typeMaterials,
+    required IMap<int, pb_dynamic.DynamicMutator> dynamicMutators,
+    required IMap<int, pb_dynamic.DynamicTypeOptions> dynamicTypeOptions,
+    required IMap<int, ImplantSet> implantSets,
+    required IMap<int, int> implantTypeToSet,
+  }) : _collection = collection,
+       _ships = ships,
+       _types = types,
+       _skillTypeIds = skillTypeIds,
+       _skillProfiles = skillProfiles,
+       _categories = categories,
+       _groups = groups,
+       _marketGroups = marketGroups,
+       _metaGroups = metaGroups,
+       _dogmaUnits = dogmaUnits,
+       _dogmaAttributes = dogmaAttributes,
+       _subsystems = subsystems,
+       _typeMaterials = typeMaterials,
+       _dynamicMutators = dynamicMutators,
+       _dynamicTypeOptions = dynamicTypeOptions,
+       _implantSets = implantSets,
+       _implantTypeToSet = implantTypeToSet;
 
   /// Builds a [RepoCollectionService] from a [Collection] protobuf for testing.
   ///

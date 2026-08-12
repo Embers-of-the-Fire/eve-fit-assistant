@@ -18,8 +18,10 @@ const marketPriceMaxStale = Duration(minutes: 5);
 /// type is fetched individually (the API has no batch endpoint), so callers
 /// are expected to go through the worker pool for dedup and rate limiting.
 class MarketPriceClient {
-  MarketPriceClient({required this._server, Dio? dio, CacheOptions? cacheOptions})
-    : _dio = dio ?? createRemoteDio(),
+  MarketPriceClient({required MarketServer server, Dio? dio, CacheOptions? cacheOptions})
+    // ignore: prefer_initializing_formals
+    : _server = server,
+      _dio = dio ?? createRemoteDio(),
       _cacheOptionsOverride = cacheOptions;
 
   final MarketServer _server;
