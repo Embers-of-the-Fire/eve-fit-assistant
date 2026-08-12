@@ -76,6 +76,6 @@ flutter {
 }
 
 dependencies {
-    implementation("rustls:rustls-platform-verifier:0.1.1")
+    implementation("rustls:rustls-platform-verifier:latest.release")
 }
 
