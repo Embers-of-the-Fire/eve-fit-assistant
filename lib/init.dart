@@ -102,6 +102,10 @@ Future<InitializedStores> initSingletons() async {
   await settingsStore.init();
   final announcementStateStore = AnnouncementStateStore(store: settingsStore);
   final appVersionStateStore = AppVersionStateStore(store: settingsStore);
+  // Must complete before runApp: the update gate reads pendingInstall
+  // synchronously as soon as a release resolves, so the persisted state has
+  // to be loaded before the gate mounts.
+  await appVersionStateStore.init();
 
   unawaited(_deferredInit(announcementStateStore, appVersionStateStore));
 
@@ -145,7 +149,6 @@ Future<void> _deferredInit(
 ) async {
   try {
     final migration = await announcementStateStore.init();
-    await appVersionStateStore.init();
 
     if (migration != null) {
       final lastSeen = migration.lastSeenAppVersion;
