@@ -257,15 +257,14 @@ class _SlotRowDisplay extends ConsumerWidget {
     final actions = <TileAction>[];
     final isDynamic = fitContext.dynamicItemFor(slotInfo.slot.itemId) != null;
 
-    if (_canCopy()) {
+    if (_canHaveCharge(ref)) {
       actions.add(
         TileAction(
-          onPressed: (_) => _handleCopy(context, ref),
-          autoClose: false,
-          icon: Icons.copy,
-          backgroundColor: Colors.grey.shade200,
-          foregroundColor: Colors.black,
-          label: context.l10n.copy,
+          onPressed: (_) => _handleSetCharge(context, ref),
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          icon: Icons.battery_charging_full,
+          label: context.l10n.charge,
         ),
       );
     }
@@ -293,14 +292,15 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    if (_canHaveCharge(ref)) {
+    if (_canCopy()) {
       actions.add(
         TileAction(
-          onPressed: (_) => _handleSetCharge(context, ref),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          icon: Icons.battery_charging_full,
-          label: context.l10n.charge,
+          onPressed: (_) => _handleCopy(context, ref),
+          autoClose: false,
+          icon: Icons.copy,
+          backgroundColor: Colors.grey.shade200,
+          foregroundColor: Colors.black,
+          label: context.l10n.copy,
         ),
       );
     }
