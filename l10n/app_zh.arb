@@ -436,6 +436,20 @@
   "appReleaseUpdateDownloadTargetAppImage": "AppImage",
   "appReleaseUpdateDownloadTargetNative": "便携压缩包 (.zip)",
   "appReleaseUpdateOpenDownloadLink": "在浏览器中打开",
+  "appReleaseUpdateBackground": "后台下载",
+  "appReleaseUpdateBackgroundStarted": "正在后台下载更新，进度请查看通知栏。",
+  "appUpdateNotificationChannelName": "应用更新",
+  "appUpdateNotificationDownloadTitle": "正在下载应用更新",
+  "appUpdateNotificationReadyTitle": "更新已就绪",
+  "appUpdateNotificationReadyBody": "新版本 v{version} 已下载完成，点击安装。",
+  "@appUpdateNotificationReadyBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appUpdateNotificationFailedTitle": "更新下载失败",
   "appReleaseSilentUpdateReadyTitle": "更新已就绪",
   "appReleaseSilentUpdateReadyMessage": "新版本 v{version} 已下载完成，是否立即安装？",
   "@appReleaseSilentUpdateReadyMessage": {

@@ -1,14 +1,17 @@
 import "dart:async";
 
+import "package:eve_fit_assistant/compat/io.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/download_link.dart";
+import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
 import "package:eve_fit_assistant/features/app_update/platform/manual_download_dialog.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/update_dialog_shared.dart";
+import "package:eve_fit_assistant/features/app_update/update_notification.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -38,11 +41,27 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   String? _shownReleaseId;
   bool _isShowing = false;
   ProviderSubscription<AsyncValue<Option<RemoteAppRelease>>>? _subscription;
-  ProviderSubscription<AppUpdateStatus>? _silentSubscription;
+  ProviderSubscription<RemoteAppRelease?>? _sessionWatchSubscription;
+  ProviderSubscription<AppUpdateStatus>? _sessionSubscription;
 
   @override
   void initState() {
     super.initState();
+    // System-notification wiring for background downloads: the progress,
+    // ready-to-install, and failure notifications live outside the dialog so
+    // the update keeps moving while the app is used normally.
+    final notifications = ref.read(updateNotificationServiceProvider);
+    unawaited(notifications.initialize());
+    notifications.onInstallRequested = () => unawaited(_onInstallNotificationTap());
+
+    // Watch background sessions started from the update dialog (the dialog
+    // closes once the download starts) so the install confirmation surfaces
+    // when the download finishes, regardless of the update strategy.
+    _sessionWatchSubscription = ref.listenManual(appUpdateSessionProvider, (_, release) {
+      if (release == null) return;
+      _watchSession(release);
+    });
+
     // Listen manually with fireImmediately so a release that resolved before
     // this gate mounted still triggers the dialog, while later updates keep
     // being delivered. Registered in initState because ref.listen is not
@@ -54,6 +73,21 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         final release = option.toNullable();
         if (release == null) return;
         if (_shownReleaseId == release.releaseId || _isShowing) return;
+
+        final pending = ref.read(appVersionStateStoreProvider).pendingInstall;
+        if (pending != null && pending.releaseId != release.releaseId) {
+          // Superseded by a newer release; drop the stale staged install.
+          ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall();
+        }
+        if (pending != null && pending.releaseId == release.releaseId) {
+          // A previous run already downloaded this release: restore the
+          // session and prompt for installation instead of re-downloading.
+          _shownReleaseId = release.releaseId;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => unawaited(_restorePendingInstall(release, pending)),
+          );
+          return;
+        }
 
         final supportsSelfUpdate = ref.read(appUpdatePlatformAdapterProvider).supportsSelfUpdate;
         if (ref.read(appSettingServiceProvider).silentUpdate && supportsSelfUpdate) {
@@ -74,7 +108,8 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   @override
   void dispose() {
     _subscription?.close();
-    _silentSubscription?.close();
+    _sessionWatchSubscription?.close();
+    _sessionSubscription?.close();
     super.dispose();
   }
 
@@ -104,15 +139,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   void _startSilentUpdate(RemoteAppRelease release) {
     if (!mounted) return;
 
-    // The subscription must stay open for the whole silent flow: it is the
-    // only listener keeping the auto-dispose controller (and its
-    // readyToInstall state) alive while the confirmation dialog is shown.
-    _silentSubscription?.close();
-    _silentSubscription = ref.listenManual(
-      appUpdateControllerProvider(release),
-      fireImmediately: true,
-      (_, next) => unawaited(_onSilentStatus(release, next)),
-    );
+    _watchSession(release);
 
     final current = ref.read(appUpdateControllerProvider(release));
     if (current is AppUpdateStatusIdle || current is AppUpdateStatusFailed) {
@@ -122,7 +149,61 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     // dispatch above; in-progress states are left to finish.
   }
 
-  Future<void> _onSilentStatus(RemoteAppRelease release, AppUpdateStatus status) async {
+  /// Watches a background session until the install prompt has been
+  /// displayed (or the flow fails). The controller itself is keep-alive, so
+  /// the download is safe even while no listener is attached.
+  void _watchSession(RemoteAppRelease release) {
+    _sessionSubscription?.close();
+    _sessionSubscription = ref.listenManual(
+      appUpdateControllerProvider(release),
+      fireImmediately: true,
+      (_, next) => unawaited(_onSessionStatus(release, next)),
+    );
+  }
+
+  /// Restores a staged install persisted by a previous run: verifies the APK
+  /// is still on disk and intact, then prompts for installation. Falls back
+  /// to the normal update dialog when the staged file is gone or corrupted.
+  Future<void> _restorePendingInstall(RemoteAppRelease release, PendingInstall pending) async {
+    final service = ref.read(appUpdateServiceProvider);
+    final staged = File(pending.apkPath);
+    final verified =
+        staged.existsSync() &&
+        (await service.verifyArtifact(pending.apkPath, pending.contentHash)).isRight();
+    if (!mounted) return;
+
+    if (!verified) {
+      ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall();
+      unawaited(_showDialog(release));
+      return;
+    }
+
+    ref.read(appUpdateControllerProvider(release).notifier).markReadyToInstall(pending.apkPath);
+    await _promptSilentInstall(release);
+  }
+
+  /// Handles taps on the ready-to-install system notification by surfacing
+  /// the install confirmation for the active background session.
+  Future<void> _onInstallNotificationTap() async {
+    if (!mounted || _isShowing) return;
+    final release = ref.read(appUpdateSessionProvider);
+    if (release == null) return;
+    final status = ref.read(appUpdateControllerProvider(release));
+    if (status is! AppUpdateStatusReadyToInstall) return;
+    await _promptSilentInstall(release);
+  }
+
+  void _acknowledgeRelease(RemoteAppRelease release) {
+    final notifier = ref.read(appVersionStateServiceProvider.notifier)
+      ..acknowledgeRelease(release.releaseId);
+    if (ref.read(appVersionStateStoreProvider).pendingInstall?.releaseId == release.releaseId) {
+      // Postponed: stop re-prompting the staged install on later launches.
+      // The verified APK stays in cache, so a later download() short-circuits.
+      notifier.clearPendingInstall();
+    }
+  }
+
+  Future<void> _onSessionStatus(RemoteAppRelease release, AppUpdateStatus status) async {
     switch (status) {
       case AppUpdateStatusReadyToInstall():
         // Only retire the subscription once the install prompt has actually
@@ -132,13 +213,13 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         // no longer be actionable from this gate.
         final prompted = await _promptSilentInstall(release);
         if (!prompted) return;
-        _silentSubscription?.close();
-        _silentSubscription = null;
+        _sessionSubscription?.close();
+        _sessionSubscription = null;
       case AppUpdateStatusFailed():
-        // Silent strategy never surfaces download errors; the update stays
-        // reachable from the version page check tile.
-        _silentSubscription?.close();
-        _silentSubscription = null;
+        // Download errors surface only through the system notification; the
+        // update stays reachable from the version page check tile.
+        _sessionSubscription?.close();
+        _sessionSubscription = null;
       default:
     }
   }
@@ -164,7 +245,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     } else {
       // Postponed: acknowledge so the silent flow does not retrigger on the
       // next launch; the version page check tile still offers the update.
-      ref.read(appVersionStateServiceProvider.notifier).acknowledgeRelease(release.releaseId);
+      _acknowledgeRelease(release);
     }
     _isShowing = false;
     return true;
@@ -269,14 +350,35 @@ class AppReleaseUpdateDialog extends ConsumerWidget {
           child: Text(context.l10n.appReleaseUpdateAcknowledge),
         ),
         ElevatedButton(
-          onPressed: () => unawaited(controller.download()),
+          onPressed: () {
+            // Background download: the dialog closes, progress moves to the
+            // system notification, and the app stays usable.
+            final messenger = ScaffoldMessenger.of(context);
+            final snackText = context.l10n.appReleaseUpdateBackgroundStarted;
+            unawaited(controller.download());
+            Navigator.of(context).pop();
+            messenger.showSnackBar(SnackBar(content: Text(snackText)));
+          },
           child: Text(context.l10n.appReleaseUpdateDownload),
         ),
       ],
-      AppUpdateStatusDownloading() || AppUpdateStatusVerifying() || AppUpdateStatusInstalling() => [
+      AppUpdateStatusDownloading() => [
+        TextButton(
+          onPressed: () {
+            controller.cancel();
+            Navigator.of(context).pop();
+          },
+          child: Text(context.l10n.appReleaseUpdateCancel),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.appReleaseUpdateBackground),
+        ),
+      ],
+      AppUpdateStatusVerifying() || AppUpdateStatusInstalling() => [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.appReleaseUpdateCancel),
+          child: Text(context.l10n.appReleaseUpdateBackground),
         ),
       ],
       AppUpdateStatusReadyToInstall() => [

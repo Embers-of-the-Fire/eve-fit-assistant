@@ -81,6 +81,84 @@ class _ChunkedFakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Honors a `Range: bytes=<start>-` request header with a 206 partial
+/// response; without one returns the full body with 200.
+class _RangeFakeAdapter implements HttpClientAdapter {
+  _RangeFakeAdapter(this.data);
+
+  final Uint8List data;
+  String? seenRange;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final range = options.headers["Range"];
+    seenRange = range is String ? range : null;
+    if (seenRange != null) {
+      final start = int.parse(seenRange!.replaceAll("bytes=", "").replaceAll("-", ""));
+      final remaining = data.sublist(start);
+      return ResponseBody(
+        Stream.value(remaining),
+        206,
+        headers: {
+          Headers.contentLengthHeader: [remaining.length.toString()],
+        },
+      );
+    }
+    return ResponseBody(
+      Stream.value(data),
+      200,
+      headers: {
+        Headers.contentLengthHeader: [data.length.toString()],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Emits a single chunk and then hangs until the cancel future completes,
+/// simulating an interrupted transfer.
+class _HangingFakeAdapter implements HttpClientAdapter {
+  _HangingFakeAdapter(this.data, {this.onFirstChunk});
+
+  final Uint8List data;
+  final void Function()? onFirstChunk;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final controller = StreamController<Uint8List>();
+    Timer(const Duration(milliseconds: 1), () {
+      controller.add(data.sublist(0, 16));
+      onFirstChunk?.call();
+    });
+    unawaited(
+      cancelFuture?.then((_) {
+        controller.addError(DioException(requestOptions: options, type: DioExceptionType.cancel));
+        unawaited(controller.close());
+      }),
+    );
+    return ResponseBody(
+      controller.stream,
+      200,
+      headers: {
+        Headers.contentLengthHeader: [data.length.toString()],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   late _MockRemoteCatalogService remoteCatalog;
   late _FakeAppUpdatePlatform platform;
@@ -307,6 +385,80 @@ void main() {
     _service().clearCache();
 
     expect(file.existsSync(), isFalse);
+  });
+
+  test("downloadArtifact resumes a partial download with a Range request", () async {
+    final apkData = Uint8List.fromList(List<int>.generate(1024, (index) => index % 256));
+    final contentHash = sha256.convert(apkData).toString();
+    final identifier = "release://1.0.0/android/general";
+    final artifact = AppUpdateArtifact(
+      variant: "general",
+      identifier: identifier,
+      contentHash: contentHash,
+      size: apkData.length,
+    );
+
+    final updatesDir = Directory("$tempDir/resources/updates")..createSync(recursive: true);
+    final partPath = "${updatesDir.path}/update-$contentHash.apk.part";
+    File(partPath).writeAsBytesSync(apkData.sublist(0, 512));
+
+    final identHash = RepoHash.hashIdent(identifier);
+    when(
+      () => remoteCatalog.blobUri(identHash, contentHash),
+    ).thenReturn(Uri.parse("http://localhost:0/artifact"));
+
+    final adapter = _RangeFakeAdapter(apkData);
+    Dio createDio() => Dio()..httpClientAdapter = adapter;
+
+    final progressEvents = <(int received, int total)>[];
+    final result = await _service(dioFactory: createDio).downloadArtifact(
+      artifact,
+      onProgress: (received, total) => progressEvents.add((received, total)),
+    );
+
+    if (result.isLeft()) {
+      fail("download failed: ${result.getLeft().toNullable()}");
+    }
+    expect(adapter.seenRange, "bytes=512-");
+    final apkPath = result.getRight().toNullable()!;
+    expect(File(apkPath).lengthSync(), apkData.length);
+    expect(File(partPath).existsSync(), isFalse);
+    // Progress starts at the resumed offset and ends at the full size.
+    expect(progressEvents.first.$1, 512);
+    expect(progressEvents.last.$1, apkData.length);
+  });
+
+  test("downloadArtifact cancellation keeps the partial file for later resume", () async {
+    final apkData = Uint8List.fromList(List<int>.generate(1024, (index) => index % 256));
+    final contentHash = sha256.convert(apkData).toString();
+    final identifier = "release://1.0.0/android/general";
+    final artifact = AppUpdateArtifact(
+      variant: "general",
+      identifier: identifier,
+      contentHash: contentHash,
+      size: apkData.length,
+    );
+
+    final identHash = RepoHash.hashIdent(identifier);
+    when(
+      () => remoteCatalog.blobUri(identHash, contentHash),
+    ).thenReturn(Uri.parse("http://localhost:0/artifact"));
+
+    final cancelToken = CancelToken();
+    final adapter = _HangingFakeAdapter(apkData, onFirstChunk: cancelToken.cancel);
+    Dio createDio() => Dio()..httpClientAdapter = adapter;
+
+    final result = await _service(
+      dioFactory: createDio,
+    ).downloadArtifact(artifact, cancelToken: cancelToken);
+
+    expect(result.isLeft(), isTrue);
+    expect(result.getLeft().toNullable(), isA<AppUpdateCancelledError>());
+
+    final partFile = File("$tempDir/resources/updates/update-$contentHash.apk.part");
+    expect(partFile.existsSync(), isTrue);
+    expect(partFile.lengthSync(), 16);
+    expect(File("$tempDir/resources/updates/update-$contentHash.apk").existsSync(), isFalse);
   });
 }
 

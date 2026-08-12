@@ -35,6 +35,13 @@ class AppUpdateDownloadError extends AppUpdateError {
   String toString() => message;
 }
 
+class AppUpdateCancelledError extends AppUpdateError {
+  const AppUpdateCancelledError();
+
+  @override
+  String toString() => "Download cancelled";
+}
+
 class AppUpdateVerifyError extends AppUpdateError {
   const AppUpdateVerifyError({required this.message});
 
@@ -173,10 +180,17 @@ class AppUpdateService {
 
   /// Downloads and verifies the APK for [artifact] into the app cache.
   ///
-  /// [onProgress] receives bytes received and total artifact size in bytes.
+  /// Streams the response to disk (never buffering the whole artifact in
+  /// memory). A leftover `.part` file from an interrupted attempt is resumed
+  /// with an HTTP `Range` request; servers without range support restart the
+  /// transfer from scratch. [onProgress] receives cumulative bytes received
+  /// and the total artifact size in bytes. Cancelling [cancelToken] aborts the
+  /// transfer, keeps the `.part` file for later resume, and returns
+  /// [AppUpdateCancelledError].
   Future<Either<AppUpdateError, String>> downloadArtifact(
     AppUpdateArtifact artifact, {
     void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
   }) async {
     try {
       final dir = Directory(_updatesDirPath());
@@ -189,14 +203,36 @@ class AppUpdateService {
         final existingLength = apkFile.lengthSync();
         if (existingLength == artifact.size) {
           final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
-          if (verifyResult.isRight()) return Right(apkFile.path);
+          if (verifyResult.isRight()) {
+            onProgress?.call(artifact.size, artifact.size);
+            return Right(apkFile.path);
+          }
         }
         apkFile.deleteSync();
       }
 
       final tempPath = "$apkPath.part";
       final tempFile = File(tempPath);
-      if (tempFile.existsSync()) tempFile.deleteSync();
+
+      var resumedBytes = 0;
+      if (tempFile.existsSync()) {
+        final partialLength = tempFile.lengthSync();
+        if (partialLength > artifact.size) {
+          // Cannot belong to this artifact; start over.
+          tempFile.deleteSync();
+        } else if (partialLength == artifact.size) {
+          // Transfer completed but the rename was interrupted.
+          tempFile.renameSync(apkFile.path);
+          final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
+          if (verifyResult.isRight()) {
+            onProgress?.call(artifact.size, artifact.size);
+            return Right(apkFile.path);
+          }
+          apkFile.deleteSync();
+        } else {
+          resumedBytes = partialLength;
+        }
+      }
 
       final dio = dioFactory();
       final uri = remoteCatalogService.blobUri(
@@ -204,33 +240,62 @@ class AppUpdateService {
         artifact.contentHash,
       );
 
+      IOSink? sink;
       try {
-        final response = await dio.getUri<Uint8List>(
+        final response = await dio.getUri<ResponseBody>(
           uri,
           options: Options(
-            responseType: ResponseType.bytes,
-            headers: <String, dynamic>{"Accept-Encoding": "identity"},
+            responseType: ResponseType.stream,
+            headers: <String, dynamic>{
+              "Accept-Encoding": "identity",
+              if (resumedBytes > 0) "Range": "bytes=$resumedBytes-",
+            },
             followRedirects: true,
             validateStatus: (status) => status != null && status >= 200 && status < 300,
           ),
-          onReceiveProgress: (received, total) {
-            onProgress?.call(received, total);
-          },
+          cancelToken: cancelToken,
         );
-        final data = response.data;
-        if (data is! Uint8List) {
-          return const Left(AppUpdateDownloadError(message: "Download returned unexpected data"));
+        final body = response.data;
+        if (body == null) {
+          return const Left(AppUpdateDownloadError(message: "Download returned no data"));
         }
-        await tempFile.writeAsBytes(data, flush: true);
+
+        final appending = resumedBytes > 0 && response.statusCode == 206;
+        var received = appending ? resumedBytes : 0;
+        sink = tempFile.openWrite(mode: appending ? FileMode.append : FileMode.write);
+        onProgress?.call(received, artifact.size);
+
+        try {
+          await for (final chunk in body.stream) {
+            sink.add(chunk);
+            received += chunk.length;
+            onProgress?.call(received, artifact.size);
+          }
+        } finally {
+          await sink.flush();
+          await sink.close();
+          sink = null;
+        }
+
+        if (received != artifact.size) {
+          return Left(
+            AppUpdateDownloadError(
+              message: "Incomplete download: expected ${artifact.size} bytes, got $received",
+            ),
+          );
+        }
 
         tempFile.renameSync(apkFile.path);
 
         final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
+        if (verifyResult.isLeft()) apkFile.deleteSync();
         return verifyResult.fold(Left.new, (_) => Right(apkFile.path));
       } finally {
+        if (sink != null) await sink.close();
         dio.close();
       }
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return const Left(AppUpdateCancelledError());
       return Left(AppUpdateDownloadError(message: "Download failed: ${e.message ?? e.toString()}"));
     } on FileSystemException catch (e) {
       return Left(AppUpdateDownloadError(message: "File system error: ${e.message}"));

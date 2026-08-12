@@ -34,4 +34,14 @@ class AppVersionStateService extends _$AppVersionStateService {
     ref.read(appVersionStateStoreProvider).clearReleaseAcknowledgment();
     state = ref.read(appVersionStateStoreProvider).state;
   }
+
+  void setPendingInstall(PendingInstall pending) {
+    ref.read(appVersionStateStoreProvider).setPendingInstall(pending);
+    state = ref.read(appVersionStateStoreProvider).state;
+  }
+
+  void clearPendingInstall() {
+    ref.read(appVersionStateStoreProvider).clearPendingInstall();
+    state = ref.read(appVersionStateStoreProvider).state;
+  }
 }

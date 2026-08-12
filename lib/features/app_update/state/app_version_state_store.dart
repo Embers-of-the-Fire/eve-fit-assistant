@@ -26,6 +26,20 @@ class AppVersionStateStore {
 
   String? get lastAcknowledgedReleaseId => _state.lastAcknowledgedReleaseId;
 
+  PendingInstall? get pendingInstall => _state.pendingInstall;
+
+  void setPendingInstall(PendingInstall pending) {
+    if (_state.pendingInstall == pending) return;
+    _state = _state.copyWith(pendingInstall: pending);
+    _sync();
+  }
+
+  void clearPendingInstall() {
+    if (_state.pendingInstall == null) return;
+    _state = _state.copyWith(pendingInstall: null);
+    _sync();
+  }
+
   void setLastSeenAppVersion(String version) {
     if (_state.lastSeenAppVersion == version) return;
     _state = _state.copyWith(lastSeenAppVersion: version);
