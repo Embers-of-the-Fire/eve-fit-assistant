@@ -13,6 +13,10 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     private lateinit var installChannel: MethodChannel
 
+    init {
+        System.loadLibrary("rust_lib_eve_fit_assistant")
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 

@@ -74,3 +74,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("rustls:rustls-platform-verifier:latest.release")
+}
+
