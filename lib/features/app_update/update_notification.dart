@@ -57,6 +57,7 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  Future<void>? _initializing;
 
   @override
   void Function()? onInstallRequested;
@@ -70,8 +71,12 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
       lookupAppLocalizations(ui.Locale(AppSettingService.appSetting.locale.name));
 
   @override
-  Future<void> initialize() async {
-    if (!_supported || _initialized) return;
+  Future<void> initialize() {
+    if (!_supported || _initialized) return Future.value();
+    return _initializing ??= _initialize().whenComplete(() => _initializing = null);
+  }
+
+  Future<void> _initialize() async {
     try {
       await _plugin.initialize(
         settings: const InitializationSettings(
@@ -111,7 +116,9 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
 
   @override
   Future<void> showDownloadProgress({required int receivedBytes, required int totalBytes}) async {
-    if (!_supported || !_initialized) return;
+    if (!_supported) return;
+    await initialize();
+    if (!_initialized) return;
     final l10n = _l10n;
     final determinate = totalBytes > 0;
     await _show(
@@ -141,7 +148,9 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
 
   @override
   Future<void> showReadyToInstall({required String version}) async {
-    if (!_supported || !_initialized) return;
+    if (!_supported) return;
+    await initialize();
+    if (!_initialized) return;
     final l10n = _l10n;
     await _show(
       title: l10n.appUpdateNotificationReadyTitle,
@@ -160,7 +169,9 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
 
   @override
   Future<void> showFailed() async {
-    if (!_supported || !_initialized) return;
+    if (!_supported) return;
+    await initialize();
+    if (!_initialized) return;
     final l10n = _l10n;
     await _show(
       title: l10n.appUpdateNotificationFailedTitle,
@@ -175,7 +186,9 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
 
   @override
   Future<void> dismiss() async {
-    if (!_supported || !_initialized) return;
+    if (!_supported) return;
+    await initialize();
+    if (!_initialized) return;
     try {
       await _plugin.cancel(id: _notificationId);
     } on Object catch (e) {
