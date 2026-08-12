@@ -13,64 +13,57 @@ class _DroneSlotRow extends ConsumerWidget {
   final FitContext fitContext;
   final FitInteractionOptions interactionOptions;
 
-  List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) => <SlidableAction>[
+  List<TileAction> _buildStartActions(BuildContext context, WidgetRef ref) => <TileAction>[
     if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 1)
-      SlidableAction(
+      TileAction(
         onPressed: (_) => _handleSetAmount(context, ref, 1),
         backgroundColor: Colors.green.shade200,
         foregroundColor: Colors.black,
         label: "x1",
-        padding: .zero,
       ),
     if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 5)
-      SlidableAction(
+      TileAction(
         onPressed: (_) => _handleSetAmount(context, ref, 5),
         backgroundColor: Colors.green.shade400,
         foregroundColor: Colors.white,
         label: "x5",
-        padding: .zero,
       ),
   ];
 
-  List<SlidableAction> _buildEndActions(BuildContext context, WidgetRef ref) => <SlidableAction>[
+  List<TileAction> _buildEndActions(BuildContext context, WidgetRef ref) => <TileAction>[
     if ((fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0) > 1)
-      SlidableAction(
+      TileAction(
         onPressed: (_) => _handleAddAmount(context, ref, -1),
         autoClose: false,
         backgroundColor: Colors.red.shade400,
         foregroundColor: Colors.white,
         label: "-1",
-        padding: .zero,
       ),
-    SlidableAction(
+    TileAction(
       onPressed: (_) => _handleAddAmount(context, ref, 1),
       autoClose: false,
       backgroundColor: Colors.green.shade400,
       foregroundColor: Colors.black,
       label: "+1",
-      padding: .zero,
     ),
-    SlidableAction(
+    TileAction(
       onPressed: (_) => _handleRemoveDrone(context, ref),
       backgroundColor: colorActionDelete,
       foregroundColor: Colors.white,
       icon: Icons.delete,
       label: context.l10n.delete,
-      padding: .zero,
     ),
   ];
 
-  List<SlidableAction> _buildRecoveryActions(BuildContext context, WidgetRef ref) =>
-      <SlidableAction>[
-        SlidableAction(
-          onPressed: (_) => _handleRemoveDrone(context, ref),
-          backgroundColor: colorActionDelete,
-          foregroundColor: Colors.white,
-          icon: Icons.delete,
-          label: context.l10n.delete,
-          padding: .zero,
-        ),
-      ];
+  List<TileAction> _buildRecoveryActions(BuildContext context, WidgetRef ref) => <TileAction>[
+    TileAction(
+      onPressed: (_) => _handleRemoveDrone(context, ref),
+      backgroundColor: colorActionDelete,
+      foregroundColor: Colors.white,
+      icon: Icons.delete,
+      label: context.l10n.delete,
+    ),
+  ];
 
   Future<void> _handleSetAmount(BuildContext context, WidgetRef ref, int amount) async {
     await fitContext.fitWrapper.changeDroneAmount(slotIdent.index, amount);
@@ -92,13 +85,9 @@ class _DroneSlotRow extends ConsumerWidget {
     if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
-      endActionPane: ActionPane(
-        extentRatio: 0.15 * recoveryActions.length,
-        motion: const StretchMotion(),
-        children: recoveryActions,
-      ),
+      endActionPane: buildTileActionPane(recoveryActions),
       child: SlidableEdgeZone(
-        child: ListTile(title: Text(title), trailing: Text("x $quantity")),
+        child: TileSecondaryActionRegion(actions: recoveryActions, child: content),
       ),
     );
   }
@@ -170,17 +159,11 @@ class _DroneSlotRow extends ConsumerWidget {
     if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
-      startActionPane: ActionPane(
-        extentRatio: 0.15 * startActions.length,
-        motion: const StretchMotion(),
-        children: startActions,
+      startActionPane: buildTileActionPane(startActions),
+      endActionPane: buildTileActionPane(endActions),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),
-      endActionPane: ActionPane(
-        extentRatio: 0.15 * endActions.length,
-        motion: const StretchMotion(),
-        children: endActions,
-      ),
-      child: SlidableEdgeZone(child: content),
     );
   }
 }

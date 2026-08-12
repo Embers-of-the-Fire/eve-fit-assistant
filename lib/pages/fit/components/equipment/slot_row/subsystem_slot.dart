@@ -32,20 +32,25 @@ class _SubsystemSlotRow extends ConsumerWidget {
     await fitContext.fitWrapper.equipSlot(slotIdent, typeId, ref);
   }
 
-  ActionPane _buildReplaceActionPane(BuildContext context, WidgetRef ref) => ActionPane(
-    extentRatio: 0.15,
-    motion: const StretchMotion(),
-    children: [
-      SlidableAction(
-        onPressed: (_) => _handleReplaceSubsystem(context, ref),
-        backgroundColor: Colors.grey.shade200,
-        foregroundColor: Colors.black,
-        icon: Icons.change_circle_outlined,
-        label: context.l10n.edit,
-        padding: .zero,
-      ),
-    ],
-  );
+  List<TileAction> _buildReplaceActions(BuildContext context, WidgetRef ref) => [
+    TileAction(
+      onPressed: (_) => _handleReplaceSubsystem(context, ref),
+      backgroundColor: Colors.grey.shade200,
+      foregroundColor: Colors.black,
+      icon: Icons.change_circle_outlined,
+      label: context.l10n.edit,
+    ),
+  ];
+
+  List<TileAction> _buildRemoveActions(BuildContext context, WidgetRef ref) => [
+    TileAction(
+      onPressed: (_) => _handleRemoveSubsystem(ref),
+      backgroundColor: colorActionDelete,
+      foregroundColor: Colors.white,
+      icon: Icons.delete,
+      label: context.l10n.delete,
+    ),
+  ];
 
   Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) {
     final content = ListTile(title: Text(title));
@@ -53,23 +58,15 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return content;
     }
 
+    final startActions = _buildReplaceActions(context, ref);
+    final endActions = _buildRemoveActions(context, ref);
+
     return Slidable(
-      startActionPane: _buildReplaceActionPane(context, ref),
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => _handleRemoveSubsystem(ref),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+      startActionPane: buildTileActionPane(startActions),
+      endActionPane: buildTileActionPane(endActions),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),
-      child: SlidableEdgeZone(child: content),
     );
   }
 
@@ -148,23 +145,15 @@ class _SubsystemSlotRow extends ConsumerWidget {
       return content;
     }
 
+    final startActions = _buildReplaceActions(context, ref);
+    final endActions = _buildRemoveActions(context, ref);
+
     return Slidable(
-      startActionPane: _buildReplaceActionPane(context, ref),
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => _handleRemoveSubsystem(ref),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+      startActionPane: buildTileActionPane(startActions),
+      endActionPane: buildTileActionPane(endActions),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),
-      child: SlidableEdgeZone(child: content),
     );
   }
 }

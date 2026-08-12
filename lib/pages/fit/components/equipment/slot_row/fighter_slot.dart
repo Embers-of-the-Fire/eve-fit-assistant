@@ -109,50 +109,45 @@ class _FighterSlotRow extends ConsumerWidget {
         representative?.getAttribute(EveConstAttrID.fighterSquadronMaxSize).round() ?? 0;
     final maxQuantity = resolvedMaxQuantity > 0 ? resolvedMaxQuantity : storedFighter.quantity;
     final availableAbilityMask = _resolveAbilityMask(representative);
-    final startActions = <SlidableAction>[
+    final startActions = <TileAction>[
       if (storedFighter.quantity != 1)
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _setAmount(1),
           backgroundColor: Colors.green.shade200,
           foregroundColor: Colors.black,
           label: "x1",
-          padding: .zero,
         ),
       if (maxQuantity > 1 && storedFighter.quantity != maxQuantity)
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _setAmount(maxQuantity),
           backgroundColor: Colors.green.shade400,
           foregroundColor: Colors.white,
           label: context.l10n.fitActionFill,
-          padding: .zero,
         ),
     ];
-    final endActions = <SlidableAction>[
+    final endActions = <TileAction>[
       if (storedFighter.quantity > 1)
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _changeAmount(-1),
           autoClose: false,
           backgroundColor: Colors.red.shade400,
           foregroundColor: Colors.white,
           label: "-1",
-          padding: .zero,
         ),
       if (maxQuantity <= 1 || storedFighter.quantity < maxQuantity)
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _changeAmount(1),
           autoClose: false,
           backgroundColor: Colors.green.shade400,
           foregroundColor: Colors.black,
           label: "+1",
-          padding: .zero,
         ),
-      SlidableAction(
+      TileAction(
         onPressed: (_) => fitContext.fitWrapper.removeFighter(slotIdent.index),
         backgroundColor: colorActionDelete,
         foregroundColor: Colors.white,
         icon: Icons.delete,
         label: context.l10n.delete,
-        padding: .zero,
       ),
     ];
     final dps = representative?.getAttribute(EveConstExtendedAttrID.fighterDamagePerSecond);
@@ -240,19 +235,11 @@ class _FighterSlotRow extends ConsumerWidget {
     if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
-      startActionPane: startActions.isEmpty
-          ? null
-          : ActionPane(
-              extentRatio: 0.15 * startActions.length,
-              motion: const StretchMotion(),
-              children: startActions,
-            ),
-      endActionPane: ActionPane(
-        extentRatio: 0.15 * endActions.length,
-        motion: const StretchMotion(),
-        children: endActions,
+      startActionPane: buildTileActionPane(startActions),
+      endActionPane: buildTileActionPane(endActions),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),
-      child: SlidableEdgeZone(child: content),
     );
   }
 }
