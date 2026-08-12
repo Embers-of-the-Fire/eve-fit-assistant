@@ -14,6 +14,7 @@ typedef AnnouncementStateMigration = ({
 });
 
 class AnnouncementStateStore {
+  // ignore: prefer_initializing_formals
   AnnouncementStateStore({required DocStore store}) : _store = store;
 
   static const int _currentVersion = 3;

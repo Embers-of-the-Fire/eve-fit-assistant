@@ -20,7 +20,9 @@ class _PriceRequest<T> {
 /// - Individual failures resolve to `null`; they never fail other requests.
 class PriceWorkerPool<T> {
   PriceWorkerPool({required PriceFetcher<T> fetcher, int workerCount = defaultWorkerCount})
+    // ignore: prefer_initializing_formals
     : _fetcher = fetcher,
+      // ignore: prefer_initializing_formals
       _workerCount = workerCount;
 
   static const defaultWorkerCount = 4;

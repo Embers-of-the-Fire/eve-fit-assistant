@@ -41,8 +41,7 @@ class CatalogParseError extends CatalogError {
 /// resource indexes, blobs) are content-addressed and fetched with
 /// `CachePolicy.noCache` so they are not managed by the HTTP cache.
 class RemoteCatalogService {
-  RemoteCatalogService({required this.dio, required this.originUrl, Dio? blobDio})
-    : _blobDio = blobDio;
+  RemoteCatalogService({required this.dio, required this.originUrl});
 
   final Dio dio;
   final String originUrl;

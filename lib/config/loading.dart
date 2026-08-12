@@ -82,7 +82,7 @@ class GlobalLoading {
       _isLoading = true;
     } else if (_loadingMessages.isNotEmpty && _isLoading) {
       final currentMessage = _loadingMessages.last;
-      EasyLoading.instance.key?.currentState?.updateStatus(currentMessage.resolve(l10n));
+      unawaited(EasyLoading.show(status: currentMessage.resolve(l10n)));
     }
   }
 }

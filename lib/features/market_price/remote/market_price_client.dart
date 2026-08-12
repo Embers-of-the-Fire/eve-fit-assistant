@@ -19,6 +19,7 @@ const marketPriceMaxStale = Duration(minutes: 5);
 /// are expected to go through the worker pool for dedup and rate limiting.
 class MarketPriceClient {
   MarketPriceClient({required MarketServer server, Dio? dio, CacheOptions? cacheOptions})
+    // ignore: prefer_initializing_formals
     : _server = server,
       _dio = dio ?? createRemoteDio(),
       _cacheOptionsOverride = cacheOptions;

@@ -22,6 +22,8 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "collection.g.dart";
 
+// ignore_for_file: prefer_initializing_formals
+
 /// Pre-loaded type data from the active checkout's resource snapshot.
 ///
 /// Built on checkout activation via [DataReadinessNotifier] which decodes

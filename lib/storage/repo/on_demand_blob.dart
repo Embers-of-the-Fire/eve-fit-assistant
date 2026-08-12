@@ -19,7 +19,9 @@ import "package:fpdart/fpdart.dart";
 /// readers of the same missing blob trigger exactly one download.
 class OnDemandBlobFetcher {
   OnDemandBlobFetcher({required AssetStore assetStore, required RemoteCatalogService remoteCatalog})
+    // ignore: prefer_initializing_formals
     : _assetStore = assetStore,
+      // ignore: prefer_initializing_formals
       _remoteCatalog = remoteCatalog;
 
   final AssetStore _assetStore;

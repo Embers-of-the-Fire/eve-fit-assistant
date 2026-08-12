@@ -255,11 +255,13 @@ class _ScreenshotColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: width,
-    decoration: BoxDecoration(
-      color: context.theme.colorScheme.surface,
+    foregroundDecoration: BoxDecoration(
       border: Border.all(color: context.theme.colorScheme.outlineVariant),
     ),
-    child: Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: child),
+    child: Material(
+      color: context.theme.colorScheme.surface,
+      child: Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: child),
+    ),
   );
 }
 

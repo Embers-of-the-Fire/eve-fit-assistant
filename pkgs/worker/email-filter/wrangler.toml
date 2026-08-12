@@ -1,6 +1,6 @@
 name = "efa-email-filter"
 main = "src/index.ts"
-compatibility_date = "2026-06-10"
+compatibility_date = "2026-08-01"
 
 workers_dev = false
 preview_urls = false

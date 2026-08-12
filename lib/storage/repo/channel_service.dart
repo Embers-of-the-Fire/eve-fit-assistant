@@ -23,6 +23,7 @@ import "package:fpdart/fpdart.dart";
 /// asynchronous (OPFS on web is async-only).
 class ChannelService {
   const ChannelService({required this.remoteCatalogService, required BlobStore store})
+    // ignore: prefer_initializing_formals
     : _store = store;
 
   final RemoteCatalogService remoteCatalogService;
