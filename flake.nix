@@ -17,6 +17,31 @@
           permittedInsecurePackages = [ "minio-2025-10-15T17-29-55Z" ];
           android_sdk.accept_license = true;
         };
+        overlays = [
+          (self: super: {
+            # Use FRB codegen's prerelease version.
+            # Note that we're hacking through the rust building by directly fetchurl.
+            # This should be changed once upstream released a stable version and nixpkgs accepts that.
+            flutter_rust_bridge_codegen = pkgs.stdenv.mkDerivation rec {
+              pname = "flutter_rust_bridge_codegen";
+              version = "2.13.0-beta.6";
+              src = super.fetchzip {
+                url = "https://github.com/fzyzcjy/flutter_rust_bridge/releases/download/v${version}/flutter_rust_bridge_codegen-x86_64-unknown-linux-gnu-v2.13.0-beta.6.tgz";
+                sha256 = "sha256-CpTIFmauY9hP8Q2ZyVxeTYZNsD8TLM42FQYfkN9zJHk=";
+              };
+              dontBuild = true;
+
+              installPhase = ''
+                runHook preInstall
+                mkdir -p $out/bin
+
+                install -m755 flutter_rust_bridge_codegen $out/bin/flutter_rust_bridge_codegen
+
+                runHook postInstall
+              '';
+            };
+          })
+        ];
       };
 
       androidVersions = [
