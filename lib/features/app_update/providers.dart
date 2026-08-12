@@ -5,7 +5,6 @@ import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
-import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/app_update/update_notification.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -50,10 +49,12 @@ class AppUpdateController extends _$AppUpdateController {
 
   UpdateNotificationService get _notifications => ref.read(updateNotificationServiceProvider);
 
-  /// The version-state store, when initialized (it is not in unit tests).
-  AppVersionStateStore? get _versionStore {
+  /// The version-state service notifier, when initialized (the underlying
+  /// store is not in unit tests). Mutations must go through the notifier so
+  /// Riverpod state stays in sync with the store.
+  AppVersionStateService? get _versionState {
     try {
-      return ref.read(appVersionStateStoreProvider);
+      return ref.read(appVersionStateServiceProvider.notifier);
     } on Object {
       return null;
     }
@@ -87,7 +88,7 @@ class AppUpdateController extends _$AppUpdateController {
     final artifact = artifactResult.getRight().toNullable()!;
 
     // A new download supersedes any previously staged install.
-    _versionStore?.clearPendingInstall();
+    _versionState?.clearPendingInstall();
     ref.read(appUpdateSessionProvider.notifier).activate(release);
 
     final notifications = _notifications;
@@ -124,7 +125,7 @@ class AppUpdateController extends _$AppUpdateController {
 
     final apkPath = downloadResult.getRight().toNullable()!;
     state = AppUpdateStatus.readyToInstall(apkPath: apkPath);
-    _versionStore?.setPendingInstall(
+    _versionState?.setPendingInstall(
       PendingInstall(
         releaseId: release.releaseId,
         version: release.version,
