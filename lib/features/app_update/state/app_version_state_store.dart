@@ -17,7 +17,7 @@ class AppVersionStateStore {
 
   Future<void> init() async {
     _state = await _readFromStore();
-    _sync();
+    unawaited(_sync());
   }
 
   AppVersionState get state => _state;
@@ -26,29 +26,43 @@ class AppVersionStateStore {
 
   String? get lastAcknowledgedReleaseId => _state.lastAcknowledgedReleaseId;
 
+  PendingInstall? get pendingInstall => _state.pendingInstall;
+
+  Future<void> setPendingInstall(PendingInstall pending) {
+    if (_state.pendingInstall == pending) return Future<void>.value();
+    _state = _state.copyWith(pendingInstall: pending);
+    return _sync();
+  }
+
+  Future<void> clearPendingInstall() {
+    if (_state.pendingInstall == null) return Future<void>.value();
+    _state = _state.copyWith(pendingInstall: null);
+    return _sync();
+  }
+
   void setLastSeenAppVersion(String version) {
     if (_state.lastSeenAppVersion == version) return;
     _state = _state.copyWith(lastSeenAppVersion: version);
-    _sync();
+    unawaited(_sync());
   }
 
   void acknowledgeRelease(String releaseId) {
     if (_state.lastAcknowledgedReleaseId == releaseId) return;
     _state = _state.copyWith(lastAcknowledgedReleaseId: releaseId);
-    _sync();
+    unawaited(_sync());
   }
 
   void clearReleaseAcknowledgment() {
     if (_state.lastAcknowledgedReleaseId == null) return;
     _state = _state.copyWith(lastAcknowledgedReleaseId: null);
-    _sync();
+    unawaited(_sync());
   }
 
   Future<void> get ensureSynced => _pendingSync;
 
   void replaceState(AppVersionState newState) {
     _state = newState;
-    _sync();
+    unawaited(_sync());
   }
 
   Future<AppVersionState> _readFromStore() async {
@@ -68,9 +82,9 @@ class AppVersionStateStore {
   static AppVersionState _migrate(AppVersionState old) =>
       old.copyWith(schemaVersion: _currentVersion);
 
-  void _sync() {
+  Future<void> _sync() {
     final state = _state;
-    _pendingSync = _pendingSync
+    return _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
         .then((_) => _store.write(_key, jsonEncode(state.toJson())));
   }

@@ -1,6 +1,7 @@
 @TestOn("vm")
 library;
 
+import "dart:async";
 import "dart:io";
 
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
@@ -14,6 +15,7 @@ import "package:eve_fit_assistant/features/announcements/repository/announcement
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
+import "package:eve_fit_assistant/features/app_update/models/app_version_state.dart";
 import "package:eve_fit_assistant/features/app_update/platform/manual_download_dialog.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
@@ -28,13 +30,16 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fixnum/fixnum.dart";
 import "package:fpdart/fpdart.dart";
+import "package:mocktail/mocktail.dart";
 
 import "../../test_helpers.dart";
+
+class _MockAppUpdateService extends Mock implements AppUpdateService {}
 
 class _FakeAppUpdateController extends AppUpdateController {
   _FakeAppUpdateController({required this.statusAfterDownload});
 
-  final AppUpdateStatus statusAfterDownload;
+  AppUpdateStatus statusAfterDownload;
 
   var downloadCalls = 0;
   var installCalls = 0;
@@ -45,7 +50,13 @@ class _FakeAppUpdateController extends AppUpdateController {
   @override
   Future<void> download() async {
     downloadCalls += 1;
+    // Mirror the real controller: the session provider is what the gate
+    // watches to surface the install prompt in the default strategy.
+    ref.read(appUpdateSessionProvider.notifier).activate(release);
     state = const AppUpdateStatus.downloading(receivedBytes: 0, totalBytes: 100);
+    // Yield so the update dialog has closed before the download "finishes",
+    // like a real network transfer.
+    await Future<void>.delayed(Duration.zero);
     state = statusAfterDownload;
   }
 
@@ -137,6 +148,7 @@ void main() {
     required _FakeAppUpdateController controller,
     AppUpdatePlatformAdapter platformAdapter = const AndroidAppUpdateAdapter(),
     AppUpdateArtifact? artifact,
+    AppUpdateService? service,
   }) => ProviderScope(
     overrides: [
       appSettingServiceProvider.overrideWithValue(setting),
@@ -147,6 +159,7 @@ void main() {
       appUpdateArtifactProvider.overrideWith((_, _) async => artifact),
       appReleaseNoteProvider.overrideWith((_, _) async => null),
       appUpdatePlatformAdapterProvider.overrideWithValue(platformAdapter),
+      if (service != null) appUpdateServiceProvider.overrideWithValue(service),
     ],
     child: testApp(const AppReleaseUpdateGate(child: Scaffold(body: Text("gate child")))),
   );
@@ -165,6 +178,37 @@ void main() {
     expect(find.byType(AppReleaseUpdateDialog), findsOneWidget);
     expect(find.byType(ConfirmDialog), findsNothing);
     expect(controller.downloadCalls, 0);
+  });
+
+  testWidgets("default strategy prompts install when the background download finishes", (
+    tester,
+  ) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
+    );
+
+    await tester.pumpWidget(
+      buildGate(setting: _setting(silentUpdate: false), release: release, controller: controller),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppReleaseUpdateDialog), findsOneWidget);
+
+    await tester.tap(find.text("下载"));
+    await tester.pumpAndSettle();
+
+    // The dialog closed and the download ran in the background...
+    expect(controller.downloadCalls, 1);
+    expect(find.byType(AppReleaseUpdateDialog), findsNothing);
+    // ...and the install confirmation surfaced automatically on completion.
+    expect(find.byType(ConfirmDialog), findsOneWidget);
+
+    await tester.tap(find.text("确认"));
+    await tester.pumpAndSettle();
+
+    expect(controller.installCalls, 1);
+    expect(find.byType(ConfirmDialog), findsNothing);
   });
 
   testWidgets("silent strategy downloads in background and only asks to install", (tester) async {
@@ -235,6 +279,39 @@ void main() {
     expect(versionStore.lastAcknowledgedReleaseId, isNull);
   });
 
+  testWidgets("retrying a failed download re-prompts install for the same release", (tester) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.failed(message: "network down", canRetry: true),
+    );
+
+    await tester.pumpWidget(
+      buildGate(setting: _setting(silentUpdate: true), release: release, controller: controller),
+    );
+    await tester.pumpAndSettle();
+
+    // The first attempt failed: no install prompt surfaces.
+    expect(controller.downloadCalls, 1);
+    expect(find.byType(ConfirmDialog), findsNothing);
+
+    // Retry the same release (e.g. from the version page check tile). The
+    // session provider re-activates an equal release, so the gate must still
+    // be listening when the download finishes.
+    controller.statusAfterDownload = const AppUpdateStatus.readyToInstall(
+      apkPath: "/tmp/update.apk",
+    );
+    unawaited(controller.download());
+    await tester.pumpAndSettle();
+
+    expect(controller.downloadCalls, 2);
+    expect(find.byType(ConfirmDialog), findsOneWidget);
+
+    await tester.tap(find.text("确认"));
+    await tester.pumpAndSettle();
+
+    expect(controller.installCalls, 1);
+  });
+
   testWidgets("platform without self-update shows the manual download dialog", (tester) async {
     final release = _release();
     final controller = _FakeAppUpdateController(
@@ -289,5 +366,88 @@ void main() {
     expect(find.byType(ConfirmDialog), findsNothing);
     // The resolved Android artifact size stays hidden on Linux.
     expect(find.text("100B"), findsNothing);
+  });
+
+  testWidgets("restores a verified staged install and prompts to install", (tester) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
+    );
+    final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
+    await tester.runAsync(
+      () => versionStore.setPendingInstall(
+        PendingInstall(
+          releaseId: release.releaseId,
+          version: release.version,
+          apkPath: staged.path,
+          contentHash: "hash",
+        ),
+      ),
+    );
+
+    final service = _MockAppUpdateService();
+    when(
+      () => service.verifyArtifact(staged.path, "hash"),
+    ).thenAnswer((_) async => const Right(unit));
+
+    await tester.pumpWidget(
+      buildGate(
+        setting: _setting(silentUpdate: false),
+        release: release,
+        controller: controller,
+        service: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The staged APK is reused: no re-download, straight to the install
+    // confirmation instead of the update dialog.
+    expect(controller.downloadCalls, 0);
+    expect(find.byType(AppReleaseUpdateDialog), findsNothing);
+    expect(find.byType(ConfirmDialog), findsOneWidget);
+
+    await tester.tap(find.text("确认"));
+    await tester.pumpAndSettle();
+
+    expect(controller.installCalls, 1);
+    expect(versionStore.lastSeenAppVersion, "2.0.0");
+  });
+
+  testWidgets("drops a corrupt staged install and shows the update dialog", (tester) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
+    );
+    final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
+    await tester.runAsync(
+      () => versionStore.setPendingInstall(
+        PendingInstall(
+          releaseId: release.releaseId,
+          version: release.version,
+          apkPath: staged.path,
+          contentHash: "hash",
+        ),
+      ),
+    );
+
+    final service = _MockAppUpdateService();
+    when(
+      () => service.verifyArtifact(staged.path, "hash"),
+    ).thenAnswer((_) async => const Left(AppUpdateVerifyError(message: "hash mismatch")));
+
+    await tester.pumpWidget(
+      buildGate(
+        setting: _setting(silentUpdate: false),
+        release: release,
+        controller: controller,
+        service: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppReleaseUpdateDialog), findsOneWidget);
+    expect(find.byType(ConfirmDialog), findsNothing);
+    expect(controller.downloadCalls, 0);
+    expect(versionStore.pendingInstall, isNull);
   });
 }

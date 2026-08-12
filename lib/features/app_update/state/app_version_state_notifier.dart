@@ -34,4 +34,18 @@ class AppVersionStateService extends _$AppVersionStateService {
     ref.read(appVersionStateStoreProvider).clearReleaseAcknowledgment();
     state = ref.read(appVersionStateStoreProvider).state;
   }
+
+  Future<void> setPendingInstall(PendingInstall pending) async {
+    final store = ref.read(appVersionStateStoreProvider);
+    final persisted = store.setPendingInstall(pending);
+    state = store.state;
+    await persisted;
+  }
+
+  Future<void> clearPendingInstall() async {
+    final store = ref.read(appVersionStateStoreProvider);
+    final persisted = store.clearPendingInstall();
+    state = store.state;
+    await persisted;
+  }
 }

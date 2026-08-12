@@ -5,6 +5,7 @@ import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
+import "package:eve_fit_assistant/features/app_update/format.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";
 import "package:eve_fit_assistant/pages/announcements/detail_page.dart";
@@ -15,6 +16,8 @@ import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+
+export "package:eve_fit_assistant/features/app_update/format.dart" show formatUpdateBytes;
 
 /// Resolves the best-matching Android artifact for a release, exposing the
 /// download size shown in the update dialog. `null` when the release has no
@@ -53,12 +56,6 @@ bool _isSameVersion(String a, String b) {
   }
 
   return compareAppVersions(normalize(a), normalize(b)) == 0;
-}
-
-String formatUpdateBytes(int bytes) {
-  if (bytes < 1024) return "${bytes}B";
-  if (bytes < 1024 * 1024) return "${(bytes / 1024).toStringAsFixed(1)}KB";
-  return "${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB";
 }
 
 /// Version + download-size summary shown in the update dialog.

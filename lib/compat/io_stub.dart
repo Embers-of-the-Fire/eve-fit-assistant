@@ -246,6 +246,7 @@ abstract class Link implements FileSystemEntity {
 abstract class IOSink implements StreamSink<List<int>>, StringSink {
   Encoding get encoding;
   set encoding(Encoding encoding);
+  Future<void> flush();
 }
 
 /// Stub for `dart:io` `RandomAccessFile`.
