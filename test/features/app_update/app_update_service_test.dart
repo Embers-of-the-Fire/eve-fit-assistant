@@ -128,7 +128,7 @@ class _MismatchedRangeFakeAdapter implements HttpClientAdapter {
   _MismatchedRangeFakeAdapter(this.data);
 
   final Uint8List data;
-  String? lastRange;
+  final List<String?> seenRanges = <String?>[];
 
   @override
   Future<ResponseBody> fetch(
@@ -137,8 +137,9 @@ class _MismatchedRangeFakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final range = options.headers["Range"];
-    lastRange = range is String ? range : null;
-    if (lastRange != null) {
+    final rangeHeader = range is String ? range : null;
+    seenRanges.add(rangeHeader);
+    if (rangeHeader != null) {
       final remaining = data.sublist(128);
       return ResponseBody(
         Stream.value(remaining),
@@ -497,7 +498,7 @@ void main() {
     if (result.isLeft()) {
       fail("download failed: ${result.getLeft().toNullable()}");
     }
-    expect(adapter.lastRange, isNull);
+    expect(adapter.seenRanges, <String?>["bytes=512-", null]);
     final apkPath = result.getRight().toNullable()!;
     expect(File(apkPath).lengthSync(), apkData.length);
   });
