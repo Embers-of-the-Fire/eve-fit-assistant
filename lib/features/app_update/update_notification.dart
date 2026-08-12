@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:isolate";
 import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/compat/io.dart";
@@ -9,9 +10,16 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
+import "package:path/path.dart" as p;
+import "package:path_provider/path_provider.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "update_notification.g.dart";
+
+// The @pragma("vm:entry-point") background notification handler turns this
+// into an "executable library", making the analyzer report its public API as
+// unreachable even though it is driven by the update gate/session layer.
+// ignore_for_file: unreachable_from_main
 
 /// Drives the Android system notification for background app-update
 /// downloads: an ongoing progress notification while downloading, a
@@ -48,6 +56,58 @@ abstract class UpdateNotificationService {
 @riverpodSingleton
 UpdateNotificationService updateNotificationService(Ref ref) => LocalUpdateNotificationService();
 
+/// [ui.IsolateNameServer] port the main isolate listens on for notification
+/// actions forwarded from the background isolate.
+const String _backgroundActionPortName = "efa.app_update.notification_action";
+
+/// Cache-dir file holding a notification action tapped while the app was
+/// terminated, drained on the next launch.
+const String _pendingActionFileName = "update_notification_pending_action";
+
+enum _BackgroundNotificationAction { cancel, install }
+
+/// Entry point for notification action taps dispatched to a background
+/// isolate. Both actions use `showsUserInterface: false`, so Android routes
+/// them here instead of the foreground callback, even while the app is
+/// running. Instance state is unavailable in this isolate: when the main
+/// isolate is alive the action is forwarded through an [ui.IsolateNameServer]
+/// port; otherwise (app terminated) it is persisted to the cache directory
+/// and drained by the next [LocalUpdateNotificationService.initialize].
+@pragma("vm:entry-point")
+Future<void> _onBackgroundNotificationResponse(NotificationResponse response) async {
+  if (response.notificationResponseType != NotificationResponseType.selectedNotificationAction) {
+    return;
+  }
+  final action = _backgroundActionForId(response.actionId);
+  if (action == null) return;
+  final port = ui.IsolateNameServer.lookupPortByName(_backgroundActionPortName);
+  if (port != null) {
+    port.send(action.name);
+    return;
+  }
+  try {
+    final cacheDir = await getApplicationCacheDirectory();
+    await File(
+      p.join(cacheDir.path, _pendingActionFileName),
+    ).writeAsString(action.name, flush: true);
+  } on Object catch (e) {
+    debugPrint("Failed to persist update notification action: $e");
+  }
+}
+
+_BackgroundNotificationAction? _backgroundActionForId(String? actionId) => switch (actionId) {
+  LocalUpdateNotificationService._cancelActionId => _BackgroundNotificationAction.cancel,
+  LocalUpdateNotificationService._installActionId => _BackgroundNotificationAction.install,
+  _ => null,
+};
+
+_BackgroundNotificationAction? _backgroundActionForName(String name) {
+  for (final action in _BackgroundNotificationAction.values) {
+    if (action.name == name) return action;
+  }
+  return null;
+}
+
 class LocalUpdateNotificationService implements UpdateNotificationService {
   static const int _notificationId = 4101;
   static const String _channelId = "app_updates";
@@ -56,6 +116,8 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
   static const String _installPayload = "app_update.install";
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final ReceivePort _backgroundActionPort = ReceivePort();
+  bool _backgroundActionPortRegistered = false;
   bool _initialized = false;
   Future<void>? _initializing;
 
@@ -83,6 +145,7 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
           android: AndroidInitializationSettings("@mipmap/ic_launcher"),
         ),
         onDidReceiveNotificationResponse: _handleResponse,
+        onDidReceiveBackgroundNotificationResponse: _onBackgroundNotificationResponse,
       );
       final android = _plugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -93,6 +156,8 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
           importance: Importance.low,
         ),
       );
+      _registerBackgroundActionPort();
+      await _drainPersistedBackgroundAction();
       _initialized = true;
     } on Object catch (e) {
       warning("Failed to initialize update notifications: $e");
@@ -216,13 +281,50 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
   }
 
   void _handleResponse(NotificationResponse response) {
-    final actionId = response.actionId;
-    if (actionId == _cancelActionId) {
-      onCancelRequested?.call();
-      return;
+    final action =
+        _backgroundActionForId(response.actionId) ??
+        (response.payload == _installPayload ? _BackgroundNotificationAction.install : null);
+    if (action != null) _dispatchAction(action);
+  }
+
+  void _dispatchAction(_BackgroundNotificationAction action) {
+    switch (action) {
+      case _BackgroundNotificationAction.cancel:
+        onCancelRequested?.call();
+      case _BackgroundNotificationAction.install:
+        onInstallRequested?.call();
     }
-    if (actionId == _installActionId || response.payload == _installPayload) {
-      onInstallRequested?.call();
+  }
+
+  /// Lets the background isolate forward action taps to this isolate while
+  /// the app is alive (see [_onBackgroundNotificationResponse]).
+  void _registerBackgroundActionPort() {
+    if (_backgroundActionPortRegistered) return;
+    ui.IsolateNameServer.removePortNameMapping(_backgroundActionPortName);
+    ui.IsolateNameServer.registerPortWithName(
+      _backgroundActionPort.sendPort,
+      _backgroundActionPortName,
+    );
+    _backgroundActionPort.listen((message) {
+      if (message is! String) return;
+      final action = _backgroundActionForName(message);
+      if (action != null) _dispatchAction(action);
+    });
+    _backgroundActionPortRegistered = true;
+  }
+
+  /// Drains a notification action persisted by the background isolate while
+  /// the app was terminated and dispatches it to the wired callback.
+  Future<void> _drainPersistedBackgroundAction() async {
+    try {
+      final cacheDir = await getApplicationCacheDirectory();
+      final file = File(p.join(cacheDir.path, _pendingActionFileName));
+      if (!file.existsSync()) return;
+      final action = _backgroundActionForName(await file.readAsString());
+      await file.delete();
+      if (action != null) _dispatchAction(action);
+    } on Object catch (e) {
+      warning("Failed to drain persisted update notification action: $e");
     }
   }
 }
