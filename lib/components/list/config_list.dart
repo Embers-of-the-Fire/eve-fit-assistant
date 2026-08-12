@@ -82,7 +82,7 @@ class _ConfigListTileItem extends ConfigListTile {
   final void Function()? onTap;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
+  Widget build(BuildContext context) => Material(
     color: context.theme.colorScheme.surfaceContainer,
     child: ListTile(
       leading: icon,
@@ -100,5 +100,5 @@ class _ConfigListTileCustom extends ConfigListTile {
 
   @override
   Widget build(BuildContext context) =>
-      ColoredBox(color: context.theme.colorScheme.surfaceContainer, child: child);
+      Material(color: context.theme.colorScheme.surfaceContainer, child: child);
 }
