@@ -19,9 +19,7 @@ class _PriceRequest<T> {
 ///   the fragile upstream API from request bursts when a fit opens.
 /// - Individual failures resolve to `null`; they never fail other requests.
 class PriceWorkerPool<T> {
-  PriceWorkerPool({required PriceFetcher<T> fetcher, int workerCount = defaultWorkerCount})
-    : _fetcher = fetcher,
-      _workerCount = workerCount;
+  PriceWorkerPool({required this._fetcher, this._workerCount = defaultWorkerCount});
 
   static const defaultWorkerCount = 4;
 

@@ -14,7 +14,7 @@ typedef AnnouncementStateMigration = ({
 });
 
 class AnnouncementStateStore {
-  AnnouncementStateStore({required DocStore store}) : _store = store;
+  AnnouncementStateStore({required this._store});
 
   static const int _currentVersion = 3;
   static const String _key = "announcement_state.json";

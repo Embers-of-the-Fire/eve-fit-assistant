@@ -44,7 +44,7 @@ String _platformName() {
 Map<String, String> _baseHeaders({Map<String, String>? extraHeaders}) => {
   if (!kIsWeb) "User-Agent": _efaUserAgent,
   if (!kIsWeb) "Accept-Encoding": "gzip, deflate",
-  if (extraHeaders != null) ...extraHeaders,
+  ...?extraHeaders,
 };
 
 /// Creates a [Dio] instance pre-configured for remote content fetches.

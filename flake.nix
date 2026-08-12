@@ -1,7 +1,7 @@
 {
   description = "Development shell for EVE Fit Assistant";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/64c08a7ca051951c8eae34e3e3cb1e202fe36786";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.fenix.url = "github:nix-community/fenix";
   inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -25,6 +25,7 @@
         34
         35
         36
+        37
       ];
       androidPlatformVersions = map toString androidVersions;
       androidBuildToolsVersions = map (v: "${v}.0.0") androidPlatformVersions;
@@ -153,20 +154,18 @@
         hash = "sha256-ptceK2zWb46NFsN60WRliYXgz1/KqVDJCkgokMudE+A=";
       };
 
-      appimagetool =
-        pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; }
-          ''
-            # The payload is a squashfs image appended to the static runtime.
-            # Locate it via the 'hsqs' magic; the runtime contains a false
-            # positive, so try every offset until extraction succeeds.
-            for off in $(grep -abo hsqs ${appimagetoolAppImage} | cut -d: -f1); do
-              if unsquashfs -o "$off" -d payload ${appimagetoolAppImage} >/dev/null 2>&1; then
-                break
-              fi
-            done
-            test -d payload || { echo "failed to extract appimagetool payload"; exit 1; }
-            install -Dm755 payload/usr/bin/* -t $out/bin
-          '';
+      appimagetool = pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; } ''
+        # The payload is a squashfs image appended to the static runtime.
+        # Locate it via the 'hsqs' magic; the runtime contains a false
+        # positive, so try every offset until extraction succeeds.
+        for off in $(grep -abo hsqs ${appimagetoolAppImage} | cut -d: -f1); do
+          if unsquashfs -o "$off" -d payload ${appimagetoolAppImage} >/dev/null 2>&1; then
+            break
+          fi
+        done
+        test -d payload || { echo "failed to extract appimagetool payload"; exit 1; }
+        install -Dm755 payload/usr/bin/* -t $out/bin
+      '';
 
       appimageTools = [
         appimagetool
@@ -199,16 +198,19 @@
         let
           # Full development shell
           fullShell = pkgs.mkShell {
-            packages = basePackages ++ appimageTools ++ [
-              pkgs.worker-build
-              developmentAndroidSdk
-              developmentAndroidComposition.platform-tools
-              pkgs.apksigner
+            packages =
+              basePackages
+              ++ appimageTools
+              ++ [
+                pkgs.worker-build
+                developmentAndroidSdk
+                developmentAndroidComposition.platform-tools
+                pkgs.apksigner
 
-              # linux platform support
-              pkgs.libsecret
-              pkgs.xdg-user-dirs
-            ];
+                # linux platform support
+                pkgs.libsecret
+                pkgs.xdg-user-dirs
+              ];
 
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
@@ -270,10 +272,13 @@
 
           # Linux desktop build shell (AppImage packaging; no Android SDK)
           linuxShell = pkgs.mkShell {
-            packages = basePackages ++ appimageTools ++ [
-              pkgs.libsecret
-              pkgs.xdg-user-dirs
-            ];
+            packages =
+              basePackages
+              ++ appimageTools
+              ++ [
+                pkgs.libsecret
+                pkgs.xdg-user-dirs
+              ];
 
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";

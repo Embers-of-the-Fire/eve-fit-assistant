@@ -31,7 +31,7 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>(
 );
 
 class AnnouncementRepository {
-  AnnouncementRepository({required Ref ref}) : _ref = ref;
+  AnnouncementRepository({required this._ref});
 
   final Ref _ref;
 
