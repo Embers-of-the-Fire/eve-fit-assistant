@@ -1,6 +1,7 @@
 @TestOn("vm")
 library;
 
+import "dart:async";
 import "dart:io";
 
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
@@ -38,7 +39,7 @@ class _MockAppUpdateService extends Mock implements AppUpdateService {}
 class _FakeAppUpdateController extends AppUpdateController {
   _FakeAppUpdateController({required this.statusAfterDownload});
 
-  final AppUpdateStatus statusAfterDownload;
+  AppUpdateStatus statusAfterDownload;
 
   var downloadCalls = 0;
   var installCalls = 0;
@@ -276,6 +277,39 @@ void main() {
     expect(find.byType(AppReleaseUpdateDialog), findsNothing);
     expect(find.byType(ConfirmDialog), findsNothing);
     expect(versionStore.lastAcknowledgedReleaseId, isNull);
+  });
+
+  testWidgets("retrying a failed download re-prompts install for the same release", (tester) async {
+    final release = _release();
+    final controller = _FakeAppUpdateController(
+      statusAfterDownload: const AppUpdateStatus.failed(message: "network down", canRetry: true),
+    );
+
+    await tester.pumpWidget(
+      buildGate(setting: _setting(silentUpdate: true), release: release, controller: controller),
+    );
+    await tester.pumpAndSettle();
+
+    // The first attempt failed: no install prompt surfaces.
+    expect(controller.downloadCalls, 1);
+    expect(find.byType(ConfirmDialog), findsNothing);
+
+    // Retry the same release (e.g. from the version page check tile). The
+    // session provider re-activates an equal release, so the gate must still
+    // be listening when the download finishes.
+    controller.statusAfterDownload = const AppUpdateStatus.readyToInstall(
+      apkPath: "/tmp/update.apk",
+    );
+    unawaited(controller.download());
+    await tester.pumpAndSettle();
+
+    expect(controller.downloadCalls, 2);
+    expect(find.byType(ConfirmDialog), findsOneWidget);
+
+    await tester.tap(find.text("确认"));
+    await tester.pumpAndSettle();
+
+    expect(controller.installCalls, 1);
   });
 
   testWidgets("platform without self-update shows the manual download dialog", (tester) async {

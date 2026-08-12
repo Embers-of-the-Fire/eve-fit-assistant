@@ -150,8 +150,8 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
   }
 
   /// Watches a background session until the install prompt has been
-  /// displayed (or the flow fails). The controller itself is keep-alive, so
-  /// the download is safe even while no listener is attached.
+  /// displayed. The controller itself is keep-alive, so the download is safe
+  /// even while no listener is attached.
   void _watchSession(RemoteAppRelease release) {
     _sessionSubscription?.close();
     _sessionSubscription = ref.listenManual(
@@ -216,10 +216,11 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         _sessionSubscription?.close();
         _sessionSubscription = null;
       case AppUpdateStatusFailed():
-        // Download errors surface only through the system notification; the
-        // update stays reachable from the version page check tile.
-        _sessionSubscription?.close();
-        _sessionSubscription = null;
+      // Download errors surface only through the system notification; the
+      // update stays reachable from the version page check tile. Keep the
+      // subscription alive: the session provider never re-emits an equal
+      // release, so closing here would leave a retry of the same release
+      // without a listener to surface the install prompt.
       default:
     }
   }
