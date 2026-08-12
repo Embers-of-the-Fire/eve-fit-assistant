@@ -374,12 +374,14 @@ void main() {
       statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
     );
     final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
-    versionStore.setPendingInstall(
-      PendingInstall(
-        releaseId: release.releaseId,
-        version: release.version,
-        apkPath: staged.path,
-        contentHash: "hash",
+    unawaited(
+      versionStore.setPendingInstall(
+        PendingInstall(
+          releaseId: release.releaseId,
+          version: release.version,
+          apkPath: staged.path,
+          contentHash: "hash",
+        ),
       ),
     );
 
@@ -417,12 +419,14 @@ void main() {
       statusAfterDownload: const AppUpdateStatus.readyToInstall(apkPath: "/tmp/update.apk"),
     );
     final staged = File("$tempDir/staged.apk")..writeAsBytesSync(<int>[1, 2, 3]);
-    versionStore.setPendingInstall(
-      PendingInstall(
-        releaseId: release.releaseId,
-        version: release.version,
-        apkPath: staged.path,
-        contentHash: "hash",
+    unawaited(
+      versionStore.setPendingInstall(
+        PendingInstall(
+          releaseId: release.releaseId,
+          version: release.version,
+          apkPath: staged.path,
+          contentHash: "hash",
+        ),
       ),
     );
 

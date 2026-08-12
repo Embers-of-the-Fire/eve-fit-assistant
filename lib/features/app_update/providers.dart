@@ -51,9 +51,12 @@ class AppUpdateController extends _$AppUpdateController {
 
   /// The version-state service notifier, when initialized (the underlying
   /// store is not in unit tests). Mutations must go through the notifier so
-  /// Riverpod state stays in sync with the store.
+  /// Riverpod state stays in sync with the store. Reading `.notifier` alone
+  /// never throws even when the store provider is unusable, so probe the
+  /// store provider first.
   AppVersionStateService? get _versionState {
     try {
+      ref.read(appVersionStateStoreProvider);
       return ref.read(appVersionStateServiceProvider.notifier);
     } on Object {
       return null;
@@ -88,7 +91,7 @@ class AppUpdateController extends _$AppUpdateController {
     final artifact = artifactResult.getRight().toNullable()!;
 
     // A new download supersedes any previously staged install.
-    _versionState?.clearPendingInstall();
+    await _versionState?.clearPendingInstall();
     ref.read(appUpdateSessionProvider.notifier).activate(release);
 
     final notifications = _notifications;
@@ -124,8 +127,7 @@ class AppUpdateController extends _$AppUpdateController {
     }
 
     final apkPath = downloadResult.getRight().toNullable()!;
-    state = AppUpdateStatus.readyToInstall(apkPath: apkPath);
-    _versionState?.setPendingInstall(
+    await _versionState?.setPendingInstall(
       PendingInstall(
         releaseId: release.releaseId,
         version: release.version,
@@ -133,6 +135,7 @@ class AppUpdateController extends _$AppUpdateController {
         contentHash: artifact.contentHash,
       ),
     );
+    state = AppUpdateStatus.readyToInstall(apkPath: apkPath);
     unawaited(notifications.showReadyToInstall(version: release.version));
   }
 

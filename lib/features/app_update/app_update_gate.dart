@@ -77,7 +77,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
         final pending = ref.read(appVersionStateStoreProvider).pendingInstall;
         if (pending != null && pending.releaseId != release.releaseId) {
           // Superseded by a newer release; drop the stale staged install.
-          ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall();
+          unawaited(ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall());
         }
         if (pending != null && pending.releaseId == release.releaseId) {
           // A previous run already downloaded this release: restore the
@@ -173,7 +173,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     if (!mounted) return;
 
     if (!verified) {
-      ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall();
+      unawaited(ref.read(appVersionStateServiceProvider.notifier).clearPendingInstall());
       unawaited(_showDialog(release));
       return;
     }
@@ -199,7 +199,7 @@ class _AppReleaseUpdateGateState extends ConsumerState<AppReleaseUpdateGate> {
     if (ref.read(appVersionStateStoreProvider).pendingInstall?.releaseId == release.releaseId) {
       // Postponed: stop re-prompting the staged install on later launches.
       // The verified APK stays in cache, so a later download() short-circuits.
-      notifier.clearPendingInstall();
+      unawaited(notifier.clearPendingInstall());
     }
   }
 
