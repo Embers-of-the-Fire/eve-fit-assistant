@@ -14,5 +14,10 @@ anyhow = "1.0.100"
 futures = "0.3"
 log = "0.4"
 
+[target.'cfg(target_os = "android")'.dependencies]
+rustls-platform-verifier = "0.7"
+jni = "0.22"
+ndk-context = "0.1"
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

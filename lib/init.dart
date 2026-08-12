@@ -15,6 +15,7 @@ import "package:eve_fit_assistant/features/app_update/state/app_version_state_no
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
+import "package:eve_fit_assistant/native/api/init.dart" as native_init;
 import "package:eve_fit_assistant/native/api/logging.dart" as native_logging;
 import "package:eve_fit_assistant/native/frb_generated.dart";
 import "package:eve_fit_assistant/storage/chat/service.dart";
@@ -75,6 +76,9 @@ Future<InitializedStores> initSingletons() async {
   } else {
     await RustLib.init();
     NativeEngineAvailability.setAvailable(value: true);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      native_init.initPlatform();
+    }
   }
   await PathProvider.init();
   if (!kIsWeb) {
