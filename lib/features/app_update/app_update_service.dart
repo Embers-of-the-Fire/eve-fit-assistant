@@ -69,6 +69,15 @@ class AppUpdatePermissionError extends AppUpdateError {
   String toString() => message;
 }
 
+final RegExp _contentRangePattern = RegExp(r"^bytes\s+(\d+)-\d+/(\d+|\*)$");
+
+int? _contentRangeStart(String? header) {
+  if (header == null) return null;
+  final match = _contentRangePattern.firstMatch(header.trim());
+  if (match == null) return null;
+  return int.tryParse(match.group(1)!);
+}
+
 /// Platform API for Android install-related operations.
 abstract class AppUpdatePlatform {
   const AppUpdatePlatform();
@@ -242,25 +251,32 @@ class AppUpdateService {
 
       IOSink? sink;
       try {
-        final response = await dio.getUri<ResponseBody>(
+        Future<Response<ResponseBody>> request({int? rangeStart}) => dio.getUri<ResponseBody>(
           uri,
           options: Options(
             responseType: ResponseType.stream,
             headers: <String, dynamic>{
               "Accept-Encoding": "identity",
-              if (resumedBytes > 0) "Range": "bytes=$resumedBytes-",
+              if (rangeStart != null) "Range": "bytes=$rangeStart-",
             },
             followRedirects: true,
             validateStatus: (status) => status != null && status >= 200 && status < 300,
           ),
           cancelToken: cancelToken,
         );
+
+        var response = await request(rangeStart: resumedBytes > 0 ? resumedBytes : null);
+        var appending = resumedBytes > 0 && response.statusCode == 206;
+        final rangeStart = _contentRangeStart(response.headers.value("content-range"));
+        if (appending && rangeStart != resumedBytes) {
+          appending = false;
+          response = await request();
+        }
+
         final body = response.data;
         if (body == null) {
           return const Left(AppUpdateDownloadError(message: "Download returned no data"));
         }
-
-        final appending = resumedBytes > 0 && response.statusCode == 206;
         var received = appending ? resumedBytes : 0;
         sink = tempFile.openWrite(mode: appending ? FileMode.append : FileMode.write);
         onProgress?.call(received, artifact.size);

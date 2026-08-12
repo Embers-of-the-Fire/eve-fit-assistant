@@ -105,6 +105,47 @@ class _RangeFakeAdapter implements HttpClientAdapter {
         206,
         headers: {
           Headers.contentLengthHeader: [remaining.length.toString()],
+          "content-range": ["bytes $start-${data.length - 1}/${data.length}"],
+        },
+      );
+    }
+    return ResponseBody(
+      Stream.value(data),
+      200,
+      headers: {
+        Headers.contentLengthHeader: [data.length.toString()],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Always answers 206 with a `Content-Range` start that does not match the
+/// requested offset, forcing the service to restart without a Range header.
+class _MismatchedRangeFakeAdapter implements HttpClientAdapter {
+  _MismatchedRangeFakeAdapter(this.data);
+
+  final Uint8List data;
+  String? lastRange;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final range = options.headers["Range"];
+    lastRange = range is String ? range : null;
+    if (lastRange != null) {
+      final remaining = data.sublist(128);
+      return ResponseBody(
+        Stream.value(remaining),
+        206,
+        headers: {
+          Headers.contentLengthHeader: [remaining.length.toString()],
+          "content-range": ["bytes 128-${data.length - 1}/${data.length}"],
         },
       );
     }
@@ -426,6 +467,39 @@ void main() {
     // Progress starts at the resumed offset and ends at the full size.
     expect(progressEvents.first.$1, 512);
     expect(progressEvents.last.$1, apkData.length);
+  });
+
+  test("downloadArtifact restarts when Content-Range does not match the resume offset", () async {
+    final apkData = Uint8List.fromList(List<int>.generate(1024, (index) => index % 256));
+    final contentHash = sha256.convert(apkData).toString();
+    final identifier = "release://1.0.0/android/general";
+    final artifact = AppUpdateArtifact(
+      variant: "general",
+      identifier: identifier,
+      contentHash: contentHash,
+      size: apkData.length,
+    );
+
+    final updatesDir = Directory("$tempDir/resources/updates")..createSync(recursive: true);
+    final partPath = "${updatesDir.path}/update-$contentHash.apk.part";
+    File(partPath).writeAsBytesSync(apkData.sublist(0, 512));
+
+    final identHash = RepoHash.hashIdent(identifier);
+    when(
+      () => remoteCatalog.blobUri(identHash, contentHash),
+    ).thenReturn(Uri.parse("http://localhost:0/artifact"));
+
+    final adapter = _MismatchedRangeFakeAdapter(apkData);
+    Dio createDio() => Dio()..httpClientAdapter = adapter;
+
+    final result = await _service(dioFactory: createDio).downloadArtifact(artifact);
+
+    if (result.isLeft()) {
+      fail("download failed: ${result.getLeft().toNullable()}");
+    }
+    expect(adapter.lastRange, isNull);
+    final apkPath = result.getRight().toNullable()!;
+    expect(File(apkPath).lengthSync(), apkData.length);
   });
 
   test("downloadArtifact cancellation keeps the partial file for later resume", () async {
