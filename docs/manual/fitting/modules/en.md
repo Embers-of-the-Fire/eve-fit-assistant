@@ -27,10 +27,13 @@ committing to a layout.
 ## Slot Row Actions
 
 Swipe a filled slot row to reveal its action panes: the leading side offers
-**Charge**, dynamic-item conversion, and **Copy**; the trailing side offers
-removing the charge and **Delete**. Each side shows at most two actions — when
+**Charge** / **Charge all**, dynamic-item conversion and mutation, and
+**Copy** / **Fill all**; the trailing side offers removing charges (this
+module or **Remove all charges**), **Remove all** modules of this type, and
+**Delete**. Each side shows at most two actions — when
 more are available the rest fold into a **More** overflow menu that groups
-related actions with dividers. On Windows and Linux, right-clicking a row opens
+related actions with dividers; on the trailing side **Delete** stays pinned
+at the outer edge while the **More** button sits next to the tile. On Windows and Linux, right-clicking a row opens
 the same grouped menu without swiping. Drone and fighter rows work the same
 way: swipe for the quantity controls (**x1** / **x5**, **+1** /
 **-1**, **Delete**). Fighter rows replace **x5** with **Fill**, which applies to

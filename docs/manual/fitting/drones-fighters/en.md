@@ -10,7 +10,8 @@ other ships with fighter tubes get a **Fighter** tab instead. Tap the **+**
 button to add an entry, then swipe the row to set the quantity — **x1** /
 **x5** (or **Fill** for fighters) on the leading side and **+1** / **-1** /
 **Delete** on the trailing side; with more than two actions on a side, the
-extras fold into a **More** menu. The clear button
+extras fold into a **More** menu while **Delete** stays pinned at the outer
+edge. The clear button
 empties the whole bay.
 
 Drone space is limited by two things: the volume of the drone bay and the
