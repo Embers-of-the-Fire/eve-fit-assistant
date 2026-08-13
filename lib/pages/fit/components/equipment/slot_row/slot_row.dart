@@ -2,6 +2,9 @@ part of "../../../page.dart";
 
 const bool _dynamicItemConversionEnabled = true;
 
+/// Visual groups of a slot tile's dropdown actions, in dropdown order.
+enum _SlotActionGroup { action, charge, abyss }
+
 class _AnySlotRow extends StatelessWidget {
   const _AnySlotRow({
     required this.fitContext,
@@ -248,7 +251,13 @@ class _SlotRowDisplay extends ConsumerWidget {
       startActionPane: buildTileActionPane(startActions),
       endActionPane: buildTileActionPane(endActions),
       child: SlidableEdgeZone(
-        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
+        child: TileSecondaryActionRegion(
+          actions: flattenTileActionGroups([
+            ...startActions,
+            ...endActions,
+          ], _SlotActionGroup.values),
+          child: content,
+        ),
       ),
     );
   }
@@ -265,6 +274,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.battery_charging_full,
           label: context.l10n.charge,
+          group: _SlotActionGroup.charge,
         ),
       );
     }
@@ -277,6 +287,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.cyclone_outlined,
           label: context.l10n.dynamicRevert,
+          group: _SlotActionGroup.abyss,
         ),
       );
     } else if (_supportsDynamicItemConversion() &&
@@ -288,6 +299,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.cyclone_outlined,
           label: context.l10n.dynamicConvert,
+          group: _SlotActionGroup.abyss,
         ),
       );
     }
@@ -301,6 +313,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           backgroundColor: Colors.grey.shade200,
           foregroundColor: Colors.black,
           label: context.l10n.copy,
+          group: _SlotActionGroup.action,
         ),
       );
     }
@@ -319,6 +332,7 @@ class _SlotRowDisplay extends ConsumerWidget {
           foregroundColor: Colors.white,
           icon: Icons.cancel,
           label: context.l10n.charge,
+          group: _SlotActionGroup.charge,
         ),
       );
     }
@@ -330,6 +344,7 @@ class _SlotRowDisplay extends ConsumerWidget {
         foregroundColor: Colors.white,
         icon: Icons.delete,
         label: context.l10n.delete,
+        group: _SlotActionGroup.action,
       ),
     );
 

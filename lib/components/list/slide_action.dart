@@ -19,6 +19,7 @@ class TileAction {
     this.label,
     this.foregroundColor,
     this.autoClose = true,
+    this.group,
   }) : assert(icon != null || label != null);
 
   final IconData? icon;
@@ -26,6 +27,13 @@ class TileAction {
   final Color backgroundColor;
   final Color? foregroundColor;
   final bool autoClose;
+
+  /// Optional key identifying the action's visual group in dropdown menus.
+  ///
+  /// Menu entries are separated by a thin divider whenever the [group] of two
+  /// adjacent actions differs (see [showTileActionsMenu]).
+  final Object? group;
+
   final void Function(BuildContext context) onPressed;
 
   SlidableAction toSlidableAction() => SlidableAction(
@@ -64,6 +72,9 @@ ActionPane? buildTileActionPane(List<TileAction> actions) {
 
 /// Opens a dropdown listing [actions] (icon + label, no background color) at
 /// [position] and returns the selected action, if any.
+///
+/// A thin divider is inserted between adjacent actions whose
+/// [TileAction.group] differs.
 Future<TileAction?> showTileActionsMenu(
   BuildContext context,
   RelativeRect position,
@@ -72,7 +83,8 @@ Future<TileAction?> showTileActionsMenu(
   context: context,
   position: position,
   items: [
-    for (final action in actions)
+    for (final (index, action) in actions.indexed) ...[
+      if (index > 0 && actions[index - 1].group != action.group) const PopupMenuDivider(),
       PopupMenuItem(
         value: action,
         child: Row(
@@ -82,6 +94,7 @@ Future<TileAction?> showTileActionsMenu(
           ],
         ),
       ),
+    ],
   ],
 );
 
@@ -90,6 +103,24 @@ Future<TileAction?> showTileActionsMenu(
 void _dispatchTileAction(BuildContext context, TileAction selected) {
   if (selected.autoClose) unawaited(Slidable.of(context)?.close());
   selected.onPressed(context);
+}
+
+/// Flattens [actions] into dropdown order: actions sharing a
+/// [TileAction.group] key become contiguous, following [groupOrder]; actions
+/// without a group listed in [groupOrder] keep their relative order at the
+/// end.
+List<TileAction> flattenTileActionGroups(Iterable<TileAction> actions, List<Object> groupOrder) {
+  final byGroup = <Object, List<TileAction>>{};
+  final rest = <TileAction>[];
+  for (final action in actions) {
+    final group = action.group;
+    if (group != null && groupOrder.contains(group)) {
+      byGroup.putIfAbsent(group, () => []).add(action);
+    } else {
+      rest.add(action);
+    }
+  }
+  return [for (final group in groupOrder) ...?byGroup[group], ...rest];
 }
 
 class _OverflowTileActionButton extends StatelessWidget {
