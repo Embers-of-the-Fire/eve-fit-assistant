@@ -20,7 +20,7 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.repository.fork == false
     runs-on: ubuntu-slim
-    environment: web-preview
+    environment: nightly-web
     outputs:
       deploy: ${{ steps.decide.outputs.deploy }}
     steps:
@@ -109,7 +109,7 @@ jobs:
     timeout-minutes: 15
     # Deploy to the nightly project's production URL; the project's production
     # branch must be set to "dev" (one-time setup in the Cloudflare dashboard).
-    environment: web-preview
+    environment: nightly-web
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
