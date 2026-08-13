@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/components/icon/state_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
+import "package:eve_fit_assistant/components/list/slide_action.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/components/resonance_box.dart";
 import "package:eve_fit_assistant/components/resource_bar.dart";

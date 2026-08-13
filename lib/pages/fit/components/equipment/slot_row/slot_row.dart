@@ -245,76 +245,62 @@ class _SlotRowDisplay extends ConsumerWidget {
     }
 
     return Slidable(
-      startActionPane: startActions.isEmpty
-          ? null
-          : ActionPane(
-              extentRatio: 0.15 * startActions.length,
-              motion: const StretchMotion(),
-              children: startActions,
-            ),
-      endActionPane: endActions.isEmpty
-          ? null
-          : ActionPane(
-              extentRatio: 0.15 * endActions.length,
-              motion: const StretchMotion(),
-              children: endActions,
-            ),
-      child: SlidableEdgeZone(child: content),
+      startActionPane: buildTileActionPane(startActions),
+      endActionPane: buildTileActionPane(endActions),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
+      ),
     );
   }
 
-  List<SlidableAction> _buildStartActions(BuildContext context, WidgetRef ref) {
-    final actions = <SlidableAction>[];
+  List<TileAction> _buildStartActions(BuildContext context, WidgetRef ref) {
+    final actions = <TileAction>[];
     final isDynamic = fitContext.dynamicItemFor(slotInfo.slot.itemId) != null;
 
     if (_canCopy()) {
       actions.add(
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _handleCopy(context, ref),
           autoClose: false,
           icon: Icons.copy,
           backgroundColor: Colors.grey.shade200,
           foregroundColor: Colors.black,
           label: context.l10n.copy,
-          padding: .zero,
         ),
       );
     }
 
     if (isDynamic) {
       actions.add(
-        SlidableAction(
+        TileAction(
           onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
           backgroundColor: Colors.grey,
           foregroundColor: Colors.white,
           icon: Icons.cyclone_outlined,
           label: context.l10n.dynamicRevert,
-          padding: .zero,
         ),
       );
     } else if (_supportsDynamicItemConversion() &&
         _availableDynamicModifierTypeIds(ref).isNotEmpty) {
       actions.add(
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _handleConvertToDynamic(context, ref),
           backgroundColor: Colors.red,
           foregroundColor: Colors.white,
           icon: Icons.cyclone_outlined,
           label: context.l10n.dynamicConvert,
-          padding: .zero,
         ),
       );
     }
 
     if (_canHaveCharge(ref)) {
       actions.add(
-        SlidableAction(
+        TileAction(
           onPressed: (_) => _handleSetCharge(context, ref),
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
           icon: Icons.battery_charging_full,
           label: context.l10n.charge,
-          padding: .zero,
         ),
       );
     }
@@ -322,30 +308,28 @@ class _SlotRowDisplay extends ConsumerWidget {
     return actions;
   }
 
-  List<SlidableAction> _buildEndActions(BuildContext context, WidgetRef ref) {
-    final actions = <SlidableAction>[];
+  List<TileAction> _buildEndActions(BuildContext context, WidgetRef ref) {
+    final actions = <TileAction>[];
 
     if (slotInfo.slot.charge.isSome() && _canHaveCharge(ref)) {
       actions.add(
-        SlidableAction(
+        TileAction(
           onPressed: (_) => fitContext.fitWrapper.removeSlotCharge(slotIdent),
           backgroundColor: Colors.grey,
           foregroundColor: Colors.white,
           icon: Icons.cancel,
           label: context.l10n.charge,
-          padding: .zero,
         ),
       );
     }
 
     actions.add(
-      SlidableAction(
+      TileAction(
         onPressed: (_) => fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref),
         backgroundColor: colorActionDelete,
         foregroundColor: Colors.white,
         icon: Icons.delete,
         label: context.l10n.delete,
-        padding: .zero,
       ),
     );
 
