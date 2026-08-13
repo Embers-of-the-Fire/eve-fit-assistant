@@ -436,19 +436,7 @@ class _SlotRowDisplay extends ConsumerWidget {
     return actions;
   }
 
-  bool _canHaveCharge(WidgetRef ref) {
-    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
-    if (originTypeId == null) return false;
-
-    final slots = ref.read(repoCollectionProvider)?.slots;
-    if (slots == null) return false;
-    return switch (slotIdent) {
-      SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
-      SlotIdentifierMedium _ => slots.mediumSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
-      SlotIdentifierLow _ => slots.lowSlots[originTypeId]?.chargeGroups.isNotEmpty ?? false,
-      _ => false,
-    };
-  }
+  bool _canHaveCharge(WidgetRef ref) => _chargeGroups(ref)?.isNotEmpty ?? false;
 
   bool _canCopy() =>
       slotIdent is SlotIdentifierHigh ||
