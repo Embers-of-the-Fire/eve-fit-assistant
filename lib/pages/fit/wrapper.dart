@@ -715,15 +715,7 @@ class FitWrapper {
 
     return _storeDynamicItem(
       fit,
-      dynamicItem.copyWith(
-        dynamicAttributes: IMap.fromEntries(
-          dynamicMutator.attributes.entries.map((entry) {
-            final range = entry.value;
-            final factor = range.min + (math.Random().nextDouble() * (range.max - range.min));
-            return MapEntry(entry.key, factor);
-          }),
-        ),
-      ),
+      dynamicItem.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
     );
   });
 
@@ -787,6 +779,274 @@ class FitWrapper {
       },
     );
   });
+
+  Future<void> fillSlotsFromSlot(SlotIdentifier slotIdent) => wrapped.update((fit) {
+    final sourceOpt = getSlot(fit, slotIdent);
+    if (sourceOpt.isNone()) return fit;
+    final source = sourceOpt.toNullable()!;
+
+    final collection = ref.read(repoCollectionProvider);
+    if (collection == null) return fit;
+
+    final originTypeId = _resolveOriginTypeId(fit, source.itemId);
+    if (originTypeId == null) return fit;
+    final type = collection.getType(originTypeId);
+    if (type == null) return fit;
+
+    var remaining = _fillLimitForSlot(fit, slotIdent, originTypeId, type, collection);
+    if (remaining <= 0) return fit;
+
+    final slots = getSlotList(fit, slotIdent);
+    var updatedFit = fit;
+    for (var i = 0; i < slots.length && remaining > 0; i++) {
+      if (slots[i].isSome()) continue;
+      final (nextFit, cloned) = _cloneModuleItem(updatedFit, source);
+      updatedFit = updateSlot(
+        nextFit,
+        createSlotIdentifier(slotIdent, i),
+        (_) => Option.of(cloned),
+      );
+      remaining--;
+    }
+    return updatedFit;
+  });
+
+  int _fillLimitForSlot(
+    FitStorage fit,
+    SlotIdentifier slotIdent,
+    int originTypeId,
+    pb_types.Type type,
+    RepoCollectionService collection,
+  ) {
+    var limit = 1 << 30;
+
+    final maxGroupFitted = _staticDogmaAttributeValue(type, EveConstAttrID.maxGroupFitted);
+    if (maxGroupFitted != null) {
+      final fitted = _countGroupFitted(fit, type.groupId, collection);
+      limit = math.min(limit, math.max(0, maxGroupFitted.round() - fitted));
+    }
+
+    if (slotIdent is SlotIdentifierHigh) {
+      final info = collection.slots.highSlots[originTypeId];
+      if (info != null && (info.isTurret || info.isLauncher)) {
+        final ((usedTurret, usedLauncher), (totalTurret, totalLauncher)) = _hardpointUsage(
+          fit,
+          collection,
+        );
+        final remaining = info.isTurret ? totalTurret - usedTurret : totalLauncher - usedLauncher;
+        limit = math.min(limit, math.max(0, remaining));
+      }
+    }
+
+    return limit;
+  }
+
+  int _countGroupFitted(FitStorage fit, int groupId, RepoCollectionService collection) {
+    var count = 0;
+    final slotGroups = [
+      fit.body.slots.high,
+      fit.body.slots.medium,
+      fit.body.slots.low,
+      fit.body.slots.rig,
+      fit.body.slots.service,
+    ];
+    for (final slots in slotGroups) {
+      for (final slotOpt in slots) {
+        final item = slotOpt.toNullable();
+        if (item == null) continue;
+        final typeId = _resolveOriginTypeId(fit, item.itemId);
+        if (typeId == null) continue;
+        if (collection.getType(typeId)?.groupId == groupId) count++;
+      }
+    }
+    return count;
+  }
+
+  ((int, int), (int, int)) _hardpointUsage(FitStorage fit, RepoCollectionService collection) {
+    var usedTurret = 0;
+    var usedLauncher = 0;
+    for (final slotOpt in fit.body.slots.high) {
+      final item = slotOpt.toNullable();
+      if (item == null) continue;
+      final typeId = _resolveOriginTypeId(fit, item.itemId);
+      if (typeId == null) continue;
+      final info = collection.slots.highSlots[typeId];
+      if (info == null) continue;
+      if (info.isTurret) usedTurret += 1;
+      if (info.isLauncher) usedLauncher += 1;
+    }
+
+    var totalTurret = 0;
+    var totalLauncher = 0;
+    final ship = collection.getShip(fit.body.shipTypeId);
+    if (ship != null) {
+      totalTurret += ship.turretSlots;
+      totalLauncher += ship.launcherSlots;
+    }
+    for (final slotOpt in fit.body.slots.subsystem) {
+      final item = slotOpt.toNullable();
+      if (item == null) continue;
+      final typeId = _resolveOriginTypeId(fit, item.itemId);
+      if (typeId == null) continue;
+      final def = collection.getSubsystem(typeId);
+      if (def == null) continue;
+      totalTurret += def.turretSlots;
+      totalLauncher += def.launcherSlots;
+    }
+    return ((usedTurret, usedLauncher), (totalTurret, totalLauncher));
+  }
+
+  Future<void> removeAllSlotsOfType(SlotIdentifier slotIdent) => wrapped.update((fit) {
+    final sourceOpt = getSlot(fit, slotIdent);
+    if (sourceOpt.isNone()) return fit;
+    final displayTypeId = _resolveDisplayTypeId(fit, sourceOpt.toNullable()!.itemId);
+    if (displayTypeId == null) return fit;
+
+    final slots = getSlotList(fit, slotIdent);
+    var updatedFit = fit;
+    for (var i = 0; i < slots.length; i++) {
+      final item = slots[i].toNullable();
+      if (item == null) continue;
+      if (_resolveDisplayTypeId(updatedFit, item.itemId) != displayTypeId) continue;
+      updatedFit = updateSlot(
+        updatedFit,
+        createSlotIdentifier(slotIdent, i),
+        (_) => const Option.none(),
+      );
+    }
+    return updatedFit;
+  });
+
+  Future<void> setChargeForSameType(SlotIdentifier slotIdent, int chargeTypeId) =>
+      _updateSameTypeSlots(
+        slotIdent,
+        (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
+      );
+
+  Future<void> removeChargesForSameType(SlotIdentifier slotIdent) =>
+      _updateSameTypeSlots(slotIdent, (slot) => slot.copyWith(charge: const Option.none()));
+
+  Future<void> _updateSameTypeSlots(
+    SlotIdentifier slotIdent,
+    FitModuleItem Function(FitModuleItem slot) updater,
+  ) => wrapped.update((fit) {
+    final sourceOpt = getSlot(fit, slotIdent);
+    if (sourceOpt.isNone()) return fit;
+    final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
+    if (originTypeId == null) return fit;
+
+    final slots = getSlotList(fit, slotIdent);
+    var updatedFit = fit;
+    for (var i = 0; i < slots.length; i++) {
+      final item = slots[i].toNullable();
+      if (item == null) continue;
+      if (_resolveOriginTypeId(updatedFit, item.itemId) != originTypeId) continue;
+      updatedFit = updateSlot(
+        updatedFit,
+        createSlotIdentifier(slotIdent, i),
+        (slotOpt) => slotOpt.map(updater),
+      );
+    }
+    return updatedFit;
+  });
+
+  Future<void> mutateAllSameOrigin(SlotIdentifier slotIdent, int modifierTypeId) =>
+      wrapped.update((fit) {
+        final sourceOpt = getSlot(fit, slotIdent);
+        if (sourceOpt.isNone()) return fit;
+        final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
+        if (originTypeId == null) return fit;
+
+        final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+        if (dynamicMutator == null) return fit;
+        if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+        final slots = getSlotList(fit, slotIdent);
+        var updatedFit = fit;
+        for (var i = 0; i < slots.length; i++) {
+          final slot = slots[i].toNullable();
+          if (slot == null) continue;
+          if (_resolveOriginTypeId(updatedFit, slot.itemId) != originTypeId) continue;
+
+          updatedFit = slot.itemId.when(
+            item: (_) {
+              final dynamicItemId = _allocateDynamicItemId(updatedFit);
+              final dynamicItem = FitDynamicItem(
+                dynamicItemId: dynamicItemId,
+                originTypeId: originTypeId,
+                typeId: dynamicMutator.resultingTypeId,
+                modifierTypeId: modifierTypeId,
+                dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
+              );
+              final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
+              return updateSlot(
+                fitWithItem,
+                createSlotIdentifier(slotIdent, i),
+                (_) => Option.of(
+                  slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId)),
+                ),
+              );
+            },
+            dynamic: (dynamicId) {
+              final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+              if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
+              return _storeDynamicItem(
+                updatedFit,
+                existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+              );
+            },
+          );
+        }
+        return updatedFit;
+      });
+
+  Future<void> revertAllSameDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
+    final sourceOpt = getSlot(fit, slotIdent);
+    if (sourceOpt.isNone()) return fit;
+    final sourceDynamic = sourceOpt.toNullable()!.itemId.when(
+      item: (_) => null,
+      dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
+    );
+    if (sourceDynamic == null) return fit;
+
+    final slots = getSlotList(fit, slotIdent);
+    var updatedFit = fit;
+    for (var i = 0; i < slots.length; i++) {
+      final slot = slots[i].toNullable();
+      if (slot == null) continue;
+      final reverted = slot.itemId.when(
+        item: (_) => null,
+        dynamic: (dynamicId) {
+          final dynamicItem = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+          if (dynamicItem == null) return null;
+          if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
+          if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
+          return slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+        },
+      );
+      if (reverted == null) continue;
+      updatedFit = updateSlot(
+        updatedFit,
+        createSlotIdentifier(slotIdent, i),
+        (_) => Option.of(reverted),
+      );
+    }
+    return updatedFit;
+  });
+
+  int? _resolveDisplayTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId,
+  );
+
+  IMap<int, double> _randomizedDynamicAttributes(pb_dynamic.DynamicMutator mutator) =>
+      IMap.fromEntries(
+        mutator.attributes.entries.map((entry) {
+          final range = entry.value;
+          final factor = range.min + (math.Random().nextDouble() * (range.max - range.min));
+          return MapEntry(entry.key, factor);
+        }),
+      );
 
   IList<Option<FitModuleItem>> getSlotList(FitStorage fit, SlotIdentifier slotIdent) =>
       switch (slotIdent) {
@@ -1478,4 +1738,11 @@ class FitWrapper {
 
     return fit.copyWith(body: fit.body.copyWith(slots: updatedSlots));
   }
+}
+
+double? _staticDogmaAttributeValue(pb_types.Type type, int attributeId) {
+  for (final attribute in type.dogmaAttributes) {
+    if (attribute.dogmaAttributeId == attributeId) return attribute.value;
+  }
+  return null;
 }
