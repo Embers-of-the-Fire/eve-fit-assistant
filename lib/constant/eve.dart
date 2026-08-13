@@ -41,6 +41,17 @@ class EveConstGroupId {
   };
 }
 
+class EveConstMetaGroupId {
+  const EveConstMetaGroupId._();
+
+  static const int tech1 = 1;
+  static const int tech2 = 2;
+  static const int storyline = 3;
+  static const int faction = 4;
+  static const int officer = 5;
+  static const int deadspace = 6;
+}
+
 class EveConstGeneric {
   const EveConstGeneric._();
 
@@ -49,6 +60,10 @@ class EveConstGeneric {
 
 class EveConstAttrID {
   const EveConstAttrID._();
+
+  /// - Name: metaLevel
+  /// - High is good: True
+  static const int metaLevel = 633;
 
   /// - Name: capacitorCapacity
   /// - High is good: True

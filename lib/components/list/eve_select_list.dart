@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/utils/type_sort.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -70,22 +71,25 @@ class EveSelectList extends ConsumerWidget {
           final c = ref.read(repoCollectionProvider);
           if (c == null) return [];
           final types = c.getAllTypes().where((r) => r.groupId == groupId).toList()
-            ..sort((a, b) => a.typeId.compareTo(b.typeId));
+            ..sort(compareTypesByMeta);
           return types
               .map((r) => EveSelectListRoot.type(typeId: r.typeId))
               .where(validator)
               .toList();
         },
         marketGroup: (marketGroupId) {
-          final marketGroupInfo = ref.read(repoCollectionProvider)?.getMarketGroup(marketGroupId);
-          if (marketGroupInfo == null) return [];
+          final c = ref.read(repoCollectionProvider);
+          final marketGroupInfo = c?.getMarketGroup(marketGroupId);
+          if (c == null || marketGroupInfo == null) return [];
           final groups = marketGroupInfo.groups
               .map((g) => EveSelectListRoot.marketGroup(marketGroupId: g))
               .where(validator);
-          final types = marketGroupInfo.types
-              .map((t) => EveSelectListRoot.type(typeId: t))
+          final types = marketGroupInfo.types.map(c.getType).nonNulls.toList()
+            ..sort(compareTypesByMeta);
+          final typeNodes = types
+              .map((t) => EveSelectListRoot.type(typeId: t.typeId))
               .where(validator);
-          final d = [...groups, ...types];
+          final d = [...groups, ...typeNodes];
           return d;
         },
         type: (_) => const [],
