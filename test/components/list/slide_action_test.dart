@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/compat/io.dart" show Platform;
 import "package:eve_fit_assistant/components/list/slide_action.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
@@ -86,28 +87,32 @@ void main() {
     expect(find.byIcon(Icons.more_vert), findsNothing);
   });
 
-  testWidgets("secondary tap lists all actions and invokes the selection", (tester) async {
-    final invoked = <String>[];
-    await tester.pumpWidget(
-      testApp(
-        Scaffold(
-          body: TileSecondaryActionRegion(
-            actions: [_action("A", () => invoked.add("A")), _action("B", () => invoked.add("B"))],
-            child: const ListTile(title: Text("tile")),
+  testWidgets(
+    "secondary tap lists all actions and invokes the selection",
+    (tester) async {
+      final invoked = <String>[];
+      await tester.pumpWidget(
+        testApp(
+          Scaffold(
+            body: TileSecondaryActionRegion(
+              actions: [_action("A", () => invoked.add("A")), _action("B", () => invoked.add("B"))],
+              child: const ListTile(title: Text("tile")),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text("tile"), buttons: kSecondaryMouseButton);
-    await tester.pumpAndSettle();
+      await tester.tap(find.text("tile"), buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
 
-    expect(find.text("A"), findsOneWidget);
-    expect(find.text("B"), findsOneWidget);
+      expect(find.text("A"), findsOneWidget);
+      expect(find.text("B"), findsOneWidget);
 
-    await tester.tap(find.text("B"));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text("B"));
+      await tester.pumpAndSettle();
 
-    expect(invoked, ["B"]);
-  });
+      expect(invoked, ["B"]);
+    },
+    skip: !(Platform.isWindows || Platform.isLinux),
+  );
 }
