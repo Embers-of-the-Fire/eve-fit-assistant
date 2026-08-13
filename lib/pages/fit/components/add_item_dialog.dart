@@ -20,6 +20,7 @@ Future<int?> showAddItemDialog({
   required String title,
   required int initialMarketGroupId,
   required bool Function(EveSelectListRoot) validator,
+  bool enableMetaFilter = false,
 }) {
   final metadata = _AddItemDialogMetadata(
     title: title,
@@ -28,14 +29,15 @@ Future<int?> showAddItemDialog({
   );
   return showDialog<int>(
     context: context,
-    builder: (context) => _AddItemDialog(metadata: metadata),
+    builder: (context) => _AddItemDialog(metadata: metadata, enableMetaFilter: enableMetaFilter),
   );
 }
 
 class _AddItemDialog extends ConsumerWidget {
-  const _AddItemDialog({required this.metadata});
+  const _AddItemDialog({required this.metadata, this.enableMetaFilter = false});
 
   final _AddItemDialogMetadata metadata;
+  final bool enableMetaFilter;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => AppDialog(
@@ -45,6 +47,7 @@ class _AddItemDialog extends ConsumerWidget {
       child: EveSelectList(
         root: EveSelectListRoot.marketGroup(marketGroupId: metadata.initialMarketGroupId),
         validator: metadata.validator,
+        enableMetaFilter: enableMetaFilter,
         shallPopToSelect: (node) => node is EveSelectListRootType,
         onSelect: (node) => switch (node) {
           EveSelectListRootType(:final typeId) => Navigator.of(context).pop(typeId),

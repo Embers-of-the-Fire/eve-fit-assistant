@@ -79,6 +79,7 @@ class _EmptySlotRow extends ConsumerWidget {
                   title: slotIdent.localizedAddItemDialogTitle(context),
                   initialMarketGroupId: slotIdent.baseMarketGroupId,
                   validator: validator,
+                  enableMetaFilter: true,
                 ).then((found) async {
                   if (found == null) return;
                   await fitContext.fitWrapper.equipSlot(slotIdent, found, ref);
