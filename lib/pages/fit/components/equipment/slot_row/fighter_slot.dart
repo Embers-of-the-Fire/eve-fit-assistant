@@ -236,7 +236,7 @@ class _FighterSlotRow extends ConsumerWidget {
 
     return Slidable(
       startActionPane: buildTileActionPane(startActions),
-      endActionPane: buildTileActionPane(endActions),
+      endActionPane: buildTileActionPane(endActions, overflowFirst: true),
       child: SlidableEdgeZone(
         child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),
