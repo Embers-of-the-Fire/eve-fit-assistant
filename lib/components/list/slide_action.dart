@@ -85,6 +85,13 @@ Future<TileAction?> showTileActionsMenu(
   ],
 );
 
+/// Invokes [selected], closing the enclosing [Slidable] first when
+/// [TileAction.autoClose] is set.
+void _dispatchTileAction(BuildContext context, TileAction selected) {
+  if (selected.autoClose) unawaited(Slidable.of(context)?.close());
+  selected.onPressed(context);
+}
+
 class _OverflowTileActionButton extends StatelessWidget {
   const _OverflowTileActionButton({required this.actions});
 
@@ -103,8 +110,11 @@ class _OverflowTileActionButton extends StatelessWidget {
     // The pane must stay mounted while the menu is open: closing the Slidable
     // unmounts this button, which would leave the selection unhandled.
     if (!buttonContext.mounted) return;
-    unawaited(Slidable.of(buttonContext)?.close());
-    selected?.onPressed(buttonContext);
+    if (selected == null) {
+      unawaited(Slidable.of(buttonContext)?.close());
+      return;
+    }
+    _dispatchTileAction(buttonContext, selected);
   }
 
   @override
@@ -144,7 +154,7 @@ class TileSecondaryActionRegion extends StatelessWidget {
       actions,
     );
     if (selected == null || !context.mounted) return;
-    selected.onPressed(context);
+    _dispatchTileAction(context, selected);
   }
 
   @override
