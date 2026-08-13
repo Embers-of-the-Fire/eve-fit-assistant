@@ -383,7 +383,7 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    if (_canHaveCharge(ref)) {
+    if (slotInfo.slot.charge.isSome() && _canHaveCharge(ref)) {
       actions.add(
         TileAction(
           onPressed: (_) => fitContext.fitWrapper.removeChargesForSameType(slotIdent),
