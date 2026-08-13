@@ -32,8 +32,9 @@ removing the charge and **Delete**. Each side shows at most two actions — when
 more are available the rest fold into a **More** overflow menu that groups
 related actions with dividers. On Windows and Linux, right-clicking a row opens
 the same grouped menu without swiping. Drone and fighter rows work the same
-way: swipe for the quantity controls (**x1** / **x5** / **Fill**, **+1** /
-**-1**, **Delete**).
+way: swipe for the quantity controls (**x1** / **x5**, **+1** /
+**-1**, **Delete**). Fighter rows replace **x5** with **Fill**, which applies to
+fighters only.
 
 See [Tactical Modes](efa://manual/fitting/tactical-modes) for mode-switching
 hulls and [Overloading Modules](efa://manual/fitting/advanced/overloading) for
