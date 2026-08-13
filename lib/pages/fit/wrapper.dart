@@ -950,43 +950,55 @@ class FitWrapper {
     return updatedFit;
   });
 
-  Future<void> mutateAllSameOrigin(SlotIdentifier slotIdent, int modifierTypeId) => wrapped.update((
-    fit,
-  ) {
-    final sourceOpt = getSlot(fit, slotIdent);
-    if (sourceOpt.isNone()) return fit;
-    final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
-    if (originTypeId == null) return fit;
+  Future<void> mutateAllSameOrigin(SlotIdentifier slotIdent, int modifierTypeId) =>
+      wrapped.update((fit) {
+        final sourceOpt = getSlot(fit, slotIdent);
+        if (sourceOpt.isNone()) return fit;
+        final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
+        if (originTypeId == null) return fit;
 
-    final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
-    if (dynamicMutator == null) return fit;
-    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+        final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+        if (dynamicMutator == null) return fit;
+        if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
 
-    final slots = getSlotList(fit, slotIdent);
-    var updatedFit = fit;
-    for (var i = 0; i < slots.length; i++) {
-      final slot = slots[i].toNullable();
-      if (slot == null) continue;
-      if (slot.itemId is! FitStorageItemIdItem) continue;
-      if (_resolveOriginTypeId(updatedFit, slot.itemId) != originTypeId) continue;
+        final slots = getSlotList(fit, slotIdent);
+        var updatedFit = fit;
+        for (var i = 0; i < slots.length; i++) {
+          final slot = slots[i].toNullable();
+          if (slot == null) continue;
+          if (_resolveOriginTypeId(updatedFit, slot.itemId) != originTypeId) continue;
 
-      final dynamicItemId = _allocateDynamicItemId(updatedFit);
-      final dynamicItem = FitDynamicItem(
-        dynamicItemId: dynamicItemId,
-        originTypeId: originTypeId,
-        typeId: dynamicMutator.resultingTypeId,
-        modifierTypeId: modifierTypeId,
-        dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
-      );
-      updatedFit = _storeDynamicItem(updatedFit, dynamicItem);
-      updatedFit = updateSlot(
-        updatedFit,
-        createSlotIdentifier(slotIdent, i),
-        (_) => Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
-      );
-    }
-    return updatedFit;
-  });
+          updatedFit = slot.itemId.when(
+            item: (_) {
+              final dynamicItemId = _allocateDynamicItemId(updatedFit);
+              final dynamicItem = FitDynamicItem(
+                dynamicItemId: dynamicItemId,
+                originTypeId: originTypeId,
+                typeId: dynamicMutator.resultingTypeId,
+                modifierTypeId: modifierTypeId,
+                dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
+              );
+              final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
+              return updateSlot(
+                fitWithItem,
+                createSlotIdentifier(slotIdent, i),
+                (_) => Option.of(
+                  slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId)),
+                ),
+              );
+            },
+            dynamic: (dynamicId) {
+              final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+              if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
+              return _storeDynamicItem(
+                updatedFit,
+                existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+              );
+            },
+          );
+        }
+        return updatedFit;
+      });
 
   Future<void> revertAllSameDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
     final sourceOpt = getSlot(fit, slotIdent);
