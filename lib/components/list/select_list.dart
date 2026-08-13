@@ -89,6 +89,9 @@ class _SelectListState<R> extends ConsumerState<SelectList<R>> {
         _currentRoot = widget.root;
       });
       _loadChildrenForCurrentRoot();
+    } else {
+      // Fetch/validator closures may have changed; refresh children in place.
+      _loadChildrenForCurrentRoot();
     }
   }
 

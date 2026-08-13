@@ -27,3 +27,35 @@ int compareTypesByMeta(pb_types.Type left, pb_types.Type right) {
   if (metaCompare != 0) return metaCompare;
   return left.typeId.compareTo(right.typeId);
 }
+
+enum MetaFilterBucket { techTree, faction, deadspace, officer }
+
+MetaFilterBucket metaFilterBucketOf(int metaGroupId) => switch (metaGroupId) {
+  EveConstMetaGroupId.tech2 => MetaFilterBucket.techTree,
+  EveConstMetaGroupId.storyline || EveConstMetaGroupId.faction => MetaFilterBucket.faction,
+  EveConstMetaGroupId.deadspace => MetaFilterBucket.deadspace,
+  EveConstMetaGroupId.officer => MetaFilterBucket.officer,
+  _ => MetaFilterBucket.techTree,
+};
+
+class MetaFilter {
+  const MetaFilter.all() : buckets = const {};
+  const MetaFilter.buckets(this.buckets);
+
+  final Set<MetaFilterBucket> buckets;
+
+  bool get isAll => buckets.isEmpty;
+
+  bool passes(pb_types.Type type) {
+    if (isAll) return true;
+    return buckets.contains(metaFilterBucketOf(type.metaGroupId));
+  }
+
+  MetaFilter toggleAll() => const MetaFilter.all();
+
+  MetaFilter toggleBucket(MetaFilterBucket bucket) {
+    final next = {...buckets};
+    if (!next.remove(bucket)) next.add(bucket);
+    return next.isEmpty ? const MetaFilter.all() : MetaFilter.buckets(next);
+  }
+}

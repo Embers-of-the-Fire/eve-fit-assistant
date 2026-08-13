@@ -54,4 +54,63 @@ void main() {
       expect(types.map((t) => t.typeId), [1, 2]);
     });
   });
+
+  group("metaFilterBucketOf", () {
+    test("maps meta groups to buckets", () {
+      expect(metaFilterBucketOf(EveConstMetaGroupId.tech1), MetaFilterBucket.techTree);
+      expect(metaFilterBucketOf(EveConstMetaGroupId.tech2), MetaFilterBucket.techTree);
+      expect(metaFilterBucketOf(EveConstMetaGroupId.storyline), MetaFilterBucket.faction);
+      expect(metaFilterBucketOf(EveConstMetaGroupId.faction), MetaFilterBucket.faction);
+      expect(metaFilterBucketOf(EveConstMetaGroupId.deadspace), MetaFilterBucket.deadspace);
+      expect(metaFilterBucketOf(EveConstMetaGroupId.officer), MetaFilterBucket.officer);
+    });
+
+    test("unknown or missing meta group maps to tech tree", () {
+      expect(metaFilterBucketOf(0), MetaFilterBucket.techTree);
+      expect(metaFilterBucketOf(99), MetaFilterBucket.techTree);
+    });
+  });
+
+  group("MetaFilter", () {
+    test("all filter passes every type", () {
+      const filter = MetaFilter.all();
+      expect(filter.isAll, isTrue);
+      expect(filter.passes(_type(1)), isTrue);
+      expect(filter.passes(_type(2, metaGroupId: EveConstMetaGroupId.officer)), isTrue);
+    });
+
+    test("bucket filter passes only matching types", () {
+      const filter = MetaFilter.buckets({MetaFilterBucket.techTree});
+      expect(filter.isAll, isFalse);
+      expect(filter.passes(_type(1, metaGroupId: EveConstMetaGroupId.tech1)), isTrue);
+      expect(filter.passes(_type(2, metaGroupId: EveConstMetaGroupId.tech2)), isTrue);
+      expect(filter.passes(_type(3, metaGroupId: EveConstMetaGroupId.faction)), isFalse);
+      expect(filter.passes(_type(4)), isTrue);
+    });
+
+    test("toggleAll resets to all", () {
+      const filter = MetaFilter.buckets({MetaFilterBucket.faction});
+      expect(filter.toggleAll().isAll, isTrue);
+    });
+
+    test("toggleBucket leaves all state and selects the bucket", () {
+      final filter = const MetaFilter.all().toggleBucket(MetaFilterBucket.deadspace);
+      expect(filter.isAll, isFalse);
+      expect(filter.buckets, {MetaFilterBucket.deadspace});
+    });
+
+    test("toggleBucket adds and removes buckets", () {
+      final two = const MetaFilter.all()
+          .toggleBucket(MetaFilterBucket.faction)
+          .toggleBucket(MetaFilterBucket.officer);
+      expect(two.buckets, {MetaFilterBucket.faction, MetaFilterBucket.officer});
+      final one = two.toggleBucket(MetaFilterBucket.officer);
+      expect(one.buckets, {MetaFilterBucket.faction});
+    });
+
+    test("removing the last bucket falls back to all", () {
+      final filter = const MetaFilter.all().toggleBucket(MetaFilterBucket.faction);
+      expect(filter.toggleBucket(MetaFilterBucket.faction).isAll, isTrue);
+    });
+  });
 }
