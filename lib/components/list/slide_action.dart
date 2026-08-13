@@ -49,10 +49,12 @@ class TileAction {
 
 /// Builds an [ActionPane] for one side of a tile.
 ///
-/// Up to [_kMaxVisibleActions] actions are shown as-is. With more actions the
-/// first one stays visible and the rest fold into a dropdown overflow button.
-/// The visible action comes first unless [overflowFirst] is set (used by the
-/// end pane so the overflow button stays adjacent to the tile).
+/// Up to [_kMaxVisibleActions] actions are shown as-is. With more actions one
+/// action stays visible and the rest fold into a dropdown overflow button.
+/// The pinned visible action is the first one unless [overflowFirst] is set
+/// (used by the end pane), in which case the last action — conventionally the
+/// most fundamental one, e.g. remove — stays pinned at the outer edge while
+/// the overflow button stays adjacent to the tile.
 ActionPane? buildTileActionPane(List<TileAction> actions, {bool overflowFirst = false}) {
   if (actions.isEmpty) return null;
   if (actions.length <= _kMaxVisibleActions) {
@@ -67,8 +69,8 @@ ActionPane? buildTileActionPane(List<TileAction> actions, {bool overflowFirst = 
     motion: const StretchMotion(),
     children: [
       if (overflowFirst) ...[
-        _OverflowTileActionButton(actions: actions.sublist(1)),
-        actions.first.toSlidableAction(),
+        _OverflowTileActionButton(actions: actions.sublist(0, actions.length - 1)),
+        actions.last.toSlidableAction(),
       ] else ...[
         actions.first.toSlidableAction(),
         _OverflowTileActionButton(actions: actions.sublist(1)),

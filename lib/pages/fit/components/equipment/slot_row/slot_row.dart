@@ -409,17 +409,6 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    actions.add(
-      TileAction(
-        onPressed: (_) => fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref),
-        backgroundColor: colorActionDelete,
-        foregroundColor: Colors.white,
-        icon: Icons.delete,
-        label: context.l10n.delete,
-        group: _SlotActionGroup.action,
-      ),
-    );
-
     if (_canCopy()) {
       actions.add(
         TileAction(
@@ -432,6 +421,17 @@ class _SlotRowDisplay extends ConsumerWidget {
         ),
       );
     }
+
+    actions.add(
+      TileAction(
+        onPressed: (_) => fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref),
+        backgroundColor: colorActionDelete,
+        foregroundColor: Colors.white,
+        icon: Icons.delete,
+        label: context.l10n.delete,
+        group: _SlotActionGroup.action,
+      ),
+    );
 
     return actions;
   }
