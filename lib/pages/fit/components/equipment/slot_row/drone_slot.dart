@@ -85,7 +85,7 @@ class _DroneSlotRow extends ConsumerWidget {
     if (!interactionOptions.allowMutations) return content;
 
     return Slidable(
-      endActionPane: buildTileActionPane(recoveryActions),
+      endActionPane: buildTileActionPane(recoveryActions, overflowFirst: true),
       child: SlidableEdgeZone(
         child: TileSecondaryActionRegion(actions: recoveryActions, child: content),
       ),
@@ -160,7 +160,7 @@ class _DroneSlotRow extends ConsumerWidget {
 
     return Slidable(
       startActionPane: buildTileActionPane(startActions),
-      endActionPane: buildTileActionPane(endActions),
+      endActionPane: buildTileActionPane(endActions, overflowFirst: true),
       child: SlidableEdgeZone(
         child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
       ),

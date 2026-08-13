@@ -51,7 +51,9 @@ class TileAction {
 ///
 /// Up to [_kMaxVisibleActions] actions are shown as-is. With more actions the
 /// first one stays visible and the rest fold into a dropdown overflow button.
-ActionPane? buildTileActionPane(List<TileAction> actions) {
+/// The visible action comes first unless [overflowFirst] is set (used by the
+/// end pane so the overflow button stays adjacent to the tile).
+ActionPane? buildTileActionPane(List<TileAction> actions, {bool overflowFirst = false}) {
   if (actions.isEmpty) return null;
   if (actions.length <= _kMaxVisibleActions) {
     return ActionPane(
@@ -64,8 +66,13 @@ ActionPane? buildTileActionPane(List<TileAction> actions) {
     extentRatio: _kActionExtentRatio * _kMaxVisibleActions,
     motion: const StretchMotion(),
     children: [
-      actions.first.toSlidableAction(),
-      _OverflowTileActionButton(actions: actions.sublist(1)),
+      if (overflowFirst) ...[
+        _OverflowTileActionButton(actions: actions.sublist(1)),
+        actions.first.toSlidableAction(),
+      ] else ...[
+        actions.first.toSlidableAction(),
+        _OverflowTileActionButton(actions: actions.sublist(1)),
+      ],
     ],
   );
 }
