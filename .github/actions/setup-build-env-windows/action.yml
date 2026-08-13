@@ -37,7 +37,7 @@ runs:
       shell: pwsh
       # Prebuilt binary via cargo-binstall; falls back to source build if no
       # artifact matches the runner.
-      run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.12.0
+      run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.13.0-beta.6
 
     - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
 
