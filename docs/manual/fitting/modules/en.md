@@ -24,6 +24,17 @@ Fitting is limited by the ship's CPU and powergrid. If a module pushes either
 resource into the red it cannot go online — check the fitting usage bars before
 committing to a layout.
 
+## Slot Row Actions
+
+Swipe a filled slot row to reveal its action panes: the leading side offers
+**Charge**, dynamic-item conversion, and **Copy**; the trailing side offers
+removing the charge and **Delete**. Each side shows at most two actions — when
+more are available the rest fold into a **More** overflow menu that groups
+related actions with dividers. On Windows and Linux, right-clicking a row opens
+the same grouped menu without swiping. Drone and fighter rows work the same
+way: swipe for the quantity controls (**x1** / **x5** / **Fill**, **+1** /
+**-1**, **Delete**).
+
 See [Tactical Modes](efa://manual/fitting/tactical-modes) for mode-switching
 hulls and [Overloading Modules](efa://manual/fitting/advanced/overloading) for
 pushing fitted modules beyond their rated performance.
