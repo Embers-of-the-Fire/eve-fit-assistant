@@ -202,6 +202,10 @@ class EveConstAttrID {
   /// - High is good: True
   static const int maxRange = 54;
 
+  /// - Name: maxGroupFitted
+  /// - High is good: True
+  static const int maxGroupFitted = 1544;
+
   /// - Name: falloff
   /// - High is good: True
   static const int falloff = 158;

@@ -833,6 +833,13 @@
   },
   "fitActionFill": "补满",
   "fitActionSet": "设置",
+  "fitActionFillAll": "全部填充",
+  "fitActionRemoveAll": "全部移除",
+  "fitActionChargeAll": "全部装填",
+  "fitActionRemoveAllCharges": "移除全部弹药",
+  "fitActionMutateRandom": "突变",
+  "fitActionMutateRandomAll": "全部突变",
+  "fitActionRevertAllDynamic": "全部还原",
   "fitUnknownImplantAtSlot": "槽位 {slot} 的植入体不可用",
   "@fitUnknownImplantAtSlot": {
     "placeholders": {

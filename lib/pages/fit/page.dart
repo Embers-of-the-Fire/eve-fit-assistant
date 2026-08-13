@@ -23,6 +23,7 @@ import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
 import "package:eve_fit_assistant/data/proto/fit.pb.dart";
 import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb_utils;

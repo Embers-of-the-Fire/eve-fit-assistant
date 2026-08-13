@@ -267,29 +267,51 @@ class _SlotRowDisplay extends ConsumerWidget {
     final isDynamic = fitContext.dynamicItemFor(slotInfo.slot.itemId) != null;
 
     if (_canHaveCharge(ref)) {
-      actions.add(
-        TileAction(
-          onPressed: (_) => _handleSetCharge(context, ref),
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          icon: Icons.battery_charging_full,
-          label: context.l10n.charge,
-          group: _SlotActionGroup.charge,
-        ),
-      );
+      actions
+        ..add(
+          TileAction(
+            onPressed: (_) => _handleSetCharge(context, ref),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.battery_charging_full,
+            label: context.l10n.charge,
+            group: _SlotActionGroup.charge,
+          ),
+        )
+        ..add(
+          TileAction(
+            onPressed: (_) => _handleChargeAll(context, ref),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.battery_charging_full,
+            label: context.l10n.fitActionChargeAll,
+            group: _SlotActionGroup.charge,
+          ),
+        );
     }
 
     if (isDynamic) {
-      actions.add(
-        TileAction(
-          onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
-          backgroundColor: Colors.grey,
-          foregroundColor: Colors.white,
-          icon: Icons.cyclone_outlined,
-          label: context.l10n.dynamicRevert,
-          group: _SlotActionGroup.abyss,
-        ),
-      );
+      actions
+        ..add(
+          TileAction(
+            onPressed: (_) => fitContext.fitWrapper.revertSlotFromDynamic(slotIdent),
+            backgroundColor: Colors.grey,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicRevert,
+            group: _SlotActionGroup.abyss,
+          ),
+        )
+        ..add(
+          TileAction(
+            onPressed: (_) => _handleMutateRandom(context, ref),
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+            icon: Icons.casino_outlined,
+            label: context.l10n.fitActionMutateRandom,
+            group: _SlotActionGroup.abyss,
+          ),
+        );
     } else if (_supportsDynamicItemConversion() &&
         _availableDynamicModifierTypeIds(ref).isNotEmpty) {
       actions.add(
@@ -304,18 +326,42 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
-    if (_canCopy()) {
+    if (_canMutateAll(ref)) {
       actions.add(
         TileAction(
-          onPressed: (_) => _handleCopy(context, ref),
-          autoClose: false,
-          icon: Icons.copy,
-          backgroundColor: Colors.grey.shade200,
-          foregroundColor: Colors.black,
-          label: context.l10n.copy,
-          group: _SlotActionGroup.action,
+          onPressed: (_) => _handleMutateAll(context, ref),
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+          icon: Icons.casino_outlined,
+          label: context.l10n.fitActionMutateRandomAll,
+          group: _SlotActionGroup.abyss,
         ),
       );
+    }
+
+    if (_canCopy()) {
+      actions
+        ..add(
+          TileAction(
+            onPressed: (_) => _handleCopy(context, ref),
+            autoClose: false,
+            icon: Icons.copy,
+            backgroundColor: Colors.grey.shade200,
+            foregroundColor: Colors.black,
+            label: context.l10n.copy,
+            group: _SlotActionGroup.action,
+          ),
+        )
+        ..add(
+          TileAction(
+            onPressed: (_) => fitContext.fitWrapper.fillSlotsFromSlot(slotIdent),
+            backgroundColor: Colors.grey.shade200,
+            foregroundColor: Colors.black,
+            icon: Icons.copy_all,
+            label: context.l10n.fitActionFillAll,
+            group: _SlotActionGroup.action,
+          ),
+        );
     }
 
     return actions;
@@ -337,6 +383,32 @@ class _SlotRowDisplay extends ConsumerWidget {
       );
     }
 
+    if (_canHaveCharge(ref)) {
+      actions.add(
+        TileAction(
+          onPressed: (_) => fitContext.fitWrapper.removeChargesForSameType(slotIdent),
+          backgroundColor: Colors.grey,
+          foregroundColor: Colors.white,
+          icon: Icons.cancel,
+          label: context.l10n.fitActionRemoveAllCharges,
+          group: _SlotActionGroup.charge,
+        ),
+      );
+    }
+
+    if (fitContext.dynamicItemFor(slotInfo.slot.itemId) != null) {
+      actions.add(
+        TileAction(
+          onPressed: (_) => fitContext.fitWrapper.revertAllSameDynamic(slotIdent),
+          backgroundColor: Colors.grey,
+          foregroundColor: Colors.white,
+          icon: Icons.cyclone_outlined,
+          label: context.l10n.fitActionRevertAllDynamic,
+          group: _SlotActionGroup.abyss,
+        ),
+      );
+    }
+
     actions.add(
       TileAction(
         onPressed: (_) => fitContext.fitWrapper.removeSlotAdjusted(slotIdent, ref),
@@ -347,6 +419,19 @@ class _SlotRowDisplay extends ConsumerWidget {
         group: _SlotActionGroup.action,
       ),
     );
+
+    if (_canCopy()) {
+      actions.add(
+        TileAction(
+          onPressed: (_) => fitContext.fitWrapper.removeAllSlotsOfType(slotIdent),
+          backgroundColor: colorActionDelete,
+          foregroundColor: Colors.white,
+          icon: Icons.delete_sweep,
+          label: context.l10n.fitActionRemoveAll,
+          group: _SlotActionGroup.action,
+        ),
+      );
+    }
 
     return actions;
   }
@@ -372,6 +457,12 @@ class _SlotRowDisplay extends ConsumerWidget {
       slotIdent is SlotIdentifierRig;
 
   bool _supportsDynamicItemConversion() => _dynamicItemConversionEnabled && _canCopy();
+
+  bool _canMutateAll(WidgetRef ref) {
+    if (!_supportsDynamicItemConversion()) return false;
+    if (fitContext.dynamicItemFor(slotInfo.slot.itemId) != null) return true;
+    return _availableDynamicModifierTypeIds(ref).isNotEmpty;
+  }
 
   List<int> _availableDynamicModifierTypeIds(WidgetRef ref) {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
@@ -405,19 +496,61 @@ class _SlotRowDisplay extends ConsumerWidget {
     await fitContext.fitWrapper.convertSlotToDynamic(slotIdent, modifierTypeId, ref);
   }
 
-  Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
+  List<int>? _chargeGroups(WidgetRef ref) {
     final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
-    if (originTypeId == null) return;
+    if (originTypeId == null) return null;
 
     final slots = ref.read(repoCollectionProvider)?.slots;
-    if (slots == null) return;
+    if (slots == null) return null;
 
-    final chargeGroups = switch (slotIdent) {
+    return switch (slotIdent) {
       SlotIdentifierHigh _ => slots.highSlots[originTypeId]?.chargeGroups,
       SlotIdentifierMedium _ => slots.mediumSlots[originTypeId]?.chargeGroups,
       SlotIdentifierLow _ => slots.lowSlots[originTypeId]?.chargeGroups,
       _ => null,
     };
+  }
+
+  Future<void> _handleMutateRandom(BuildContext context, WidgetRef ref) async {
+    final dynamicItem = fitContext.dynamicItemFor(slotInfo.slot.itemId);
+    if (dynamicItem == null) return;
+    await fitContext.fitWrapper.randomizeDynamicAttributes(dynamicItem.dynamicItemId);
+  }
+
+  Future<void> _handleMutateAll(BuildContext context, WidgetRef ref) async {
+    var modifierTypeId = fitContext.dynamicItemFor(slotInfo.slot.itemId)?.modifierTypeId;
+    if (modifierTypeId == null) {
+      final modifierTypeIds = _availableDynamicModifierTypeIds(ref);
+      if (modifierTypeIds.isEmpty) return;
+
+      modifierTypeId = await showDialog<int>(
+        context: context,
+        builder: (context) => AppDialog(
+          title: context.l10n.dynamicSelectTitle,
+          content: _DynamicModifierDialog(modifierTypeIds: modifierTypeIds),
+        ),
+      );
+      if (modifierTypeId == null) return;
+    }
+
+    await fitContext.fitWrapper.mutateAllSameOrigin(slotIdent, modifierTypeId);
+  }
+
+  Future<void> _handleChargeAll(BuildContext context, WidgetRef ref) async {
+    var chargeTypeId = slotInfo.slot.charge.toNullable()?.typeId;
+    if (chargeTypeId == null) {
+      final chargeGroups = _chargeGroups(ref);
+      if (chargeGroups == null || chargeGroups.isEmpty) return;
+
+      chargeTypeId = await showAddChargeDialog(context: context, chargeGroups: chargeGroups);
+      if (chargeTypeId == null) return;
+    }
+
+    await fitContext.fitWrapper.setChargeForSameType(slotIdent, chargeTypeId);
+  }
+
+  Future<void> _handleSetCharge(BuildContext context, WidgetRef ref) async {
+    final chargeGroups = _chargeGroups(ref);
     if (chargeGroups == null || chargeGroups.isEmpty) return;
 
     final chargeTypeId = await showAddChargeDialog(context: context, chargeGroups: chargeGroups);
