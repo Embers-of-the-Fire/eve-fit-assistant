@@ -62,7 +62,7 @@ Each slot takes one row:
 
 **Charges:** modules that take charges show a charge row (amount × charge name) under the item name. Swipe the row to **Set Charge** or remove the charge; the charge picker only lists charges the module accepts. See [Modules and Slots](efa://manual/fitting/modules).
 
-**Swipe actions:** swipe a filled slot row to reveal action panes — on the leading side **Copy** (copies the module to the next empty slot), convert to or revert from a **dynamic** item (mutated modules), and **Set Charge**; on the trailing side remove the charge and **Delete**. See [Mutaplasmids & Dynamic Items](efa://manual/fitting/advanced/mutaplasmids-dynamic-items).
+**Swipe actions:** swipe a filled slot row to reveal action panes. The leading side offers **Charge** and **Charge all** (charge every same-type module), dynamic-item actions (convert to an **Abyssal** item, or **Revert** / **Mutate** / **Mutate all** for mutated modules), and **Copy** / **Fill all** (copy this module into every empty slot of the section); the trailing side offers removing the charge (this module or **Remove all charges**), **Revert all** dynamic items, **Remove all** modules of this type, and **Delete**. Each side shows at most two actions; when more are available the rest fold into a **More** overflow menu that groups related actions with dividers — on the trailing side **Delete** stays pinned at the outer edge while the **More** button sits next to the tile. On Windows and Linux you can also right-click a row to open the same grouped action menu without swiping. See [Mutaplasmids & Dynamic Items](efa://manual/fitting/advanced/mutaplasmids-dynamic-items).
 
 **Inspect:** tap (or long-press) an item row to open its [Item Detail](efa://manual/pages/fitting/item-detail) page; the charge row can be tapped to inspect the charge the same way.
 
@@ -85,8 +85,8 @@ See [Attributes and Statistics](efa://manual/fitting/attributes-stats) for how t
 
 Ships with fighter tubes get a **Fighter** tab; all others get a **Drone** tab.
 
-- **Drones** — add and clear buttons at the top; each drone row offers quantity controls (x1 / x5, +1 / -1, delete).
-- **Fighters** — the header shows heavy/light/support fighter counts against their limits (H/L/S) plus used launcher tubes; each row toggles the abilities that fighter type supports (turret, missiles, volley, bomb) and shows the quantity against the squadron maximum.
+- **Drones** — add and clear buttons at the top; swipe a drone row for the quantity controls — **x1** / **x5** on the leading side; on the trailing side **Delete** stays pinned at the outer edge and **-1** / **+1** fold into the **More** menu.
+- **Fighters** — the header shows heavy/light/support fighter counts against their limits (H/L/S) plus used launcher tubes; each row toggles the abilities that fighter type supports (turret, missiles, volley, bomb) and shows the quantity against the squadron maximum; swipe a row for **x1** / **Fill** (leading) and **-1** / **+1** / **Delete** (trailing, Delete pinned at the outer edge).
 
 See [Drones and Fighters](efa://manual/fitting/drones-fighters).
 
