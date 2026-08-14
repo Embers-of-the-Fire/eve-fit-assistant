@@ -41,7 +41,7 @@ class _FitLinkIntakeGateState extends ConsumerState<FitLinkIntakeGate> {
         onFitLink: (uri) => ref.read(pendingFitLinkProvider.notifier).setExternal(uri),
         onInternalLink: (uri) => unawaited(_openInternalLink(uri)),
       );
-      unawaited(_nativeIntake!.start());
+      _nativeIntake!.start();
     }
   }
 

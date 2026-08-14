@@ -13,16 +13,9 @@ class NativeFitLinkIntake {
 
   StreamSubscription<Uri>? _subscription;
 
-  Future<void> start() async {
+  void start() {
     if (kIsWeb) return;
-    final appLinks = AppLinks();
-    try {
-      final initial = await appLinks.getInitialLink();
-      if (initial != null) dispatch(initial);
-    } on Object catch (e) {
-      warning("Failed to read initial app link: $e");
-    }
-    _subscription = appLinks.uriLinkStream.listen(
+    _subscription = AppLinks().uriLinkStream.listen(
       dispatch,
       onError: (Object e) => warning("App link stream error: $e"),
     );
