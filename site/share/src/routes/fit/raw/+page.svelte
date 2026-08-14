@@ -30,6 +30,7 @@ let remember = $state<Record<ShareTarget, boolean>>({
 
 let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 let appFailureTimer: ReturnType<typeof setTimeout> | null = null;
+let removeAppLaunchListeners: (() => void) | null = null;
 
 function stopTimers() {
     if (redirectTimer !== null) {
@@ -40,6 +41,8 @@ function stopTimers() {
         clearTimeout(appFailureTimer);
         appFailureTimer = null;
     }
+    removeAppLaunchListeners?.();
+    removeAppLaunchListeners = null;
 }
 
 function redirectTo(target: ShareTarget) {
@@ -69,9 +72,14 @@ function watchAppLaunch() {
     };
     document.addEventListener("visibilitychange", onVisibility, { once: true });
     window.addEventListener("blur", markLaunched, { once: true });
-    appFailureTimer = setTimeout(() => {
+    removeAppLaunchListeners?.();
+    removeAppLaunchListeners = () => {
         document.removeEventListener("visibilitychange", onVisibility);
         window.removeEventListener("blur", markLaunched);
+    };
+    appFailureTimer = setTimeout(() => {
+        removeAppLaunchListeners?.();
+        removeAppLaunchListeners = null;
         if (!launched) {
             redirecting = false;
             appFailed = true;
