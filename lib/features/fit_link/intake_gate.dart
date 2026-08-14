@@ -90,10 +90,14 @@ class _FitLinkIntakeGateState extends ConsumerState<FitLinkIntakeGate> {
         )?.showSnackBar(SnackBar(content: Text(context.l10n.fitImportUnknownError)));
       }
     } finally {
-      if (mounted) {
-        ref.read(pendingFitLinkProvider.notifier).clear();
-      }
       _consuming = false;
+      if (mounted) {
+        if (identical(ref.read(pendingFitLinkProvider), pending)) {
+          ref.read(pendingFitLinkProvider.notifier).clear();
+        }
+        final next = ref.read(pendingFitLinkProvider);
+        if (next != null) unawaited(_consume(next));
+      }
     }
   }
 
