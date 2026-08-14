@@ -1,1 +1,4 @@
-/dist
+node_modules
+.svelte-kit
+.wrangler
+static/.well-known

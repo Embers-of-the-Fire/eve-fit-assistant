@@ -224,8 +224,12 @@ wired into releases as follows:
 - The share host `share.platform.efa-tech.dev` is served by a dedicated
   Cloudflare Pages project `efa-share` using **Git integration** (not GitHub
   Actions): root directory `site/share`, build command `sh build.sh`, output
-  directory `dist`, production branch `dev`. `build.sh` renders
-  `assetlinks.json` the same way; the production build fails when
+  directory `.svelte-kit/cloudflare`, production branch `dev`. The site is a
+  fully prerendered SvelteKit app (`@sveltejs/adapter-cloudflare`); `build.sh`
+  renders `assetlinks.json` into `static/.well-known/`, installs workspace
+  dependencies from the repo root, builds via `pnpm --filter efa-share build`,
+  and copies the prerendered root page to `404.html` (the root page is the
+  localized not-found state). The production build fails when
   `APP_KEY_SHA256` is unset, while preview branches get the placeholder
   (gated on `CF_PAGES_BRANCH`).
 - One-time dashboard setup (no IaC exists): create the `efa-share` Pages

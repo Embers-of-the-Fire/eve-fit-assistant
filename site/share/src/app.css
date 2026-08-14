@@ -22,28 +22,6 @@ body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
 }
 
-.topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-}
-
-.brand {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-
-.lang-toggle {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    padding: 4px 12px;
-    cursor: pointer;
-}
-
 main {
     flex: 1;
     display: flex;
