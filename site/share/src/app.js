@@ -3,6 +3,10 @@
 
     const CANONICAL_PATH = "/fit/raw";
     const PAYLOAD_PREFIX = "EFA2:";
+    const MAX_PAYLOAD_CHARS = 7800;
+    const BASE64URL_ALPHABET = /^[A-Za-z0-9_-]*$/;
+    const GZIP_MAGIC_0 = 0x1f;
+    const GZIP_MAGIC_1 = 0x8b;
     const APP_URI_BASE = "efa://fit/raw";
     const WEB_URL = "https://app.efa-tech.dev";
     const NIGHTLY_URL = "https://app-preview.efa-tech.dev";
@@ -50,10 +54,29 @@
         }
     }
 
+    function decodeBase64Url(encoded) {
+        const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+        try {
+            return atob(padded);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function isValidPayload(payload) {
+        if (typeof payload !== "string" || payload.length > MAX_PAYLOAD_CHARS) return false;
+        if (!payload.startsWith(PAYLOAD_PREFIX)) return false;
+        const encoded = payload.slice(PAYLOAD_PREFIX.length);
+        if (encoded.length === 0 || !BASE64URL_ALPHABET.test(encoded)) return false;
+        const decoded = decodeBase64Url(encoded);
+        if (decoded === null || decoded.length < 2) return false;
+        return decoded.charCodeAt(0) === GZIP_MAGIC_0 && decoded.charCodeAt(1) === GZIP_MAGIC_1;
+    }
+
     function isFitLink() {
         if (location.pathname !== CANONICAL_PATH) return false;
-        const payload = new URLSearchParams(location.search).get("payload");
-        return typeof payload === "string" && payload.startsWith(PAYLOAD_PREFIX);
+        return isValidPayload(new URLSearchParams(location.search).get("payload"));
     }
 
     function show(elementId) {
