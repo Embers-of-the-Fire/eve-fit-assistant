@@ -21,7 +21,7 @@ summary: 应用内容中的链接如何跳转到页面或浏览器。
 
 导出对话框中的**复制链接**操作会生成如下形式的分享链接：
 
-```
+```text
 https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:...
 ```
 

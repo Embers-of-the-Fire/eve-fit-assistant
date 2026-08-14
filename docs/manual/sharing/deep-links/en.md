@@ -21,7 +21,7 @@ Note: `efa://` links navigate *within* the app. They are not web URLs. For openi
 
 The export dialog's **Copy link** action produces a share URL like:
 
-```
+```text
 https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:...
 ```
 
