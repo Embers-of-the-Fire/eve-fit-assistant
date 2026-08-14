@@ -82,7 +82,7 @@ class _FitLinkIntakeGateState extends ConsumerState<FitLinkIntakeGate> {
     } on FitLinkNotFoundException {
       debug("Fit link not recognized, dropped");
     } on FitLinkFormatException {
-      if (mounted) unawaited(_showInvalidDialog());
+      if (mounted) await _showInvalidDialog();
     } on Object catch (e, st) {
       warning("Fit link import failed: $e", stackTrace: st);
       if (mounted) {
