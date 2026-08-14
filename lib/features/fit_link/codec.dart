@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:math";
 import "dart:typed_data";
 
 import "package:archive/archive.dart";
@@ -56,14 +57,85 @@ Uint8List decodeFitLinkPayload(String payload) {
   if (compressed.length < 2 || compressed[0] != 0x1f || compressed[1] != 0x8b) {
     throw const FitLinkFormatException(FitLinkFormatErrorCode.invalidCompression);
   }
-  final List<int> jsonBytes;
+  final output = _BoundedInflateOutputStream(maxFitLinkDecodedJsonBytes);
   try {
-    jsonBytes = const GZipDecoder().decodeBytes(compressed);
+    const GZipDecoderWeb().decodeStream(InputMemoryStream(compressed), output);
+  } on _FitLinkDecodedSizeExceededException {
+    throw const FitLinkFormatException(FitLinkFormatErrorCode.decodedPayloadTooLarge);
   } on Object {
     throw const FitLinkFormatException(FitLinkFormatErrorCode.invalidCompression);
   }
-  if (jsonBytes.length > maxFitLinkDecodedJsonBytes) {
-    throw const FitLinkFormatException(FitLinkFormatErrorCode.decodedPayloadTooLarge);
+  return output.toBytes();
+}
+
+class _FitLinkDecodedSizeExceededException implements Exception {
+  const _FitLinkDecodedSizeExceededException();
+}
+
+class _BoundedInflateOutputStream extends OutputStream {
+  _BoundedInflateOutputStream(this._limit)
+    : _buffer = Uint8List(min(_initialBufferSize, _limit)),
+      super(byteOrder: ByteOrder.littleEndian);
+
+  static const int _initialBufferSize = 0x8000;
+
+  final int _limit;
+  Uint8List _buffer;
+
+  @override
+  int length = 0;
+
+  @override
+  void clear() {
+    length = 0;
   }
-  return Uint8List.fromList(jsonBytes);
+
+  @override
+  void flush() {}
+
+  void _reserve(int count) {
+    final required = length + count;
+    if (required > _limit) {
+      throw const _FitLinkDecodedSizeExceededException();
+    }
+    if (required <= _buffer.length) {
+      return;
+    }
+    var grown = _buffer.length * 2;
+    while (grown < required) {
+      grown *= 2;
+    }
+    _buffer = Uint8List(min(grown, _limit))..setRange(0, length, _buffer);
+  }
+
+  @override
+  void writeByte(int value) {
+    _reserve(1);
+    _buffer[length++] = value;
+  }
+
+  @override
+  void writeBytes(List<int> bytes, {int? length}) {
+    final count = length ?? bytes.length;
+    _reserve(count);
+    _buffer.setRange(this.length, this.length + count, bytes);
+    this.length += count;
+  }
+
+  @override
+  void writeStream(InputStream stream) {
+    writeBytes(stream.toUint8List());
+  }
+
+  @override
+  Uint8List subset(int start, [int? end]) {
+    final from = start < 0 ? length + start : start;
+    var to = end ?? length;
+    if (to < 0) {
+      to += length;
+    }
+    return Uint8List.view(_buffer.buffer, _buffer.offsetInBytes + from, to - from);
+  }
+
+  Uint8List toBytes() => Uint8List.view(_buffer.buffer, _buffer.offsetInBytes, length);
 }

@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:archive/archive.dart";
 import "package:eve_fit_assistant/features/fit_link/codec.dart";
@@ -165,6 +166,31 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("rejects a tiny gzip member that inflates far past the decoded size cap", () {
+      final compressed = const GZipEncoder().encodeBytes(Uint8List(maxFitLinkDecodedJsonBytes * 4));
+      final payload = "EFA2:${base64UrlEncode(compressed).replaceAll("=", "")}";
+      expect(payload.length, lessThanOrEqualTo(maxFitLinkEncodedPayloadChars));
+      expect(
+        () => decodeFitLinkPayload(payload),
+        throwsA(
+          isA<FitLinkFormatException>().having(
+            (e) => e.code,
+            "code",
+            FitLinkFormatErrorCode.decodedPayloadTooLarge,
+          ),
+        ),
+      );
+    });
+
+    test("accepts inflated JSON at exactly the decoded size cap", () {
+      final atCap = utf8.encode("[${"0" * (maxFitLinkDecodedJsonBytes - 2)}]");
+      expect(atCap.length, maxFitLinkDecodedJsonBytes);
+      final compressed = const GZipEncoder().encodeBytes(atCap);
+      final payload = "EFA2:${base64UrlEncode(compressed).replaceAll("=", "")}";
+      expect(payload.length, lessThanOrEqualTo(maxFitLinkEncodedPayloadChars));
+      expect(decodeFitLinkPayload(payload).length, maxFitLinkDecodedJsonBytes);
     });
   });
 }
