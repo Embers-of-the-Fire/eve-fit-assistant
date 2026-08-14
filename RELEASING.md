@@ -235,9 +235,12 @@ wired into releases as follows:
   `share.platform.efa-tech.dev`.
 - Release verification checklist addition: after installing a release-signed
   build, run `adb shell pm get-app-links dev.efa_tech.eve_fit_assistant` and
-  confirm all three hosts (`share.platform.efa-tech.dev`, `app.efa-tech.dev`,
-  `app-preview.efa-tech.dev`) show as verified. Debug-signed builds never
-  verify, so this check requires a release-signed APK.
+  confirm the two hosts that serve the release fingerprint
+  (`share.platform.efa-tech.dev` and `app.efa-tech.dev`) show as verified.
+  `app-preview.efa-tech.dev` serves the placeholder fingerprint (see above) and
+  cannot verify a release-signed APK unless `APP_KEY_SHA256` is provisioned for
+  the nightly Pages project, so it is expected to stay unverified. Debug-signed
+  builds never verify, so this check requires a release-signed APK.
 
 ## Quick reference
 
