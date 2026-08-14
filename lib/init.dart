@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/features/announcements/state/announcement_stat
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_store.dart";
 import "package:eve_fit_assistant/features/feedback/feedback_state_store.dart";
+import "package:eve_fit_assistant/features/fit_link/boot_probe.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/native/api/init.dart" as native_init;
 import "package:eve_fit_assistant/native/api/logging.dart" as native_logging;
@@ -106,6 +107,8 @@ Future<InitializedStores> initSingletons() async {
   // synchronously as soon as a release resolves, so the persisted state has
   // to be loaded before the gate mounts.
   await appVersionStateStore.init();
+
+  probeFitLinkBootUrl();
 
   unawaited(_deferredInit(announcementStateStore, appVersionStateStore));
 

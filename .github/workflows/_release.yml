@@ -193,14 +193,34 @@ jobs:
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # production-app exposes APP_KEY_SHA256 for rendering assetlinks.json into
+    # the bundle; test mode resolves to the empty ci-testing environment, so
+    # the placeholder fingerprint is emitted there.
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: true
           persist-credentials: false
 
+      # Production must not fall back to the placeholder assetlinks.json:
+      # Android App Links would fail to verify. Test mode keeps the empty
+      # value (placeholder fingerprint) intentionally.
+      - name: Verify app key fingerprint
+        if: ${{ !inputs.test_mode }}
+        shell: bash
+        env:
+          APP_KEY_SHA256: ${{ vars.APP_KEY_SHA256 }}
+        run: |
+          if [ -z "${APP_KEY_SHA256//[[:space:]]/}" ]; then
+            echo "::error::vars.APP_KEY_SHA256 is not set in the production-app environment; refusing to build a production web bundle with the placeholder assetlinks.json."
+            exit 1
+          fi
+
       - name: Build web bundle
         uses: ./.github/actions/build-web
+        with:
+          app-key-sha256: ${{ !inputs.test_mode && vars.APP_KEY_SHA256 || '' }}
 
       - name: Upload diagnostics
         if: failure()

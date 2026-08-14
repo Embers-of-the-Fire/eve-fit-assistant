@@ -87,6 +87,7 @@ dependencies:
   sqlite3_web: ^0.9.4
   sqlite_async: ^0.14.4
   flutter_local_notifications: ^22.3.0
+  app_links: ^7.2.1
 
 dev_dependencies:
   flutter_test:

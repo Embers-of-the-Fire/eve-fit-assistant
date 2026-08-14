@@ -135,7 +135,9 @@ def assemble_appdir(
 
     # Static packaging assets: desktop entry, AppRun, and a standard-sized
     # icon (linuxdeploy requires the icon basename to match the desktop
-    # entry's Icon field).
+    # entry's Icon field). The desktop entry also declares the
+    # x-scheme-handler/efa MIME type so launcher integration tools
+    # (appimaged/gearlever) can register the efa:// fit-link protocol.
     desktop_file = _PACKAGING_DIR / f"{APP_NAME.lower()}.desktop"
     app_run = _PACKAGING_DIR / "AppRun"
     icon_file = support_dir / "logo.png"

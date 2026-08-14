@@ -15,6 +15,14 @@ inputs:
     description: "Artifact retention in days."
     required: false
     default: "1"
+  app-key-sha256:
+    description: >-
+      Release-key certificate SHA-256 fingerprint used to render
+      .well-known/assetlinks.json for Android App Links verification.
+      When empty, a placeholder is emitted and verification fails
+      gracefully (links degrade to the browser).
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -52,6 +60,8 @@ runs:
 
     - name: Build web bundle
       shell: bash
+      env:
+        APP_KEY_SHA256: ${{ inputs.app-key-sha256 }}
       run: nix develop .#codegen --command bash -c 'uv run x.py build web'
 
     - name: Upload web bundle

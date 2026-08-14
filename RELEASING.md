@@ -205,6 +205,43 @@ Operational notes:
   the repository-level `CI_STORAGE_BUCKET` **variable** — PR builds still read
   the bucket name from it. Do not re-create the deleted secrets.
 
+### App links and the share host
+
+Fit deep links (`efa://fit/raw?payload=...` and HTTPS links on three hosts) are
+wired into releases as follows:
+
+- `APP_KEY_SHA256` (the release-key certificate fingerprint from
+  `production-app`) is consumed in two places: `./x ci release verify-signing`
+  (above), and the web bundle build. `_release.yml`'s `site` job (which runs in
+  the `production-app` environment for real releases) passes it into
+  `.github/actions/build-web` as the `app-key-sha256` input, and `x build web`
+  renders `build/web/.well-known/assetlinks.json` from
+  `site/share/assetlinks.template.json` via `site/share/render_assetlinks.py`
+  (stdlib-only). Non-production builds (test mode, PR previews, nightly) never
+  reference the signing variable: the input stays empty, the renderer emits a
+  placeholder via `--allow-missing`, and Android App Links verification simply
+  fails (links degrade to the browser).
+- The share host `share.platform.efa-tech.dev` is served by a dedicated
+  Cloudflare Pages project `efa-share` using **Git integration** (not GitHub
+  Actions): root directory `site/share`, build command `sh build.sh`, output
+  directory `dist`, production branch `dev`. `build.sh` renders
+  `assetlinks.json` the same way; the production build fails when
+  `APP_KEY_SHA256` is unset, while preview branches get the placeholder
+  (gated on `CF_PAGES_BRANCH`).
+- One-time dashboard setup (no IaC exists): create the `efa-share` Pages
+  project connected to this repository, set `APP_KEY_SHA256` as a Pages
+  project environment variable (production; source of truth is the Bitwarden
+  vault item for the signing key), and attach the custom domain
+  `share.platform.efa-tech.dev`.
+- Release verification checklist addition: after installing a release-signed
+  build, run `adb shell pm get-app-links dev.efa_tech.eve_fit_assistant` and
+  confirm the two hosts that serve the release fingerprint
+  (`share.platform.efa-tech.dev` and `app.efa-tech.dev`) show as verified.
+  `app-preview.efa-tech.dev` serves the placeholder fingerprint (see above) and
+  cannot verify a release-signed APK unless `APP_KEY_SHA256` is provisioned for
+  the nightly Pages project, so it is expected to stay unverified. Debug-signed
+  builds never verify, so this check requires a release-signed APK.
+
 ## Quick reference
 
 | Step | Command / Action |
