@@ -116,7 +116,10 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
   static const String _installPayload = "app_update.install";
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
-  final ReceivePort _backgroundActionPort = ReceivePort();
+
+  /// Created lazily in [_registerBackgroundActionPort]: constructing a
+  /// [ReceivePort] throws on web, and this service is a no-op off Android.
+  ReceivePort? _backgroundActionPort;
   bool _backgroundActionPortRegistered = false;
   bool _initialized = false;
   Future<void>? _initializing;
@@ -300,12 +303,10 @@ class LocalUpdateNotificationService implements UpdateNotificationService {
   /// the app is alive (see [_onBackgroundNotificationResponse]).
   void _registerBackgroundActionPort() {
     if (_backgroundActionPortRegistered) return;
+    final port = _backgroundActionPort ??= ReceivePort();
     ui.IsolateNameServer.removePortNameMapping(_backgroundActionPortName);
-    ui.IsolateNameServer.registerPortWithName(
-      _backgroundActionPort.sendPort,
-      _backgroundActionPortName,
-    );
-    _backgroundActionPort.listen((message) {
+    ui.IsolateNameServer.registerPortWithName(port.sendPort, _backgroundActionPortName);
+    port.listen((message) {
       if (message is! String) return;
       final action = _backgroundActionForName(message);
       if (action != null) _dispatchAction(action);
