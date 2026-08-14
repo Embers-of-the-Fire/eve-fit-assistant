@@ -162,8 +162,8 @@ environment protection rules gate which refs may do so.
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
-| `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews on the `efa-app-nightly` Pages project) |
-| `nightly-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `site-nightly.yml`, `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
+| `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews) and `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
+| `nightly-web` | `dev` branch only | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `site-nightly.yml` (targeting the `efa-app-nightly` Pages project) |
 
 Each environment holds a separately generated token/endpoint group scoped to the
 permissions that environment needs; endpoints therefore live in secrets alongside

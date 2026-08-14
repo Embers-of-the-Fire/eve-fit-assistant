@@ -236,7 +236,9 @@ jobs:
     timeout-minutes: 15
     # Test mode deploys to the nightly Pages project (and pins a comment on
     # the release PR); real releases deploy to the production Pages project.
-    environment: ${{ inputs.test_mode && 'nightly-web' || 'production-app' }}
+    # Test mode uses ci-testing-web (not nightly-web) because this job runs
+    # from the release PR's head branch, and nightly-web is restricted to dev.
+    environment: ${{ inputs.test_mode && 'ci-testing-web' || 'production-app' }}
     permissions:
       contents: read
       pull-requests: write

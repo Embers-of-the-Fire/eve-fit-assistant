@@ -25,7 +25,7 @@ jobs:
       github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
       github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release.yml
-    # Inherit so site-deploy's `environment: nightly-web` secrets resolve
+    # Inherit so site-deploy's `environment: ci-testing-web` secrets resolve
     # (Cloudflare Pages credentials) inside the reusable workflow.
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
