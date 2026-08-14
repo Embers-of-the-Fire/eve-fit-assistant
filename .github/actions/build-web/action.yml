@@ -52,6 +52,8 @@ runs:
 
     - name: Build web bundle
       shell: bash
+      env:
+        APP_KEY_SHA256: ${{ vars.APP_KEY_SHA256 }}
       run: nix develop .#codegen --command bash -c 'uv run x.py build web'
 
     - name: Upload web bundle

@@ -205,6 +205,37 @@ Operational notes:
   the repository-level `CI_STORAGE_BUCKET` **variable** — PR builds still read
   the bucket name from it. Do not re-create the deleted secrets.
 
+### App links and the share host
+
+Fit deep links (`efa://fit/raw?payload=...` and HTTPS links on three hosts) are
+wired into releases as follows:
+
+- `APP_KEY_SHA256` (the release-key certificate fingerprint from
+  `production-app`) is consumed in two places: `./x ci release verify-signing`
+  (above), and the web bundle build. `.github/actions/build-web` passes it to
+  `x build web`, which renders `build/web/.well-known/assetlinks.json` from
+  `site/share/assetlinks.template.json` via `site/share/render_assetlinks.py`
+  (stdlib-only). Without the variable the renderer emits a placeholder with
+  `--allow-missing`, and Android App Links verification simply fails (links
+  degrade to the browser).
+- The share host `share.platform.efa-tech.dev` is served by a dedicated
+  Cloudflare Pages project `efa-share` using **Git integration** (not GitHub
+  Actions): root directory `site/share`, build command `sh build.sh`, output
+  directory `dist`, production branch `dev`. `build.sh` renders
+  `assetlinks.json` the same way; the production build fails when
+  `APP_KEY_SHA256` is unset, while preview branches get the placeholder
+  (gated on `CF_PAGES_BRANCH`).
+- One-time dashboard setup (no IaC exists): create the `efa-share` Pages
+  project connected to this repository, set `APP_KEY_SHA256` as a Pages
+  project environment variable (production; source of truth is the Bitwarden
+  vault item for the signing key), and attach the custom domain
+  `share.platform.efa-tech.dev`.
+- Release verification checklist addition: after installing a release-signed
+  build, run `adb shell pm get-app-links dev.efa_tech.eve_fit_assistant` and
+  confirm all three hosts (`share.platform.efa-tech.dev`, `app.efa-tech.dev`,
+  `app-preview.efa-tech.dev`) show as verified. Debug-signed builds never
+  verify, so this check requires a release-signed APK.
+
 ## Quick reference
 
 | Step | Command / Action |

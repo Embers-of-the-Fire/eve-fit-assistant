@@ -1,5 +1,9 @@
+import "dart:convert";
+
+import "package:archive/archive.dart";
 import "package:eve_fit_assistant/storage/fit/migrations.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:flutter/foundation.dart";
 
 const currentFitStorageVersion = 2;
 const currentFitRegistryVersion = 2;
@@ -125,6 +129,11 @@ Map<String, dynamic> encodeNativeFitPayload(FitStorage fit) => <String, dynamic>
   "version": currentNativeFitPayloadVersion,
   "fit": encodeFitStorage(fit),
 };
+
+Uint8List encodeNativeFitBinary(FitStorage fit) {
+  final payload = jsonEncode(encodeNativeFitPayload(fit));
+  return Uint8List.fromList(const GZipEncoder().encodeBytes(utf8.encode(payload), level: 9));
+}
 
 DecodedFitStorage decodeNativeFitPayload(Map<String, dynamic> json) {
   final version = _readVersion(json, kind: FitPersistencePayloadKind.nativeText);

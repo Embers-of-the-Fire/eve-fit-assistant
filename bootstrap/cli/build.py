@@ -475,6 +475,15 @@ def register_build_commands(cli_group: click.Group) -> None:
         if not output_dir.is_dir():
             raise click.ClickException(f"Expected web build output not found: {output_dir}")
 
+        render_cmd = [
+            sys.executable,
+            str(PROJECT_ROOT / "site" / "share" / "render_assetlinks.py"),
+            str(output_dir / ".well-known" / "assetlinks.json"),
+        ]
+        if not os.environ.get("APP_KEY_SHA256", "").strip():
+            render_cmd.append("--allow-missing")
+        runtime.execute(render_cmd, "RENDERING ASSETLINKS.JSON")
+
         if no_prune:
             click.echo(styled([Style.BRIGHT, Fore.YELLOW], "Skipping canvaskit prune."))
         else:

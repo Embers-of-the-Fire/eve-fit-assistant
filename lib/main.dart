@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/announcements/state/announcement_stat
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/deeplink/providers.dart";
 import "package:eve_fit_assistant/features/feedback/feedback.dart";
+import "package:eve_fit_assistant/features/fit_link/intake_gate.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart";
 import "package:eve_fit_assistant/features/welcome/welcome_gate.dart";
 import "package:eve_fit_assistant/init.dart";
@@ -111,7 +112,10 @@ class MyApp extends ConsumerWidget {
                 appRouter: appRouter,
                 child: StartupAnnouncementGate(
                   appRouter: appRouter,
-                  child: initBuilder(context, child),
+                  child: FitLinkIntakeGate(
+                    appRouter: appRouter,
+                    child: initBuilder(context, child),
+                  ),
                 ),
               ),
             );

@@ -1,6 +1,5 @@
 import "dart:convert";
 
-import "package:archive/archive.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
@@ -30,11 +29,7 @@ class FitTextExporter {
     FitTextExportFormat.eft => FitTextExportResult(text: await _exportEft(fit), lossy: true),
   };
 
-  String _exportNativeFit(FitStorage fit) {
-    final payload = jsonEncode(encodeNativeFitPayload(fit));
-    final compressed = const GZipEncoder().encodeBytes(utf8.encode(payload), level: 9);
-    return "EFA2:${base64Encode(compressed)}";
-  }
+  String _exportNativeFit(FitStorage fit) => "EFA2:${base64Encode(encodeNativeFitBinary(fit))}";
 
   Future<String> _exportEft(FitStorage fit) async {
     final names = await _FitTextNameResolver.load(ref, fit);

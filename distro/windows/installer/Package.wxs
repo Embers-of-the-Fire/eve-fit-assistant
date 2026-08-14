@@ -52,11 +52,24 @@
             Target="[INSTALLFOLDER]eve_fit_assistant.exe"
             WorkingDirectory="INSTALLFOLDER" />
       </Component>
+      <Component Id="EfaProtocolRegistration" Guid="*">
+        <RegistryKey Root="HKCU" Key="Software\Classes\efa">
+          <RegistryValue Type="string" Value="URL:EFA Protocol" />
+          <RegistryValue Type="string" Name="URL Protocol" Value="" />
+          <RegistryKey Key="shell\open\command">
+            <RegistryValue
+                Type="string"
+                Value="&quot;[INSTALLFOLDER]eve_fit_assistant.exe&quot; &quot;%1&quot;" />
+          </RegistryKey>
+          <RegistryValue Type="integer" Name="Registered" Value="1" KeyPath="yes" />
+        </RegistryKey>
+      </Component>
     </DirectoryRef>
 
     <Feature Id="Main" Title="!(loc.ProductName)" Level="1">
       <ComponentGroupRef Id="PayloadComponents" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="EfaProtocolRegistration" />
     </Feature>
   </Package>
 </Wix>

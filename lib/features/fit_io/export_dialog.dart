@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";
+import "package:eve_fit_assistant/features/fit_link/share_link.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -108,6 +109,10 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     ),
     actions: [
       TextButton(
+        onPressed: _fit == null || _isExporting ? null : _handleCopyLink,
+        child: Text(context.l10n.fitExportCopyLinkButton),
+      ),
+      TextButton(
         onPressed: _fit == null || _isExporting ? null : _handleShare,
         child: Text(context.l10n.share),
       ),
@@ -166,6 +171,28 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     await _runExportAction((fit, result) async {
       await SharePlus.instance.share(ShareParams(text: result.text, subject: fit.metadata.name));
     }, onErrorMessage: context.l10n.fitExportShareError);
+  }
+
+  Future<void> _handleCopyLink() async {
+    final fit = _fit;
+    if (fit == null) return;
+    final url = const FitShareLinkBuilder().buildShareUrl(fit);
+    if (url == null) {
+      setState(() => _actionError = context.l10n.fitExportLinkTooLarge);
+      return;
+    }
+    try {
+      await Clipboard.setData(ClipboardData(text: url));
+    } on Object {
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitExportClipboardError);
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.fitExportLinkCopied)));
   }
 
   Future<void> _runExportAction(

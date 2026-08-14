@@ -53,6 +53,10 @@ The `RepoStateNotifier` initializes asynchronously at startup; `SchemaGuard` wat
 | Prune | `prune()` | `RepoService` → `VerificationService.prune()` |
 | Startup recovery | `recoverPartialDownloads()` | `RepoService` (called from `ensureInitialized()`) |
 
+## App Links
+
+Fit deep links (`efa://fit/raw?payload=...` plus HTTPS links on `share.platform.efa-tech.dev`, `app.efa-tech.dev`, and `app-preview.efa-tech.dev`) live in `lib/features/fit_link/`: payload codec (`codec.dart`, base64url+gzip over the shared `encodeNativeFitBinary` in `lib/storage/fit/persistence.dart`), URI grammar (`fit_link_uri.dart`), import (`importer.dart` → `FitManager.importFit`), share-URL builder (`share_link.dart`, used by the export dialog's Copy link action), web boot probe (`boot_probe*.dart`, scrubs the payload from the address bar), OS intake (`native_intake.dart`, via `app_links`), and the consuming widget (`intake_gate.dart`, wired in `main.dart` next to the other gates; awaits repo readiness, imports, then pushes `FitRoute`). Web keeps the hash URL strategy; `web/_redirects` serves the SPA at `/fit/*` and the boot probe reads `Uri.base`. Android intent filters (custom scheme + one autoVerify App Links filter per host) are in `AndroidManifest.xml`; Windows registers `efa://` per-user in `distro/windows/installer/Package.wxs`; Linux declares `x-scheme-handler/efa` in `distro/linux/appimage/efa.desktop` (best-effort). `assetlinks.json` is rendered from `site/share/assetlinks.template.json` by `site/share/render_assetlinks.py` (stdlib-only, reads `APP_KEY_SHA256`): `x build web` renders it for the app hosts, and the `efa-share` Pages project (Git integration, `site/share/build.sh`) renders it for the share host. The share landing page itself is the framework-free static site under `site/share/` (hand-rolled en/zh i18n, Biome-formatted).
+
 ## Environment And Setup
 
 - Use `nix develop`; `flake.nix` supplies Flutter, JDK 17, Android SDK/NDK, Rust/Cargo, `uv`, protobuf tools, and `flutter_rust_bridge_codegen`.
