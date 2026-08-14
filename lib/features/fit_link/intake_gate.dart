@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
 import "package:eve_fit_assistant/features/fit_link/native_intake.dart";
 import "package:eve_fit_assistant/features/fit_link/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -104,14 +105,40 @@ class _FitLinkIntakeGateState extends ConsumerState<FitLinkIntakeGate> {
   Future<bool> _awaitRepoReady() async {
     bool isReady(RepoState state) => state is RepoStateActive && state.entry != null;
     final current = ref.read(repoStateProvider);
-    if (isReady(current)) return true;
     if (current is RepoStateError) return false;
+    if (!isReady(current)) {
+      final completer = Completer<bool>();
+      final sub = ref.listenManual(repoStateProvider, (_, next) {
+        if (completer.isCompleted) return;
+        if (isReady(next)) completer.complete(true);
+        if (next is RepoStateError) completer.complete(false);
+      });
+      try {
+        final repoReady = await completer.future.timeout(
+          const Duration(minutes: 2),
+          onTimeout: () => false,
+        );
+        if (!repoReady) return false;
+      } finally {
+        sub.close();
+      }
+    }
+    return _awaitCollectionReady();
+  }
+
+  /// The repo being active does not imply the type collection is decoded:
+  /// [DataReadinessNotifier] decodes it asynchronously (chunked on the main
+  /// event loop on web), so imports must also wait for [DataReadinessReady].
+  Future<bool> _awaitCollectionReady() async {
+    final current = ref.read(dataReadinessProvider);
+    if (current is DataReadinessReady) return true;
+    if (current is DataReadinessError) return false;
 
     final completer = Completer<bool>();
-    final sub = ref.listenManual(repoStateProvider, (_, next) {
+    final sub = ref.listenManual(dataReadinessProvider, (_, next) {
       if (completer.isCompleted) return;
-      if (isReady(next)) completer.complete(true);
-      if (next is RepoStateError) completer.complete(false);
+      if (next is DataReadinessReady) completer.complete(true);
+      if (next is DataReadinessError) completer.complete(false);
     });
     try {
       return await completer.future.timeout(const Duration(minutes: 2), onTimeout: () => false);
