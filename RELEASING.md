@@ -212,12 +212,15 @@ wired into releases as follows:
 
 - `APP_KEY_SHA256` (the release-key certificate fingerprint from
   `production-app`) is consumed in two places: `./x ci release verify-signing`
-  (above), and the web bundle build. `.github/actions/build-web` passes it to
-  `x build web`, which renders `build/web/.well-known/assetlinks.json` from
+  (above), and the web bundle build. `_release.yml`'s `site` job (which runs in
+  the `production-app` environment for real releases) passes it into
+  `.github/actions/build-web` as the `app-key-sha256` input, and `x build web`
+  renders `build/web/.well-known/assetlinks.json` from
   `site/share/assetlinks.template.json` via `site/share/render_assetlinks.py`
-  (stdlib-only). Without the variable the renderer emits a placeholder with
-  `--allow-missing`, and Android App Links verification simply fails (links
-  degrade to the browser).
+  (stdlib-only). Non-production builds (test mode, PR previews, nightly) never
+  reference the signing variable: the input stays empty, the renderer emits a
+  placeholder via `--allow-missing`, and Android App Links verification simply
+  fails (links degrade to the browser).
 - The share host `share.platform.efa-tech.dev` is served by a dedicated
   Cloudflare Pages project `efa-share` using **Git integration** (not GitHub
   Actions): root directory `site/share`, build command `sh build.sh`, output

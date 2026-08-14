@@ -193,6 +193,10 @@ jobs:
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # production-app exposes APP_KEY_SHA256 for rendering assetlinks.json into
+    # the bundle; test mode resolves to the empty ci-testing environment, so
+    # the placeholder fingerprint is emitted there.
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -201,6 +205,8 @@ jobs:
 
       - name: Build web bundle
         uses: ./.github/actions/build-web
+        with:
+          app-key-sha256: ${{ !inputs.test_mode && vars.APP_KEY_SHA256 || '' }}
 
       - name: Upload diagnostics
         if: failure()
