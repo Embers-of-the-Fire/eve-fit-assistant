@@ -1,0 +1,3 @@
+name = "efa-share"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+compatibility_date = "2026-08-01"
