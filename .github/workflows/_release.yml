@@ -203,6 +203,20 @@ jobs:
           submodules: true
           persist-credentials: false
 
+      # Production must not fall back to the placeholder assetlinks.json:
+      # Android App Links would fail to verify. Test mode keeps the empty
+      # value (placeholder fingerprint) intentionally.
+      - name: Verify app key fingerprint
+        if: ${{ !inputs.test_mode }}
+        shell: bash
+        env:
+          APP_KEY_SHA256: ${{ vars.APP_KEY_SHA256 }}
+        run: |
+          if [ -z "${APP_KEY_SHA256//[[:space:]]/}" ]; then
+            echo "::error::vars.APP_KEY_SHA256 is not set in the production-app environment; refusing to build a production web bundle with the placeholder assetlinks.json."
+            exit 1
+          fi
+
       - name: Build web bundle
         uses: ./.github/actions/build-web
         with:
