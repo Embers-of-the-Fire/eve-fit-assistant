@@ -12,6 +12,7 @@ Detailed subsystem docs live in `docs/agents/` (index: @docs/agents/README) and 
 - Python in `bootstrap/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging. The top-level `data/` directory holds only raw EVE resources (`data/resources/`) and protobuf `.proto` schema sources (`data/schema/`).
 - `rust_builder/` is the Flutter plugin/cargokit wrapper used by `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
+- UI work across app and sites follows the cross-product design principles in @docs/agents/style and the canonical color system in @docs/agents/color (brand surfaces keep the homepage palette; workload platforms — app, share, discussion — share one palette).
 - `rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
 
 ## Storage Layer
