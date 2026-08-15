@@ -3,7 +3,7 @@ import "dart:math" as math;
 import "dart:ui" as ui;
 
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";

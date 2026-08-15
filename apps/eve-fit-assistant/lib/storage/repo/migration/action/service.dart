@@ -1,5 +1,5 @@
 import "dart:convert";
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";

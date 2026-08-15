@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:isolate";
 import "dart:ui" as ui;
 
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/app_update/format.dart";

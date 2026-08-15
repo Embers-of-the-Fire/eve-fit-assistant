@@ -33,6 +33,8 @@ dependencies:
     sdk: flutter
   rust_lib_eve_fit_assistant:
     path: rust_builder
+  efa_compat:
+    path: ../../packages/efa_compat
 
   animated_text_kit: ^4.3.0
   animated_tree_view: ^2.3.0

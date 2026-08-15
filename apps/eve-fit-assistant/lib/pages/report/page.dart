@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/compat/io.dart" show Platform;
+import "package:efa_compat/io.dart" show Platform;
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/features/report/report_api.dart";

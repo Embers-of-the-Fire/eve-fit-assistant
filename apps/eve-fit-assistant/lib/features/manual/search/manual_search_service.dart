@@ -1,5 +1,5 @@
 import "package:crypto/crypto.dart";
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/features/manual/search/manual_search_text.dart";
 import "package:flutter/services.dart" show rootBundle;
 import "package:flutter_riverpod/flutter_riverpod.dart";

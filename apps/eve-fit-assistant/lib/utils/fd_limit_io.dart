@@ -1,5 +1,5 @@
 import "dart:ffi";
-import "package:eve_fit_assistant/compat/io.dart" show Platform;
+import "package:efa_compat/io.dart" show Platform;
 
 import "package:ffi/ffi.dart";
 

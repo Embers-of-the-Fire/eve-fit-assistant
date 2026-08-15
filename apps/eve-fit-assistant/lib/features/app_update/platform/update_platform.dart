@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 
 import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";

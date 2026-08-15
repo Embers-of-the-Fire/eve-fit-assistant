@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";

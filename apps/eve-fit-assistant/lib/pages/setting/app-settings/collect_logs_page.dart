@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:archive/archive.dart";
 import "package:auto_route/auto_route.dart";
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/utils/context.dart";

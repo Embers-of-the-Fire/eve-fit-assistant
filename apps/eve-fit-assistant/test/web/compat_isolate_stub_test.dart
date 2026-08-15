@@ -1,7 +1,7 @@
 @TestOn("browser")
 library;
 
-import "package:eve_fit_assistant/compat/isolate.dart";
+import "package:efa_compat/isolate.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_test/flutter_test.dart";
 

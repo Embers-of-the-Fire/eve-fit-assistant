@@ -1,7 +1,7 @@
 @TestOn("vm")
 library;
 
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/storage/path_migration.dart";

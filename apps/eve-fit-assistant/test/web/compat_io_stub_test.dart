@@ -1,7 +1,7 @@
 @TestOn("browser")
 library;
 
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
