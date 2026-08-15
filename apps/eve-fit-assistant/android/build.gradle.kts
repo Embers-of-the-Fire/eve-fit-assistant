@@ -18,7 +18,7 @@ fun RepositoryHandler.rustlsPlatformVerifier() : MavenArtifactRepository {
     val manifestPath = let {
         val dependencyJson = providers.exec {
             workingDir = File(project.rootDir, "../")
-            commandLine("cargo", "metadata", "--format-version=1", "--manifest-path", "Cargo.toml")
+            commandLine("cargo", "metadata", "--format-version=1", "--manifest-path", "rust/Cargo.toml")
         }.standardOutput.asText.get().trim()
 
         val path = Json.decodeFromString<JsonObject>(dependencyJson)
