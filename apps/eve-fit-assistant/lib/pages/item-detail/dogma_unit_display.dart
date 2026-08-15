@@ -1,8 +1,8 @@
 import "dart:math" as math;
 
+import "package:efa_constant/eve.dart";
 import "package:efa_proto/dogma_units.pb.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/widgets.dart";

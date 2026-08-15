@@ -4,6 +4,7 @@ import "dart:ui" as ui;
 
 import "package:auto_route/auto_route.dart";
 import "package:efa_compat/io.dart";
+import "package:efa_constant/eve.dart";
 import "package:efa_proto/dynamic.pb.dart" as pb_dynamic;
 import "package:efa_proto/fit.pb.dart";
 import "package:efa_proto/types.pb.dart" as pb_types;
@@ -25,7 +26,6 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/chat/fit_context.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";

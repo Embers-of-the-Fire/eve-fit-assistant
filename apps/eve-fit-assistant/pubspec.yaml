@@ -35,6 +35,8 @@ dependencies:
     path: rust_builder
   efa_compat:
     path: ../../packages/efa_compat
+  efa_constant:
+    path: ../../packages/efa_constant
   efa_proto:
     path: ../../packages/efa_proto
 

@@ -7,6 +7,7 @@ environment:
 workspace:
   - apps/eve-fit-assistant
   - packages/efa_compat
+  - packages/efa_constant
   - packages/efa_proto
 
 dev_dependencies:
@@ -53,6 +54,7 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_constant
     app:fix:
       description: Apply automated Dart fixes to the app.
       exec: dart fix --apply
@@ -60,6 +62,7 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_constant
     app:format:
       description: Format the app's Dart sources.
       exec: dart format lib
@@ -67,6 +70,7 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_constant
     app:format:check:
       description: Verify the app's Dart sources are formatted.
       exec: dart format --set-exit-if-changed lib
@@ -74,6 +78,7 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_constant
     app:gen:
       description: Run the app's build_runner code generation.
       exec: flutter pub run build_runner build --delete-conflicting-outputs

@@ -1,13 +1,13 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:efa_constant/eve.dart" show EveConstCategoryId, EveConstMarketGroupId;
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/eve_select_list.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/constant/eve.dart" show EveConstCategoryId, EveConstMarketGroupId;
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";

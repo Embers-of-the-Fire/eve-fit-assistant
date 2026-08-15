@@ -1,5 +1,5 @@
+import "package:efa_constant/eve.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db_web.dart"
     if (dart.library.io) "package:eve_fit_assistant/storage/repo/checkout_db_web_stub.dart";

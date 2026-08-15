@@ -24,9 +24,11 @@ I18N_ROOT = EFA_APP_ROOT / "l10n"
 
 DART_ROOT = EFA_APP_ROOT / "lib"
 
+EFA_CONSTANT_ROOT = PROJECT_ROOT / "packages" / "efa_constant" / "lib"
+
 ASSETS_OUT_PATH = DART_ROOT / "constant" / "assets_generated.dart"
-EVE_ATTR_OUT_PATH = DART_ROOT / "constant" / "eve_attr_generated.dart"
-EVE_DOGMA_UNIT_OUT_PATH = DART_ROOT / "constant" / "eve_dogma_unit_generated.dart"
+EVE_ATTR_OUT_PATH = EFA_CONSTANT_ROOT / "eve_attr_generated.dart"
+EVE_DOGMA_UNIT_OUT_PATH = EFA_CONSTANT_ROOT / "eve_dogma_unit_generated.dart"
 
 HIGH_SLOT_ATTR = 14
 MEDIUM_SLOT_ATTR = 13

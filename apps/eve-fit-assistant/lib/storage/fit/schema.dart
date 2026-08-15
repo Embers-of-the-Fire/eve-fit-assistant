@@ -1,7 +1,7 @@
+import "package:efa_constant/eve.dart";
 import "package:efa_proto/fit.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";

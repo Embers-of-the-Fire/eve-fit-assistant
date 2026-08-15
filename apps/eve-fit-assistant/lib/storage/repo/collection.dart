@@ -1,6 +1,7 @@
 import "dart:typed_data";
 
 import "package:efa_compat/io.dart";
+import "package:efa_constant/eve.dart";
 import "package:efa_proto/categories.pb.dart" as pb_categories;
 import "package:efa_proto/collections.pb.dart";
 import "package:efa_proto/dogma_attributes.pb.dart" as pb_attrs;
@@ -12,7 +13,6 @@ import "package:efa_proto/market_groups.pb.dart" as pb_market;
 import "package:efa_proto/meta_groups.pb.dart" as pb_meta;
 import "package:efa_proto/type_materials.pb.dart" as pb_materials;
 import "package:efa_proto/types.pb.dart" as pb_types;
-import "package:eve_fit_assistant/constant/eve.dart";
 import "package:eve_fit_assistant/storage/repo/collection_chunked_decode.dart";
 import "package:eve_fit_assistant/storage/repo/data_readiness.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";

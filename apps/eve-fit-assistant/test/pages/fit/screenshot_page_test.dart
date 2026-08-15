@@ -8,7 +8,7 @@ import "dart:ui" as ui;
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
+import "package:efa_constant/eve.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:efa_proto/collections.pb.dart";
 import "package:efa_proto/fit.pb.dart" as proto_fit;

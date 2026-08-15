@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/constant/eve.dart";
+import "package:efa_constant/eve.dart";
 import "package:efa_proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/utils/type_sort.dart";
 import "package:flutter_test/flutter_test.dart";
