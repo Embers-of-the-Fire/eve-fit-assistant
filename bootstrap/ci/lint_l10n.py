@@ -14,7 +14,7 @@ from colorama import Fore
 from colorama import Style
 
 from bootstrap.color import styled
-from bootstrap.constant import PROJECT_ROOT
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.log import error
 from bootstrap.log import info
 
@@ -22,7 +22,7 @@ from bootstrap.log import info
 __all__ = ["L10nConfig", "L10nViolation", "check_arb_files", "load_l10n_config", "run_l10n_lint"]
 
 
-L10N_CONFIG_PATH = PROJECT_ROOT / "l10n.yaml"
+L10N_CONFIG_PATH = EFA_APP_ROOT / "l10n.yaml"
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
 

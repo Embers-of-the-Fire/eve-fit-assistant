@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "pkgs/worker/release",
-    "rust",
-    "rust/lib/efa-chat",
-    "rust/lib/eve-fit-os",
+    "apps/eve-fit-assistant/rust",
+    "apps/eve-fit-assistant/rust/lib/efa-chat",
+    "apps/eve-fit-assistant/rust/lib/eve-fit-os",
 ]
-default-members = ["rust"]
+default-members = ["apps/eve-fit-assistant/rust"]
 resolver = "3"

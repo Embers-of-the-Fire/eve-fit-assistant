@@ -7,7 +7,7 @@ exclude = [
     ".venv",
     "__pycache__",
     "**/*_pb2.py",
-    "rust/lib/",
+    "apps/eve-fit-assistant/rust/lib/",
     "tools/eve-fsd-dumper/",
 ]
 

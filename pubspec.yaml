@@ -1,169 +1,106 @@
-name: eve_fit_assistant
-description: "EVE Fit Assistant"
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-
-# The following defines the version and build number for your application.
-# A version number is three numbers separated by dots, like 1.2.43
-# followed by an optional build number separated by a +.
-# Both the version and the builder number may be overridden in flutter
-# build by specifying --build-name and --build-number, respectively.
-# In Android, build-name is used as versionName while build-number used as versionCode.
-# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
-# Read more about iOS versioning at
-# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
-version: 0.10.0+23
+name: efa
+publish_to: none
 
 environment:
   sdk: ^3.12.0
 
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_localizations:
-    sdk: flutter
-  rust_lib_eve_fit_assistant:
-    path: rust_builder
-
-  animated_text_kit: ^4.3.0
-  animated_tree_view: ^2.3.0
-  archive: ^4.0.7
-  auto_route: ^11.1.0
-  canonical_json: ^1.1.3
-  convert: ^3.1.2
-  crypto: ^3.0.7
-  date_format: ^2.0.9
-  dio: ^5.11.0
-  dio_cache_interceptor: ^4.0.7
-  fast_immutable_collections: ^11.1.0
-  ffi: ^2.2.0
-  file: ^7.0.1
-  file_picker: ^12.0.0-beta.7
-  flutter_breadcrumb: ^1.0.1
-  flutter_easyloading: ^4.0.2
-  flutter_launcher_icons: ^0.14.4
-  flutter_markdown_plus: ^1.0.12
-  flutter_native_splash: ^2.4.8
-  flutter_rust_bridge: 2.13.0-beta.6
-  flutter_secure_storage: ^11.0.0
-  fluttertoast: ^10.0.0
-  font_awesome_flutter: ^11.0.0
-  fpdart: ^1.2.0
-  freezed_annotation: ^3.1.0
-  hive_ce: ^2.18.0
-  http_cache_hive_store: ^5.1.1
-  html: ^0.15.6
-  intl: ^0.20.2
-  json_annotation: ^4.12.0
-  loading_indicator: ^3.1.1
-  logger: ^2.6.2
-  path: ^1.9.1
-  path_provider: ^2.1.6
-  protobuf: ^6.0.0
-  riverpod: ^3.4.2
-  flutter_riverpod: ^3.4.2
-  riverpod_annotation: ^4.0.6
-  shared_preferences: ^2.5.4
-  share_plus: ^13.3.0
-  toggle_switch: ^2.3.0
-  url_launcher: ^6.3.2
-  uuid: ^4.6.0
-  web: ^1.1.1
-  flutter_slidable: ^4.0.3
-  yaml: ^3.1.3
-  package_info_plus: ^10.2.1
-  restart_app: ^1.3.2
-  sqlite3: ^3.5.0
-  sqlite3_web: ^0.9.4
-  sqlite_async: ^0.14.4
-  flutter_local_notifications: ^22.3.0
-  app_links: ^7.2.1
+workspace:
+  - apps/eve-fit-assistant
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
+  melos: ^8.3.0
 
-  auto_route_generator: ^10.6.0
-  build_runner: ^2.15.1
-  # custom_lint: ^0.8.1 # Incompatible with flutter_lints
-  flutter_lints: ^6.0.0
-  freezed: ^4.0.0-dev.3
-  json_serializable: ^6.14.1
-  riverpod_generator: ^4.0.8
-  riverpod_lint: ^3.1.8
-  mocktail: ^1.0.4
+melos:
+  repository: https://github.com/Embers-of-the-Fire/eve-fit-assistant
 
-# riverpod depends on `test`, and the test versions compatible with the
-# flutter_test-pinned test_api 0.7.11 cap analyzer <13; the codegen toolchain
-# (freezed 4.0.0-dev, riverpod_generator 4.0.8, riverpod_lint 3.1.8,
-# auto_route_generator 10.6.0) requires analyzer ^13.0.0. Pin analyzer 13.0.0
-# (13.2.0+ needs meta ^1.18.3 while flutter_test pins meta 1.18.0).
-dependency_overrides:
-  analyzer: 13.0.0
-  # dart_style 3.1.10+ requires analyzer >=13.1.0; 3.1.9 is the last release
-  # compatible with the pinned analyzer 13.0.0.
-  dart_style: 3.1.9
-  # mockito 5.8.x requires analyzer >=13.3.0; 5.7.0 is the last release
-  # compatible with the pinned analyzer 13.0.0.
-  mockito: 5.7.0
+  bootstrap:
+    environment:
+      sdk: ^3.12.2
+      flutter: ^3.44.4
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
+    dependencies:
+      dio: ^5.11.0
+      fpdart: ^1.2.0
+      flutter_rust_bridge: 2.13.0-beta.6
 
-# The following section is specific to Flutter packages.
-flutter:
+      canonical_json: ^1.1.3
+      crypto: ^3.0.7
 
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
-  uses-material-design: true
-  generate: true
+      freezed_annotation: ^3.1.0
+      json_annotation: ^4.12.0
+      protobuf: ^6.0.0
 
-  assets:
-    - assets/images/icons/
-    - assets/content/announcements/generated/catalog.json
-    - assets/content/announcements/generated/documents/
-    - assets/content/manual/generated/manual.pb
-    - assets/content/manual/generated/manual_search.db
-    - assets/content/manual/generated/content/
-    - logo/
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+      intl: ^0.20.2
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
+    dev_dependencies:
+      mocktail: ^1.0.4
 
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+  # Flutter-app-scoped tasks. All of them execute inside apps/eve-fit-assistant
+  # (scoped via packageFilters); extra CLI arguments can be appended after `--`,
+  # e.g. `melos run app:test -- --platform chrome`.
+  scripts:
+    app:test:
+      description: Run the app's Flutter test suite on the VM.
+      exec: flutter test
+      packageFilters:
+        scope: eve_fit_assistant
+    app:analyze:
+      description: Statically analyze the app's Dart code.
+      exec: dart analyze
+      packageFilters:
+        scope: eve_fit_assistant
+    app:fix:
+      description: Apply automated Dart fixes to the app.
+      exec: dart fix --apply
+      packageFilters:
+        scope: eve_fit_assistant
+    app:format:
+      description: Format the app's Dart sources.
+      exec: dart format lib
+      packageFilters:
+        scope: eve_fit_assistant
+    app:format:check:
+      description: Verify the app's Dart sources are formatted.
+      exec: dart format --set-exit-if-changed lib
+      packageFilters:
+        scope: eve_fit_assistant
+    app:gen:
+      description: Run the app's build_runner code generation.
+      exec: flutter pub run build_runner build --delete-conflicting-outputs
+      packageFilters:
+        scope: eve_fit_assistant
+    app:gen:watch:
+      description: Run the app's build_runner code generation in watch mode.
+      exec: flutter pub run build_runner watch --delete-conflicting-outputs
+      packageFilters:
+        scope: eve_fit_assistant
+    app:l10n:
+      description: Generate the app's localization files.
+      exec: flutter gen-l10n
+      packageFilters:
+        scope: eve_fit_assistant
+    app:clean:
+      description: Clean the app's Flutter build artifacts.
+      exec: flutter clean
+      packageFilters:
+        scope: eve_fit_assistant
+    app:build:apk:
+      description: Build the app's Android APK(s).
+      exec: flutter build apk
+      packageFilters:
+        scope: eve_fit_assistant
+    app:build:web:
+      description: Build the app's self-contained wasm web bundle.
+      exec: flutter build web --wasm --no-web-resources-cdn
+      packageFilters:
+        scope: eve_fit_assistant
+    app:build:linux:
+      description: Build the app's Linux release bundle.
+      exec: flutter build linux --release
+      packageFilters:
+        scope: eve_fit_assistant
+    app:build:windows:
+      description: Build the app's Windows release bundle.
+      exec: flutter build windows --release
+      packageFilters:
+        scope: eve_fit_assistant

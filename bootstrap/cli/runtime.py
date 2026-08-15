@@ -43,8 +43,44 @@ def is_dry_run() -> bool:
     return _DRY_RUN
 
 
-def execute(cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False) -> str:
-    return execute_command(cmd, title, _DRY_RUN, capture_stdout, live_stdout)
+def execute(
+    cmd: list,
+    title: str,
+    capture_stdout: bool = False,
+    live_stdout: bool = False,
+    cwd: Path | None = None,
+) -> str:
+    return execute_command(cmd, title, _DRY_RUN, capture_stdout, live_stdout, cwd=cwd)
+
+
+def run_melos(
+    script: str,
+    title: str,
+    args: list[str] | None = None,
+    live_stdout: bool = False,
+) -> str:
+    """Run a melos script from the workspace root (see root pubspec.yaml).
+
+    Extra ``args`` are appended after ``--`` and forwarded to the script's
+    command.
+    """
+    from bootstrap.utils import get_melos_command
+
+    cmd = [*get_melos_command(), "run", script]
+    if args:
+        cmd += ["--", *args]
+    return execute(cmd, title, live_stdout=live_stdout, cwd=PROJECT_ROOT)
+
+
+def run_melos_exec(cmd: list[str], title: str, scope: str = "eve_fit_assistant") -> str:
+    """Run an arbitrary command inside a workspace package via ``melos exec``."""
+    from bootstrap.utils import get_melos_command
+
+    return execute(
+        [*get_melos_command(), "exec", f"--scope={scope}", "--", *cmd],
+        title,
+        cwd=PROJECT_ROOT,
+    )
 
 
 def execute_redacted(cmd: list[str], redacted_cmd: list[str], title: str) -> None:

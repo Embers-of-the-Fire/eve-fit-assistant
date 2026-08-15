@@ -11,6 +11,7 @@ from colorama import Fore
 from colorama import Style
 
 from bootstrap.color import styled
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
 
 
@@ -56,15 +57,15 @@ def _toml_replacement(match: re.Match[str], new_value: str) -> str:
 
 TARGETS = [
     VersionTarget(
-        path=PROJECT_ROOT / "pubspec.yaml",
-        description="pubspec.yaml",
+        path=EFA_APP_ROOT / "pubspec.yaml",
+        description="apps/eve-fit-assistant/pubspec.yaml",
         render=_render_pubspec,
         pattern=re.compile(r"^(version:\s*).+$", re.MULTILINE),
         replacement=_pubspec_replacement,
     ),
     VersionTarget(
-        path=PROJECT_ROOT / "rust" / "Cargo.toml",
-        description="rust/Cargo.toml",
+        path=EFA_APP_ROOT / "rust" / "Cargo.toml",
+        description="apps/eve-fit-assistant/rust/Cargo.toml",
         render=_render_semver,
         pattern=re.compile(r'^(version\s*=\s*")[^"]+(")', re.MULTILINE),
         replacement=_toml_replacement,

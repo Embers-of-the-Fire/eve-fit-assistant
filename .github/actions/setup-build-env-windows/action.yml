@@ -86,8 +86,8 @@ runs:
           https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
         New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\ci-native" | Out-Null
         tar -xzf "$env:RUNNER_TEMP\ci-native-data.tar.gz" -C "$env:GITHUB_WORKSPACE\ci-native"
-        New-Item -ItemType Directory -Force rust/lib/eve-fit-os/data/out | Out-Null
-        Copy-Item -Recurse -Force "$env:GITHUB_WORKSPACE\ci-native\pb2" rust/lib/eve-fit-os/data/out/pb2
+        New-Item -ItemType Directory -Force apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out | Out-Null
+        Copy-Item -Recurse -Force "$env:GITHUB_WORKSPACE\ci-native\pb2" apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out/pb2
 
     - name: Install Flutter dependencies
       shell: pwsh

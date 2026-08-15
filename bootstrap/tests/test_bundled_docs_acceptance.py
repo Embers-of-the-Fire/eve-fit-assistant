@@ -41,7 +41,15 @@ def project_root() -> Path:
 
 @pytest.fixture(scope="module")
 def generated_root(project_root: Path) -> Path:
-    return project_root / "assets" / "content" / "announcements" / "generated"
+    return (
+        project_root
+        / "apps"
+        / "eve-fit-assistant"
+        / "assets"
+        / "content"
+        / "announcements"
+        / "generated"
+    )
 
 
 @pytest.fixture(scope="module")

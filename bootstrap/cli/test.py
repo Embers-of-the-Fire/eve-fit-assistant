@@ -11,7 +11,7 @@ from colorama import Style
 
 from bootstrap.cli import runtime
 from bootstrap.color import styled
-from bootstrap.constant import PROJECT_ROOT
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.utils import get_command
 
 
@@ -38,7 +38,7 @@ def _collect_web_test_suites() -> list[str]:
     (which may import ``dart:ffi``/``dart:io``-only libraries) must be
     excluded from the selection instead of relying on ``@TestOn`` filtering.
     """
-    test_root = PROJECT_ROOT / "test"
+    test_root = EFA_APP_ROOT / "test"
     suites: list[str] = []
     for path in sorted(test_root.rglob("*_test.dart")):
         content = path.read_text(encoding="utf-8")
@@ -47,10 +47,10 @@ def _collect_web_test_suites() -> list[str]:
             continue
         if _PLATFORM_IMPORT.search(content):
             raise click.ClickException(
-                f"{path.relative_to(PROJECT_ROOT)} imports dart:io/dart:ffi but is not "
+                f"{path.relative_to(EFA_APP_ROOT)} imports dart:io/dart:ffi but is not "
                 'tagged @TestOn("vm"); it would break the web test compile'
             )
-        suites.append(str(path.relative_to(PROJECT_ROOT)))
+        suites.append(str(path.relative_to(EFA_APP_ROOT)))
     return suites
 
 
@@ -62,8 +62,8 @@ def _stage_web_sqlite_assets() -> None:
     ``web/sqlite/`` for production builds is mirrored to ``test/web/sqlite/``
     where web tests can fetch it.
     """
-    source = PROJECT_ROOT / "web" / "sqlite"
-    target = PROJECT_ROOT / "test" / "web" / "sqlite"
+    source = EFA_APP_ROOT / "web" / "sqlite"
+    target = EFA_APP_ROOT / "test" / "web" / "sqlite"
     missing = [name for name in _WEB_SQLITE_ASSETS if not (source / name).is_file()]
     if missing:
         raise click.ClickException(
@@ -92,9 +92,8 @@ def register_test_commands(cli_group: click.Group) -> None:
     @test.command("dart")
     def test_dart():
         """Run Flutter/Dart tests."""
-        flutter = get_command("flutter")
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter test")
-        runtime.execute([flutter, "test"], "FLUTTER TEST OUTPUT")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:test")
+        runtime.run_melos("app:test", "FLUTTER TEST OUTPUT")
 
     @test.command("web")
     def test_web():
@@ -108,7 +107,6 @@ def register_test_commands(cli_group: click.Group) -> None:
         every selected suite regardless of ``@TestOn``, and those suites import
         ``dart:ffi``-only libraries.
         """
-        flutter = get_command("flutter")
         chrome = os.environ.get("CHROME_EXECUTABLE")
         if not chrome:
             for candidate in ("google-chrome", "chromium", "chrome"):
@@ -127,12 +125,13 @@ def register_test_commands(cli_group: click.Group) -> None:
         if not runtime.is_dry_run():
             _stage_web_sqlite_assets()
 
-        command = [flutter, "test", "--platform", "chrome", *suites]
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-            + "flutter test --platform chrome"
+            + "melos run app:test -- --platform chrome"
         )
-        runtime.execute(command, "FLUTTER WEB TEST OUTPUT")
+        runtime.run_melos(
+            "app:test", "FLUTTER WEB TEST OUTPUT", args=["--platform", "chrome", *suites]
+        )
 
     @test.command("all")
     def test_all():

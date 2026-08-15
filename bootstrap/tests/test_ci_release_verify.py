@@ -34,13 +34,17 @@ def _write_config(root: Path, version: dict[str, object]) -> None:
     (root / "efa.config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+APP_DIR = Path("apps") / "eve-fit-assistant"
+
+
 def _write_pubspec(root: Path, version: str) -> None:
-    (root / "pubspec.yaml").write_text(f"version: {version}\n", encoding="utf-8")
+    (root / APP_DIR).mkdir(parents=True, exist_ok=True)
+    (root / APP_DIR / "pubspec.yaml").write_text(f"version: {version}\n", encoding="utf-8")
 
 
 def _write_cargo(root: Path, version: str) -> None:
-    (root / "rust").mkdir(parents=True, exist_ok=True)
-    (root / "rust" / "Cargo.toml").write_text(
+    (root / APP_DIR / "rust").mkdir(parents=True, exist_ok=True)
+    (root / APP_DIR / "rust" / "Cargo.toml").write_text(
         f'[package]\nname = "rust_lib_eve_fit_assistant"\nversion = "{version}"\n',
         encoding="utf-8",
     )
@@ -156,7 +160,7 @@ class TestReadVersions:
 
     def test_read_toml_cargo(self, tmp_project: Path) -> None:
         _write_cargo(tmp_project, "1.2.3")
-        assert _read_toml_version(tmp_project / "rust" / "Cargo.toml") == "1.2.3"
+        assert _read_toml_version(tmp_project / APP_DIR / "rust" / "Cargo.toml") == "1.2.3"
 
     def test_read_toml_missing(self, tmp_project: Path) -> None:
         (tmp_project / "pyproject.toml").write_text('[project]\nname = "foo"\n', encoding="utf-8")
@@ -219,6 +223,7 @@ class TestReleaseVerifyIntegration:
         _make_notes(tmp_project, ver)
 
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
 
         @click.group()
         def cli():
@@ -239,6 +244,7 @@ class TestReleaseVerifyIntegration:
         _write_pyproject(tmp_project, ver.render_semver())
 
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
 
         @click.group()
         def cli2():
@@ -331,7 +337,7 @@ class TestCheckSubmodules:
         return _fake_run
 
     def test_clean(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
         monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
@@ -344,7 +350,7 @@ class TestCheckSubmodules:
             _check_submodules()
 
     def test_wrong_commit(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
         monkeypatch.setattr(
@@ -356,7 +362,7 @@ class TestCheckSubmodules:
             _check_submodules()
 
     def test_dirty(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
 
@@ -382,7 +388,12 @@ class TestCheckSubmodules:
 
 class TestReleaseVerifyPreflightFlags:
     def _fake_execute(
-        self, cmd: list, title: str, capture_stdout: bool = False, live_stdout: bool = False
+        self,
+        cmd: list,
+        title: str,
+        capture_stdout: bool = False,
+        live_stdout: bool = False,
+        cwd: Path | None = None,
     ) -> str:
         if not hasattr(self, "_execute_calls"):
             self._execute_calls = []
@@ -423,6 +434,7 @@ class TestReleaseVerifyPreflightFlags:
         _make_notes(tmp_project, ver)
 
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
         monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
 
         @click.group()
@@ -447,6 +459,7 @@ class TestReleaseVerifyPreflightFlags:
         _make_release_note(tmp_project, ver)
 
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
 
         @click.group()
         def cli():
@@ -467,21 +480,22 @@ class TestReleaseVerifyPreflightFlags:
         _write_pyproject(tmp_project, ver.render_semver())
         _make_release_note(tmp_project, ver)
 
-        for path in ("rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
 
         # Create tracked generated files so _check_generated passes existence check.
-        (tmp_project / "lib" / "constant").mkdir(parents=True, exist_ok=True)
-        (tmp_project / "lib" / "constant" / "eve_dogma_unit_generated.dart").write_text(
+        (tmp_project / APP_DIR / "lib" / "constant").mkdir(parents=True, exist_ok=True)
+        (tmp_project / APP_DIR / "lib" / "constant" / "eve_dogma_unit_generated.dart").write_text(
             "// generated\n", encoding="utf-8"
         )
-        (tmp_project / "lib" / "storage" / "repo").mkdir(parents=True, exist_ok=True)
-        (tmp_project / "lib" / "storage" / "repo" / "repo_version.dart").write_text(
+        (tmp_project / APP_DIR / "lib" / "storage" / "repo").mkdir(parents=True, exist_ok=True)
+        (tmp_project / APP_DIR / "lib" / "storage" / "repo" / "repo_version.dart").write_text(
             "// generated\n", encoding="utf-8"
         )
 
         monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
         monkeypatch.setattr("bootstrap.ci.release.runtime.execute", self._fake_execute)
         monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
         monkeypatch.setattr("bootstrap.utils.get_command", self._fake_get_command)

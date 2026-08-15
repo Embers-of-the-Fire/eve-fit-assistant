@@ -36,8 +36,9 @@ runs:
           https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
         mkdir -p "$GITHUB_WORKSPACE/ci-native"
         tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-        mkdir -p rust/lib/eve-fit-os/data/out
-        ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" rust/lib/eve-fit-os/data/out/pb2
+        mkdir -p apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out
+        ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" \
+          apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out/pb2
 
     - name: Init dev env
       uses: ./.github/actions/init-dev-env
@@ -68,5 +69,5 @@ runs:
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.artifact-name }}
-        path: build/web
+        path: apps/eve-fit-assistant/build/web
         retention-days: ${{ inputs.retention-days }}

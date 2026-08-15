@@ -7,8 +7,9 @@ import click
 from colorama import Fore
 from colorama import Style
 
+from bootstrap.cli.runtime import run_melos
 from bootstrap.color import styled
-from bootstrap.constant import PROJECT_ROOT
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
@@ -49,7 +50,7 @@ def _step_protobuf() -> None:
 
 def _step_frb() -> None:
     """Generate flutter-rust-bridge glue code."""
-    native_output_dir = PROJECT_ROOT / "lib" / "native"
+    native_output_dir = EFA_APP_ROOT / "lib" / "native"
     if native_output_dir.exists():
         info(f"Removing existing native output directory: {native_output_dir}")
         shutil.rmtree(native_output_dir)
@@ -58,7 +59,9 @@ def _step_frb() -> None:
         styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
         + "flutter_rust_bridge_codegen generate"
     )
-    execute_command([flutter_rust_bridge_codegen, "generate"], "FRB CODEGEN OUTPUT")
+    execute_command(
+        [flutter_rust_bridge_codegen, "generate"], "FRB CODEGEN OUTPUT", cwd=EFA_APP_ROOT
+    )
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Rust bridge code generation completed successfully.")
     )
@@ -73,30 +76,15 @@ def _step_dart_build_runner() -> None:
         for file in codegen():
             click.echo(f"  Modified {file}")
 
-    flutter = get_command("flutter")
-    click.echo(
-        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-        + "flutter pub run build_runner build --delete-conflicting-outputs"
-    )
-    execute_command(
-        [
-            flutter,
-            "pub",
-            "run",
-            "build_runner",
-            "build",
-            "--delete-conflicting-outputs",
-        ],
-        "DART BUILDRUNNER OUTPUT",
-    )
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:gen")
+    run_melos("app:gen", "DART BUILDRUNNER OUTPUT")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
 
 
 def _step_l10n() -> None:
     """Generate localization files."""
-    flutter = get_command("flutter")
-    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "flutter gen-l10n")
-    execute_command([flutter, "gen-l10n"], "FLUTTER GEN-L10N OUTPUT")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:l10n")
+    run_melos("app:l10n", "FLUTTER GEN-L10N OUTPUT")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
     )

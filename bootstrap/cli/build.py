@@ -19,6 +19,7 @@ import bootstrap.config
 from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.config import ProjectConfiguration
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.utils import get_bin_size
 from bootstrap.utils import get_file_sha1
@@ -439,7 +440,6 @@ def register_build_commands(cli_group: click.Group) -> None:
         from bootstrap.utils import get_command
 
         flutter_rust_bridge_codegen = get_command("flutter_rust_bridge_codegen")
-        flutter = get_command("flutter")
         # The FRB step shells out to wasm-pack (which in turn runs wasm-opt
         # from binaryen); fail up front with an actionable error instead of
         # mid-build.
@@ -465,13 +465,11 @@ def register_build_commands(cli_group: click.Group) -> None:
                 ),
             ],
             "BUILDING WEB ENGINE (WASM)",
+            cwd=EFA_APP_ROOT,
         )
-        runtime.execute(
-            [flutter, "build", "web", "--wasm", "--no-web-resources-cdn"],
-            "BUILDING FLUTTER WEB BUNDLE",
-        )
+        runtime.run_melos("app:build:web", "BUILDING FLUTTER WEB BUNDLE")
 
-        output_dir = PROJECT_ROOT / "build" / "web"
+        output_dir = EFA_APP_ROOT / "build" / "web"
         if not output_dir.is_dir():
             raise click.ClickException(f"Expected web build output not found: {output_dir}")
 
@@ -536,17 +534,14 @@ def register_build_commands(cli_group: click.Group) -> None:
         ver = version.render_full()
         output_dir = root / "apk" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
-        apk_source = PROJECT_ROOT / "build" / "app" / "outputs" / "flutter-apk"
+        apk_source = EFA_APP_ROOT / "build" / "app" / "outputs" / "flutter-apk"
 
-        from bootstrap.utils import get_command
-
-        flutter = get_command("flutter")
         flavor_args = [f"--flavor={flavor}"] if flavor else []
 
         if clean:
-            runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+            runtime.run_melos("app:clean", "CLEANING BUILD ARTIFACTS")
 
-        runtime.execute([flutter, "build", "apk", *flavor_args], "BUILDING GENERAL APK")
+        runtime.run_melos("app:build:apk", "BUILDING GENERAL APK", args=flavor_args)
         src_apk = apk_source / (f"app-{flavor}-release.apk" if flavor else "app-release.apk")
         src_sha1 = apk_source / (
             f"app-{flavor}-release.apk.sha1" if flavor else "app-release.apk.sha1"
@@ -557,9 +552,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
 
-        runtime.execute(
-            [flutter, "build", "apk", "--split-per-abi", *flavor_args],
-            "BUILDING SPLIT ABI APKS",
+        runtime.run_melos(
+            "app:build:apk", "BUILDING SPLIT ABI APKS", args=["--split-per-abi", *flavor_args]
         )
         for flutter_abi, apk_suffix in _ABI_FLUTTER_TO_APK.items():
             src_apk = apk_source / (
@@ -673,14 +667,18 @@ def register_build_commands(cli_group: click.Group) -> None:
                 )
 
         if clean:
-            runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+            runtime.run_melos("app:clean", "CLEANING BUILD ARTIFACTS")
 
-        runtime.execute([flutter, "config", "--enable-linux-desktop"], "ENABLE LINUX DESKTOP")
+        runtime.execute(
+            [flutter, "config", "--enable-linux-desktop"],
+            "ENABLE LINUX DESKTOP",
+            cwd=EFA_APP_ROOT,
+        )
 
         if not skip_flutter:
-            runtime.execute([flutter, "build", "linux", "--release"], "BUILDING LINUX BUNDLE")
+            runtime.run_melos("app:build:linux", "BUILDING LINUX BUNDLE")
 
-        bundle_dir = PROJECT_ROOT / "build" / "linux" / "x64" / "release" / "bundle"
+        bundle_dir = EFA_APP_ROOT / "build" / "linux" / "x64" / "release" / "bundle"
         if "appimage" in selected:
             appdir = assemble_appdir(
                 bundle_dir=bundle_dir,
@@ -801,14 +799,18 @@ def register_build_commands(cli_group: click.Group) -> None:
                 )
 
         if clean:
-            runtime.execute([flutter, "clean"], "CLEANING BUILD ARTIFACTS")
+            runtime.run_melos("app:clean", "CLEANING BUILD ARTIFACTS")
 
-        runtime.execute([flutter, "config", "--enable-windows-desktop"], "ENABLE WINDOWS DESKTOP")
+        runtime.execute(
+            [flutter, "config", "--enable-windows-desktop"],
+            "ENABLE WINDOWS DESKTOP",
+            cwd=EFA_APP_ROOT,
+        )
 
         if not skip_flutter:
-            runtime.execute([flutter, "build", "windows", "--release"], "BUILDING WINDOWS BUNDLE")
+            runtime.run_melos("app:build:windows", "BUILDING WINDOWS BUNDLE")
 
-        bundle_dir = PROJECT_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
+        bundle_dir = EFA_APP_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
         if not runtime.is_dry_run():
             validate_bundle(bundle_dir)
 

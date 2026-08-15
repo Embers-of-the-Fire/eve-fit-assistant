@@ -26,7 +26,7 @@ def test_dart_web_mirrors_dart_triggers_and_environment():
 
 
 def test_dart_web_included_for_dart_changes():
-    names = _suite_names(["lib/main.dart"])
+    names = _suite_names(["apps/eve-fit-assistant/lib/main.dart"])
     assert "dart" in names
     assert "dart-web" in names
 
@@ -45,14 +45,16 @@ def test_web_preview_patterns_cover_core_build_inputs():
     for path in [
         "flake.nix",
         "flake.lock",
-        "rust/src/api/fit.rs",
-        "rust/lib/eve-fit-os",
-        "web/index.html",
-        "lib/main.dart",
+        "Cargo.toml",
+        "Cargo.lock",
+        "apps/eve-fit-assistant/rust/src/api/fit.rs",
+        "apps/eve-fit-assistant/rust/lib/eve-fit-os",
+        "apps/eve-fit-assistant/web/index.html",
+        "apps/eve-fit-assistant/lib/main.dart",
         "pubspec.yaml",
         "pubspec.lock",
-        "l10n.yaml",
-        "l10n/app_zh.arb",
+        "apps/eve-fit-assistant/l10n.yaml",
+        "apps/eve-fit-assistant/l10n/app_zh.arb",
         "data/schema/release_index.proto",
         "bootstrap/cli/build.py",
         "x.py",
@@ -82,4 +84,4 @@ def test_web_preview_empty_change_list():
 def test_web_preview_patterns_are_anchored():
     # Sibling paths sharing a prefix must not match directory patterns.
     assert not web_preview_affected(["webfoo/x.txt", "library/main.dart"])
-    assert "web/**" in WEB_PREVIEW_PATTERNS
+    assert "apps/eve-fit-assistant/web/**" in WEB_PREVIEW_PATTERNS
