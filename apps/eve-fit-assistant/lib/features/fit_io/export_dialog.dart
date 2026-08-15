@@ -79,6 +79,10 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                       value: FitTextExportFormat.eft,
                       label: Text(context.l10n.fitExportFormatEft),
                     ),
+                    const ButtonSegment<FitTextExportFormat>(
+                      value: FitTextExportFormat.snapshot,
+                      label: Text("Snapshot"),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -130,6 +134,9 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   String _descriptionFor(FitTextExportFormat format, BuildContext context) => switch (format) {
     FitTextExportFormat.native => context.l10n.fitExportFormatNativeDescription,
     FitTextExportFormat.eft => context.l10n.fitExportFormatEftDescription,
+    FitTextExportFormat.snapshot =>
+      "Self-contained protobuf snapshot of this fit (base64-encoded), including localized "
+          "names, slot layout and computed statistics.",
   };
 
   void _handleFormatChanged(FitTextExportFormat? format) {
@@ -208,7 +215,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     });
     try {
       final exporter = FitTextExporter(ref);
-      final result = await exporter.export(fit: fit, format: _selectedFormat);
+      final result = await exporter.export(fit: fit, format: _selectedFormat, fitId: widget.fitId);
       await action(fit, result);
     } on Object catch (_) {
       if (!mounted) return;

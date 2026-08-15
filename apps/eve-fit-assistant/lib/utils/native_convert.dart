@@ -11,6 +11,15 @@ extension ProtobufSlotStateExt on Slots_SlotState {
   };
 }
 
+extension FitItemStateProtobufExt on FitItemState {
+  Slots_SlotState get protobufImpl => switch (this) {
+    FitItemState.passive => Slots_SlotState.PASSIVE,
+    FitItemState.online => Slots_SlotState.ONLINE,
+    FitItemState.active => Slots_SlotState.ACTIVE,
+    FitItemState.overload => Slots_SlotState.OVERLOAD,
+  };
+}
+
 extension FitItemStateExt on FitItemState {
   FitItemState get limitToActive => switch (this) {
     FitItemState.overload => FitItemState.active,
