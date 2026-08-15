@@ -40,7 +40,7 @@ class _TacticalModeSlotRow extends StatelessWidget {
             )
           : null,
       leading: StateIcon.circle(
-        state: slotInfo.state,
+        state: slotInfo.state.toEfa(),
         child: Image(
           image: switch (variant) {
             TacticalMode_TacticalModeVariant.TARGET => ImageAssets.tacticalModeTarget,

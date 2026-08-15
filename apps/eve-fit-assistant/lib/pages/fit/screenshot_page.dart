@@ -515,7 +515,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
           rightInfo: [
             if (droneBayCapacity > 0 || droneBayUsed > 0)
-              _HeaderCapacityCounter(suffix: "m³", count: droneBayUsed, total: droneBayCapacity),
+              CapacityCounter(suffix: "m³", count: droneBayUsed, total: droneBayCapacity),
           ],
           interactiveIssueIndicator: false,
         ),
@@ -549,7 +549,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               spacing: 10,
               children: [
-                _HeaderCapacityCounter(
+                CapacityCounter(
                   prefix: "H",
                   count: _fighterCountForGroup(const {1653, 4779}, fitContext, ref),
                   total:
@@ -558,7 +558,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _HeaderCapacityCounter(
+                CapacityCounter(
                   prefix: "L",
                   count: _fighterCountForGroup(const {1652, 4777}, fitContext, ref),
                   total:
@@ -567,7 +567,7 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _HeaderCapacityCounter(
+                CapacityCounter(
                   prefix: "S",
                   count: _fighterCountForGroup(const {1537, 4778}, fitContext, ref),
                   total:
@@ -576,13 +576,13 @@ class _ScreenshotEquipmentColumn extends ConsumerWidget {
                           .round() ??
                       0,
                 ),
-                _HeaderCapacityCounter(
+                CapacityCounter(
                   suffix: "x",
                   count: fit.body.fighters.length,
                   total: fitContext.ship.fighterTubes,
                 ),
                 if (fighterHangarCapacity > 0 || fighterHangarUsed > 0)
-                  _HeaderCapacityCounter(
+                  CapacityCounter(
                     suffix: "m³",
                     count: fighterHangarUsed,
                     total: fighterHangarCapacity,

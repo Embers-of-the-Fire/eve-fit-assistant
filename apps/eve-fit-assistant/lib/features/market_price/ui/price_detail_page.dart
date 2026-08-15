@@ -1,3 +1,4 @@
+import "package:efa_component/efa_component.dart";
 import "package:efa_proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
@@ -7,7 +8,6 @@ import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";
-import "package:eve_fit_assistant/utils/num.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";

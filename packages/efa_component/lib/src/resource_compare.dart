@@ -1,5 +1,4 @@
-import "package:eve_fit_assistant/components/resource_bar.dart";
-import "package:eve_fit_assistant/utils/fp.dart";
+import "package:efa_component/src/resource_bar.dart";
 import "package:flutter/material.dart";
 
 class ResourceCompare extends StatelessWidget {
@@ -44,7 +43,7 @@ class ResourceCompare extends StatelessWidget {
   Widget build(BuildContext context) {
     final used = this.used.toStringAsFixed(fixed);
     final all = this.all.toStringAsFixed(fixed);
-    final unit = this.unit.map((u) => " $u").or("");
+    final unit = this.unit != null ? " ${this.unit}" : "";
 
     final text = Text.rich(
       TextSpan(

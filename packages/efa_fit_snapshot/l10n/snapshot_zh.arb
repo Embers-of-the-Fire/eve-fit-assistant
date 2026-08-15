@@ -1,0 +1,40 @@
+{
+  "@@locale": "zh",
+  "fitPageTitle": "{fitName} - {shipName}",
+  "@fitPageTitle": {
+    "placeholders": {
+      "fitName": { "type": "String" },
+      "shipName": { "type": "String" }
+    }
+  },
+  "highSlot": "高能量槽",
+  "midSlot": "中能量槽",
+  "lowSlot": "低能量槽",
+  "rigSlot": "改装件槽",
+  "subsystemSlot": "子系统",
+  "serviceSlot": "服务设施槽",
+  "tacticalMode": "战术模式",
+  "implantSlot": "植入体槽",
+  "boosterSlot": "增效剂槽",
+  "drone": "无人机",
+  "fighter": "铁骑舰载机",
+  "slotEmpty": "{slotName}（空）",
+  "@slotEmpty": {
+    "placeholders": {
+      "slotName": { "type": "String" }
+    }
+  },
+  "skillProfileAll5": "全 5",
+  "skillProfileAll0": "全 0",
+  "skillProfileAlphaMax": "Alpha 最高",
+  "fighterAbilityTurret": "炮台",
+  "fighterAbilityMissiles": "导弹",
+  "fighterAbilityAttackMissiles": "攻击导弹",
+  "fighterAbilityBomb": "炸弹",
+  "capacitorStable": "{percent}% 稳定",
+  "@capacitorStable": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  }
+}

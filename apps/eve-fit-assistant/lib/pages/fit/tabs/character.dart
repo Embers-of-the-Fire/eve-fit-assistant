@@ -475,7 +475,7 @@ class _ImplantRow extends ConsumerWidget {
 
     final content = ListTile(
       leading: StateIcon.rect(
-        state: implant.state,
+        state: implant.state.toEfa(),
         onTap: interactionOptions.allowStateToggle
             ? () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.implant(index: slotId), ref)
             : null,
@@ -607,7 +607,7 @@ class _BoosterRow extends ConsumerWidget {
 
     final content = ListTile(
       leading: StateIcon.rect(
-        state: booster.state,
+        state: booster.state.toEfa(),
         onTap: interactionOptions.allowStateToggle
             ? () => fitContext.fitWrapper.toggleSlot(SlotIdentifier.booster(slotId: slotId), ref)
             : null,

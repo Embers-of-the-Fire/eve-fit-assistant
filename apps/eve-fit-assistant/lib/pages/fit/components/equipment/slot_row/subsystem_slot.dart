@@ -103,7 +103,7 @@ class _SubsystemSlotRow extends ConsumerWidget {
 
     final content = ListTile(
       leading: StateIcon.rect(
-        state: slotInfo.state,
+        state: slotInfo.state.toEfa(),
         child: type != null
             ? EveIcon(icon: type.icon, overlayIcon: metaGroupIcon, size: 35)
             : Image(

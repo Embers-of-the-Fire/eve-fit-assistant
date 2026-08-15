@@ -1,8 +1,10 @@
-import "package:eve_fit_assistant/components/icon/bordered_circle_avatar.dart";
-import "package:eve_fit_assistant/components/icon/bordered_rect_avatar.dart";
-import "package:eve_fit_assistant/constant/colors.dart";
-import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:efa_component/src/bordered_avatar.dart";
+import "package:efa_component/src/colors.dart";
 import "package:flutter/material.dart";
+
+/// Activation state of a fit item, mirrored from the app's storage schema and
+/// the `Slots.SlotState` protobuf enum.
+enum EfaItemState { passive, online, active, overload }
 
 class StateIcon extends StatelessWidget {
   const StateIcon._({
@@ -17,7 +19,7 @@ class StateIcon extends StatelessWidget {
   });
 
   const StateIcon.circle({
-    required FitItemState state,
+    required EfaItemState state,
     Key? key,
     ImageProvider? image,
     IconData? icon,
@@ -36,7 +38,7 @@ class StateIcon extends StatelessWidget {
        );
 
   const StateIcon.rect({
-    required FitItemState state,
+    required EfaItemState state,
     Key? key,
     ImageProvider? image,
     IconData? icon,
@@ -54,7 +56,7 @@ class StateIcon extends StatelessWidget {
          size: size,
        );
 
-  final FitItemState state;
+  final EfaItemState state;
   final bool isCircle;
   final void Function()? onTap;
   final double size;
@@ -64,10 +66,10 @@ class StateIcon extends StatelessWidget {
   final Widget? child;
 
   Color get _borderColor => switch (state) {
-    FitItemState.active => colorStatusActive,
-    FitItemState.online => colorStatusOnline,
-    FitItemState.overload => colorStatusOverload,
-    FitItemState.passive => colorStatusPassive,
+    EfaItemState.active => colorStatusActive,
+    EfaItemState.online => colorStatusOnline,
+    EfaItemState.overload => colorStatusOverload,
+    EfaItemState.passive => colorStatusPassive,
   };
 
   @override
