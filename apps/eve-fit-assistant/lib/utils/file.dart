@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 
 import "package:flutter/cupertino.dart";
 import "package:path/path.dart" as p;

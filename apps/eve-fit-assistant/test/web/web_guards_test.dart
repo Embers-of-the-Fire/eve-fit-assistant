@@ -5,7 +5,7 @@ import "package:eve_fit_assistant/components/dialog/announcement_dialog.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";

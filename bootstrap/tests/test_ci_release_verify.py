@@ -485,10 +485,10 @@ class TestReleaseVerifyPreflightFlags:
             (tmp_project / path / ".git").mkdir()
 
         # Create tracked generated files so _check_generated passes existence check.
-        (tmp_project / APP_DIR / "lib" / "constant").mkdir(parents=True, exist_ok=True)
-        (tmp_project / APP_DIR / "lib" / "constant" / "eve_dogma_unit_generated.dart").write_text(
-            "// generated\n", encoding="utf-8"
-        )
+        (tmp_project / "packages" / "efa_constant" / "lib").mkdir(parents=True, exist_ok=True)
+        (
+            tmp_project / "packages" / "efa_constant" / "lib" / "eve_dogma_unit_generated.dart"
+        ).write_text("// generated\n", encoding="utf-8")
         (tmp_project / APP_DIR / "lib" / "storage" / "repo").mkdir(parents=True, exist_ok=True)
         (tmp_project / APP_DIR / "lib" / "storage" / "repo" / "repo_version.dart").write_text(
             "// generated\n", encoding="utf-8"

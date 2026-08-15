@@ -1,6 +1,6 @@
+import "package:efa_proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
-import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/features/market_price/models/models.dart";
 import "package:eve_fit_assistant/features/market_price/state/state.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";

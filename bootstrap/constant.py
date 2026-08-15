@@ -16,7 +16,7 @@ WORKSPACE_NAME_ENV_VAR = "EFA_WORKSPACE_NAME"
 
 PROTOBUF_SCHEMA_PATH = PROJECT_ROOT / "data" / "schema"
 PROTOBUF_PYTHON_OUT_PATH = PROJECT_ROOT / "bootstrap" / "data" / "schema"
-PROTOBUF_DART_OUT_PATH = EFA_APP_ROOT / "lib" / "data" / "proto"
+PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "packages" / "efa_proto" / "lib"
 
 NATIVE_LIB_ROOT = EFA_APP_ROOT / "rust" / "lib" / "eve-fit-os"
 
@@ -24,9 +24,11 @@ I18N_ROOT = EFA_APP_ROOT / "l10n"
 
 DART_ROOT = EFA_APP_ROOT / "lib"
 
+EFA_CONSTANT_ROOT = PROJECT_ROOT / "packages" / "efa_constant" / "lib"
+
 ASSETS_OUT_PATH = DART_ROOT / "constant" / "assets_generated.dart"
-EVE_ATTR_OUT_PATH = DART_ROOT / "constant" / "eve_attr_generated.dart"
-EVE_DOGMA_UNIT_OUT_PATH = DART_ROOT / "constant" / "eve_dogma_unit_generated.dart"
+EVE_ATTR_OUT_PATH = EFA_CONSTANT_ROOT / "eve_attr_generated.dart"
+EVE_DOGMA_UNIT_OUT_PATH = EFA_CONSTANT_ROOT / "eve_dogma_unit_generated.dart"
 
 HIGH_SLOT_ATTR = 14
 MEDIUM_SLOT_ATTR = 13

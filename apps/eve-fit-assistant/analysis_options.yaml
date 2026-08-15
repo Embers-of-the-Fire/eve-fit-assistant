@@ -24,7 +24,6 @@ analyzer:
     - target/**
     - lib/native/**
     - data/l10n/**
-    - data/proto/**
     - "**/*.pb.dart"
     - "**/*.pbjson.dart"
     - "**/*.pbenum.dart"

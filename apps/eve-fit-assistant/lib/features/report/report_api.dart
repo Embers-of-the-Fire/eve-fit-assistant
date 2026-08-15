@@ -1,5 +1,5 @@
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/compat/io.dart" show Platform;
+import "package:efa_compat/io.dart" show Platform;
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/report/report_schema.dart";
 

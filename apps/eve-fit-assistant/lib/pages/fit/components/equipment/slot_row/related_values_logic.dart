@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/constant/eve.dart";
+import "package:efa_constant/eve.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/utils/native.dart";
 import "package:eve_fit_assistant/utils/num.dart";

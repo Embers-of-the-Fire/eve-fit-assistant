@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";

@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:eve_fit_assistant/compat/wasm_probe.dart";
+import "package:efa_compat/wasm_probe.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fs/opfs_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db.dart";

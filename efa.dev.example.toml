@@ -28,7 +28,7 @@ output_dir = "cache/workspaces/tranquility/native"
 
 [codegen]
 # Path to native dogma attributes JSON used by attr_id codegen.
-# Only needed if you want to regenerate lib/constant/eve_attr_generated.dart.
+# Only needed if you want to regenerate packages/efa_constant/lib/eve_attr_generated.dart.
 attr_id_source = "data/resources/tranquility/cache/native/json/dogmaAttributes.json"
 
 [remote]

@@ -1,8 +1,8 @@
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/generation_pointer.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";

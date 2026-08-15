@@ -1,8 +1,8 @@
 import "dart:convert";
 
 import "package:archive/archive.dart";
-import "package:eve_fit_assistant/constant/eve.dart";
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:efa_constant/eve.dart";
+import "package:efa_proto/fit.pb.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";

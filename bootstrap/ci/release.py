@@ -243,7 +243,7 @@ def _check_generated() -> None:
     runtime.execute([sys.executable, "x.py", "generate", "all"], "GENERATE ALL")
 
     tracked = [
-        EFA_APP_ROOT / "lib" / "constant" / "eve_dogma_unit_generated.dart",
+        PROJECT_ROOT / "packages" / "efa_constant" / "lib" / "eve_dogma_unit_generated.dart",
         EFA_APP_ROOT / "lib" / "storage" / "repo" / "repo_version.dart",
     ]
     for path in tracked:

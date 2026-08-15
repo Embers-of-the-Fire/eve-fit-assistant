@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:efa_proto/fit.pb.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
 extension ProtobufSlotStateExt on Slots_SlotState {

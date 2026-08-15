@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:flutter/foundation.dart";
 
 /// The per-snapshot resource list format version that introduced the

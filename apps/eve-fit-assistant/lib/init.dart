@@ -2,7 +2,7 @@
 
 import "dart:async";
 
-import "package:eve_fit_assistant/compat/wasm_probe.dart";
+import "package:efa_compat/wasm_probe.dart";
 import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";

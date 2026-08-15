@@ -1,5 +1,5 @@
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/generation_pointer.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";

@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";

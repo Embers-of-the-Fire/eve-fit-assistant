@@ -1,7 +1,7 @@
 import "dart:typed_data";
 
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";

@@ -1,6 +1,6 @@
 import "dart:typed_data";
 
-import "package:eve_fit_assistant/constant/eve.dart";
+import "package:efa_constant/eve.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/fit/components/equipment/slot_row/related_values_logic.dart";

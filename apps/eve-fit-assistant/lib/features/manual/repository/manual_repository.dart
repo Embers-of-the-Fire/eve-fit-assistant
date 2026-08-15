@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/manual.pb.dart" as pb;
+import "package:efa_proto/manual.pb.dart" as pb;
 import "package:eve_fit_assistant/features/manual/models/manual_entry.dart";
 import "package:flutter/foundation.dart" show FlutterError;
 import "package:flutter/services.dart" show rootBundle;

@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/compat/io.dart" show Platform;
+import "package:efa_compat/io.dart" show Platform;
 import "package:eve_fit_assistant/components/list/slide_action.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";

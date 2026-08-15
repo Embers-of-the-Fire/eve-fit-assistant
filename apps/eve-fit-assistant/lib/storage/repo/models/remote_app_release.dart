@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "remote_app_release.freezed.dart";

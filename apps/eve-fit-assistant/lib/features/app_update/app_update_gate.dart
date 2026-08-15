@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:eve_fit_assistant/compat/io.dart";
+import "package:efa_compat/io.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
