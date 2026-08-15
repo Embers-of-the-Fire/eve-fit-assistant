@@ -1,0 +1,16 @@
+name: efa_fit
+description: "Shared fit format logic: EFA(n) native payloads, EFT-compatible text format, and fit link construction/parsing."
+publish_to: none
+resolution: workspace
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  archive: ^4.0.7
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

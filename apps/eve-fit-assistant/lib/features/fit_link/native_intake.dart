@@ -1,8 +1,8 @@
 import "dart:async";
 
 import "package:app_links/app_links.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
 import "package:flutter/foundation.dart";
 
 class NativeFitLinkIntake {

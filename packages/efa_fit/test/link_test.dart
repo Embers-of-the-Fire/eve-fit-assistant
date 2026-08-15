@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -75,10 +75,22 @@ void main() {
     });
   });
 
-  group("buildShareUrl", () {
+  group("parseFitLinkBootUri", () {
+    test("accepts the canonical path regardless of host", () {
+      final result = parseFitLinkBootUri(Uri.parse("https://example.com/fit/raw?payload=$payload"));
+      expect(result, isNotNull);
+      expect(result!.payload, payload);
+    });
+
+    test("rejects other paths", () {
+      expect(parseFitLinkBootUri(Uri.parse("https://$fitLinkShareHost/fit?id=1")), isNull);
+    });
+  });
+
+  group("buildFitLinkShareUrl", () {
     test("builds the canonical share URL", () {
       expect(
-        buildShareUrl(payload),
+        buildFitLinkShareUrl(payload),
         "https://share.platform.efa-tech.dev/fit/raw?payload=$payload",
       );
     });

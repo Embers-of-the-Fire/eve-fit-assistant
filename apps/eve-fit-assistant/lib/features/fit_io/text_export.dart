@@ -1,5 +1,4 @@
-import "dart:convert";
-
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
@@ -29,97 +28,66 @@ class FitTextExporter {
     FitTextExportFormat.eft => FitTextExportResult(text: await _exportEft(fit), lossy: true),
   };
 
-  String _exportNativeFit(FitStorage fit) => "EFA2:${base64Encode(encodeNativeFitBinary(fit))}";
+  String _exportNativeFit(FitStorage fit) => encodeEfaFitTextPayload(encodeNativeFitPayload(fit));
 
   Future<String> _exportEft(FitStorage fit) async {
     final names = await _FitTextNameResolver.load(ref, fit);
-    final sections = <String>[];
+    return formatEft(_toEftFit(fit), typeName: names.typeName);
+  }
 
-    final moduleSection = <String>[];
-    for (final (slots, placeholder) in [
-      (fit.body.slots.low, "[Empty Low slot]"),
-      (fit.body.slots.medium, "[Empty Med slot]"),
-      (fit.body.slots.high, "[Empty High slot]"),
-      (fit.body.slots.rig, "[Empty Rig slot]"),
-      (fit.body.slots.subsystem, "[Empty Subsystem slot]"),
-      (fit.body.slots.service, "[Empty Service slot]"),
+  EftFit _toEftFit(FitStorage fit) {
+    final racks = <EftRack, List<EftModule?>>{};
+    for (final (rack, slots) in [
+      (EftRack.low, fit.body.slots.low),
+      (EftRack.medium, fit.body.slots.medium),
+      (EftRack.high, fit.body.slots.high),
+      (EftRack.rig, fit.body.slots.rig),
+      (EftRack.subsystem, fit.body.slots.subsystem),
+      (EftRack.service, fit.body.slots.service),
     ]) {
       if (slots.isEmpty) continue;
-
-      final lines = <String>[];
-      for (final slotOpt in slots) {
-        slotOpt.match(() => lines.add(placeholder), (slot) {
-          final moduleTypeId = _resolveEftModuleTypeId(fit, slot.itemId);
-          final moduleName = names.typeName(moduleTypeId);
-          final chargeSuffix = slot.charge.match(
-            () => "",
-            (charge) => ", ${names.typeName(charge.typeId)}",
-          );
-          final offlineSuffix = slot.state == FitItemState.passive ? " /offline" : "";
-          lines.add("$moduleName$chargeSuffix$offlineSuffix");
-        });
-      }
-
-      if (lines.isNotEmpty) {
-        moduleSection.add(lines.join("\n"));
-      }
-    }
-    if (moduleSection.isNotEmpty) {
-      sections.add(moduleSection.join("\n\n"));
+      racks[rack] = [
+        for (final slotOpt in slots)
+          slotOpt.match(
+            () => null,
+            (slot) => EftModule(
+              typeId: _resolveEftModuleTypeId(fit, slot.itemId),
+              chargeTypeId: slot.charge.match(() => null, (charge) => charge.typeId),
+              online: slot.state != FitItemState.passive,
+            ),
+          ),
+      ];
     }
 
-    final minionSection = <String>[];
-    if (fit.body.drones.isNotEmpty) {
-      minionSection.add(
-        fit.body.drones
-            .map(
-              (drone) =>
-                  "${names.typeName(_resolveEftModuleTypeId(fit, drone.itemId))} x${drone.quantity}",
-            )
-            .join("\n"),
-      );
-    }
-    if (fit.body.fighters.isNotEmpty) {
-      minionSection.add(
-        fit.body.fighters
-            .map(
-              (fighter) =>
-                  "${names.typeName(_resolveEftModuleTypeId(fit, fighter.itemId))} x${fighter.quantity}",
-            )
-            .join("\n"),
-      );
-    }
-    if (minionSection.isNotEmpty) {
-      sections.add(minionSection.join("\n\n"));
-    }
+    final boosters = fit.body.boosters.toList()
+      ..sort((left, right) => left.index.compareTo(right.index));
 
-    final characterSection = <String>[];
-    if (fit.body.implants.isNotEmpty) {
-      characterSection.add(
-        fit.body.implants
-            .map((implant) => names.typeName(_resolveEftModuleTypeId(fit, implant.itemId)))
-            .join("\n"),
-      );
-    }
-    if (fit.body.boosters.isNotEmpty) {
-      final boosters = fit.body.boosters.toList()
-        ..sort((left, right) => left.index.compareTo(right.index));
-      characterSection.add(
-        boosters
-            .map((booster) => names.typeName(_resolveEftModuleTypeId(fit, booster.itemId)))
-            .join("\n"),
-      );
-    }
-    if (characterSection.isNotEmpty) {
-      sections.add(characterSection.join("\n\n"));
-    }
-
-    final shipName = names.typeName(fit.body.shipTypeId);
-    final header = "[$shipName, ${fit.metadata.name}]";
-    if (sections.isEmpty) {
-      return "$header\n";
-    }
-    return "$header\n\n${sections.join("\n\n\n")}";
+    return EftFit(
+      shipTypeId: fit.body.shipTypeId,
+      name: fit.metadata.name,
+      racks: racks,
+      drones: [
+        for (final drone in fit.body.drones)
+          EftStack(typeId: _resolveEftModuleTypeId(fit, drone.itemId), quantity: drone.quantity),
+      ],
+      fighters: [
+        for (final fighter in fit.body.fighters)
+          EftStack(
+            typeId: _resolveEftModuleTypeId(fit, fighter.itemId),
+            quantity: fighter.quantity,
+          ),
+      ],
+      implants: [
+        for (final implant in fit.body.implants) _resolveEftModuleTypeId(fit, implant.itemId),
+      ],
+      boosters: [
+        for (final booster in boosters)
+          EftSlottedItem(
+            typeId: _resolveEftModuleTypeId(fit, booster.itemId),
+            slotIndex: booster.index,
+          ),
+      ],
+    );
   }
 
   int _resolveEftModuleTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(

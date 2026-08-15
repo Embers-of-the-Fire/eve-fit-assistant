@@ -1,5 +1,4 @@
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:web/web.dart" as web;
 
 Uri? _pending;
@@ -14,7 +13,7 @@ void probeFitLinkBootUrl() {
     return;
   }
   final payload = queryParameters[fitLinkPayloadParam];
-  if (payload == null || !payload.startsWith(fitLinkPayloadPrefix)) return;
+  if (payload == null || !payload.startsWith(efaFitLinkPayloadPrefix)) return;
   _pending = uri;
   web.window.history.replaceState(null, "", "/");
 }

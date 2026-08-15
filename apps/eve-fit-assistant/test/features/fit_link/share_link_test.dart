@@ -1,8 +1,8 @@
 import "dart:math";
 
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/features/fit_link/share_link.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -47,6 +47,8 @@ String _randomText(int length, int seed) {
   );
 }
 
+String _encodePayload(FitStorage fit) => encodeEfaFitLinkPayload(encodeNativeFitPayload(fit));
+
 void main() {
   const builder = FitShareLinkBuilder();
 
@@ -59,7 +61,7 @@ void main() {
 
   test("returns null when the payload exceeds the budget", () {
     final fit = _makeFit(description: _randomText(20000, 42));
-    expect(encodeFitLinkPayload(fit).length, greaterThan(maxFitLinkEncodedPayloadChars));
+    expect(_encodePayload(fit).length, greaterThan(maxEfaFitLinkEncodedPayloadChars));
     expect(builder.buildShareUrl(fit), isNull);
   });
 
@@ -70,7 +72,7 @@ void main() {
       final fit = _makeFit(description: _randomText(length, length));
       final url = builder.buildShareUrl(fit);
       if (url == null) {
-        firstRejected = encodeFitLinkPayload(fit);
+        firstRejected = _encodePayload(fit);
       } else {
         lastAccepted = url;
       }
@@ -78,6 +80,6 @@ void main() {
     expect(firstRejected, isNotNull);
     expect(lastAccepted, isNotNull);
     expect(lastAccepted!.length, lessThanOrEqualTo(maxFitLinkUrlLength));
-    expect(firstRejected!.length, greaterThan(maxFitLinkEncodedPayloadChars));
+    expect(firstRejected!.length, greaterThan(maxEfaFitLinkEncodedPayloadChars));
   });
 }

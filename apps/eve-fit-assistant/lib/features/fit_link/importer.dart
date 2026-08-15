@@ -1,8 +1,5 @@
-import "dart:convert";
-
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -33,20 +30,16 @@ class FitLinkImporter {
 
   FitStorage parsePayload(String payload) {
     try {
-      final jsonBytes = decodeFitLinkPayload(payload);
-      final decoded = jsonDecode(utf8.decode(jsonBytes));
-      if (decoded is! Map<String, dynamic>) {
-        throw const FitLinkFormatException(FitLinkFormatErrorCode.invalidJson);
-      }
+      final decoded = decodeEfaFitLinkPayload(payload);
       return decodeNativeFitPayload(decoded).fit;
-    } on FitLinkFormatException catch (e) {
+    } on EfaFitFormatException catch (e) {
       warning("Fit link rejected: ${e.code} ${_summarizePayload(payload)}");
       rethrow;
     } on Object {
       warning(
-        "Fit link rejected: ${FitLinkFormatErrorCode.invalidJson} ${_summarizePayload(payload)}",
+        "Fit link rejected: ${EfaFitFormatErrorCode.invalidJson} ${_summarizePayload(payload)}",
       );
-      throw const FitLinkFormatException(FitLinkFormatErrorCode.invalidJson);
+      throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidJson);
     }
   }
 

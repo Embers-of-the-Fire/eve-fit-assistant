@@ -5,11 +5,11 @@ import "dart:convert";
 import "dart:io";
 
 import "package:archive/archive.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
 import "package:eve_fit_assistant/features/fit_link/importer.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
+import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -83,7 +83,7 @@ void main() {
   test("imports a valid link exactly once", () async {
     final fit = _makeFit();
     final uri = Uri.parse(
-      "https://share.platform.efa-tech.dev/fit/raw?payload=${encodeFitLinkPayload(fit)}",
+      "https://share.platform.efa-tech.dev/fit/raw?payload=${encodeEfaFitLinkPayload(encodeNativeFitPayload(fit))}",
     );
 
     final result = await importer.import(uri);
@@ -95,7 +95,9 @@ void main() {
   });
 
   test("efa scheme links import identically", () async {
-    final uri = Uri.parse("efa://fit/raw?payload=${encodeFitLinkPayload(_makeFit())}");
+    final uri = Uri.parse(
+      "efa://fit/raw?payload=${encodeEfaFitLinkPayload(encodeNativeFitPayload(_makeFit()))}",
+    );
 
     final result = await importer.import(uri);
 
@@ -111,11 +113,11 @@ void main() {
     expect(fitManager.imported, isEmpty);
   });
 
-  test("malformed payloads throw FitLinkFormatException without touching storage", () async {
+  test("malformed payloads throw EfaFitFormatException without touching storage", () async {
     for (final payload in ["EFA:abc", "EFA2:not_base64!!!", "EFA2:aGVsbG8"]) {
       await expectLater(
         importer.import(Uri.parse("efa://fit/raw?payload=$payload")),
-        throwsA(isA<FitLinkFormatException>()),
+        throwsA(isA<EfaFitFormatException>()),
         reason: payload,
       );
     }
@@ -131,7 +133,7 @@ void main() {
 
     await expectLater(
       importer.import(Uri.parse("efa://fit/raw?payload=$payload")),
-      throwsA(isA<FitLinkFormatException>()),
+      throwsA(isA<EfaFitFormatException>()),
     );
     expect(fitManager.imported, isEmpty);
   });
