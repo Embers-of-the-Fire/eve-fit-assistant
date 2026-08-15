@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 fn workspace_root() -> PathBuf {
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    // CARGO_MANIFEST_DIR = <ws>/pkgs/worker/release → workspace root is 3 parents up
-    Path::new(&dir).ancestors().nth(3).unwrap().to_path_buf()
+    // CARGO_MANIFEST_DIR = <ws>/worker/release → workspace root is 2 parents up
+    Path::new(&dir).ancestors().nth(2).unwrap().to_path_buf()
 }
 
 fn main() -> anyhow::Result<()> {

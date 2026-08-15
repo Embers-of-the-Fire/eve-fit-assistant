@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "pkgs/worker/release",
+    "worker/release",
     "apps/eve-fit-assistant/rust",
     "apps/eve-fit-assistant/rust/lib/efa-chat",
     "apps/eve-fit-assistant/rust/lib/eve-fit-os",

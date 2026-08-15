@@ -6,7 +6,7 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["site/**/*", "pkgs/worker/**/*"],
+        "includes": ["site/**/*", "worker/**/*"],
         "ignoreUnknown": false
     },
     "formatter": {
