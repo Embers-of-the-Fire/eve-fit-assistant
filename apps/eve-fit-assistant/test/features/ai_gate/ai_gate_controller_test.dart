@@ -9,7 +9,7 @@ import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_controller.dart";
 import "package:eve_fit_assistant/features/ai_gate/ai_gate_state.dart";
 import "package:eve_fit_assistant/storage/repo/agent_resource_db.dart";

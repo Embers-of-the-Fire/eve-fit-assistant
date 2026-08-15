@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:efa_proto/fit.pb.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
 enum SubsystemType {

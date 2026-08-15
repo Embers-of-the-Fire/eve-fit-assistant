@@ -7,7 +7,7 @@ import "dart:io";
 import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_service.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_status.dart";
 import "package:eve_fit_assistant/features/app_update/providers.dart";

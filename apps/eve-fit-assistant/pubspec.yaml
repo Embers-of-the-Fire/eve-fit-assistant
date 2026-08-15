@@ -35,6 +35,8 @@ dependencies:
     path: rust_builder
   efa_compat:
     path: ../../packages/efa_compat
+  efa_proto:
+    path: ../../packages/efa_proto
 
   animated_text_kit: ^4.3.0
   animated_tree_view: ^2.3.0

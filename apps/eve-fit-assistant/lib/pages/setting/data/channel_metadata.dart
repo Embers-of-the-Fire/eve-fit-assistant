@@ -1,12 +1,12 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:efa_proto/generation_pointer.pb.dart";
+import "package:efa_proto/generation_resources.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
+import "package:efa_proto/server_index.pb.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
-import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
-import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";

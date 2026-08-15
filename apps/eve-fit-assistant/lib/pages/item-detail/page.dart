@@ -1,6 +1,12 @@
 import "dart:async";
 import "dart:math";
 
+import "package:efa_proto/dogma_attributes.pb.dart";
+import "package:efa_proto/dogma_units.pb.dart";
+import "package:efa_proto/dynamic.pb.dart" as pb_dynamic;
+import "package:efa_proto/fit.pb.dart" show Slots;
+import "package:efa_proto/types.pb.dart" as pb_types;
+import "package:efa_proto/utils.pb.dart" show LocalizationID;
 import "package:eve_fit_assistant/components/description_text.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/layout.dart";
@@ -8,12 +14,6 @@ import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/localized_text.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/data/proto/dogma_attributes.pb.dart";
-import "package:eve_fit_assistant/data/proto/dogma_units.pb.dart";
-import "package:eve_fit_assistant/data/proto/dynamic.pb.dart" as pb_dynamic;
-import "package:eve_fit_assistant/data/proto/fit.pb.dart" show Slots;
-import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
-import "package:eve_fit_assistant/data/proto/utils.pb.dart" show LocalizationID;
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";

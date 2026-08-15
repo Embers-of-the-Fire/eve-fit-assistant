@@ -1,10 +1,10 @@
 import "dart:math" as math;
 
+import "package:efa_proto/groups.pb.dart" as pb_groups;
+import "package:efa_proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/constant/eve.dart";
-import "package:eve_fit_assistant/data/proto/groups.pb.dart" as pb_groups;
-import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/utils/context.dart";

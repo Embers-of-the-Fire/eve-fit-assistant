@@ -1,10 +1,10 @@
 import "dart:convert";
 import "dart:typed_data";
 
+import "package:efa_proto/generation_pointer.pb.dart";
+import "package:efa_proto/generation_resources.pb.dart";
+import "package:efa_proto/server_index.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/data/proto/generation_pointer.pb.dart";
-import "package:eve_fit_assistant/data/proto/generation_resources.pb.dart";
-import "package:eve_fit_assistant/data/proto/server_index.pb.dart";
 import "package:eve_fit_assistant/storage/fs/blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_head_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";

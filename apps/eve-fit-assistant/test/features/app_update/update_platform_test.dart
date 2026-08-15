@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:fixnum/fixnum.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:flutter_test/flutter_test.dart";

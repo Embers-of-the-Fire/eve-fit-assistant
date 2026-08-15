@@ -9,7 +9,7 @@ import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/features/announcements/repository/announcement_repository.dart"
     show appVersionProvider;
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";

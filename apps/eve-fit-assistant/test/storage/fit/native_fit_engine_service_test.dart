@@ -6,7 +6,7 @@ import "dart:io";
 import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native_output;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;

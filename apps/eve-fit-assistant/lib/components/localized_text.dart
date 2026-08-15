@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/utils.pb.dart";
+import "package:efa_proto/utils.pb.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";

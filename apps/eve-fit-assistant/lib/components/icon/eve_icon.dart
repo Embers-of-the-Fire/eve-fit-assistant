@@ -1,5 +1,5 @@
+import "package:efa_proto/utils.pb.dart" as pb;
 import "package:eve_fit_assistant/constant/assets.dart";
-import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show imageAssetServiceProvider;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";

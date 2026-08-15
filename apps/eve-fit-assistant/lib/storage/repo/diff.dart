@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/models/diff.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 

@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:ui" as ui;
 
-import "package:eve_fit_assistant/data/proto/utils.pb.dart" as pb;
+import "package:efa_proto/utils.pb.dart" as pb;
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";

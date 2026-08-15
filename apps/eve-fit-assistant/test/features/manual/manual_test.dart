@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/manual.pb.dart" as pb;
+import "package:efa_proto/manual.pb.dart" as pb;
 import "package:eve_fit_assistant/features/manual/manual.dart";
 import "package:flutter_test/flutter_test.dart";
 

@@ -1,10 +1,10 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:efa_proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
-import "package:eve_fit_assistant/data/proto/checkout_reflog.pb.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_meta.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";

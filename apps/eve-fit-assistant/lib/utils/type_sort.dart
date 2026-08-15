@@ -1,5 +1,5 @@
+import "package:efa_proto/types.pb.dart" as pb_types;
 import "package:eve_fit_assistant/constant/eve.dart";
-import "package:eve_fit_assistant/data/proto/types.pb.dart" as pb_types;
 
 int metaGroupRank(int metaGroupId) => switch (metaGroupId) {
   EveConstMetaGroupId.tech1 => 0,

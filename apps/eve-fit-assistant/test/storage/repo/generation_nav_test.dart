@@ -3,7 +3,7 @@ library;
 
 import "package:efa_compat/io.dart" show Directory;
 import "package:eve_fit_assistant/config/logger.dart";
-import "package:eve_fit_assistant/data/proto/resource_index.pb.dart";
+import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";

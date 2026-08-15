@@ -1,6 +1,6 @@
 import "package:efa_compat/io.dart";
 
-import "package:eve_fit_assistant/data/proto/release_index.pb.dart";
+import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";

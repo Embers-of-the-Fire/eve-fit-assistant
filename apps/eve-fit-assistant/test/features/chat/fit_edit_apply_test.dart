@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/data/proto/fit.pb.dart";
+import "package:efa_proto/fit.pb.dart";
 import "package:eve_fit_assistant/features/chat/fit_edit_apply.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
