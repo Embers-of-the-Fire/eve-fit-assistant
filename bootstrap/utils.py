@@ -33,6 +33,18 @@ def get_command(name: str) -> str:
     return path
 
 
+def get_melos_command() -> list[str]:
+    """Resolve the melos invocation prefix.
+
+    Prefers a ``melos`` binary on PATH and otherwise falls back to running the
+    workspace's ``melos`` dev dependency via ``dart run melos``.
+    """
+    try:
+        return [get_command("melos")]
+    except FileNotFoundError:
+        return [get_command("dart"), "run", "melos"]
+
+
 def get_bin_size(size: int) -> str:
     """Convert a size in bytes to a human-readable string."""
     for unit in ["B", "KB", "MB", "GB", "TB"]:

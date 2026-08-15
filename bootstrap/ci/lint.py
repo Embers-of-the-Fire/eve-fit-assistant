@@ -46,6 +46,7 @@ def run_lint(
             execute_command([uv, "run", "ruff", "format"], "RUFF FORMAT OUTPUT", dry_run)
 
     if lang in ("all", "dart"):
+        from bootstrap.cli.runtime import run_melos
         from bootstrap.docs import build_bundled_docs
         from bootstrap.docs import build_manual
 
@@ -59,23 +60,19 @@ def run_lint(
             except (ValueError, TypeError, FileNotFoundError) as exception:
                 raise click.ClickException(str(exception)) from exception
 
-        dart = get_command("dart")
-
         if not no_check or check_only:
             if not check_only:
-                _echo("dart fix --apply")
-                execute_command([dart, "fix", "--apply"], "DART FIX OUTPUT", dry_run)
-            _echo("dart analyze")
-            execute_command([dart, "analyze"], "DART ANALYZE OUTPUT", dry_run)
+                _echo("melos run app:fix")
+                run_melos("app:fix", "DART FIX OUTPUT")
+            _echo("melos run app:analyze")
+            run_melos("app:analyze", "DART ANALYZE OUTPUT")
 
         if check_only:
-            _echo("dart format --set-exit-if-changed lib/")
-            execute_command(
-                [dart, "format", "--set-exit-if-changed", "lib/"], "DART FORMAT OUTPUT", dry_run
-            )
+            _echo("melos run app:format:check")
+            run_melos("app:format:check", "DART FORMAT OUTPUT")
         else:
-            _echo("dart format lib/")
-            execute_command([dart, "format", "lib/"], "DART FORMAT OUTPUT", dry_run)
+            _echo("melos run app:format")
+            run_melos("app:format", "DART FORMAT OUTPUT")
 
     if lang in ("all", "rust"):
         cargo = get_command("cargo")

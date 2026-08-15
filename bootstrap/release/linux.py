@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.log import debug
 from bootstrap.log import info
@@ -114,7 +115,7 @@ def assemble_appdir(
     exe = bundle_dir / BINARY_NAME
     if not exe.exists():
         raise click.ClickException(f"Flutter Linux bundle binary not found: {exe}")
-    icon_src = PROJECT_ROOT / "logo" / "logo-256.png"
+    icon_src = EFA_APP_ROOT / "logo" / "logo-256.png"
     if not icon_src.exists():
         raise click.ClickException(f"AppImage icon not found: {icon_src}")
 

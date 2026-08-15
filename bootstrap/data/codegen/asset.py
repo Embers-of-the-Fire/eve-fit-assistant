@@ -6,7 +6,7 @@ from caseconverter import camelcase
 
 from bootstrap.constant import ASSETS_OUT_PATH
 from bootstrap.constant import ASSETS_ROOT
-from bootstrap.constant import PROJECT_ROOT
+from bootstrap.constant import EFA_APP_ROOT
 
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ def _build_variable_name(any_file: Path, used_names: set[str], root: Path) -> st
 
 
 def codegen_dart() -> list[Path]:
-    assets_dir = PROJECT_ROOT
+    assets_dir = EFA_APP_ROOT
     asset_names: set[str] = set()
     image_names: set[str] = set()
 

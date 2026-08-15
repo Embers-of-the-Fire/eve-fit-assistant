@@ -13,6 +13,7 @@ import bootstrap.config
 from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.constant import DEV_CONFIG_PATH
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import NATIVE_LIB_ROOT
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.utils import get_command
@@ -52,12 +53,11 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
                 styled([Style.BRIGHT, Fore.RED], "Invalid usage: ") + "No package specified to add."
             )
             sys.exit(1)
-        flutter = get_command("flutter")
         click.echo(
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
-            + f"flutter pub add {' '.join(argv)}"
+            + f"melos exec -- flutter pub add {' '.join(argv)}"
         )
-        runtime.execute([flutter, "pub", "add", *argv], "FLUTTER PUB ADD OUTPUT")
+        runtime.run_melos_exec(["flutter", "pub", "add", *argv], "FLUTTER PUB ADD OUTPUT")
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart package(s) added successfully."))
         return
     elif rust:
@@ -71,7 +71,7 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
             + f"cargo add {' '.join(argv)}"
         )
-        runtime.execute([cargo, "add", *argv], "CARGO ADD OUTPUT")
+        runtime.execute([cargo, "add", *argv], "CARGO ADD OUTPUT", cwd=EFA_APP_ROOT / "rust")
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "Rust package(s) added successfully."))
         return
 
@@ -154,9 +154,8 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             + styled([Style.BRIGHT, Fore.GREEN], f"{x}")
             + styled(Fore.GREEN, f" dart package{'s' if x > 1 else ''}.")
         )
-        flutter = get_command("flutter")
         click.echo(f"  · Adding package{'s' if x > 1 else ''}: " + ", ".join(pkgs["dart"]))
-        runtime.execute([flutter, "pub", "add", *pkgs["dart"]], "FLUTTER PUB ADD OUTPUT")
+        runtime.run_melos_exec(["flutter", "pub", "add", *pkgs["dart"]], "FLUTTER PUB ADD OUTPUT")
 
     if (x := sum(map(len, pkgs["rust"].values()))) > 0:
         click.echo(
@@ -170,19 +169,29 @@ def _env_add(argv: list[str], python: bool, rust: bool, dart: bool, dry_run: boo
             click.echo(
                 f"  · Adding normal package{'s' if len(norm) > 1 else ''}: " + ", ".join(norm)
             )
-            runtime.execute([cargo, "add", *norm], "CARGO ADD OUTPUT (NORMAL)")
+            runtime.execute(
+                [cargo, "add", *norm], "CARGO ADD OUTPUT (NORMAL)", cwd=EFA_APP_ROOT / "rust"
+            )
 
         dev = pkgs["rust"]["dev"]
         if len(dev) > 0:
             click.echo(f"  · Adding dev package{'s' if len(dev) > 1 else ''}: " + ", ".join(dev))
-            runtime.execute([cargo, "add", "--dev", *dev], "CARGO ADD OUTPUT (DEV)")
+            runtime.execute(
+                [cargo, "add", "--dev", *dev],
+                "CARGO ADD OUTPUT (DEV)",
+                cwd=EFA_APP_ROOT / "rust",
+            )
 
         build = pkgs["rust"]["build"]
         if len(build) > 0:
             click.echo(
                 f"  · Adding build package{'s' if len(build) > 1 else ''}: " + ", ".join(build)
             )
-            runtime.execute([cargo, "add", "--build", *build], "CARGO ADD OUTPUT (BUILD)")
+            runtime.execute(
+                [cargo, "add", "--build", *build],
+                "CARGO ADD OUTPUT (BUILD)",
+                cwd=EFA_APP_ROOT / "rust",
+            )
 
     if (x := len(pkgs["unknown"])) > 0:
         click.echo(

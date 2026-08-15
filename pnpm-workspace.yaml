@@ -1,6 +1,6 @@
 packages:
   - "site/*"
-  - "pkgs/worker/*"
+  - "worker/*"
 
 allowBuilds:
   '@biomejs/biome': true

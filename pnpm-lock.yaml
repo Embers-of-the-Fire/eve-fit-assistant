@@ -12,40 +12,6 @@ importers:
         specifier: ^2.5.7
         version: 2.5.7
 
-  pkgs/worker/email-filter:
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^5.20260810.1
-        version: 5.20260810.1
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      wrangler:
-        specifier: ^4.120.0
-        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
-
-  pkgs/worker/issue-redirect:
-    dependencies:
-      '@octokit/app':
-        specifier: ^16.1.4
-        version: 16.1.4
-      hono:
-        specifier: ^4.13.1
-        version: 4.13.1
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^5.20260810.1
-        version: 5.20260810.1
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      wrangler:
-        specifier: ^4.120.0
-        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
-
   site/home:
     devDependencies:
       '@sveltejs/adapter-cloudflare':
@@ -111,6 +77,40 @@ importers:
       vite:
         specifier: ^8.2.1
         version: 8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)
+
+  worker/email-filter:
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20260810.1
+        version: 5.20260810.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: ^4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
+
+  worker/issue-redirect:
+    dependencies:
+      '@octokit/app':
+        specifier: ^16.1.4
+        version: 16.1.4
+      hono:
+        specifier: ^4.13.1
+        version: 4.13.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20260810.1
+        version: 5.20260810.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      wrangler:
+        specifier: ^4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
 
 packages:
 

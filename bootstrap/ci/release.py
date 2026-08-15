@@ -11,6 +11,7 @@ import click
 
 from bootstrap.cli import runtime
 from bootstrap.config import ProjectVersion
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.utils import get_command
 
@@ -221,7 +222,7 @@ def _ensure_submodule_clean(path: str) -> None:
 
 def _check_submodules() -> None:
     """Verify engine and FSD dumper submodules are initialized and clean."""
-    submodules = ["rust/lib/eve-fit-os", "tools/eve-fsd-dumper"]
+    submodules = ["apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"]
     for path in submodules:
         submodule_path = PROJECT_ROOT / path
         if not (submodule_path / ".git").exists():
@@ -242,8 +243,8 @@ def _check_generated() -> None:
     runtime.execute([sys.executable, "x.py", "generate", "all"], "GENERATE ALL")
 
     tracked = [
-        PROJECT_ROOT / "lib" / "constant" / "eve_dogma_unit_generated.dart",
-        PROJECT_ROOT / "lib" / "storage" / "repo" / "repo_version.dart",
+        EFA_APP_ROOT / "lib" / "constant" / "eve_dogma_unit_generated.dart",
+        EFA_APP_ROOT / "lib" / "storage" / "repo" / "repo_version.dart",
     ]
     for path in tracked:
         if not path.exists():
@@ -269,16 +270,12 @@ def _check_tests() -> None:
     uv = get_command("uv")
     runtime.execute([uv, "run", "pytest", "bootstrap/tests/"], "PYTHON TESTS")
 
-    flutter = get_command("flutter")
-    runtime.execute([flutter, "test"], "FLUTTER TESTS")
+    runtime.run_melos("app:test", "FLUTTER TESTS")
 
 
 def _check_build() -> None:
     """Run static buildability checks that do not require engine data."""
-    from bootstrap.utils import get_command
-
-    flutter = get_command("flutter")
-    runtime.execute([flutter, "analyze"], "FLUTTER ANALYZE")
+    runtime.run_melos("app:analyze", "FLUTTER ANALYZE")
 
 
 def _normalize_sha256(value: str) -> str:
@@ -431,8 +428,8 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         click.echo(f"Semver version:    {semver}")
 
         derived = [
-            (PROJECT_ROOT / "pubspec.yaml", full, "full"),
-            (PROJECT_ROOT / "rust" / "Cargo.toml", semver, "semver"),
+            (EFA_APP_ROOT / "pubspec.yaml", full, "full"),
+            (EFA_APP_ROOT / "rust" / "Cargo.toml", semver, "semver"),
             (PROJECT_ROOT / "pyproject.toml", semver, "semver"),
         ]
 

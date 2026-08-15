@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
 from bootstrap.log import info
 from bootstrap.release.msi import MSIHANDLE
@@ -36,7 +37,7 @@ if TYPE_CHECKING:
 
 BINARY_NAME = "eve_fit_assistant"
 
-BUNDLE_DIR = PROJECT_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
+BUNDLE_DIR = EFA_APP_ROOT / "build" / "windows" / "x64" / "runner" / "Release"
 _PACKAGING_DIR = PROJECT_ROOT / "distro" / "windows" / "installer"
 
 _WIX_UI_EXTENSION = "WixToolset.UI.wixext"
@@ -202,6 +203,8 @@ def _build_msi_args(
         f"UpgradeCode={upgrade_code()}",
         "-d",
         f"RepoRoot={PROJECT_ROOT}",
+        "-d",
+        f"AppRoot={EFA_APP_ROOT}",
         "-arch",
         _MSI_ARCH,
         "-culture",

@@ -31,7 +31,7 @@ class ManualFeedback {
 }
 
 /// Submits manual feedback to the issue-redirect worker (`docs-flag` and
-/// `docs-question` endpoints, see `pkgs/worker/issue-redirect`).
+/// `docs-question` endpoints, see `worker/issue-redirect`).
 class ManualFeedbackApi {
   ManualFeedbackApi()
     : _dio = createRemoteDio(

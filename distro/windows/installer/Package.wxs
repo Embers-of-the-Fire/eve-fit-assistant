@@ -27,7 +27,7 @@
     <Property Id="ARPHELPLINK" Value="https://docs.efa-tech.dev" />
     <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Embers-of-the-Fire/eve-fit-assistant" />
     <Property Id="ARPCOMMENTS" Value="!(loc.ProductDescription)" />
-    <Icon Id="AppIcon" SourceFile="$(var.RepoRoot)\windows\runner\resources\app_icon.ico" />
+    <Icon Id="AppIcon" SourceFile="$(var.AppRoot)\windows\runner\resources\app_icon.ico" />
 
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="INSTALLFOLDER" Name="Programs\eve_fit_assistant" />
