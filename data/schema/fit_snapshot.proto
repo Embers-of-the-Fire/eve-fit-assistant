@@ -1,0 +1,358 @@
+syntax = "proto2";
+package fit;
+
+import "fit.proto";
+import "utils.proto";
+
+/// Self-contained snapshot of a fit as displayed on the fit page.
+///
+/// Unlike the stored fit (`FitStorage`, which only carries type IDs and resolves
+/// names/icons/slot metadata through the checkout resource schema), a snapshot
+/// bakes in every string, icon reference, slot position and computed statistic
+/// needed to render the fit page (and the screenshot surface) without a
+/// localization database, an image registry, or the fitting engine.
+///
+/// Intended consumers: share links, exports, third-party viewers.
+message FitSnapshot {
+  /// Snapshot schema version. Starts at 1.
+  required uint32 version = 1;
+
+  required SnapshotHeader header = 2;
+
+  /// The hull (or structure) this fit belongs to, plus its slot layout.
+  required SnapshotShip ship = 3;
+
+  /// Rack contents. Each list has exactly the length given by the ship layout
+  /// (e.g. `high_slots` has `ship.layout.high_slots` entries); entries without
+  /// an `item` are empty slots and are rendered with the slot placeholder and
+  /// the 1-based `index` as the trailing label.
+  repeated SnapshotSlot high_slots = 4;
+  repeated SnapshotSlot medium_slots = 5;
+  repeated SnapshotSlot low_slots = 6;
+  repeated SnapshotSlot rig_slots = 7;
+  /// Tactical-cruiser subsystems; each entry carries its `subsystem_type`.
+  repeated SnapshotSubsystemSlot subsystem_slots = 8;
+  /// Structure service slots.
+  repeated SnapshotSlot service_slots = 9;
+
+  /// Selected tactical mode (T3 destroyers). Absent when the ship has none.
+  optional SnapshotTacticalMode tactical_mode = 10;
+
+  repeated SnapshotDrone drones = 11;
+  repeated SnapshotFighter fighters = 12;
+
+  /// All 10 implant slots, in ascending `slot_index`; entries without an `item`
+  /// are empty slots.
+  repeated SnapshotImplant implants = 13;
+
+  repeated SnapshotBooster boosters = 14;
+
+  /// The skill profile applied to the fit ("All 5", custom characters, ...).
+  required SnapshotCharacter character = 15;
+
+  /// Incoming damage profile used for the displayed EHP figures.
+  required DamageProfile damage_profile = 16;
+
+  /// Engine-computed statistics of the attributes tab. Optional so minimal
+  /// producers may ship layout-only snapshots; the full app always fills it.
+  optional SnapshotStatistics statistics = 17;
+}
+
+message SnapshotHeader {
+  required string fit_name = 1;
+  optional string description = 2;
+
+  /// Fit's own last-modified timestamp (milliseconds since epoch).
+  required int64 last_modified_ms = 3;
+  /// Snapshot creation timestamp (milliseconds since epoch).
+  required int64 created_at_ms = 4;
+
+  /// Free-form generator tag, e.g. "eve-fit-assistant/1.2.3".
+  optional string generator = 5;
+
+  /// Provenance only: which checkout the names/icons were resolved from.
+  /// Consumers MUST NOT require these to resolve anything.
+  optional string checkout_id = 6;
+  optional string server_id = 7;
+}
+
+/// A displayable game entity with all checkout-resolved data inlined.
+///
+/// `type_id` doubles as the image key for public CDNs (e.g. the EVE image
+/// server `types/{type_id}/icon`), so renderers without any registry can still
+/// show artwork. `icon` is a hint for consumers that do have the EVE icon
+/// sheets; it is never required.
+message SnapshotType {
+  required uint32 type_id = 1;
+
+  /// Localized display names keyed by BCP-47 locale. `names["en"]` is always
+  /// present; other locales are included when known at snapshot time.
+  map<string, string> names = 2;
+
+  /// Icon resolution hint (checkout-independent consumers may ignore it).
+  optional utils.Icon icon = 3;
+
+  /// Tech-tier meta group, driving the corner overlay on the item icon.
+  optional SnapshotMetaGroup meta_group = 4;
+}
+
+message SnapshotMetaGroup {
+  required uint32 meta_group_id = 1;
+  map<string, string> names = 2;
+  optional utils.Icon icon = 3;
+}
+
+message SnapshotShip {
+  required SnapshotType type = 1;
+
+  /// Slot layout, so the snapshot carries the empty-slot rows and the
+  /// hardpoint counters of the equipment headers without the `Ship` schema.
+  required SnapshotShipLayout layout = 2;
+
+  /// Tactical modes the ship supports (T3 destroyers), for the mode switcher.
+  repeated SnapshotTacticalMode available_tactical_modes = 3;
+}
+
+message SnapshotShipLayout {
+  required uint32 high_slots = 1;
+  required uint32 medium_slots = 2;
+  required uint32 low_slots = 3;
+  required uint32 rig_slots = 4;
+  required uint32 subsystem_slots = 5;
+  required uint32 service_slots = 6;
+
+  /// Hardpoint counters shown in the high-slot header.
+  required uint32 turret_hardpoints = 7;
+  required uint32 launcher_hardpoints = 8;
+
+  /// > 0 enables the fighter tab and its squadron counter.
+  required uint32 fighter_tubes = 9;
+}
+
+/// One rack position. `index` is 0-based within its rack list (redundant with
+/// the list position, kept so entries are meaningful when detached).
+message SnapshotSlot {
+  required uint32 index = 1;
+  optional SnapshotModule item = 2;
+}
+
+message SnapshotModule {
+  required SnapshotType type = 1;
+
+  required Slots.SlotState state = 2;
+
+  /// Loaded charge; the charge row renders `quantity x <icon> <name>`.
+  optional SnapshotCharge charge = 3;
+
+  /// High-slot hardpoint flags, for the turret/launcher used/total counters.
+  optional bool is_turret = 4;
+  optional bool is_launcher = 5;
+
+  /// Set for abyssal/mutated modules: the unmutated base item, used by the
+  /// revert action and shown alongside the mutated item in detail views.
+  optional SnapshotType origin_type = 6;
+
+  /// Pre-formatted related values of the subtitle row (DPS, shield boost, ...).
+  repeated SnapshotDisplayValue related_values = 7;
+}
+
+message SnapshotSubsystemSlot {
+  required uint32 index = 1;
+  required Subsystem.SubsystemType subsystem_type = 2;
+  optional SnapshotModule item = 3;
+}
+
+message SnapshotCharge {
+  required SnapshotType type = 1;
+  /// Rounds loaded per module (dogma chargeAmount), the `N x` prefix.
+  optional uint32 quantity = 2;
+}
+
+message SnapshotTacticalMode {
+  required SnapshotType type = 1;
+  required TacticalMode.TacticalModeVariant variant = 2;
+}
+
+message SnapshotDrone {
+  required SnapshotType type = 1;
+  required Slots.SlotState state = 2;
+  required uint32 quantity = 3;
+}
+
+message SnapshotFighter {
+  required SnapshotType type = 1;
+  required Slots.SlotState state = 2;
+
+  /// Squadron size; rendered as `x quantity / max_squadron_size`.
+  required uint32 quantity = 3;
+  required uint32 max_squadron_size = 4;
+
+  /// Drives the light/heavy/support capacity counters in the fighter header.
+  enum SquadronGroup {
+    LIGHT = 1;
+    HEAVY = 2;
+    SUPPORT = 3;
+  }
+  required SquadronGroup group = 5;
+
+  /// Ability chips shown on the fighter row (only the available ones).
+  enum Ability {
+    TURRET = 1;
+    MISSILES = 2;
+    ATTACK_MISSILES = 3;
+    BOMB = 4;
+  }
+  repeated Ability abilities = 6;
+
+  /// Pre-formatted `"q x dps/s = total/s"` weapon math of the row subtitle.
+  repeated SnapshotDisplayValue related_values = 7;
+}
+
+message SnapshotImplant {
+  /// 1-based implant slot (dogma attribute 331), 1..10.
+  required uint32 slot_index = 1;
+  optional SnapshotModule item = 2;
+}
+
+message SnapshotBooster {
+  /// 1-based booster slot, shown as the row subtitle.
+  required uint32 slot_index = 1;
+  required SnapshotType type = 2;
+  required Slots.SlotState state = 3;
+}
+
+message SnapshotCharacter {
+  /// Storage character id; empty for built-in profiles.
+  optional string character_id = 1;
+
+  enum Builtin {
+    NONE = 0;
+    ALL_0 = 1;
+    ALL_5 = 2;
+    ALPHA_MAX = 3;
+  }
+  required Builtin builtin = 2;
+
+  /// Display name per locale (covers both built-in labels and custom names).
+  map<string, string> names = 3;
+}
+
+/// Generic pre-formatted statistic line: an attribute icon plus a display
+/// string. Formatting (units, precision) happens at snapshot time, so
+/// consumers render `text` verbatim next to the icon.
+message SnapshotDisplayValue {
+  /// Dogma attribute id the value was derived from (semantic key only).
+  optional uint32 attribute_id = 1;
+  optional utils.Icon icon = 2;
+  required string text = 3;
+}
+
+message DamageProfile {
+  required double em = 1;
+  required double thermal = 2;
+  required double kinetic = 3;
+  required double explosive = 4;
+}
+
+/// All engine-computed figures of the attributes tab, in display units.
+message SnapshotStatistics {
+  message Capacitor {
+    required bool is_stable = 1;
+    /// Fraction of capacity the capacitor stabilizes at (0..1); UI shows `%`.
+    optional double stable_fraction = 2;
+    /// Peak use and recharge rates in GJ/s, for the `use / recharge` line.
+    required double peak_use_rate = 3;
+    required double peak_recharge_rate = 4;
+    required double capacity_gj = 5;
+    required double recharge_time_s = 6;
+    /// Present only when the capacitor depletes.
+    optional double depletes_in_s = 7;
+  }
+  required Capacitor capacitor = 1;
+
+  message Weapons {
+    /// Total DPS including drones and fighters.
+    required double dps_total = 1;
+    required double dps_with_reload = 2;
+    required double alpha_volley = 3;
+  }
+  required Weapons weapons = 2;
+
+  message Resources {
+    required double cpu_used = 1;
+    required double cpu_total = 2;
+    required double powergrid_used = 3;
+    required double powergrid_total = 4;
+    required double calibration_used = 5;
+    required double calibration_total = 6;
+    required double drone_bandwidth_used = 7;
+    required double drone_bandwidth_total = 8;
+  }
+  required Resources resources = 3;
+
+  message DefenseLayer {
+    required double hp = 1;
+    required double ehp = 2;
+    /// Layer resistances (0..1) against the incoming profile, rendered as bars.
+    required DamageProfile resistances = 3;
+  }
+  required DefenseLayer shield = 4;
+  required DefenseLayer armor = 5;
+  required DefenseLayer hull = 6;
+
+  message Mobility {
+    required double max_velocity_ms = 1;
+    required double warp_speed_au_s = 2;
+    required double align_time_s = 3;
+    required double signature_radius_m = 4;
+  }
+  required Mobility mobility = 7;
+
+  message Targeting {
+    required double max_target_range_m = 1;
+    required double scan_resolution_mm = 2;
+    required uint32 max_locked_targets = 3;
+    /// All four sensor strengths; the UI highlights the strongest.
+    required double radar_strength = 4;
+    required double ladar_strength = 5;
+    required double magnetometric_strength = 6;
+    required double gravimetric_strength = 7;
+  }
+  required Targeting targeting = 8;
+
+  message Drones {
+    required uint32 max_active_drones = 1;
+    required double control_range_m = 2;
+    /// Bay capacity; the drone tab header shows `used / capacity m3`.
+    required double bay_capacity_m3 = 3;
+    required double bay_used_m3 = 4;
+  }
+  required Drones drones = 9;
+
+  message Cargo {
+    required double mass_kg = 1;
+    required double capacity_m3 = 2;
+
+    /// Specialized holds (only those the ship has), capacities only.
+    enum HoldKind {
+      FLEET_HANGAR = 1;
+      SHIP_MAINTENANCE_BAY = 2;
+      FIGHTER_BAY = 3;
+      MINING_HOLD = 4;
+      GAS_HOLD = 5;
+      MINERAL_HOLD = 6;
+      ICE_HOLD = 7;
+      COMMAND_CENTER_HOLD = 8;
+      PLANETARY_COMMODITIES_HOLD = 9;
+      FUEL_BAY = 10;
+      AMMO_HOLD = 11;
+      QUAFE_BAY = 12;
+    }
+    message Hold {
+      required HoldKind kind = 1;
+      required double capacity_m3 = 2;
+    }
+    repeated Hold holds = 3;
+  }
+  required Cargo cargo = 10;
+}

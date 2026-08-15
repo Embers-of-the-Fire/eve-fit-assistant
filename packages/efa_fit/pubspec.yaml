@@ -9,6 +9,9 @@ environment:
 
 dependencies:
   archive: ^4.0.7
+  efa_proto:
+    path: ../efa_proto
+  fixnum: ^1.1.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
