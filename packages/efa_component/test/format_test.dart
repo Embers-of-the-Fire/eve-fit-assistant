@@ -25,6 +25,7 @@ void main() {
       expect(const Duration(hours: 1, minutes: 2, seconds: 3).format(), "01:02:03");
       expect(const Duration(seconds: 65).format(), "00:01:05");
       expect(const Duration(seconds: -65).format(), "-00:01:05");
+      expect(const Duration(hours: -1, minutes: -2).format(), "-01:02:00");
     });
   });
 
