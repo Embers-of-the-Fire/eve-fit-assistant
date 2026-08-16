@@ -413,6 +413,7 @@ class FitSnapshotExporter {
           EveConstAttrID.specialPlanetaryCommoditiesHoldCapacity,
         ),
         (SnapshotStatistics_Cargo_HoldKind.FUEL_BAY, EveConstAttrID.specialFuelBayCapacity),
+        (SnapshotStatistics_Cargo_HoldKind.FIGHTER_BAY, EveConstAttrID.fighterCapacity),
       ])
         if (hull.getAttribute(attribute) != 0)
           SnapshotStatistics_Cargo_Hold(kind: kind, capacityM3: hull.getAttribute(attribute)),
