@@ -25,7 +25,8 @@ message FitSnapshot {
   /// Rack contents. Each list has exactly the length given by the ship layout
   /// (e.g. `high_slots` has `ship.layout.high_slots` entries); entries without
   /// an `item` are empty slots and are rendered with the slot placeholder and
-  /// the 1-based `index` as the trailing label.
+  /// `index + 1` as the trailing label (the label is 1-based for display, while
+  /// `index` itself stays 0-based).
   repeated SnapshotSlot high_slots = 4;
   repeated SnapshotSlot medium_slots = 5;
   repeated SnapshotSlot low_slots = 6;
