@@ -27,9 +27,7 @@ class FitLinkParseResult {
 }
 
 String buildFitLinkShareUrl(String payload) {
-  if (!payload.startsWith(efaFitLinkPayloadPrefix)) {
-    throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidPrefix);
-  }
+  validateEfaFitLinkPayload(payload);
   final url = "https://$fitLinkShareHost$fitLinkCanonicalPath?$fitLinkPayloadParam=$payload";
   if (url.length > maxFitLinkUrlLength) {
     throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);

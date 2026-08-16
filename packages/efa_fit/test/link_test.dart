@@ -108,6 +108,42 @@ void main() {
       );
     });
 
+    test("rejects payloads containing query delimiters", () {
+      for (final bad in ["$payload&x=1", "$payload#fragment", "$payload=pad", "$payload+plus"]) {
+        expect(
+          () => buildFitLinkShareUrl(bad),
+          throwsA(
+            isA<EfaFitFormatException>().having(
+              (e) => e.code,
+              "code",
+              EfaFitFormatErrorCode.invalidBase64,
+            ),
+          ),
+          reason: bad,
+        );
+      }
+    });
+
+    test("rejects payloads with an empty base64url tail", () {
+      expect(
+        () => buildFitLinkShareUrl("EFA2:"),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.invalidBase64,
+          ),
+        ),
+      );
+    });
+
+    test("built URL round-trips through the parser unchanged", () {
+      final url = buildFitLinkShareUrl(payload);
+      final result = parseFitLinkUri(Uri.parse(url));
+      expect(result, isNotNull);
+      expect(result!.payload, payload);
+    });
+
     test("rejects URLs longer than maxFitLinkUrlLength", () {
       final longPayload = "$payload${"a" * maxFitLinkUrlLength}";
       expect(

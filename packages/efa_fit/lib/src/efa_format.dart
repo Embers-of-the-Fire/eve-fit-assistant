@@ -55,10 +55,7 @@ String encodeEfaFitLinkPayload(Map<String, dynamic> payload) {
   return "$efaFitLinkPayloadPrefix$encoded";
 }
 
-Map<String, dynamic> decodeEfaFitLinkPayload(String payload) {
-  if (payload.length > maxEfaFitLinkEncodedPayloadChars) {
-    throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);
-  }
+void validateEfaFitLinkPayload(String payload) {
   if (!payload.startsWith(efaFitLinkPayloadPrefix)) {
     throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidPrefix);
   }
@@ -66,6 +63,14 @@ Map<String, dynamic> decodeEfaFitLinkPayload(String payload) {
   if (encoded.isEmpty || !_base64UrlAlphabet.hasMatch(encoded)) {
     throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidBase64);
   }
+}
+
+Map<String, dynamic> decodeEfaFitLinkPayload(String payload) {
+  if (payload.length > maxEfaFitLinkEncodedPayloadChars) {
+    throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);
+  }
+  validateEfaFitLinkPayload(payload);
+  final encoded = payload.substring(efaFitLinkPayloadPrefix.length);
   final Uint8List compressed;
   try {
     compressed = base64Url.decode(base64Url.normalize(encoded));
