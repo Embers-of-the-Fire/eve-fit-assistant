@@ -50,27 +50,27 @@ Map<String, dynamic> encodeFitStorage(FitStorage fit) => <String, dynamic>{
 DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
   final version = _readVersion(json, kind: FitPersistencePayloadKind.fitStorage);
   if (version == null) {
-    return DecodedFitStorage(fit: FitStorage.fromJson(json), didMigrate: true);
+    return DecodedFitStorage(fit: _readFitStorageJson(json), didMigrate: true);
   }
 
   switch (version) {
     case 1:
       return DecodedFitStorage(
-        fit: FitStorage.fromJson(
+        fit: _readFitStorageJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: true,
       );
     case 2:
       return DecodedFitStorage(
-        fit: FitStorage.fromJson(
+        fit: _readFitStorageJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: false,
       );
     case 3:
       return DecodedFitStorage(
-        fit: FitStorage.fromJson(
+        fit: _readFitStorageJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: true,
@@ -93,20 +93,20 @@ Map<String, dynamic> encodeFitRegistry(FitRegistry registry) => <String, dynamic
 DecodedFitRegistry decodeFitRegistry(Map<String, dynamic> json) {
   final version = _readVersion(json, kind: FitPersistencePayloadKind.fitRegistry);
   if (version == null) {
-    return DecodedFitRegistry(registry: FitRegistry.fromJson(json), didMigrate: true);
+    return DecodedFitRegistry(registry: _readFitRegistryJson(json), didMigrate: true);
   }
 
   switch (version) {
     case 1:
       return DecodedFitRegistry(
-        registry: FitRegistry.fromJson(
+        registry: _readFitRegistryJson(
           _readPayloadMap(json, "registry", kind: FitPersistencePayloadKind.fitRegistry),
         ),
         didMigrate: true,
       );
     case currentFitRegistryVersion:
       return DecodedFitRegistry(
-        registry: FitRegistry.fromJson(
+        registry: _readFitRegistryJson(
           _readPayloadMap(json, "registry", kind: FitPersistencePayloadKind.fitRegistry),
         ),
         didMigrate: false,
@@ -139,10 +139,11 @@ DecodedFitStorage decodeNativeFitPayload(Map<String, dynamic> json) {
   switch (version) {
     case legacyNativeFitPayloadVersion:
       return DecodedFitStorage(
-        fit: FitStorage.fromJson(
+        fit: _readFitStorageJson(
           upgradeLegacyFitStorageJson(
             _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.nativeText),
           ),
+          kind: FitPersistencePayloadKind.nativeText,
         ),
         didMigrate: true,
       );
@@ -158,6 +159,32 @@ DecodedFitStorage decodeNativeFitPayload(Map<String, dynamic> json) {
     message: "Unsupported native fit payload version: $version",
     version: version,
   );
+}
+
+FitStorage _readFitStorageJson(
+  Map<String, dynamic> json, {
+  FitPersistencePayloadKind kind = FitPersistencePayloadKind.fitStorage,
+}) => _readSchemaJson(FitStorage.fromJson, json, kind: kind);
+
+FitRegistry _readFitRegistryJson(Map<String, dynamic> json) =>
+    _readSchemaJson(FitRegistry.fromJson, json, kind: FitPersistencePayloadKind.fitRegistry);
+
+T _readSchemaJson<T>(
+  T Function(Map<String, dynamic> json) decode,
+  Map<String, dynamic> json, {
+  required FitPersistencePayloadKind kind,
+}) {
+  try {
+    return decode(json);
+  } on FitPersistenceException {
+    rethrow;
+  } catch (error) {
+    throw FitPersistenceException(
+      kind: kind,
+      code: FitPersistenceErrorCode.invalidPayloadShape,
+      message: "Persisted payload failed schema validation: $error",
+    );
+  }
 }
 
 int? _readVersion(Map<String, dynamic> json, {required FitPersistencePayloadKind kind}) {
