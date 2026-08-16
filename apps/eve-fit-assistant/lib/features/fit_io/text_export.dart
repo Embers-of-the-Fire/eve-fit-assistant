@@ -29,7 +29,12 @@ class FitTextExporter {
     FitTextExportFormat.native => FitTextExportResult(text: _exportNativeFit(fit), lossy: false),
     FitTextExportFormat.eft => FitTextExportResult(text: await _exportEft(fit), lossy: true),
     FitTextExportFormat.snapshot => FitTextExportResult(
-      text: await FitSnapshotExporter(ref).export(fitId: fitId!, fit: fit),
+      text: await FitSnapshotExporter(ref).export(
+        fitId:
+            fitId ??
+            (throw ArgumentError.value(fitId, "fitId", "required for snapshot format export")),
+        fit: fit,
+      ),
       lossy: false,
     ),
   };
