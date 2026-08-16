@@ -94,5 +94,32 @@ void main() {
         "https://share.platform.efa-tech.dev/fit/raw?payload=$payload",
       );
     });
+
+    test("rejects payloads without the EFA link prefix", () {
+      expect(
+        () => buildFitLinkShareUrl("abc-def_123"),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.invalidPrefix,
+          ),
+        ),
+      );
+    });
+
+    test("rejects URLs longer than maxFitLinkUrlLength", () {
+      final longPayload = "$payload${"a" * maxFitLinkUrlLength}";
+      expect(
+        () => buildFitLinkShareUrl(longPayload),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.payloadTooLarge,
+          ),
+        ),
+      );
+    });
   });
 }
