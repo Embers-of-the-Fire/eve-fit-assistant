@@ -6,6 +6,7 @@ import "package:archive/archive.dart";
 
 const String efaFitLinkPayloadPrefix = "EFA2:";
 const int maxEfaFitLinkEncodedPayloadChars = 7800;
+const int maxEfaFitTextEncodedPayloadChars = 4 * 1024 * 1024;
 const int maxEfaFitLinkDecodedJsonBytes = 1024 * 1024;
 const int legacyEfaFitFormatVersion = 1;
 const int currentEfaFitFormatVersion = 2;
@@ -96,6 +97,9 @@ EfaFitTextPayload decodeEfaFitTextPayload(String text) {
   }
 
   final encoded = trimmed.substring(prefixMatch.end).trim();
+  if (encoded.length > maxEfaFitTextEncodedPayloadChars) {
+    throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);
+  }
   final Uint8List compressed;
   try {
     compressed = base64Decode(encoded);

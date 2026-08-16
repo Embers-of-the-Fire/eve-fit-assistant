@@ -239,6 +239,20 @@ void main() {
       }
     });
 
+    test("rejects payloads above the encoded size cap", () {
+      final text = "EFA2:${"A" * (maxEfaFitTextEncodedPayloadChars + 1)}";
+      expect(
+        () => decodeEfaFitTextPayload(text),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.payloadTooLarge,
+          ),
+        ),
+      );
+    });
+
     test("rejects malformed base64 content", () {
       expect(
         () => decodeEfaFitTextPayload("EFA2:not_base64!!!"),
