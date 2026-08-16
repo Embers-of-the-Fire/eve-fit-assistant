@@ -253,10 +253,14 @@ class FitSnapshotExporter {
       if (resolvedId == null) continue;
 
       final groupType = collection?.getType(originId ?? resolvedId);
-      final emulatedFighter = emulatedModule(
-        (type) => type is native.OutSlotType_Fighter,
-        fighter.groupId,
-      );
+      final emulatedFighter = (emulated?.modules ?? const <native.Item>[])
+          .where(
+            (item) => switch (item.slot.slotType) {
+              native.OutSlotType_Fighter(:final groupId) => groupId == fighter.groupId,
+              _ => false,
+            },
+          )
+          .firstOrNull;
       builder.addFighter(
         SnapshotFighterData(
           type: typeData(resolvedId),
