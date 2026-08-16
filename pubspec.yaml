@@ -52,6 +52,11 @@ melos:
         scope: eve_fit_assistant
     app:analyze:
       description: Statically analyze the app's Dart code.
+      steps:
+        - pkg:l10n
+        - app:analyze:exec
+    app:analyze:exec:
+      private: true
       exec: dart analyze
       packageFilters:
         scope:
@@ -101,6 +106,11 @@ melos:
         scope: eve_fit_assistant
     pkg:test:
       description: Run the efa_fit package's test suite.
+      steps:
+        - pkg:l10n
+        - pkg:test:exec
+    pkg:test:exec:
+      private: true
       exec: flutter test
       packageFilters:
         scope:
