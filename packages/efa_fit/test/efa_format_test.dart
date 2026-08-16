@@ -158,7 +158,7 @@ void main() {
     });
 
     test("rejects inflated JSON above the decoded size cap", () {
-      final huge = utf8.encode("[${"0," * (maxEfaFitLinkDecodedJsonBytes ~/ 2)}0]");
+      final huge = utf8.encode("[${"0," * (maxEfaFitDecodedJsonBytes ~/ 2)}0]");
       final compressed = const GZipEncoder().encodeBytes(huge);
       final payload = "EFA2:${base64UrlEncode(compressed).replaceAll("=", "")}";
       expect(
@@ -174,9 +174,7 @@ void main() {
     });
 
     test("rejects a tiny gzip member that inflates far past the decoded size cap", () {
-      final compressed = const GZipEncoder().encodeBytes(
-        Uint8List(maxEfaFitLinkDecodedJsonBytes * 4),
-      );
+      final compressed = const GZipEncoder().encodeBytes(Uint8List(maxEfaFitDecodedJsonBytes * 4));
       final payload = "EFA2:${base64UrlEncode(compressed).replaceAll("=", "")}";
       expect(payload.length, lessThanOrEqualTo(maxEfaFitLinkEncodedPayloadChars));
       expect(
@@ -192,13 +190,13 @@ void main() {
     });
 
     test("accepts inflated JSON at exactly the decoded size cap", () {
-      final jsonText = '{"d":"${"0" * (maxEfaFitLinkDecodedJsonBytes - 8)}"}';
-      expect(utf8.encode(jsonText).length, maxEfaFitLinkDecodedJsonBytes);
+      final jsonText = '{"d":"${"0" * (maxEfaFitDecodedJsonBytes - 8)}"}';
+      expect(utf8.encode(jsonText).length, maxEfaFitDecodedJsonBytes);
       final compressed = const GZipEncoder().encodeBytes(utf8.encode(jsonText));
       final payload = "EFA2:${base64UrlEncode(compressed).replaceAll("=", "")}";
       expect(payload.length, lessThanOrEqualTo(maxEfaFitLinkEncodedPayloadChars));
       final decoded = decodeEfaFitLinkPayload(payload);
-      expect((decoded["d"]! as String).length, maxEfaFitLinkDecodedJsonBytes - 8);
+      expect((decoded["d"]! as String).length, maxEfaFitDecodedJsonBytes - 8);
     });
   });
 
@@ -235,6 +233,16 @@ void main() {
             ),
           ),
           reason: prefix,
+        );
+      }
+    });
+
+    test("rejects encoder versions outside the supported range", () {
+      for (final version in [0, 3, 99]) {
+        expect(
+          () => encodeEfaFitTextPayload(_makePayload(), version: version),
+          throwsA(isA<RangeError>()),
+          reason: "version $version",
         );
       }
     });

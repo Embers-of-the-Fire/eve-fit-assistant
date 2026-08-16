@@ -7,7 +7,7 @@ import "package:archive/archive.dart";
 const String efaFitLinkPayloadPrefix = "EFA2:";
 const int maxEfaFitLinkEncodedPayloadChars = 7800;
 const int maxEfaFitTextEncodedPayloadChars = 4 * 1024 * 1024;
-const int maxEfaFitLinkDecodedJsonBytes = 1024 * 1024;
+const int maxEfaFitDecodedJsonBytes = 1024 * 1024;
 const int legacyEfaFitFormatVersion = 1;
 const int currentEfaFitFormatVersion = 2;
 
@@ -78,7 +78,15 @@ Map<String, dynamic> decodeEfaFitLinkPayload(String payload) {
 String encodeEfaFitTextPayload(
   Map<String, dynamic> payload, {
   int version = currentEfaFitFormatVersion,
-}) => "EFA$version:${base64Encode(encodeEfaFitBinary(payload))}";
+}) {
+  RangeError.checkValueInInterval(
+    version,
+    legacyEfaFitFormatVersion,
+    currentEfaFitFormatVersion,
+    "version",
+  );
+  return "EFA$version:${base64Encode(encodeEfaFitBinary(payload))}";
+}
 
 bool looksLikeEfaFitTextPayload(String text) => _textPrefixPattern.hasMatch(text.trim());
 
@@ -131,7 +139,7 @@ Uint8List _inflateBounded(Uint8List compressed) {
   if (compressed.length < 2 || compressed[0] != 0x1f || compressed[1] != 0x8b) {
     throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidCompression);
   }
-  final output = _BoundedInflateOutputStream(maxEfaFitLinkDecodedJsonBytes);
+  final output = _BoundedInflateOutputStream(maxEfaFitDecodedJsonBytes);
   try {
     const GZipDecoderWeb().decodeStream(InputMemoryStream(compressed), output);
   } on _EfaFitDecodedSizeExceededException {
