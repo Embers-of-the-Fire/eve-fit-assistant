@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:math";
 
 import "package:efa_constant/eve.dart";
 import "package:efa_fit/efa_fit.dart";
@@ -154,12 +155,12 @@ class FitSnapshotExporter {
       description: fit.metadata.description,
       ship: typeData(fit.body.shipTypeId),
       layout: SnapshotShipLayoutData(
-        highSlots: ship?.highSlots ?? fit.body.slots.high.length,
-        mediumSlots: ship?.mediumSlots ?? fit.body.slots.medium.length,
-        lowSlots: ship?.lowSlots ?? fit.body.slots.low.length,
-        rigSlots: ship?.rigSlots ?? fit.body.slots.rig.length,
-        subsystemSlots: ship?.subsystemSlots ?? 0,
-        serviceSlots: ship?.serviceSlots ?? fit.body.slots.service.length,
+        highSlots: max(ship?.highSlots ?? 0, fit.body.slots.high.length),
+        mediumSlots: max(ship?.mediumSlots ?? 0, fit.body.slots.medium.length),
+        lowSlots: max(ship?.lowSlots ?? 0, fit.body.slots.low.length),
+        rigSlots: max(ship?.rigSlots ?? 0, fit.body.slots.rig.length),
+        subsystemSlots: max(ship?.subsystemSlots ?? 0, fit.body.slots.subsystem.length),
+        serviceSlots: max(ship?.serviceSlots ?? 0, fit.body.slots.service.length),
         turretHardpoints: turretHardpoints,
         launcherHardpoints: launcherHardpoints,
         fighterTubes: ship?.fighterTubes ?? 0,
