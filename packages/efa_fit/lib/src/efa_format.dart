@@ -80,6 +80,8 @@ String encodeEfaFitTextPayload(
   int version = currentEfaFitFormatVersion,
 }) => "EFA$version:${base64Encode(encodeEfaFitBinary(payload))}";
 
+bool looksLikeEfaFitTextPayload(String text) => _textPrefixPattern.hasMatch(text.trim());
+
 EfaFitTextPayload decodeEfaFitTextPayload(String text) {
   final trimmed = text.trim();
   final prefixMatch = _textPrefixPattern.matchAsPrefix(trimmed);

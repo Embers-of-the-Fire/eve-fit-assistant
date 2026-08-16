@@ -37,8 +37,6 @@ class FitTextImportException implements Exception {
 class FitTextImporter {
   const FitTextImporter(this.ref);
 
-  static final _nativePrefixPattern = RegExp(r"^EFA(?:(\d+))?:");
-
   final WidgetRef ref;
 
   Future<FitMetadata> importText(String input) async {
@@ -52,7 +50,7 @@ class FitTextImporter {
       throw const FitTextImportException(FitTextImportErrorCode.emptyInput);
     }
 
-    if (_nativePrefixPattern.hasMatch(text)) {
+    if (looksLikeEfaFitTextPayload(text)) {
       return _parseNative(text);
     }
 
