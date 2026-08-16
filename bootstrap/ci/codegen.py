@@ -85,6 +85,8 @@ def _step_l10n() -> None:
     """Generate localization files."""
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:l10n")
     run_melos("app:l10n", "FLUTTER GEN-L10N OUTPUT")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run pkg:l10n")
+    run_melos("pkg:l10n", "FLUTTER GEN-L10N OUTPUT")
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Localization generation completed successfully.")
     )
