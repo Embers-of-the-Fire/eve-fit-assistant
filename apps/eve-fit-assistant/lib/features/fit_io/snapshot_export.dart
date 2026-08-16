@@ -294,15 +294,18 @@ class FitSnapshotExporter {
       );
     }
 
+    final usedBoosterSlots = <int>{};
     for (final booster in fit.body.boosters) {
       final typeId = booster.itemId.when(
         item: (id) => id,
         dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId,
       );
       if (typeId == null) continue;
+      final slotIndex = collection?.slots.boosterSlots[typeId]?.slotIndex ?? booster.index;
+      if (!usedBoosterSlots.add(slotIndex)) continue;
       builder.addBooster(
         SnapshotBoosterData(
-          slotIndex: collection?.slots.boosterSlots[typeId]?.slotIndex ?? booster.index,
+          slotIndex: slotIndex,
           type: typeData(typeId),
           state: booster.state.protobufImpl,
         ),
