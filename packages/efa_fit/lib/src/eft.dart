@@ -79,7 +79,8 @@ const Map<EftRack, String> _rackPlaceholders = {
 final RegExp _countLinePattern = RegExp(r"^.+ x\d+$");
 final RegExp _countLineParse = RegExp(r"^(.+?) x(\d+)$");
 final RegExp _moduleLinePattern = RegExp(
-  r"^(?<type>[^,/\[\]]+?)(,\s*(?<charge>[^,/\[\]]+?))?(?<offline>\s*/(OFFLINE|offline))?$",
+  r"^(?<type>[^,/\[\]]+?)(,\s*(?<charge>[^,/\[\]]+?))?(?<offline>\s*/offline)?$",
+  caseSensitive: false,
 );
 
 EftFit parseEft(String text, {required EftTypeResolver resolver}) {
