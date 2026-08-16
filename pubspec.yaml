@@ -90,7 +90,7 @@ melos:
       packageFilters:
         scope: eve_fit_assistant
     pkg:test:
-      description: Run the shared packages' test suites.
+      description: Run the efa_fit package's test suite.
       exec: flutter test
       packageFilters:
         scope: efa_fit
