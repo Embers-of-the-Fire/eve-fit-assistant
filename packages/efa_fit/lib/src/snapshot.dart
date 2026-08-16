@@ -2,6 +2,7 @@ import "package:efa_proto/fit.pbenum.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:efa_proto/utils.pb.dart" as utils_pb;
 import "package:fixnum/fixnum.dart";
+import "package:protobuf/protobuf.dart";
 
 export "package:efa_proto/fit.pbenum.dart"
     show Slots_SlotState, Subsystem_SubsystemType, TacticalMode_TacticalModeVariant;
@@ -20,6 +21,15 @@ class FitSnapshotBuildException implements Exception {
 
   @override
   String toString() => "FitSnapshotBuildException: $message";
+}
+
+class FitSnapshotDecodeException implements Exception {
+  const FitSnapshotDecodeException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => "FitSnapshotDecodeException: $message";
 }
 
 class SnapshotIcon {
@@ -463,12 +473,40 @@ class FitSnapshotBuilder {
 
 List<int> encodeFitSnapshot(FitSnapshot snapshot) => snapshot.writeToBuffer();
 
+bool _isFullyInitialized(GeneratedMessage message) {
+  for (final field in message.info_.fieldInfo.values) {
+    if (!message.hasField(field.tagNumber)) {
+      if (field.isRequired) return false;
+      continue;
+    }
+    final value = message.getField(field.tagNumber);
+    if (value is GeneratedMessage) {
+      if (!_isFullyInitialized(value)) return false;
+    } else if (value is Map<Object?, Object?>) {
+      for (final entry in value.values) {
+        if (entry is GeneratedMessage && !_isFullyInitialized(entry)) return false;
+      }
+    } else if (value is List<Object?>) {
+      for (final item in value) {
+        if (item is GeneratedMessage && !_isFullyInitialized(item)) return false;
+      }
+    }
+  }
+  return true;
+}
+
 FitSnapshot decodeFitSnapshot(List<int> data) {
   final snapshot = FitSnapshot.fromBuffer(data);
+  if (!snapshot.hasVersion()) {
+    throw const FitSnapshotDecodeException("snapshot is missing the required version field");
+  }
   if (snapshot.version != currentFitSnapshotVersion) {
-    throw FitSnapshotBuildException(
+    throw FitSnapshotDecodeException(
       "unsupported snapshot version ${snapshot.version} (expected $currentFitSnapshotVersion)",
     );
+  }
+  if (!_isFullyInitialized(snapshot)) {
+    throw const FitSnapshotDecodeException("snapshot is missing required fields");
   }
   return snapshot;
 }

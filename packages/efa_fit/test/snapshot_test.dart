@@ -277,7 +277,35 @@ void main() {
       final snapshot = _builder().build()..version = currentFitSnapshotVersion + 1;
       expect(
         () => decodeFitSnapshot(snapshot.writeToBuffer()),
-        throwsA(isA<FitSnapshotBuildException>()),
+        throwsA(isA<FitSnapshotDecodeException>()),
+      );
+    });
+
+    test("rejects snapshots without a version field", () {
+      expect(
+        () => decodeFitSnapshot(FitSnapshot().writeToBuffer()),
+        throwsA(isA<FitSnapshotDecodeException>()),
+      );
+    });
+
+    test("rejects snapshots missing other required fields", () {
+      final noHeader = _builder().build()..clearHeader();
+      expect(
+        () => decodeFitSnapshot(noHeader.writeToBuffer()),
+        throwsA(isA<FitSnapshotDecodeException>()),
+      );
+
+      final noShip = _builder().build()..clearShip();
+      expect(
+        () => decodeFitSnapshot(noShip.writeToBuffer()),
+        throwsA(isA<FitSnapshotDecodeException>()),
+      );
+
+      final incompleteModule = _builder().build()
+        ..highSlots.add(SnapshotSlot(index: 0, item: SnapshotModule()));
+      expect(
+        () => decodeFitSnapshot(incompleteModule.writeToBuffer()),
+        throwsA(isA<FitSnapshotDecodeException>()),
       );
     });
   });
