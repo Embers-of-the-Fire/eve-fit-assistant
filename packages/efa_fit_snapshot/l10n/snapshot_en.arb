@@ -20,5 +20,6 @@
   "fighterAbilityMissiles": "Missiles",
   "fighterAbilityAttackMissiles": "Attack Missiles",
   "fighterAbilityBomb": "Bomb",
-  "capacitorStable": "{percent}% Stable"
+  "capacitorStable": "{percent}% Stable",
+  "capacitorUnstable": "Unstable"
 }

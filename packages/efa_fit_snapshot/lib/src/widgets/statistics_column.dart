@@ -87,11 +87,13 @@ class _CapacitorSection extends StatelessWidget {
                     Duration(seconds: capacitor.depletesInS.round()).format(),
                     style: const TextStyle(color: Colors.red),
                   )
-                else
+                else if (stable)
                   Text(
                     l10n.capacitorStable(percent: percent.toStringAsFixed(1)),
                     style: const TextStyle(color: Colors.green),
-                  ),
+                  )
+                else
+                  Text(l10n.capacitorUnstable, style: const TextStyle(color: Colors.red)),
                 const Text(" | "),
                 Text(
                   "${delta.isNegative ? "-" : "+"}${delta.abs().toStringAsMaxDecimals(2)} GJ/s",

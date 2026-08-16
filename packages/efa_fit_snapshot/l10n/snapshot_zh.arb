@@ -36,5 +36,6 @@
     "placeholders": {
       "percent": { "type": "String" }
     }
-  }
+  },
+  "capacitorUnstable": "不稳定"
 }
