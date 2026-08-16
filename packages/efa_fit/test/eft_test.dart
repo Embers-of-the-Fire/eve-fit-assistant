@@ -6,6 +6,9 @@ class _FakeResolver implements EftTypeResolver {
   static const lowModuleId = 1001;
   static const medModuleId = 1002;
   static const highModuleId = 1003;
+  static const rigModuleId = 1004;
+  static const subsystemModuleId = 1005;
+  static const serviceModuleId = 1006;
   static const chargeId = 2001;
   static const droneId = 3001;
   static const fighterId = 3002;
@@ -17,6 +20,9 @@ class _FakeResolver implements EftTypeResolver {
     lowModuleId: "Ballistic Control System II",
     medModuleId: "Large Shield Extender II",
     highModuleId: "Cruise Missile Launcher II",
+    rigModuleId: "Large Processor Overclocking Unit I",
+    subsystemModuleId: "Proteus Defensive - Covert Reconfiguration",
+    serviceModuleId: "Standup Heavy Energy Neutralizer I",
     chargeId: "Scourge Cruise Missile",
     droneId: "Hobgoblin II",
     fighterId: "Einherji",
@@ -40,6 +46,9 @@ class _FakeResolver implements EftTypeResolver {
     lowModuleId => EftRack.low,
     medModuleId => EftRack.medium,
     highModuleId => EftRack.high,
+    rigModuleId => EftRack.rig,
+    subsystemModuleId => EftRack.subsystem,
+    serviceModuleId => EftRack.service,
     _ => null,
   };
 
@@ -93,6 +102,44 @@ void main() {
 
       final high = fit.racks[EftRack.high]!;
       expect(high.single!.chargeTypeId, _FakeResolver.chargeId);
+    });
+
+    test("parses rig, subsystem and service racks", () {
+      final fit = parseEft(
+        "[Raven, PvP]\n"
+        "\n"
+        "Large Processor Overclocking Unit I\n"
+        "[Empty Rig slot]\n"
+        "\n"
+        "Proteus Defensive - Covert Reconfiguration\n"
+        "[Empty Subsystem slot]\n"
+        "\n"
+        "Standup Heavy Energy Neutralizer I /offline\n"
+        "[Empty Service slot]\n",
+        resolver: _resolver,
+      );
+
+      final rig = fit.racks[EftRack.rig]!;
+      expect(rig.length, 2);
+      expect(rig[0]!.typeId, _FakeResolver.rigModuleId);
+      expect(rig[1], isNull);
+
+      final subsystem = fit.racks[EftRack.subsystem]!;
+      expect(subsystem[0]!.typeId, _FakeResolver.subsystemModuleId);
+      expect(subsystem[1], isNull);
+
+      final service = fit.racks[EftRack.service]!;
+      expect(service[0]!.typeId, _FakeResolver.serviceModuleId);
+      expect(service[0]!.online, isFalse);
+      expect(service[1], isNull);
+    });
+
+    test("accepts the /OFFLINE marker case-insensitively", () {
+      final fit = parseEft(
+        "[Raven, PvP]\n\nLarge Shield Extender II /OFFLINE\n",
+        resolver: _resolver,
+      );
+      expect(fit.racks[EftRack.medium]!.single!.online, isFalse);
     });
 
     test("parses drones and fighters from count lines", () {
