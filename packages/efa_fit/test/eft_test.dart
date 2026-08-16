@@ -234,7 +234,7 @@ void main() {
         "\n"
         "Mid-grade Snake Alpha\n"
         "\n"
-        "Strong Blue Pill Booster",
+        "Strong Blue Pill Booster\n",
       );
     });
 

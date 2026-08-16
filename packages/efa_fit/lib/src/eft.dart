@@ -222,7 +222,7 @@ String formatEft(EftFit fit, {required EftTypeNameLookup typeName}) {
   if (sections.isEmpty) {
     return "$header\n";
   }
-  return "$header\n\n${sections.join("\n\n\n")}";
+  return "$header\n\n${sections.join("\n\n\n")}\n";
 }
 
 String _formatModuleLine(EftModule module, String Function(int typeId) nameOf) {
@@ -273,7 +273,8 @@ EftRack? _detectRack(List<String> block, EftTypeResolver resolver) {
     if (parsed == null) continue;
     final typeId = resolver.resolveTypeId(parsed.typeName);
     if (typeId == null) continue;
-    return resolver.rackOf(typeId);
+    final rack = resolver.rackOf(typeId);
+    if (rack != null) return rack;
   }
   return null;
 }
