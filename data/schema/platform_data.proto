@@ -1,0 +1,29 @@
+syntax = "proto2";
+package platform_data;
+
+// Per-entry metadata stored in the platform D1 database.
+// These messages are not part of the resource snapshot; they are built at
+// sync time from the snapshot's collection + localization data.
+
+message PlatformTypeMeta {
+  required uint32 type_id = 1;
+  // locale -> display name
+  map<string, string> name = 2;
+
+  optional uint32 icon_id = 3;
+  optional uint32 graphic_id = 4;
+}
+
+message PlatformDogmaAttributeMeta {
+  required uint32 dogma_attribute_id = 1;
+  // locale -> display name
+  map<string, string> name = 2;
+
+  optional uint32 icon_id = 3;
+}
+
+message PlatformDogmaEffectMeta {
+  required uint32 dogma_effect_id = 1;
+  // Internal effect name (e.g. "shipModuleRemoteArmorRepairer").
+  required string name = 2;
+}

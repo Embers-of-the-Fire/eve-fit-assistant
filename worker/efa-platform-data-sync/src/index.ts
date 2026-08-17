@@ -1,0 +1,208 @@
+import { Hono } from "hono";
+import { z } from "zod";
+
+interface Env {
+    PLATFORM_DB: D1Database;
+    SYNC_TOKEN?: string;
+}
+
+const FAMILIES = {
+    types: { content: "types", reg: "types_reg" },
+    type_dogma: { content: "type_dogma", reg: "type_dogma_reg" },
+    dogma_attributes: { content: "dogma_attributes", reg: "dogma_attributes_reg" },
+    dogma_effects: { content: "dogma_effects", reg: "dogma_effects_reg" },
+    buffs: { content: "buffs", reg: "buffs_reg" },
+    type_meta: { content: "type_meta", reg: "type_meta_reg" },
+    dogma_attribute_meta: {
+        content: "dogma_attribute_meta",
+        reg: "dogma_attribute_meta_reg",
+    },
+    dogma_effect_meta: { content: "dogma_effect_meta", reg: "dogma_effect_meta_reg" },
+} as const;
+
+type Family = keyof typeof FAMILIES;
+
+const HASH_RE = /^[0-9a-f]{64}$/;
+
+const ContentEntrySchema = z.object({
+    family: z.enum(Object.keys(FAMILIES) as [Family, ...Family[]]),
+    content_hash: z.string().regex(HASH_RE),
+    content_b64: z.string().min(1),
+});
+
+const ContentRequestSchema = z.object({
+    entries: z.array(ContentEntrySchema).min(1).max(10000),
+});
+
+const RegisterEntrySchema = z.object({
+    family: z.enum(Object.keys(FAMILIES) as [Family, ...Family[]]),
+    entry_id: z.number().int().nonnegative(),
+    content_hash: z.string().regex(HASH_RE),
+});
+
+const RegisterRequestSchema = z.object({
+    server_id: z.string().min(1),
+    snapshot_hash: z.string().regex(HASH_RE),
+    entries: z.array(RegisterEntrySchema).min(1).max(10000),
+});
+
+// D1 allows at most 100 bound parameters per statement.
+const CONTENT_ROWS_PER_STATEMENT = 50; // 2 params per row
+const REGISTER_ROWS_PER_STATEMENT = 25; // 4 params per row
+const HASHES_PER_LOOKUP = 100;
+const STATEMENTS_PER_BATCH = 50;
+
+function base64ToBytes(value: string): Uint8Array {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+function chunked<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let offset = 0; offset < items.length; offset += size) {
+        chunks.push(items.slice(offset, offset + size));
+    }
+    return chunks;
+}
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.use("*", async (c, next) => {
+    if (c.req.method === "GET") {
+        return next();
+    }
+    const token = c.env.SYNC_TOKEN;
+    if (!token) {
+        return c.json({ ok: false, error: "Server misconfigured: SYNC_TOKEN is not set" }, 500);
+    }
+    const header = c.req.header("Authorization");
+    if (header !== `Bearer ${token}`) {
+        return c.json({ ok: false, error: "Unauthorized" }, 401);
+    }
+    return next();
+});
+
+app.get("/health", async (c) => {
+    await c.env.PLATFORM_DB.prepare("SELECT 1").first();
+    return c.json({ ok: true });
+});
+
+app.post("/content", async (c) => {
+    const parsed = ContentRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+        return c.json({ ok: false, error: "Validation failed", details: parsed.error.issues }, 400);
+    }
+
+    const byFamily = new Map<Family, { hash: string; content: Uint8Array }[]>();
+    for (const entry of parsed.data.entries) {
+        const rows = byFamily.get(entry.family) ?? [];
+        rows.push({ hash: entry.content_hash, content: base64ToBytes(entry.content_b64) });
+        byFamily.set(entry.family, rows);
+    }
+
+    let inserted = 0;
+    for (const [family, rows] of byFamily) {
+        const table = FAMILIES[family].content;
+        const statements: D1PreparedStatement[] = [];
+        for (const chunk of chunked(rows, CONTENT_ROWS_PER_STATEMENT)) {
+            const placeholders = chunk.map(() => "(?, ?)").join(", ");
+            const binds: (string | ArrayBuffer)[] = chunk.flatMap((row) => [
+                row.hash,
+                row.content.buffer as ArrayBuffer,
+            ]);
+            statements.push(
+                c.env.PLATFORM_DB.prepare(
+                    `INSERT OR IGNORE INTO ${table} (content_hash, content) VALUES ${placeholders}`,
+                ).bind(...binds),
+            );
+        }
+        for (const batch of chunked(statements, STATEMENTS_PER_BATCH)) {
+            const results = await c.env.PLATFORM_DB.batch(batch);
+            for (const result of results) {
+                inserted += result.meta.changes ?? 0;
+            }
+        }
+    }
+
+    return c.json({ ok: true, inserted });
+});
+
+app.post("/register", async (c) => {
+    const parsed = RegisterRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+        return c.json({ ok: false, error: "Validation failed", details: parsed.error.issues }, 400);
+    }
+
+    const { server_id: serverId, snapshot_hash: snapshotHash, entries } = parsed.data;
+
+    const byFamily = new Map<Family, { id: number; hash: string }[]>();
+    for (const entry of entries) {
+        const rows = byFamily.get(entry.family) ?? [];
+        rows.push({ id: entry.entry_id, hash: entry.content_hash });
+        byFamily.set(entry.family, rows);
+    }
+
+    // Referential integrity: every registered content hash must already exist.
+    const missing: { family: Family; content_hash: string }[] = [];
+    for (const [family, rows] of byFamily) {
+        const table = FAMILIES[family].content;
+        const uniqueHashes = [...new Set(rows.map((row) => row.hash))];
+        for (const chunk of chunked(uniqueHashes, HASHES_PER_LOOKUP)) {
+            const placeholders = chunk.map(() => "?").join(", ");
+            const found = await c.env.PLATFORM_DB.prepare(
+                `SELECT content_hash FROM ${table} WHERE content_hash IN (${placeholders})`,
+            )
+                .bind(...chunk)
+                .all<{ content_hash: string }>();
+            const foundSet = new Set(found.results.map((row) => row.content_hash));
+            for (const hash of chunk) {
+                if (!foundSet.has(hash)) {
+                    missing.push({ family, content_hash: hash });
+                }
+            }
+        }
+    }
+    if (missing.length > 0) {
+        return c.json(
+            { ok: false, error: "Unknown content hashes", missing: missing.slice(0, 100) },
+            409,
+        );
+    }
+
+    let inserted = 0;
+    for (const [family, rows] of byFamily) {
+        const table = FAMILIES[family].reg;
+        const statements: D1PreparedStatement[] = [];
+        for (const chunk of chunked(rows, REGISTER_ROWS_PER_STATEMENT)) {
+            const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
+            const binds = chunk.flatMap((row) => [serverId, snapshotHash, row.id, row.hash]);
+            statements.push(
+                c.env.PLATFORM_DB.prepare(
+                    `INSERT OR REPLACE INTO ${table} ` +
+                        `(server_id, snapshot_hash, entry_id, content_hash) VALUES ${placeholders}`,
+                ).bind(...binds),
+            );
+        }
+        for (const batch of chunked(statements, STATEMENTS_PER_BATCH)) {
+            const results = await c.env.PLATFORM_DB.batch(batch);
+            for (const result of results) {
+                inserted += result.meta.changes ?? 0;
+            }
+        }
+    }
+
+    return c.json({ ok: true, inserted });
+});
+
+app.onError((err, c) => {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ ok: false, error: "Internal server error", details: message }, 500);
+});
+
+const root = new Hono<{ Bindings: Env }>();
+root.route("/platform/storage/data-sync", app);
+export default root;

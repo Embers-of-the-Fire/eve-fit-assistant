@@ -30,6 +30,9 @@ on:
       REMOTE_STORAGE_SECRET_KEY:
         description: "Remote S3 secret key for publishing"
         required: false
+      D1_SYNC_TOKEN:
+        description: "Bearer token for the platform D1 data-sync worker"
+        required: false
 
 permissions:
   contents: read
@@ -187,3 +190,45 @@ jobs:
             ${{ secrets.CI_STORAGE_SECRET_KEY }}
             ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
             ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+
+  d1-sync:
+    name: Sync snapshots to platform D1
+    needs: publish
+    # No D1 mock exists for test mode; real releases only.
+    if: inputs.test_mode == false
+    runs-on: ubuntu-latest
+    environment: production-data
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - name: Install Python dependencies
+        run: nix develop .#python --command bash -c 'uv sync'
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: v2-snapshots
+          path: .
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
+      - name: Init dev env
+        uses: ./.github/actions/init-dev-env
+
+      - name: Sync snapshots to platform D1
+        uses: ./.github/actions/sync-platform-d1
+        with:
+          token: ${{ secrets.D1_SYNC_TOKEN }}
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: ./.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-data-d1-sync
+          redact-values: |
+            ${{ secrets.D1_SYNC_TOKEN }}
