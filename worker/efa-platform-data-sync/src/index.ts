@@ -36,7 +36,8 @@ const ContentRequestSchema = z.object({
 
 const RegisterEntrySchema = z.object({
     family: z.enum(Object.keys(FAMILIES) as [Family, ...Family[]]),
-    entry_id: z.number().int().nonnegative(),
+    // Engine-internal pseudo attributes/effects carry negative int32 IDs.
+    entry_id: z.number().int().gte(-2147483648).lte(2147483647),
     content_hash: z.string().regex(HASH_RE),
 });
 

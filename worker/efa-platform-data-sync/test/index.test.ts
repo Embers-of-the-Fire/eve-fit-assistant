@@ -184,3 +184,44 @@ describe("snapshot freeze", () => {
         assert.equal(snapshot.entry_count, 1);
     });
 });
+
+describe("entry_id validation", () => {
+    it("accepts negative entry IDs used by engine-internal pseudo entries", async () => {
+        const { post } = setup();
+        const serverId = "tranquility";
+        const snapshotHash = "cd".repeat(32);
+
+        const content = new TextEncoder().encode("pseudo-effect");
+        const contentHash = await sha256Hex(content);
+
+        let res = await post("/content", {
+            entries: [
+                { family: "dogma_effects", content_hash: contentHash, content_b64: toBase64(content) },
+            ],
+        });
+        assert.equal(res.status, 200);
+
+        res = await post("/register", {
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entries: [{ family: "dogma_effects", entry_id: -64, content_hash: contentHash }],
+        });
+        assert.equal(res.status, 200);
+        assert.deepEqual(await res.json(), { ok: true, inserted: 1 });
+    });
+
+    it("rejects entry IDs outside the int32 range", async () => {
+        const { post } = setup();
+        const snapshotHash = "ef".repeat(32);
+        const contentHash = "ab".repeat(32);
+
+        for (const entryId of [-2147483649, 2147483648]) {
+            const res = await post("/register", {
+                server_id: "tranquility",
+                snapshot_hash: snapshotHash,
+                entries: [{ family: "types", entry_id: entryId, content_hash: contentHash }],
+            });
+            assert.equal(res.status, 400);
+        }
+    });
+});
