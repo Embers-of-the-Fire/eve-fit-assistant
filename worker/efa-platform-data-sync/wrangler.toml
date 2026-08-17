@@ -9,8 +9,7 @@ command = "./build.sh"
 [[d1_databases]]
 binding = "PLATFORM_DB"
 database_name = "efa-platform-prod"
-# Fill in after `wrangler d1 create efa-platform-prod`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "21ba756f-dbe2-4254-8d41-c75c3a5d2784"
 migrations_dir = "migrations"
 
 [[routes]]
