@@ -6,7 +6,8 @@
         "dev": "wrangler dev --port 8790",
         "deploy": "wrangler deploy",
         "check": "tsc --noEmit",
-        "lint": "biome check --write src/"
+        "lint": "biome check --write src/",
+        "test": "node --test \"test/*.test.ts\""
     },
     "dependencies": {
         "hono": "^4.13.1",

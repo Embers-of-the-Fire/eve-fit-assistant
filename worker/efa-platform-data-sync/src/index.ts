@@ -54,7 +54,7 @@ const CompleteRequestSchema = z.object({
 
 // D1 allows at most 100 bound parameters per statement.
 const CONTENT_ROWS_PER_STATEMENT = 50; // 2 params per row
-const REGISTER_ROWS_PER_STATEMENT = 25; // 4 params per row
+const REGISTER_ROWS_PER_STATEMENT = 24; // 4 params per row + 2 freeze-guard params
 const HASHES_PER_LOOKUP = 100;
 const STATEMENTS_PER_BATCH = 50;
 
@@ -247,10 +247,15 @@ app.post("/register", async (c) => {
         for (const chunk of chunked(rows, REGISTER_ROWS_PER_STATEMENT)) {
             const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
             const binds = chunk.flatMap((row) => [serverId, snapshotHash, row.id, row.hash]);
+            binds.push(serverId, snapshotHash);
             statements.push(
                 c.env.PLATFORM_DB.prepare(
                     `INSERT OR IGNORE INTO ${table} ` +
-                        `(server_id, snapshot_hash, entry_id, content_hash) VALUES ${placeholders}`,
+                        "(server_id, snapshot_hash, entry_id, content_hash) " +
+                        `SELECT column1, column2, column3, column4 FROM (VALUES ${placeholders}) ` +
+                        "WHERE NOT EXISTS (" +
+                        "SELECT 1 FROM snapshots WHERE server_id = ? AND snapshot_hash = ?" +
+                        ")",
                 ).bind(...binds),
             );
         }
@@ -260,6 +265,15 @@ app.post("/register", async (c) => {
                 inserted += result.meta.changes ?? 0;
             }
         }
+    }
+
+    const snapshot = await c.env.PLATFORM_DB.prepare(
+        "SELECT entry_count FROM snapshots WHERE server_id = ? AND snapshot_hash = ?",
+    )
+        .bind(serverId, snapshotHash)
+        .first();
+    if (snapshot) {
+        return c.json({ ok: false, error: "Snapshot already complete" }, 409);
     }
 
     return c.json({ ok: true, inserted });

@@ -63,7 +63,10 @@ hash). At most 10000 entries per request. Responds `{ "ok": true, "inserted": n 
 
 Verifies every referenced content hash exists (409 with a `missing` list
 otherwise), then `INSERT OR IGNORE`s the registration rows (immutable per
-primary key, so re-runs are free of write quota). At most 10000
+primary key, so re-runs are free of write quota). Inserts are conditional on
+the absence of the `snapshots` marker: once `/complete` has frozen a snapshot,
+further registrations for it are skipped and the request fails with
+409 `Snapshot already complete`. At most 10000
 entries per request. Responds `{ "ok": true, "inserted": n }`.
 
 ### `POST /platform/storage/data-sync/complete`
