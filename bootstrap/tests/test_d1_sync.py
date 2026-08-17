@@ -82,6 +82,9 @@ def _build_snapshot(schema_root: Path, snapshot_hash: str) -> dict[str, bytes]:
     effect = dogma_effects.entries[10]
     effect.effectCategory = 1
     effect.name = "shipModuleRemoteArmorRepairer"
+    negative_effect = dogma_effects.entries[-64]
+    negative_effect.effectCategory = 1
+    negative_effect.name = "shipModularity"
 
     buffs = efos_pb2.BuffCollections()
     buff = buffs.entries[20]
@@ -171,7 +174,7 @@ class TestLoadSnapshotEntries:
             "dogma_effect_meta",
         }
         assert set(by_family["types"]) == {587}
-        assert set(by_family["dogma_effect_meta"]) == {10}
+        assert set(by_family["dogma_effect_meta"]) == {10, -64}
 
     def test_meta_content(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import load_snapshot_entries
@@ -199,9 +202,19 @@ class TestLoadSnapshotEntries:
 
         effect_meta = platform_data_pb2.PlatformDogmaEffectMeta()
         effect_meta.ParseFromString(
-            next(e.content for e in entries if e.family == "dogma_effect_meta")
+            next(e.content for e in entries if e.family == "dogma_effect_meta" and e.entry_id == 10)
         )
+        assert effect_meta.dogma_effect_id == 10
         assert effect_meta.name == "shipModuleRemoteArmorRepairer"
+
+        negative_effect_meta = platform_data_pb2.PlatformDogmaEffectMeta()
+        negative_effect_meta.ParseFromString(
+            next(
+                e.content for e in entries if e.family == "dogma_effect_meta" and e.entry_id == -64
+            )
+        )
+        assert negative_effect_meta.dogma_effect_id == -64
+        assert negative_effect_meta.name == "shipModularity"
 
 
 class _FakeTransport:
@@ -274,20 +287,20 @@ class TestRunSync:
             e["content_hash"] for _path, payload in content_posts for e in payload["entries"]
         ]
         assert len(content_hashes) == len(set(content_hashes))
-        assert len(content_hashes) == 8  # one entry per family
+        assert len(content_hashes) == 10  # one entry per family
 
         assert len(register_posts) == 2
         servers = {payload["server_id"] for _path, payload in register_posts}
         assert servers == {"alpha", "beta"}
         for _path, payload in register_posts:
-            assert len(payload["entries"]) == 8
+            assert len(payload["entries"]) == 10
 
         complete_posts = [p for p in transport.posts if p[0] == "complete"]
         assert len(complete_posts) == 2
         complete_servers = {payload["server_id"] for _path, payload in complete_posts}
         assert complete_servers == {"alpha", "beta"}
         for _path, payload in complete_posts:
-            assert payload["entry_count"] == 8
+            assert payload["entry_count"] == 10
 
     def test_complete_not_posted_when_register_fails(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync

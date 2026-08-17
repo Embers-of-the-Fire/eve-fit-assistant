@@ -23,7 +23,8 @@ message PlatformDogmaAttributeMeta {
 }
 
 message PlatformDogmaEffectMeta {
-  required uint32 dogma_effect_id = 1;
+  // Effect IDs can be negative in the source data (e.g. -64).
+  required int32 dogma_effect_id = 1;
   // Internal effect name (e.g. "shipModuleRemoteArmorRepairer").
   required string name = 2;
 }
