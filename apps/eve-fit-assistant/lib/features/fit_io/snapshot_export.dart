@@ -33,7 +33,7 @@ class FitSnapshotExporter {
 
     final metaGroupNameIds = <int>{};
     final tacticalModeNameIds = <int>{};
-    for (final typeId in _referencedTypeIds(fit)) {
+    for (final typeId in FitTypeNameResolver.referencedTypeIds(fit)) {
       final type = collection?.getType(typeId);
       if (type != null && type.hasMetaGroupId()) {
         final metaGroup = collection?.getMetaGroup(type.metaGroupId);
@@ -513,10 +513,13 @@ bool _matchesRack(native.OutSlotType type, SnapshotRack rack) => switch (rack) {
 };
 
 SnapshotFighter_SquadronGroup _squadronGroup(int? groupId) => switch (groupId) {
-  1652 || 4777 => SnapshotFighter_SquadronGroup.LIGHT,
-  1537 || 4778 => SnapshotFighter_SquadronGroup.SUPPORT,
-  1653 || 4779 => SnapshotFighter_SquadronGroup.HEAVY,
-  _ => SnapshotFighter_SquadronGroup.LIGHT,
+  EveConstGroupId.lightFighter ||
+  EveConstGroupId.structureLightFighter => SnapshotFighter_SquadronGroup.LIGHT,
+  EveConstGroupId.supportFighter ||
+  EveConstGroupId.structureSupportFighter => SnapshotFighter_SquadronGroup.SUPPORT,
+  EveConstGroupId.heavyFighter ||
+  EveConstGroupId.structureHeavyFighter => SnapshotFighter_SquadronGroup.HEAVY,
+  _ => SnapshotFighter_SquadronGroup.UNKNOWN,
 };
 
 SnapshotIcon? _iconData(utils_pb.Icon icon) {
@@ -525,51 +528,4 @@ SnapshotIcon? _iconData(utils_pb.Icon icon) {
     graphicId: icon.hasGraphicId() ? icon.graphicId : null,
     iconId: icon.hasIconId() ? icon.iconId : null,
   );
-}
-
-Set<int> _referencedTypeIds(FitStorage fit) {
-  final typeIds = <int>{fit.body.shipTypeId};
-  void collect(FitStorageItemId itemId) {
-    typeIds.add(
-      itemId.when(
-        item: (id) => id,
-        dynamic: (dynamicId) =>
-            fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId ??
-            fit.dynamicRegistry.dynamicItems[dynamicId]?.typeId ??
-            dynamicId,
-      ),
-    );
-  }
-
-  for (final slots in [
-    fit.body.slots.low,
-    fit.body.slots.medium,
-    fit.body.slots.high,
-    fit.body.slots.rig,
-    fit.body.slots.subsystem,
-    fit.body.slots.service,
-  ]) {
-    for (final slotOpt in slots) {
-      slotOpt.map((slot) {
-        collect(slot.itemId);
-        slot.charge.map((charge) => typeIds.add(charge.typeId));
-      });
-    }
-  }
-  if (fit.body.slots.tacticalMode case Some(:final value)) {
-    typeIds.add(value);
-  }
-  for (final drone in fit.body.drones) {
-    collect(drone.itemId);
-  }
-  for (final fighter in fit.body.fighters) {
-    collect(fighter.itemId);
-  }
-  for (final implant in fit.body.implants) {
-    collect(implant.itemId);
-  }
-  for (final booster in fit.body.boosters) {
-    collect(booster.itemId);
-  }
-  return typeIds;
 }

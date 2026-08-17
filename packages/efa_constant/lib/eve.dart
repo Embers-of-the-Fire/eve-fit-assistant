@@ -30,14 +30,22 @@ class EveConstMarketGroupId {
 class EveConstGroupId {
   const EveConstGroupId._();
 
+  static const int irregularFighter = 1454;
+  static const int supportFighter = 1537;
+  static const int lightFighter = 1652;
+  static const int heavyFighter = 1653;
+  static const int structureLightFighter = 4777;
+  static const int structureSupportFighter = 4778;
+  static const int structureHeavyFighter = 4779;
+
   static const Set<int> fighter = {
-    1454, // irregular fighter
-    1537, // support fighter
-    1652, // light fighter
-    1653, // heavy fighter
-    4777, // structure light fighter
-    4778, // structure support fighter
-    4779, // structure heavy fighter
+    irregularFighter,
+    supportFighter,
+    lightFighter,
+    heavyFighter,
+    structureLightFighter,
+    structureSupportFighter,
+    structureHeavyFighter,
   };
 }
 

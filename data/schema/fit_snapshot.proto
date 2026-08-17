@@ -190,6 +190,7 @@ message SnapshotFighter {
 
   /// Drives the light/heavy/support capacity counters in the fighter header.
   enum SquadronGroup {
+    UNKNOWN = 0;
     LIGHT = 1;
     HEAVY = 2;
     SUPPORT = 3;

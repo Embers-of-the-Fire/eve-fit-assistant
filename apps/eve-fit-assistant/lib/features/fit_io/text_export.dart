@@ -115,14 +115,10 @@ class FitTypeNameResolver {
 
   final Map<int, String> typeNames;
 
-  /// Pre-resolves the English names of every item referenced by [fit].
-  ///
-  /// EFT export names always use the `"en"` locale; the names are batch-loaded
-  /// from the checkout's localization database in a single pass instead of
-  /// being looked up one by one from an eagerly decoded map.
-  static Future<FitTypeNameResolver> load(WidgetRef ref, FitStorage fit) async {
-    final collection = ref.read(repoCollectionProvider);
-
+  /// Collects every type ID referenced by [fit]: the ship, all slotted items
+  /// and their charges, the tactical mode, drones, fighters, implants and
+  /// boosters. Dynamic items are resolved to their origin or display type.
+  static Set<int> referencedTypeIds(FitStorage fit) {
     final typeIds = <int>{fit.body.shipTypeId};
     void collect(FitStorageItemId itemId) => typeIds.add(_resolveItemId(fit, itemId));
 
@@ -157,6 +153,17 @@ class FitTypeNameResolver {
     for (final booster in fit.body.boosters) {
       collect(booster.itemId);
     }
+    return typeIds;
+  }
+
+  /// Pre-resolves the English names of every item referenced by [fit].
+  ///
+  /// EFT export names always use the `"en"` locale; the names are batch-loaded
+  /// from the checkout's localization database in a single pass instead of
+  /// being looked up one by one from an eagerly decoded map.
+  static Future<FitTypeNameResolver> load(WidgetRef ref, FitStorage fit) async {
+    final collection = ref.read(repoCollectionProvider);
+    final typeIds = referencedTypeIds(fit);
 
     final localizationKeys = <int>[];
     for (final typeId in typeIds) {

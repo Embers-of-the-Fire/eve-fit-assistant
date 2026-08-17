@@ -65,6 +65,8 @@ class SnapshotEquipmentColumn extends StatelessWidget {
           heavy += 1;
         case SnapshotFighter_SquadronGroup.SUPPORT:
           support += 1;
+        case SnapshotFighter_SquadronGroup.UNKNOWN:
+          break;
         default:
           break;
       }
