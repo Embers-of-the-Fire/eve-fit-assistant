@@ -328,8 +328,8 @@ app.get("/snapshot", async (c) => {
 });
 
 app.onError((err, c) => {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: "Internal server error", details: message }, 500);
+    console.error("Unhandled error", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
 });
 
 const root = new Hono<{ Bindings: Env }>();
