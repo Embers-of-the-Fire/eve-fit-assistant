@@ -67,6 +67,21 @@ function base64ToBytes(value: string): Uint8Array {
     return bytes;
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+    let hex = "";
+    for (const b of bytes) {
+        hex += b.toString(16).padStart(2, "0");
+    }
+    return hex;
+}
+
+// Matches bootstrap/remote/hash.py content_hash(): plain SHA-256 of the raw
+// bytes, lowercase hex, no prefix or envelope.
+async function sha256Hex(data: Uint8Array): Promise<string> {
+    const digest = await crypto.subtle.digest("SHA-256", data.buffer as ArrayBuffer);
+    return bytesToHex(new Uint8Array(digest));
+}
+
 function chunked<T>(items: T[], size: number): T[][] {
     const chunks: T[][] = [];
     for (let offset = 0; offset < items.length; offset += size) {
@@ -123,10 +138,37 @@ app.post("/content", async (c) => {
     }
 
     const byFamily = new Map<Family, { hash: string; content: Uint8Array }[]>();
+    const rejected: { family: Family; content_hash: string; reason: string }[] = [];
     for (const entry of parsed.data.entries) {
+        let content: Uint8Array;
+        try {
+            content = base64ToBytes(entry.content_b64);
+        } catch {
+            rejected.push({
+                family: entry.family,
+                content_hash: entry.content_hash,
+                reason: "invalid base64",
+            });
+            continue;
+        }
+        const actual = await sha256Hex(content);
+        if (actual !== entry.content_hash) {
+            rejected.push({
+                family: entry.family,
+                content_hash: entry.content_hash,
+                reason: `hash mismatch: content hashes to ${actual}`,
+            });
+            continue;
+        }
         const rows = byFamily.get(entry.family) ?? [];
-        rows.push({ hash: entry.content_hash, content: base64ToBytes(entry.content_b64) });
+        rows.push({ hash: entry.content_hash, content });
         byFamily.set(entry.family, rows);
+    }
+    if (rejected.length > 0) {
+        return c.json(
+            { ok: false, error: "Content verification failed", rejected: rejected.slice(0, 100) },
+            400,
+        );
     }
 
     let inserted = 0;
