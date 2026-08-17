@@ -32,7 +32,7 @@ class _DroneTab extends ConsumerWidget {
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.drone),
           rightInfo: [
             if (bayCapacity > 0 || bayUsed > 0)
-              _HeaderCapacityCounter(suffix: "m³", count: bayUsed, total: bayCapacity),
+              CapacityCounter(suffix: "m³", count: bayUsed, total: bayCapacity),
           ],
           leftActions: <Widget>[
             InkWell(

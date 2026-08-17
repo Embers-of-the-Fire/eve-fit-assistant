@@ -41,6 +41,13 @@ def test_dart_web_included_on_infra_change():
     assert "dart-web" in names
 
 
+def test_package_changes_trigger_dart_suites():
+    names = _suite_names(["packages/efa_fit_snapshot/l10n/snapshot_zh.arb"])
+    assert "dart" in names
+    assert "dart-web" in names
+    assert "l10n" in names
+
+
 def test_web_preview_patterns_cover_core_build_inputs():
     for path in [
         "flake.nix",

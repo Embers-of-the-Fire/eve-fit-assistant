@@ -124,7 +124,7 @@ class _DroneSlotRow extends ConsumerWidget {
 
     final content = ListTile(
       leading: StateIcon.rect(
-        state: slotInfo.state,
+        state: slotInfo.state.toEfa(),
         onTap: interactionOptions.allowStateToggle
             ? () => fitContext.fitWrapper.toggleSlot(slotIdent, ref)
             : null,

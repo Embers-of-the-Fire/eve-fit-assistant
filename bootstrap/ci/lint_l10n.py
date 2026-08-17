@@ -15,6 +15,7 @@ from colorama import Style
 
 from bootstrap.color import styled
 from bootstrap.constant import EFA_APP_ROOT
+from bootstrap.constant import PROJECT_ROOT
 from bootstrap.log import error
 from bootstrap.log import info
 
@@ -24,7 +25,15 @@ __all__ = ["L10nConfig", "L10nViolation", "check_arb_files", "load_l10n_config",
 
 L10N_CONFIG_PATH = EFA_APP_ROOT / "l10n.yaml"
 
+L10N_CONFIG_PATHS = (
+    L10N_CONFIG_PATH,
+    PROJECT_ROOT / "packages" / "efa_fit_snapshot" / "l10n.yaml",
+)
+
 _PLACEHOLDER_PATTERN = re.compile(r"\{(\w+)\}")
+
+# File-scoped ARB keys that are valid in any locale file, not just the template.
+_ALLOWED_NON_TEMPLATE_METADATA = {"@@locale"}
 
 
 @dataclass(frozen=True)
@@ -95,7 +104,7 @@ def check_arb_files(config: L10nConfig) -> list[L10nViolation]:
         message_keys = {key for key in data if not key.startswith("@")}
 
         for key in sorted(data):
-            if key.startswith("@"):
+            if key.startswith("@") and key not in _ALLOWED_NON_TEMPLATE_METADATA:
                 violations.append(
                     L10nViolation(
                         file=name,
@@ -142,7 +151,7 @@ def check_arb_files(config: L10nConfig) -> list[L10nViolation]:
     return violations
 
 
-def run_l10n_lint(*, dry_run: bool = False, config_path: Path = L10N_CONFIG_PATH) -> None:
+def run_l10n_lint(*, dry_run: bool = False, config_path: Path | None = None) -> None:
     title = " L10N LINT OUTPUT "
     line_width = 30
     click.echo(styled([Style.BRIGHT, Fore.CYAN], title + "-" * max(0, line_width - len(title))))
@@ -151,17 +160,25 @@ def run_l10n_lint(*, dry_run: bool = False, config_path: Path = L10N_CONFIG_PATH
         info("[Dry-Run] L10N LINT: skipped")
         return
 
-    config = load_l10n_config(config_path)
-    violations = check_arb_files(config)
+    config_paths = (config_path,) if config_path is not None else L10N_CONFIG_PATHS
+    failures: list[tuple[Path, list[L10nViolation]]] = []
+    for path in config_paths:
+        config = load_l10n_config(path)
+        violations = check_arb_files(config)
+        if violations:
+            failures.append((path, violations))
 
-    if violations:
-        current_file = None
-        for violation in violations:
-            if violation.file != current_file:
-                current_file = violation.file
-                error(f"[{current_file}]")
-            error(f"  ({violation.kind}) {violation.message}")
-        summary = f"l10n lint failed: {len(violations)} violation(s) found."
+    if failures:
+        for path, violations in failures:
+            error(f"[config: {path}]")
+            current_file = None
+            for violation in violations:
+                if violation.file != current_file:
+                    current_file = violation.file
+                    error(f"[{current_file}]")
+                error(f"  ({violation.kind}) {violation.message}")
+        total = sum(len(violations) for _, violations in failures)
+        summary = f"l10n lint failed: {total} violation(s) found."
         error(summary)
         raise click.ClickException(summary)
 

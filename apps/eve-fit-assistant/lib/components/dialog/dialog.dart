@@ -1,5 +1,5 @@
+import "package:efa_component/efa_component.dart";
 import "package:eve_fit_assistant/utils/context.dart";
-import "package:eve_fit_assistant/utils/num.dart";
 import "package:flutter/material.dart";
 
 class AppDialog extends StatelessWidget {

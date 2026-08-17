@@ -210,7 +210,7 @@ class _SlotRowDisplay extends ConsumerWidget {
 
     final content = ListTile(
       leading: StateIcon.rect(
-        state: slotInfo.state,
+        state: slotInfo.state.toEfa(),
         onTap: interactionOptions.allowStateToggle ? () => _handleToggleState(ref) : null,
         child: EveIcon(icon: itemType.icon, overlayIcon: metaGroupIcon, size: 35),
       ),

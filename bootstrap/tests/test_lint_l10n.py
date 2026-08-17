@@ -72,6 +72,7 @@ def test_unexpected_metadata_detected(tmp_path: Path) -> None:
         TEMPLATE,
         {
             "app_en.arb": {
+                "@@locale": "en",
                 "hello": "Hello",
                 "greeting": "Hi, {name}",
                 "@greeting": {"placeholders": {"name": {"type": "String"}}},

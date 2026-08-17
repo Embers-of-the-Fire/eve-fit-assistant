@@ -1,4 +1,5 @@
 import "package:efa_fit/efa_fit.dart";
+import "package:eve_fit_assistant/features/fit_io/snapshot_export.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
@@ -6,7 +7,7 @@ import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:fpdart/fpdart.dart";
 
-enum FitTextExportFormat { native, eft }
+enum FitTextExportFormat { native, eft, snapshot }
 
 class FitTextExportResult {
   const FitTextExportResult({required this.text, required this.lossy});
@@ -23,15 +24,25 @@ class FitTextExporter {
   Future<FitTextExportResult> export({
     required FitStorage fit,
     required FitTextExportFormat format,
+    String? fitId,
   }) async => switch (format) {
     FitTextExportFormat.native => FitTextExportResult(text: _exportNativeFit(fit), lossy: false),
     FitTextExportFormat.eft => FitTextExportResult(text: await _exportEft(fit), lossy: true),
+    FitTextExportFormat.snapshot => FitTextExportResult(
+      text: await FitSnapshotExporter(ref).export(
+        fitId:
+            fitId ??
+            (throw ArgumentError.value(fitId, "fitId", "required for snapshot format export")),
+        fit: fit,
+      ),
+      lossy: false,
+    ),
   };
 
   String _exportNativeFit(FitStorage fit) => encodeEfaFitTextPayload(encodeNativeFitPayload(fit));
 
   Future<String> _exportEft(FitStorage fit) async {
-    final names = await _FitTextNameResolver.load(ref, fit);
+    final names = await FitTypeNameResolver.load(ref, fit);
     return formatEft(_toEftFit(fit), typeName: names.typeName);
   }
 
@@ -99,19 +110,15 @@ class FitTextExporter {
   );
 }
 
-class _FitTextNameResolver {
-  const _FitTextNameResolver({required this.typeNames});
+class FitTypeNameResolver {
+  const FitTypeNameResolver({required this.typeNames});
 
   final Map<int, String> typeNames;
 
-  /// Pre-resolves the English names of every item referenced by [fit].
-  ///
-  /// EFT export names always use the `"en"` locale; the names are batch-loaded
-  /// from the checkout's localization database in a single pass instead of
-  /// being looked up one by one from an eagerly decoded map.
-  static Future<_FitTextNameResolver> load(WidgetRef ref, FitStorage fit) async {
-    final collection = ref.read(repoCollectionProvider);
-
+  /// Collects every type ID referenced by [fit]: the ship, all slotted items
+  /// and their charges, the tactical mode, drones, fighters, implants and
+  /// boosters. Dynamic items are resolved to their origin or display type.
+  static Set<int> referencedTypeIds(FitStorage fit) {
     final typeIds = <int>{fit.body.shipTypeId};
     void collect(FitStorageItemId itemId) => typeIds.add(_resolveItemId(fit, itemId));
 
@@ -146,6 +153,17 @@ class _FitTextNameResolver {
     for (final booster in fit.body.boosters) {
       collect(booster.itemId);
     }
+    return typeIds;
+  }
+
+  /// Pre-resolves the English names of every item referenced by [fit].
+  ///
+  /// EFT export names always use the `"en"` locale; the names are batch-loaded
+  /// from the checkout's localization database in a single pass instead of
+  /// being looked up one by one from an eagerly decoded map.
+  static Future<FitTypeNameResolver> load(WidgetRef ref, FitStorage fit) async {
+    final collection = ref.read(repoCollectionProvider);
+    final typeIds = referencedTypeIds(fit);
 
     final localizationKeys = <int>[];
     for (final typeId in typeIds) {
@@ -163,7 +181,7 @@ class _FitTextNameResolver {
       if (name != null && name.isNotEmpty) typeNames[typeId] = name;
     }
 
-    return _FitTextNameResolver(typeNames: typeNames);
+    return FitTypeNameResolver(typeNames: typeNames);
   }
 
   static int _resolveItemId(FitStorage fit, FitStorageItemId itemId) => itemId.when(

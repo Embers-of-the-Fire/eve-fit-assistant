@@ -1,0 +1,21 @@
+name: efa_component
+description: "Shared presentational Flutter widgets for EVE Fit Assistant surfaces."
+publish_to: none
+resolution: workspace
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  assets:
+    - assets/images/icons/

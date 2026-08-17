@@ -7,8 +7,10 @@ environment:
 workspace:
   - apps/eve-fit-assistant
   - packages/efa_compat
+  - packages/efa_component
   - packages/efa_constant
   - packages/efa_fit
+  - packages/efa_fit_snapshot
   - packages/efa_proto
 
 dev_dependencies:
@@ -50,13 +52,20 @@ melos:
         scope: eve_fit_assistant
     app:analyze:
       description: Statically analyze the app's Dart code.
+      steps:
+        - pkg:l10n
+        - app:analyze:exec
+    app:analyze:exec:
+      private: true
       exec: dart analyze
       packageFilters:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_component
           - efa_constant
           - efa_fit
+          - efa_fit_snapshot
     app:fix:
       description: Apply automated Dart fixes to the app.
       exec: dart fix --apply
@@ -64,8 +73,10 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_component
           - efa_constant
           - efa_fit
+          - efa_fit_snapshot
     app:format:
       description: Format the app's Dart sources.
       exec: dart format lib
@@ -73,8 +84,10 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_component
           - efa_constant
           - efa_fit
+          - efa_fit_snapshot
     app:format:check:
       description: Verify the app's Dart sources are formatted.
       exec: dart format --set-exit-if-changed lib
@@ -82,8 +95,10 @@ melos:
         scope:
           - eve_fit_assistant
           - efa_compat
+          - efa_component
           - efa_constant
           - efa_fit
+          - efa_fit_snapshot
     app:gen:
       description: Run the app's build_runner code generation.
       exec: flutter pub run build_runner build --delete-conflicting-outputs
@@ -91,9 +106,22 @@ melos:
         scope: eve_fit_assistant
     pkg:test:
       description: Run the efa_fit package's test suite.
+      steps:
+        - pkg:l10n
+        - pkg:test:exec
+    pkg:test:exec:
+      private: true
       exec: flutter test
       packageFilters:
-        scope: efa_fit
+        scope:
+          - efa_fit
+          - efa_component
+          - efa_fit_snapshot
+    pkg:l10n:
+      description: Generate the snapshot package's localization files.
+      exec: flutter gen-l10n
+      packageFilters:
+        scope: efa_fit_snapshot
     app:gen:watch:
       description: Run the app's build_runner code generation in watch mode.
       exec: flutter pub run build_runner watch --delete-conflicting-outputs

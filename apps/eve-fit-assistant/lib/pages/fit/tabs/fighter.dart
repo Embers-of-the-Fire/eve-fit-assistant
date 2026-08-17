@@ -79,16 +79,16 @@ class _FighterTab extends ConsumerWidget {
             ),
           ],
           rightInfo: [
-            _HeaderCapacityCounter(prefix: "H", count: heavyCount, total: heavyLimit),
-            _HeaderCapacityCounter(prefix: "L", count: lightCount, total: lightLimit),
-            _HeaderCapacityCounter(prefix: "S", count: supportCount, total: supportLimit),
-            _HeaderCapacityCounter(
+            CapacityCounter(prefix: "H", count: heavyCount, total: heavyLimit),
+            CapacityCounter(prefix: "L", count: lightCount, total: lightLimit),
+            CapacityCounter(prefix: "S", count: supportCount, total: supportLimit),
+            CapacityCounter(
               suffix: "x",
               count: fighters.length,
               total: fitContext.ship.fighterTubes,
             ),
             if (hangarCapacity > 0 || hangarUsed > 0)
-              _HeaderCapacityCounter(suffix: "m³", count: hangarUsed, total: hangarCapacity),
+              CapacityCounter(suffix: "m³", count: hangarUsed, total: hangarCapacity),
           ],
         ),
         const Divider(),

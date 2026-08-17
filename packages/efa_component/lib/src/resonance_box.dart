@@ -1,4 +1,3 @@
-import "package:eve_fit_assistant/utils/fp.dart";
 import "package:flutter/material.dart";
 
 enum ResonanceType {
@@ -24,13 +23,13 @@ class ResonanceBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const .symmetric(vertical: 4, horizontal: 10),
+    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
     height: 22,
     decoration: BoxDecoration(
       border: Border.all(color: Colors.white),
-      gradient: (ratio > 0).thenSome(
-        LinearGradient(colors: [type.color, Colors.black], stops: [1 - ratio, 1 - ratio]),
-      ),
+      gradient: ratio > 0
+          ? LinearGradient(colors: [type.color, Colors.black], stops: [1 - ratio, 1 - ratio])
+          : null,
     ),
     child: Text("${((1 - ratio) * 100).round()}%"),
   );

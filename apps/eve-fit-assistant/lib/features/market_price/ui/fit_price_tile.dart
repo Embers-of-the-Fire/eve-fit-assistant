@@ -1,7 +1,7 @@
+import "package:efa_component/efa_component.dart";
 import "package:eve_fit_assistant/features/market_price/state/state.dart";
 import "package:eve_fit_assistant/features/market_price/ui/price_detail_page.dart";
 import "package:eve_fit_assistant/utils/context.dart";
-import "package:eve_fit_assistant/utils/num.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 

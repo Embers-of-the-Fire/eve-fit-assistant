@@ -120,6 +120,8 @@ def _run_dart(watch: bool) -> None:
 def _run_l10n_once() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:l10n")
     runtime.run_melos("app:l10n", "FLUTTER GEN-L10N OUTPUT")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run pkg:l10n")
+    runtime.run_melos("pkg:l10n", "FLUTTER GEN-L10N OUTPUT")
 
 
 def register_generate_commands(cli_group: click.Group) -> None:
