@@ -26,6 +26,8 @@ CREATE TABLE types_reg (
     content_hash TEXT NOT NULL REFERENCES types (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+-- Reverse lookup for reference counting / orphan cleanup / FK checks on DELETE.
+CREATE INDEX types_reg_content_hash ON types_reg (content_hash);
 
 CREATE TABLE type_dogma (
     content_hash TEXT PRIMARY KEY,
@@ -38,6 +40,7 @@ CREATE TABLE type_dogma_reg (
     content_hash TEXT NOT NULL REFERENCES type_dogma (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX type_dogma_reg_content_hash ON type_dogma_reg (content_hash);
 
 CREATE TABLE dogma_attributes (
     content_hash TEXT PRIMARY KEY,
@@ -50,6 +53,7 @@ CREATE TABLE dogma_attributes_reg (
     content_hash TEXT NOT NULL REFERENCES dogma_attributes (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX dogma_attributes_reg_content_hash ON dogma_attributes_reg (content_hash);
 
 CREATE TABLE dogma_effects (
     content_hash TEXT PRIMARY KEY,
@@ -62,6 +66,7 @@ CREATE TABLE dogma_effects_reg (
     content_hash TEXT NOT NULL REFERENCES dogma_effects (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX dogma_effects_reg_content_hash ON dogma_effects_reg (content_hash);
 
 CREATE TABLE buffs (
     content_hash TEXT PRIMARY KEY,
@@ -74,6 +79,7 @@ CREATE TABLE buffs_reg (
     content_hash TEXT NOT NULL REFERENCES buffs (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX buffs_reg_content_hash ON buffs_reg (content_hash);
 
 CREATE TABLE type_meta (
     content_hash TEXT PRIMARY KEY,
@@ -86,6 +92,7 @@ CREATE TABLE type_meta_reg (
     content_hash TEXT NOT NULL REFERENCES type_meta (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX type_meta_reg_content_hash ON type_meta_reg (content_hash);
 
 CREATE TABLE dogma_attribute_meta (
     content_hash TEXT PRIMARY KEY,
@@ -98,6 +105,7 @@ CREATE TABLE dogma_attribute_meta_reg (
     content_hash TEXT NOT NULL REFERENCES dogma_attribute_meta (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX dogma_attribute_meta_reg_content_hash ON dogma_attribute_meta_reg (content_hash);
 
 CREATE TABLE dogma_effect_meta (
     content_hash TEXT PRIMARY KEY,
@@ -110,3 +118,4 @@ CREATE TABLE dogma_effect_meta_reg (
     content_hash TEXT NOT NULL REFERENCES dogma_effect_meta (content_hash),
     PRIMARY KEY (server_id, snapshot_hash, entry_id)
 );
+CREATE INDEX dogma_effect_meta_reg_content_hash ON dogma_effect_meta_reg (content_hash);
