@@ -1,0 +1,165 @@
+syntax = "proto2";
+package fit;
+
+import "fit.proto";
+import "fit_snapshot.proto";
+
+/// Wire format of the remote fit storage service
+/// (`worker/efa-platform-fit-storage`).
+///
+/// The upload carries state only: no statistics, no localized names, no icons.
+/// Display-static fields the platform database cannot supply (ship slot
+/// layout, available tactical modes, fighter squadron metadata) are
+/// client-supplied and treated as display metadata; all computed values come
+/// from the engine.
+message FitUploadRequest {
+  /// Engine data snapshot selector.
+  required string server_id = 1;
+  required string snapshot_hash = 2;
+
+  required string fit_name = 3;
+  optional string description = 4;
+
+  /// The fit's own last-modified timestamp; the snapshot's creation timestamp
+  /// is server time.
+  required int64 last_modified_ms = 5;
+
+  /// Free-form generator tag, e.g. "eve-fit-assistant/1.2.3".
+  optional string generator = 6;
+
+  required FitState fit = 7;
+}
+
+message FitState {
+  required uint32 ship_type_id = 1;
+
+  /// Slot layout of the hull (display metadata).
+  required SnapshotShipLayout layout = 2;
+
+  /// Tactical modes the ship supports (T3 destroyers), for the mode switcher.
+  repeated FitTacticalModeRef available_tactical_modes = 3;
+
+  /// Selected tactical mode; submitted as a type ID, fed to the engine as a
+  /// module with `slot_type = TacticalMode`, `index = 0`, `state = Online`
+  /// (matching the app's convention).
+  optional uint32 tactical_mode_type_id = 4;
+
+  /// All racks in one list.
+  repeated FitModule modules = 5;
+
+  repeated FitDrone drones = 6;
+  repeated FitFighter fighters = 7;
+  repeated FitImplant implants = 8;
+  repeated FitBooster boosters = 9;
+
+  /// Explicit skill map; no builtin profiles.
+  repeated FitSkill skills = 10;
+
+  required DamageProfile damage_profile = 11;
+
+  /// Abyssal/mutated items.
+  repeated FitDynamicItem dynamic_items = 12;
+
+  optional FitCharacter character = 13;
+}
+
+message FitTacticalModeRef {
+  required uint32 type_id = 1;
+  required TacticalMode.TacticalModeVariant variant = 2;
+}
+
+message FitModule {
+  oneof item {
+    uint32 type_id = 1;
+    uint32 dynamic_id = 2;
+  }
+  required SlotType slot_type = 3;
+  required uint32 index = 4;
+  required Slots.SlotState state = 5;
+  optional uint32 charge_type_id = 6;
+
+  /// Required iff `slot_type = SUBSYSTEM`.
+  optional Subsystem.SubsystemType subsystem_type = 7;
+}
+
+enum SlotType {
+  HIGH = 1;
+  MEDIUM = 2;
+  LOW = 3;
+  RIG = 4;
+  SUBSYSTEM = 5;
+  SERVICE = 6;
+}
+
+message FitDrone {
+  required uint32 type_id = 1;
+  required Slots.SlotState state = 2;
+  required uint32 quantity = 3;
+}
+
+message FitFighter {
+  required uint32 type_id = 1;
+  required uint32 quantity = 2;
+  required uint32 max_squadron_size = 3;
+
+  /// Same values as `SnapshotFighter.SquadronGroup`.
+  required SnapshotFighter.SquadronGroup group = 4;
+
+  /// Doubles as the engine input bitmask (1=TURRET, 2=MISSILES,
+  /// 4=ATTACK_MISSILES, 8=BOMB) and the snapshot's ability chips.
+  repeated SnapshotFighter.Ability abilities = 5;
+}
+
+message FitImplant {
+  /// 1-based implant slot (dogma attribute 331), 1..10.
+  required uint32 slot_index = 1;
+
+  /// Absent = empty slot.
+  optional uint32 type_id = 2;
+  required Slots.SlotState state = 3;
+}
+
+message FitBooster {
+  required uint32 slot_index = 1;
+  required uint32 type_id = 2;
+  required Slots.SlotState state = 3;
+}
+
+message FitSkill {
+  required uint32 type_id = 1;
+
+  /// 0..5.
+  required uint32 level = 2;
+}
+
+message FitDynamicItem {
+  required uint32 dynamic_id = 1;
+  required uint32 base_type_id = 2;
+  repeated FitDynamicAttribute attributes = 3;
+}
+
+message FitDynamicAttribute {
+  required int32 attribute_id = 1;
+  required double value = 2;
+}
+
+message FitCharacter {
+  optional string character_id = 1;
+
+  /// Display names per BCP-47 locale.
+  map<string, string> names = 2;
+}
+
+message FitUploadResponse {
+  required string request_id = 1;
+  required string fit_hash = 2;
+  required bool already_existed = 3;
+}
+
+message FitRequestRecord {
+  required string request_id = 1;
+  required string fit_hash = 2;
+
+  /// ISO-8601 UTC.
+  required string created_at = 3;
+}

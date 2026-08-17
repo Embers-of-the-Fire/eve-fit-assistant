@@ -1,0 +1,20 @@
+name = "efa-platform-fit-storage"
+main = "build/index.js"
+compatibility_date = "2026-08-01"
+
+[[routes]]
+pattern = "api.efa-tech.dev/platform/storage/fit/*"
+zone_name = "efa-tech.dev"
+
+[[d1_databases]]
+binding = "PLATFORM_DB"
+database_name = "efa-platform-prod"
+database_id = "21ba756f-dbe2-4254-8d41-c75c3a5d2784"
+
+[[d1_databases]]
+binding = "FIT_DB"
+database_name = "efa-platform"
+database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
+
+[build]
+command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
