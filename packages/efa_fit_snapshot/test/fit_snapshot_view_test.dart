@@ -71,7 +71,29 @@ void main() {
   testWidgets("stacks into a single column on narrow layouts", (tester) async {
     await _pumpView(tester, buildFixtureSnapshot(), size: const Size(400, 3000));
 
-    expect(find.text("High Slot"), findsOneWidget);
-    expect(find.text("All 5"), findsOneWidget);
+    final equipment = tester.getRect(find.byType(SnapshotEquipmentColumn));
+    final character = tester.getRect(find.byType(SnapshotCharacterColumn));
+    final statistics = tester.getRect(find.byType(SnapshotStatisticsColumn));
+
+    expect(equipment.left, character.left);
+    expect(character.left, statistics.left);
+    expect(equipment.width, character.width);
+    expect(character.width, statistics.width);
+    expect(equipment.bottom, lessThanOrEqualTo(character.top));
+    expect(character.bottom, lessThanOrEqualTo(statistics.top));
+  });
+
+  testWidgets("arranges equipment beside stacked character and statistics on medium layouts", (
+    tester,
+  ) async {
+    await _pumpView(tester, buildFixtureSnapshot(), size: const Size(1000, 3000));
+
+    final equipment = tester.getRect(find.byType(SnapshotEquipmentColumn));
+    final character = tester.getRect(find.byType(SnapshotCharacterColumn));
+    final statistics = tester.getRect(find.byType(SnapshotStatisticsColumn));
+
+    expect(equipment.right, lessThanOrEqualTo(character.left));
+    expect(character.left, statistics.left);
+    expect(character.bottom, lessThanOrEqualTo(statistics.top));
   });
 }
