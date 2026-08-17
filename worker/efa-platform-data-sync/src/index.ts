@@ -27,7 +27,7 @@ const HASH_RE = /^[0-9a-f]{64}$/;
 const ContentEntrySchema = z.object({
     family: z.enum(Object.keys(FAMILIES) as [Family, ...Family[]]),
     content_hash: z.string().regex(HASH_RE),
-    content_b64: z.string().min(1),
+    content_b64: z.base64().min(1),
 });
 
 const ContentRequestSchema = z.object({
