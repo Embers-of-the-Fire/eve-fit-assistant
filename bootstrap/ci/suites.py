@@ -79,7 +79,12 @@ SUITE_DEFINITIONS = [
         "lint_command": "uv run x.py ci lint --lang l10n",
         "command": "true",
         "codegen_command": "true",
-        "patterns": ["apps/eve-fit-assistant/l10n.yaml", "apps/eve-fit-assistant/l10n/*.arb"],
+        "patterns": [
+            "apps/eve-fit-assistant/l10n.yaml",
+            "apps/eve-fit-assistant/l10n/*.arb",
+            "packages/efa_fit_snapshot/l10n.yaml",
+            "packages/efa_fit_snapshot/l10n/*.arb",
+        ],
     },
     {
         "suite": "ci",
