@@ -1,10 +1,9 @@
 import "dart:async";
 
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/deeplink/app_link_handler.dart";
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
 import "package:eve_fit_assistant/features/fit_link/native_intake.dart";
 import "package:eve_fit_assistant/features/fit_link/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
@@ -81,7 +80,7 @@ class _FitLinkIntakeGateState extends ConsumerState<FitLinkIntakeGate> {
       await widget.appRouter.push(FitRoute(fitId: metadata.fitId));
     } on FitLinkNotFoundException {
       debug("Fit link not recognized, dropped");
-    } on FitLinkFormatException {
+    } on EfaFitFormatException {
       if (mounted) await _showInvalidDialog();
     } on Object catch (e, st) {
       warning("Fit link import failed: $e", stackTrace: st);

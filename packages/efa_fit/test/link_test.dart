@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/features/fit_link/fit_link_uri.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
@@ -75,11 +75,86 @@ void main() {
     });
   });
 
-  group("buildShareUrl", () {
+  group("parseFitLinkBootUri", () {
+    test("accepts the canonical path regardless of host", () {
+      final result = parseFitLinkBootUri(Uri.parse("https://example.com/fit/raw?payload=$payload"));
+      expect(result, isNotNull);
+      expect(result!.payload, payload);
+    });
+
+    test("rejects other paths", () {
+      expect(parseFitLinkBootUri(Uri.parse("https://$fitLinkShareHost/fit?id=1")), isNull);
+    });
+  });
+
+  group("buildFitLinkShareUrl", () {
     test("builds the canonical share URL", () {
       expect(
-        buildShareUrl(payload),
+        buildFitLinkShareUrl(payload),
         "https://share.platform.efa-tech.dev/fit/raw?payload=$payload",
+      );
+    });
+
+    test("rejects payloads without the EFA link prefix", () {
+      expect(
+        () => buildFitLinkShareUrl("abc-def_123"),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.invalidPrefix,
+          ),
+        ),
+      );
+    });
+
+    test("rejects payloads containing query delimiters", () {
+      for (final bad in ["$payload&x=1", "$payload#fragment", "$payload=pad", "$payload+plus"]) {
+        expect(
+          () => buildFitLinkShareUrl(bad),
+          throwsA(
+            isA<EfaFitFormatException>().having(
+              (e) => e.code,
+              "code",
+              EfaFitFormatErrorCode.invalidBase64,
+            ),
+          ),
+          reason: bad,
+        );
+      }
+    });
+
+    test("rejects payloads with an empty base64url tail", () {
+      expect(
+        () => buildFitLinkShareUrl("EFA2:"),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.invalidBase64,
+          ),
+        ),
+      );
+    });
+
+    test("built URL round-trips through the parser unchanged", () {
+      final url = buildFitLinkShareUrl(payload);
+      final result = parseFitLinkUri(Uri.parse(url));
+      expect(result, isNotNull);
+      expect(result!.payload, payload);
+    });
+
+    test("rejects URLs longer than maxFitLinkUrlLength", () {
+      final longPayload = "$payload${"a" * maxFitLinkUrlLength}";
+      expect(
+        () => buildFitLinkShareUrl(longPayload),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.payloadTooLarge,
+          ),
+        ),
       );
     });
   });

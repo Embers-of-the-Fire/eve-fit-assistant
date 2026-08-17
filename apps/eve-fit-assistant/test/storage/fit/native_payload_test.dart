@@ -184,5 +184,35 @@ void main() {
         ),
       );
     });
+
+    test("throws invalidPayloadShape for a malformed v2 fit body", () {
+      final payload = <String, dynamic>{"version": 2, "fit": <String, dynamic>{}};
+
+      expect(
+        () => decodeNativeFitPayload(payload),
+        throwsA(
+          isA<FitPersistenceException>().having(
+            (error) => error.code,
+            "code",
+            FitPersistenceErrorCode.invalidPayloadShape,
+          ),
+        ),
+      );
+    });
+
+    test("throws invalidPayloadShape for a malformed legacy v1 fit body", () {
+      final payload = <String, dynamic>{"version": 1, "fit": <String, dynamic>{}};
+
+      expect(
+        () => decodeNativeFitPayload(payload),
+        throwsA(
+          isA<FitPersistenceException>().having(
+            (error) => error.code,
+            "code",
+            FitPersistenceErrorCode.invalidPayloadShape,
+          ),
+        ),
+      );
+    });
   });
 }

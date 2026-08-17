@@ -37,6 +37,8 @@ dependencies:
     path: ../../packages/efa_compat
   efa_constant:
     path: ../../packages/efa_constant
+  efa_fit:
+    path: ../../packages/efa_fit
   efa_proto:
     path: ../../packages/efa_proto
 

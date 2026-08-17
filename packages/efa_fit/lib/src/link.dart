@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/features/fit_link/codec.dart";
+import "package:efa_fit/src/efa_format.dart";
 
 const String efaScheme = "efa";
 const String fitLinkShareHost = "share.platform.efa-tech.dev";
@@ -26,10 +26,12 @@ class FitLinkParseResult {
   final Map<String, String> queryParameters;
 }
 
-String buildShareUrl(String payload) {
-  assert(payload.startsWith(fitLinkPayloadPrefix));
+String buildFitLinkShareUrl(String payload) {
+  validateEfaFitLinkPayload(payload);
   final url = "https://$fitLinkShareHost$fitLinkCanonicalPath?$fitLinkPayloadParam=$payload";
-  assert(url.length <= maxFitLinkUrlLength);
+  if (url.length > maxFitLinkUrlLength) {
+    throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);
+  }
   return url;
 }
 
