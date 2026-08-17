@@ -24,6 +24,7 @@ import sys
 import tempfile
 
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -68,10 +69,10 @@ class Entry:
     family: str
     entry_id: int
     content: bytes
+    hash: str = field(init=False)
 
-    @property
-    def hash(self) -> str:
-        return content_hash(self.content)
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "hash", content_hash(self.content))
 
 
 @dataclass(frozen=True)
@@ -93,14 +94,29 @@ class HttpTransport:
     """requests-based transport for the platform data-sync worker."""
 
     def __init__(self, base_url: str, token: str, timeout: float = 120.0) -> None:
+        import requests
+
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._timeout = timeout
+        self._session = requests.Session()
+        # Both endpoints are idempotent (INSERT OR IGNORE / INSERT OR REPLACE),
+        # so retrying a POST on transient failures is safe.
+        retry = Retry(
+            total=5,
+            backoff_factor=1.0,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset({"POST"}),
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        import requests
-
-        resp = requests.post(
+        resp = self._session.post(
             f"{self._base_url}/{path.lstrip('/')}",
             json=payload,
             headers={"Authorization": f"Bearer {self._token}"},
@@ -283,7 +299,7 @@ def run_sync(
     entries share a content hash); registration rows are uploaded per server.
     """
     content: dict[tuple[str, str], bytes] = {}
-    registrations: dict[str, list[Registration]] = {}
+    registrations: dict[tuple[str, str], list[Registration]] = {}
 
     for server_id, snapshot_hash in sorted(hashes.items()):
         info(f"Loading snapshot entries for {server_id} ({snapshot_hash[:16]}...)...")
@@ -292,7 +308,7 @@ def run_sync(
         for entry in entries:
             content.setdefault((entry.family, entry.hash), entry.content)
             regs.append(Registration(entry.family, entry.entry_id, entry.hash))
-        registrations[f"{server_id}\n{snapshot_hash}"] = regs
+        registrations[(server_id, snapshot_hash)] = regs
 
     info(f"Total unique content rows: {len(content)}")
     info(f"Total registration rows: {sum(len(r) for r in registrations.values())}")
@@ -321,8 +337,7 @@ def run_sync(
         reply = transport.post("content", {"entries": batch})
         info(f"Uploaded {len(batch)} content rows (inserted: {reply.get('inserted', '?')})")
 
-    for server_key, regs in sorted(registrations.items()):
-        server_id, snapshot_hash = server_key.split("\n", 1)
+    for (server_id, snapshot_hash), regs in sorted(registrations.items()):
         reg_rows = [
             {"family": reg.family, "entry_id": reg.entry_id, "content_hash": reg.hash}
             for reg in regs
