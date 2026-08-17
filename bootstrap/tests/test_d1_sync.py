@@ -31,8 +31,9 @@ def _write_blob(schema_root: Path, resource_id: str, data: bytes) -> None:
 
 
 def _make_localization_db(strings: dict[tuple[str, int], str]) -> bytes:
-    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
-        connection = sqlite3.connect(tmp.name)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = Path(tmp_dir) / "localization.db"
+        connection = sqlite3.connect(db_path)
         try:
             connection.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
             connection.execute(
@@ -47,7 +48,7 @@ def _make_localization_db(strings: dict[tuple[str, int], str]) -> bytes:
             connection.commit()
         finally:
             connection.close()
-        return Path(tmp.name).read_bytes()
+        return db_path.read_bytes()
 
 
 def _build_snapshot(schema_root: Path, snapshot_hash: str) -> dict[str, bytes]:

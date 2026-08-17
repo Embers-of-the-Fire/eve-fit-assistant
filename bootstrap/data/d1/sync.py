@@ -187,10 +187,10 @@ def build_meta_entries(
     collection = collections_pb2.Collection()
     collection.ParseFromString(collection_data)
 
-    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
-        tmp.write(localization_db_data)
-        tmp.flush()
-        locales, strings = _load_localized_strings(Path(tmp.name))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = Path(tmp_dir) / "localization.db"
+        db_path.write_bytes(localization_db_data)
+        locales, strings = _load_localized_strings(db_path)
 
     entries: list[Entry] = []
 
