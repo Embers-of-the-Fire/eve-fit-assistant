@@ -213,6 +213,47 @@ class _FakeTransport:
         return {"ok": True, "inserted": len(payload.get("entries", []))}
 
 
+class _FakeResponse:
+    def __init__(self, status_code: int = 200, body: dict[str, Any] | None = None) -> None:
+        self.status_code = status_code
+        self._body = body or {}
+        self.text = json.dumps(self._body)
+
+    def json(self) -> dict[str, Any]:
+        return self._body
+
+
+class _FakeSession:
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    def post(self, *args: Any, **kwargs: Any) -> _FakeResponse:
+        return self._response
+
+
+class TestHttpTransport:
+    def _make_transport(self, response: _FakeResponse) -> Any:
+        pytest.importorskip("requests")
+        from bootstrap.data.d1.sync import HttpTransport
+
+        transport: Any = HttpTransport.__new__(HttpTransport)
+        transport._base_url = "https://worker.example"
+        transport._token = "test-token"  # noqa: S105
+        transport._timeout = 1.0
+        transport._session = _FakeSession(response)
+        return transport
+
+    def test_non_200_raises(self) -> None:
+        transport = self._make_transport(_FakeResponse(status_code=403, body={"err": "nope"}))
+        with pytest.raises(RuntimeError, match="HTTP 403"):
+            transport.post("content", {"entries": []})
+
+    def test_ok_false_raises(self) -> None:
+        transport = self._make_transport(_FakeResponse(body={"ok": False, "error": "bad"}))
+        with pytest.raises(RuntimeError, match="returned error"):
+            transport.post("register", {})
+
+
 class TestRunSync:
     def test_dedup_and_register(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
