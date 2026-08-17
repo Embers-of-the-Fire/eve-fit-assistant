@@ -387,6 +387,13 @@ class DeveloperCi(BaseModel):
         return self.raw_artifacts, self.require_storage()
 
 
+class DeveloperD1(BaseModel):
+    """Platform D1 sync endpoint configuration."""
+
+    url: str = Field(default="https://api.efa-tech.dev/platform/storage/data-sync")
+    token: SecretStr | None = None
+
+
 class DeveloperConfiguration(BaseModel):
     paths: DeveloperPaths = Field(default_factory=DeveloperPaths)
     workspace: DeveloperWorkspace = Field(default_factory=DeveloperWorkspace)
@@ -395,6 +402,7 @@ class DeveloperConfiguration(BaseModel):
     native: DeveloperNative = Field(default_factory=DeveloperNative)
     remote: DeveloperRemote = Field(default_factory=DeveloperRemote)
     ci: DeveloperCi = Field(default_factory=DeveloperCi)
+    d1: DeveloperD1 = Field(default_factory=DeveloperD1)
 
     @staticmethod
     def load_from_global():

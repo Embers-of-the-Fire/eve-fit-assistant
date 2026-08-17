@@ -50,3 +50,9 @@ public_url = "https://ci.storage.efa-tech.dev"
 [ci.raw_artifacts]
 remote_root = "data-generator/raw-artifact"
 public_url = "https://ci.storage.efa-tech.dev"
+
+# Platform D1 sync endpoint. The token is a placeholder overwritten by
+# --dev-env d1.token=... in release jobs.
+[d1]
+url = "https://api.efa-tech.dev/platform/storage/data-sync"
+token = "placeholder-d1-sync-token"

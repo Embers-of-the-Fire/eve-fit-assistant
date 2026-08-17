@@ -1,0 +1,40 @@
+name: Sync snapshot to platform D1
+
+description: >-
+  Sync the built resource snapshots' engine data (types, type dogma, dogma
+  attributes, dogma effects, buffs, plus name/icon metadata) into the
+  efa-platform-prod D1 database via the efa-platform-data-sync worker.
+  Expects the v2-snapshots artifact contents (cache/remote/assets/ and
+  snapshot-hashes.json) to already be present in the working directory,
+  protobuf bindings generated, and efa.dev.toml initialized.
+
+inputs:
+  token:
+    description: "Bearer token matching the worker's SYNC_TOKEN secret"
+    required: true
+  hashes:
+    description: "Path to the snapshot hashes JSON file"
+    required: false
+    default: "snapshot-hashes.json"
+  schema-root:
+    description: "Schema V2 root containing the snapshots"
+    required: false
+    default: "cache/remote"
+
+runs:
+  using: composite
+  steps:
+    - name: Sync snapshots to platform D1
+      shell: bash
+      env:
+        D1_SYNC_TOKEN: ${{ inputs.token }}
+        HASHES: ${{ inputs.hashes }}
+        SCHEMA_ROOT: ${{ inputs.schema-root }}
+      run: |
+        # shellcheck disable=SC2016
+        nix develop .#python --command bash -c \
+          'uv run x.py \
+            --dev-env d1.token="${D1_SYNC_TOKEN}" \
+            ci release-data d1-sync \
+            --hashes "${HASHES}" \
+            --schema-root "${SCHEMA_ROOT}"'

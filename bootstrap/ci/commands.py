@@ -541,3 +541,73 @@ def register_ci_commands(cli_group: click.Group) -> None:
                 f"Remote head verified: {synced_hash[:16]}...",
             )
         )
+
+    @release_data.command("d1-sync")
+    @click.option(
+        "--hashes",
+        type=click.Path(exists=True, file_okay=True, path_type=Path),
+        default="snapshot-hashes.json",
+        help="Path to the snapshot hashes JSON file.",
+    )
+    @click.option(
+        "--schema-root",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="cache/remote",
+        help="Schema V2 root containing the snapshots (default: cache/remote).",
+    )
+    @click.option("--url", default=None, help="Override the data-sync worker URL.")
+    @click.option("--token", default=None, help="Override the data-sync bearer token.")
+    @click.option(
+        "--batch-size",
+        type=click.IntRange(min=1),
+        default=2000,
+        help="Rows per upload request (default: 2000).",
+    )
+    @click.option(
+        "--dry-run",
+        is_flag=True,
+        help="Decode and count entries without uploading.",
+    )
+    def release_data_d1_sync(
+        hashes: Path,
+        schema_root: Path,
+        url: str | None,
+        token: str | None,
+        batch_size: int,
+        dry_run: bool,
+    ):
+        """Sync snapshot engine data into the platform D1 database."""
+        import bootstrap.config
+
+        from bootstrap.data.d1.sync import HttpTransport
+        from bootstrap.data.d1.sync import run_sync
+
+        resolved_root = (PROJECT_ROOT / schema_root).resolve()
+        hashes_path = (PROJECT_ROOT / hashes).resolve()
+        hashes_data = json.loads(hashes_path.read_text(encoding="utf-8"))
+        if not isinstance(hashes_data, dict):
+            raise click.ClickException(f"Invalid hashes file: {hashes_path}")
+
+        bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        d1 = bootstrap.config.DEV_CONFIGURATION.d1
+
+        resolved_url = url or d1.url
+        resolved_token = token or (d1.token.get_secret_value() if d1.token else None)
+
+        transport = None
+        if not dry_run:
+            if not resolved_token:
+                raise click.ClickException(
+                    "No D1 sync token configured. Set [d1].token in efa.dev.toml, "
+                    "pass --token, or use --dev-env d1.token=... (or --dry-run)."
+                )
+            transport = HttpTransport(resolved_url, resolved_token)
+
+        run_sync(
+            hashes_data,
+            resolved_root,
+            transport,
+            batch_size=batch_size,
+            dry_run=dry_run,
+        )
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "D1 sync completed."))

@@ -95,3 +95,10 @@ remote_root = "data-generator/raw-artifact"
 # Optional: public URL used to read build.txt without credentials.
 # If omitted, [ci.storage].public_url is used when available.
 # public_url = "https://ci.storage.efa-tech.dev"
+
+[d1]
+# Platform D1 sync endpoint (Cloudflare Worker ingesting snapshot entries).
+# Used by `./x ci release-data d1-sync`.
+url = "https://api.efa-tech.dev/platform/storage/data-sync"
+# Bearer token matching the worker's SYNC_TOKEN secret.
+# token = "your-d1-sync-token"
