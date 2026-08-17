@@ -298,6 +298,9 @@ def run_sync(
     Content rows are deduplicated across servers before uploading (identical
     entries share a content hash); registration rows are uploaded per server.
     """
+    if not 1 <= batch_size <= 10_000:
+        raise ValueError(f"batch_size must be between 1 and 10000, got {batch_size}")
+
     content: dict[tuple[str, str], bytes] = {}
     registrations: dict[tuple[str, str], list[Registration]] = {}
 

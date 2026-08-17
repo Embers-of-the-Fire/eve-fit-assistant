@@ -321,6 +321,29 @@ class TestRunSync:
         with pytest.raises(ValueError, match="transport is required"):
             run_sync({"alpha": snapshot_hash}, schema_root, None)
 
+    @pytest.mark.parametrize("batch_size", [0, -1, 10_001])
+    def test_rejects_invalid_batch_size(self, schema_root: Path, batch_size: int) -> None:
+        from bootstrap.data.d1.sync import run_sync
+
+        # Validation happens before any snapshot is loaded, so no snapshot
+        # fixtures are needed here.
+        with pytest.raises(ValueError, match="batch_size must be between 1 and 10000"):
+            run_sync({"alpha": "ab" * 32}, schema_root, None, batch_size=batch_size)
+
+    @pytest.mark.parametrize("batch_size", [1, 10_000])
+    def test_accepts_boundary_batch_size(self, schema_root: Path, batch_size: int) -> None:
+        from bootstrap.data.d1.sync import run_sync
+
+        snapshot_hash = "f0" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+
+        transport = _FakeTransport()
+        run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=batch_size)
+
+        for _path, payload in transport.posts:
+            assert len(payload.get("entries", [])) <= batch_size
+        assert [p for p in transport.posts if p[0] == "complete"] != []
+
 
 class TestCli:
     def test_d1_sync_dry_run(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
