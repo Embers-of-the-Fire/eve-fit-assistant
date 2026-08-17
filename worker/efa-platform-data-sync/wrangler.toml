@@ -2,10 +2,6 @@ name = "efa-platform-data-sync"
 compatibility_date = "2026-08-01"
 main = "src/index.ts"
 
-[build]
-# The Git integration's build command runs ./build.sh.
-command = "./build.sh"
-
 [[d1_databases]]
 binding = "PLATFORM_DB"
 database_name = "efa-platform-prod"
