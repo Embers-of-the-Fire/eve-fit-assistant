@@ -2,6 +2,19 @@
 -- Each family <f> has a content table and a registration table mapping
 -- (server_id, snapshot_hash, entry_id) -> content_hash.
 
+-- Snapshot completeness registry. Content and registration uploads span many
+-- requests (one transaction each), so a failed run leaves partial <f>_reg rows
+-- behind. The uploader inserts a row here only after every content and
+-- registration batch for the snapshot succeeded; readers MUST treat any
+-- (server_id, snapshot_hash) with no row here as incomplete and reject it.
+CREATE TABLE snapshots (
+    server_id TEXT NOT NULL,
+    snapshot_hash TEXT NOT NULL,
+    entry_count INTEGER NOT NULL,
+    completed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (server_id, snapshot_hash)
+);
+
 CREATE TABLE types (
     content_hash TEXT PRIMARY KEY,
     content BLOB NOT NULL

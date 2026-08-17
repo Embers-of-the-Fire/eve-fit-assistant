@@ -46,6 +46,12 @@ const RegisterRequestSchema = z.object({
     entries: z.array(RegisterEntrySchema).min(1).max(10000),
 });
 
+const CompleteRequestSchema = z.object({
+    server_id: z.string().min(1),
+    snapshot_hash: z.string().regex(HASH_RE),
+    entry_count: z.number().int().nonnegative(),
+});
+
 // D1 allows at most 100 bound parameters per statement.
 const CONTENT_ROWS_PER_STATEMENT = 50; // 2 params per row
 const REGISTER_ROWS_PER_STATEMENT = 25; // 4 params per row
@@ -182,7 +188,7 @@ app.post("/register", async (c) => {
             const binds = chunk.flatMap((row) => [serverId, snapshotHash, row.id, row.hash]);
             statements.push(
                 c.env.PLATFORM_DB.prepare(
-                    `INSERT OR REPLACE INTO ${table} ` +
+                    `INSERT OR IGNORE INTO ${table} ` +
                         `(server_id, snapshot_hash, entry_id, content_hash) VALUES ${placeholders}`,
                 ).bind(...binds),
             );
@@ -196,6 +202,65 @@ app.post("/register", async (c) => {
     }
 
     return c.json({ ok: true, inserted });
+});
+
+app.post("/complete", async (c) => {
+    const parsed = CompleteRequestSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+        return c.json({ ok: false, error: "Validation failed", details: parsed.error.issues }, 400);
+    }
+
+    const { server_id: serverId, snapshot_hash: snapshotHash, entry_count: entryCount } =
+        parsed.data;
+
+    // Verify completeness server-side: the marker is only written when the
+    // registration rows actually present match the uploader's entry count.
+    let registered = 0;
+    for (const family of Object.keys(FAMILIES) as Family[]) {
+        const table = FAMILIES[family].reg;
+        const row = await c.env.PLATFORM_DB.prepare(
+            `SELECT COUNT(*) AS n FROM ${table} WHERE server_id = ? AND snapshot_hash = ?`,
+        )
+            .bind(serverId, snapshotHash)
+            .first<{ n: number }>();
+        registered += row?.n ?? 0;
+    }
+    if (registered !== entryCount) {
+        return c.json(
+            { ok: false, error: "Snapshot incomplete", expected: entryCount, registered },
+            409,
+        );
+    }
+
+    await c.env.PLATFORM_DB.prepare(
+        "INSERT OR REPLACE INTO snapshots (server_id, snapshot_hash, entry_count) VALUES (?, ?, ?)",
+    )
+        .bind(serverId, snapshotHash, entryCount)
+        .run();
+
+    return c.json({ ok: true });
+});
+
+app.get("/snapshot", async (c) => {
+    const serverId = c.req.query("server_id");
+    const snapshotHash = c.req.query("snapshot_hash");
+    if (!serverId || !snapshotHash || !HASH_RE.test(snapshotHash)) {
+        return c.json({ ok: false, error: "Invalid server_id or snapshot_hash" }, 400);
+    }
+    const row = await c.env.PLATFORM_DB.prepare(
+        "SELECT entry_count, completed_at FROM snapshots WHERE server_id = ? AND snapshot_hash = ?",
+    )
+        .bind(serverId, snapshotHash)
+        .first<{ entry_count: number; completed_at: string }>();
+    if (!row) {
+        return c.json({ ok: true, complete: false });
+    }
+    return c.json({
+        ok: true,
+        complete: true,
+        entry_count: row.entry_count,
+        completed_at: row.completed_at,
+    });
 });
 
 app.onError((err, c) => {

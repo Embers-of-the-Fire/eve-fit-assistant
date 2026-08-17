@@ -19,6 +19,15 @@ has two tables:
 - `<f>_reg` — `(server_id, snapshot_hash, entry_id, content_hash)`:
   registration rows mapping a snapshot's entries onto content rows.
 
+Uploads span many requests (one transaction each), so a failed sync leaves
+partial `<f>_reg` rows behind. The `snapshots` table —
+`(server_id, snapshot_hash, entry_count, completed_at)` — is the completeness
+registry: the uploader inserts a row only after every content and registration
+batch for the snapshot succeeded, and the worker verifies the actual
+registration row count before accepting the marker. **Readers must check
+`snapshots` first and treat a `(server_id, snapshot_hash)` with no row as
+incomplete.**
+
 See `migrations/0001_init.sql` and `data/schema/platform_data.proto`.
 
 ## API
@@ -53,8 +62,26 @@ hash). At most 10000 entries per request. Responds `{ "ok": true, "inserted": n 
 ```
 
 Verifies every referenced content hash exists (409 with a `missing` list
-otherwise), then `INSERT OR REPLACE`s the registration rows. At most 10000
+otherwise), then `INSERT OR IGNORE`s the registration rows (immutable per
+primary key, so re-runs are free of write quota). At most 10000
 entries per request. Responds `{ "ok": true, "inserted": n }`.
+
+### `POST /platform/storage/data-sync/complete`
+
+```json
+{ "server_id": "tranquility", "snapshot_hash": "sha256-hex", "entry_count": 8 }
+```
+
+Marks a snapshot complete. Verifies server-side that the registration rows
+present for `(server_id, snapshot_hash)` across all `<f>_reg` tables equal
+`entry_count` (409 otherwise), then upserts the `snapshots` registry row.
+Responds `{ "ok": true }`.
+
+### `GET /platform/storage/data-sync/snapshot?server_id=...&snapshot_hash=...`
+
+Completeness check for readers. Responds `{ "ok": true, "complete": false }`
+when the snapshot has no registry row, or
+`{ "ok": true, "complete": true, "entry_count": n, "completed_at": "..." }`.
 
 ## Deployment
 

@@ -10,6 +10,10 @@ the ``efa-platform-prod`` D1 database.
 Layout per family ``<f>``:
   - table ``<f>``:     (content_hash TEXT PRIMARY KEY, content BLOB)
   - table ``<f>_reg``: (server_id, snapshot_hash, entry_id, content_hash)
+
+A snapshot is only complete once the uploader has posted every content and
+registration batch and then marked it in the ``snapshots`` registry table
+(``POST complete``); readers must check that registry before serving data.
 """
 
 from __future__ import annotations
@@ -329,3 +333,16 @@ def run_sync(
                 {"server_id": server_id, "snapshot_hash": snapshot_hash, "entries": batch},
             )
         info(f"Registered {len(reg_rows)} rows for {server_id} ({snapshot_hash[:16]}...)")
+
+        # Completeness marker: only reached when every content batch and every
+        # registration batch for this snapshot succeeded. Readers treat a
+        # snapshot without this marker as incomplete.
+        transport.post(
+            "complete",
+            {
+                "server_id": server_id,
+                "snapshot_hash": snapshot_hash,
+                "entry_count": len(reg_rows),
+            },
+        )
+        info(f"Marked snapshot complete for {server_id} ({snapshot_hash[:16]}...)")

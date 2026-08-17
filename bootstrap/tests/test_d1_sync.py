@@ -241,6 +241,30 @@ class TestRunSync:
         for _path, payload in register_posts:
             assert len(payload["entries"]) == 8
 
+        complete_posts = [p for p in transport.posts if p[0] == "complete"]
+        assert len(complete_posts) == 2
+        complete_servers = {payload["server_id"] for _path, payload in complete_posts}
+        assert complete_servers == {"alpha", "beta"}
+        for _path, payload in complete_posts:
+            assert payload["entry_count"] == 8
+
+    def test_complete_not_posted_when_register_fails(self, schema_root: Path) -> None:
+        from bootstrap.data.d1.sync import run_sync
+
+        snapshot_hash = "dd" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+
+        class _FailingTransport(_FakeTransport):
+            def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+                if path == "register":
+                    raise RuntimeError("boom")
+                return super().post(path, payload)
+
+        transport = _FailingTransport()
+        with pytest.raises(RuntimeError, match="boom"):
+            run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=5000)
+        assert [p for p in transport.posts if p[0] == "complete"] == []
+
     def test_dry_run_uploads_nothing(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
 
