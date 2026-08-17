@@ -196,11 +196,7 @@ class SnapshotFighterRow extends StatelessWidget {
               runSpacing: 4,
               children: [
                 for (final ability in fighter.abilities)
-                  FilterChip(
-                    label: Text(_abilityLabel(context, ability)),
-                    selected: true,
-                    onSelected: null,
-                  ),
+                  Chip(label: Text(_abilityLabel(context, ability))),
               ],
             ),
           if (fighter.relatedValues.isNotEmpty)
