@@ -77,16 +77,35 @@ function chunked<T>(items: T[], size: number): T[][] {
 
 const app = new Hono<{ Bindings: Env }>();
 
+const MOUNT_PATH = "/platform/storage/data-sync";
+// Reader-facing probes; everything else (including any future route) requires
+// the sync token by default.
+const PUBLIC_GET_PATHS = new Set([`${MOUNT_PATH}/health`, `${MOUNT_PATH}/snapshot`]);
+
+function timingSafeEqual(a: string, b: string): boolean {
+    const encoder = new TextEncoder();
+    const aBytes = encoder.encode(a);
+    const bBytes = encoder.encode(b);
+    if (aBytes.length !== bBytes.length) {
+        return false;
+    }
+    let diff = 0;
+    for (let i = 0; i < aBytes.length; i++) {
+        diff |= aBytes[i] ^ bBytes[i];
+    }
+    return diff === 0;
+}
+
 app.use("*", async (c, next) => {
-    if (c.req.method === "GET") {
+    if (c.req.method === "GET" && PUBLIC_GET_PATHS.has(new URL(c.req.url).pathname)) {
         return next();
     }
     const token = c.env.SYNC_TOKEN;
     if (!token) {
         return c.json({ ok: false, error: "Server misconfigured: SYNC_TOKEN is not set" }, 500);
     }
-    const header = c.req.header("Authorization");
-    if (header !== `Bearer ${token}`) {
+    const header = c.req.header("Authorization") ?? "";
+    if (!timingSafeEqual(header, `Bearer ${token}`)) {
         return c.json({ ok: false, error: "Unauthorized" }, 401);
     }
     return next();
@@ -210,8 +229,11 @@ app.post("/complete", async (c) => {
         return c.json({ ok: false, error: "Validation failed", details: parsed.error.issues }, 400);
     }
 
-    const { server_id: serverId, snapshot_hash: snapshotHash, entry_count: entryCount } =
-        parsed.data;
+    const {
+        server_id: serverId,
+        snapshot_hash: snapshotHash,
+        entry_count: entryCount,
+    } = parsed.data;
 
     // Verify completeness server-side: the marker is only written when the
     // registration rows actually present match the uploader's entry count.
@@ -269,5 +291,5 @@ app.onError((err, c) => {
 });
 
 const root = new Hono<{ Bindings: Env }>();
-root.route("/platform/storage/data-sync", app);
+root.route(MOUNT_PATH, app);
 export default root;
