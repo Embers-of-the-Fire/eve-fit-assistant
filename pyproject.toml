@@ -43,7 +43,7 @@ addopts = ["--disable-socket", "--allow-unix-socket"]
 convert = { workspace = true }
 
 [tool.uv.workspace]
-members = ["apps/eve-fit-assistant/rust/lib/eve-fit-os"]
+members = ["packages/eve-fit-os"]
 
 [build-system]
 requires = ["setuptools"]

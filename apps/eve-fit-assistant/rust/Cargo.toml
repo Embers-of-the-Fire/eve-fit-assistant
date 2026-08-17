@@ -9,7 +9,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 flutter_rust_bridge = "=2.13.0-beta.6"
 efa-chat = { path = "lib/efa-chat" }
-eve-fit-os = { path = "lib/eve-fit-os" }
+eve-fit-os = { path = "../../../packages/eve-fit-os" }
 anyhow = "1.0.100"
 futures = "0.3"
 log = "0.4"

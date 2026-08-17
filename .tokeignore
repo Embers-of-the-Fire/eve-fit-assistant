@@ -9,6 +9,6 @@
 /**/Cargo.lock
 /**/uv.lock
 
-/apps/eve-fit-assistant/rust/lib/eve-fit-os/data/fsd-patches/*.yaml
+/packages/eve-fit-os/data/fsd-patches/*.yaml
 /apps/eve-fit-assistant/web/sqlite
 /apps/eve-fit-assistant/web/pkg

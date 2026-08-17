@@ -25,7 +25,7 @@ pre_num = 7
 build = 7
 ```
 
-> The fitting-engine submodule at `rust/lib/eve-fit-os` has independent versioning and is **not** part of the sync targets.
+> The fitting-engine submodule at `packages/eve-fit-os` has independent versioning and is **not** part of the sync targets.
 
 ### 1.2. Generate the release note
 

@@ -137,7 +137,7 @@ Set the `[native]` section in `efa.dev.toml`, then run:
 ```
 
 For this project, we suggest you to use the `tranquility` datasource
-for local development, which means the generated `rust/lib/eve-fit-os/.env`
+for local development, which means the generated `packages/eve-fit-os/.env`
 file should look like this:
 
 ```env

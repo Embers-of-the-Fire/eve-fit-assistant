@@ -337,7 +337,7 @@ class TestCheckSubmodules:
         return _fake_run
 
     def test_clean(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("packages/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
         monkeypatch.setattr("bootstrap.ci.release.subprocess.run", self._mock_subprocess_run())
@@ -350,7 +350,7 @@ class TestCheckSubmodules:
             _check_submodules()
 
     def test_wrong_commit(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("packages/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
         monkeypatch.setattr(
@@ -362,7 +362,7 @@ class TestCheckSubmodules:
             _check_submodules()
 
     def test_dirty(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("packages/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
 
@@ -480,7 +480,7 @@ class TestReleaseVerifyPreflightFlags:
         _write_pyproject(tmp_project, ver.render_semver())
         _make_release_note(tmp_project, ver)
 
-        for path in ("apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"):
+        for path in ("packages/eve-fit-os", "tools/eve-fsd-dumper"):
             (tmp_project / path).mkdir(parents=True, exist_ok=True)
             (tmp_project / path / ".git").mkdir()
 

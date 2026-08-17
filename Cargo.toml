@@ -3,7 +3,7 @@ members = [
     "worker/release",
     "apps/eve-fit-assistant/rust",
     "apps/eve-fit-assistant/rust/lib/efa-chat",
-    "apps/eve-fit-assistant/rust/lib/eve-fit-os",
+    "packages/eve-fit-os",
 ]
 default-members = ["apps/eve-fit-assistant/rust"]
 resolver = "3"

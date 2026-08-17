@@ -105,6 +105,8 @@ WEB_PREVIEW_PATTERNS = [
     "flake.lock",
     "Cargo.toml",
     "Cargo.lock",
+    "packages/eve-fit-os",
+    "packages/eve-fit-os/**",
     "apps/eve-fit-assistant/rust/**",
     "apps/eve-fit-assistant/web/**",
     "apps/eve-fit-assistant/lib/**",

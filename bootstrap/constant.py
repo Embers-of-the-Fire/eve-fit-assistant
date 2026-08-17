@@ -18,7 +18,7 @@ PROTOBUF_SCHEMA_PATH = PROJECT_ROOT / "data" / "schema"
 PROTOBUF_PYTHON_OUT_PATH = PROJECT_ROOT / "bootstrap" / "data" / "schema"
 PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "packages" / "efa_proto" / "lib"
 
-NATIVE_LIB_ROOT = EFA_APP_ROOT / "rust" / "lib" / "eve-fit-os"
+NATIVE_LIB_ROOT = PROJECT_ROOT / "packages" / "eve-fit-os"
 
 I18N_ROOT = EFA_APP_ROOT / "l10n"
 

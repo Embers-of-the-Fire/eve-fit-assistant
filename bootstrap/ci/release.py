@@ -222,7 +222,7 @@ def _ensure_submodule_clean(path: str) -> None:
 
 def _check_submodules() -> None:
     """Verify engine and FSD dumper submodules are initialized and clean."""
-    submodules = ["apps/eve-fit-assistant/rust/lib/eve-fit-os", "tools/eve-fsd-dumper"]
+    submodules = ["packages/eve-fit-os", "tools/eve-fsd-dumper"]
     for path in submodules:
         submodule_path = PROJECT_ROOT / path
         if not (submodule_path / ".git").exists():

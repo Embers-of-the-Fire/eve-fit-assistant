@@ -11,7 +11,7 @@ use eve_fit_os::fit::{
 use eve_fit_os::protobuf::Database;
 
 fn test_database() -> Database {
-    dotenvy::from_filename(concat!(env!("CARGO_MANIFEST_DIR"), "/../eve-fit-os/.env")).ok();
+    dotenvy::from_filename(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../../packages/eve-fit-os/.env")).ok();
     let output_dir =
         std::env::var("OUTPUT_DIR").expect("OUTPUT_DIR must be set (see eve-fit-os/.env)");
     Database::init_from_root(format!("{output_dir}/pb2")).unwrap()
@@ -20,7 +20,7 @@ fn test_database() -> Database {
 fn test_skills() -> HashMap<i32, u8> {
     let rdr = File::open(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../eve-fit-os/skills.json"
+        "/../../../../../packages/eve-fit-os/skills.json"
     ))
     .unwrap();
     serde_json::from_reader(rdr).unwrap()

@@ -75,9 +75,9 @@ jobs:
             https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
           mkdir -p "$GITHUB_WORKSPACE/ci-native"
           tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-          mkdir -p apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out
+          mkdir -p packages/eve-fit-os/data/out
           ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" \
-            apps/eve-fit-assistant/rust/lib/eve-fit-os/data/out/pb2
+            packages/eve-fit-os/data/out/pb2
       - name: Init dev env
         if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
         uses: ./.github/actions/init-dev-env

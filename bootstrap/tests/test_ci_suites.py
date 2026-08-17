@@ -55,7 +55,7 @@ def test_web_preview_patterns_cover_core_build_inputs():
         "Cargo.toml",
         "Cargo.lock",
         "apps/eve-fit-assistant/rust/src/api/fit.rs",
-        "apps/eve-fit-assistant/rust/lib/eve-fit-os",
+        "packages/eve-fit-os",
         "apps/eve-fit-assistant/web/index.html",
         "apps/eve-fit-assistant/lib/main.dart",
         "pubspec.yaml",

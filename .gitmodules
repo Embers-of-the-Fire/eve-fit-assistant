@@ -1,6 +1,6 @@
 [submodule "tools/eve-fsd-dumper"]
 	path = tools/eve-fsd-dumper
 	url = https://github.com/Embers-of-the-Fire/EVE-FSD-Dumper.git
-[submodule "apps/eve-fit-assistant/rust/lib/eve-fit-os"]
-	path = apps/eve-fit-assistant/rust/lib/eve-fit-os
+[submodule "packages/eve-fit-os"]
+	path = packages/eve-fit-os
 	url = https://github.com/Embers-of-the-Fire/eve-fit-os

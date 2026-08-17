@@ -11,12 +11,12 @@ Detailed subsystem docs live in `docs/agents/` (index: @docs/agents/README) and 
 - `packages/efa_proto/` hosts the Dart protobuf bindings generated from the `.proto` sources in `data/schema/` (via `./x generate protobuf`), imported as `package:efa_proto/<name>.pb.dart`. The Python bindings stay in `bootstrap/data/schema/` (top-level `<name>_pb2` modules on `sys.path`). All generated files are gitignored — never check them in.
 - `packages/efa_constant/` hosts the dependency-free EVE constant definitions (`package:efa_constant/eve.dart`: `EveConst*` classes, `EveDogmaUnitId` enum). `eve_dogma_unit_generated.dart` is tracked (via `./x generate values dogma-units`); `eve_attr_generated.dart` is generated and gitignored.
 - `packages/efa_fit/` hosts the shared fit format logic (`package:efa_fit/efa_fit.dart`): the EFA(n) native payload codecs (versioned JSON envelope → gzip → base64/base64url with `EFA<n>:` prefix, size caps, `EfaFitFormatException`), the EFT-compatible text format (`parseEft`/`formatEft` over the neutral `EftFit` model with an injected `EftTypeResolver`/`EftTypeNameLookup` for name and slot resolution), and fit link construction/parsing (`buildFitLinkShareUrl`, `parseFitLinkUri`, `parseFitLinkBootUri`, hosts/scheme constants). Pure Dart (only depends on `archive`); the app keeps the `FitStorage` model and maps to/from these formats. Tests run via `melos run pkg:test`.
-- Rust has three crates: FRB bridge crate in `apps/eve-fit-assistant/rust/` (`rust/src/api/*`), the fitting engine git-submodule crate in `apps/eve-fit-assistant/rust/lib/eve-fit-os`, and the AI chat crate in `apps/eve-fit-assistant/rust/lib/efa-chat` (see @docs/agents/efa-chat). The root `Cargo.toml` is the cargo workspace root.
+- Rust has three crates: FRB bridge crate in `apps/eve-fit-assistant/rust/` (`rust/src/api/*`), the fitting engine git-submodule crate in `packages/eve-fit-os`, and the AI chat crate in `apps/eve-fit-assistant/rust/lib/efa-chat` (see @docs/agents/efa-chat). The root `Cargo.toml` is the cargo workspace root.
 - Python in `bootstrap/` plus `x.py` owns workspace management, codegen orchestration, and static data packaging. The top-level `data/` directory holds only raw EVE resources (`data/resources/`) and protobuf `.proto` schema sources (`data/schema/`).
 - `apps/eve-fit-assistant/rust_builder/` is the Flutter plugin/cargokit wrapper used by the app's `pubspec.yaml`; avoid treating it as the main Rust source.
 - `site/` is a SvelteKit app deployed to Cloudflare Workers (pnpm workspace). `biome.json` governs JS/TS formatting/linting for this area.
 - UI work across app and sites follows the cross-product design principles in @docs/agents/style and the canonical color system in @docs/agents/color (brand surfaces keep the homepage palette; workload platforms — app, share, discussion — share one palette).
-- `apps/eve-fit-assistant/rust/lib/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
+- `packages/eve-fit-os` is a Git submodule; run `git submodule update --init` after clone if not already initialized.
 
 Throughout this document, app paths written as `lib/...`, `test/...`, `rust/...`, `l10n/...`, or `web/...` are relative to `apps/eve-fit-assistant/` unless stated otherwise.
 
@@ -69,7 +69,7 @@ Fit deep links (`efa://fit/raw?payload=...` plus HTTPS links on `share.platform.
 - Bootstrap with `./x dev env install` or, equivalently, `flutter pub get` and `uv sync` inside the dev shell.
 - Do not hand-edit `apps/eve-fit-assistant/android/local.properties` unless needed; the Nix shell hook regenerates it with only SDK/NDK/CMake paths derived from the Nix environment. Flutter build properties (version, build mode, etc.) are not touched and are read from the app's `pubspec.yaml` directly.
 - Python requires 3.13+ and is managed by `uv`; run `x.py` through `./x`, `./x.ps1`, or `uv run x.py`, not a global Python.
-- Backend Rust builds/tests/codegen need `apps/eve-fit-assistant/rust/lib/eve-fit-os/.env`; normally create `efa.dev.toml` with `./x dev init-cfg`, set `[native]`, then run `./x dev env write-backend`.
+- Backend Rust builds/tests/codegen need `packages/eve-fit-os/.env`; normally create `efa.dev.toml` with `./x dev init-cfg`, set `[native]`, then run `./x dev env write-backend`.
 
 ## Canonical Commands
 
@@ -121,7 +121,7 @@ Fit deep links (`efa://fit/raw?payload=...` plus HTTPS links on `share.platform.
 
 ## Version
 
-- The canonical version lives in `efa.config.toml` under `[version]`. All other targets (`apps/eve-fit-assistant/pubspec.yaml`, `apps/eve-fit-assistant/rust/Cargo.toml`, `pyproject.toml`) are derived from it. The engine submodule `apps/eve-fit-assistant/rust/lib/eve-fit-os` has independent versioning.
+- The canonical version lives in `efa.config.toml` under `[version]`. All other targets (`apps/eve-fit-assistant/pubspec.yaml`, `apps/eve-fit-assistant/rust/Cargo.toml`, `pyproject.toml`) are derived from it. The engine submodule `packages/eve-fit-os` has independent versioning.
 
 ## CI / Release Automation
 
@@ -173,7 +173,7 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 - Dart analyzer is strict (`strict-casts`, `strict-inference`, `strict-raw-types`) and enforces package imports, double quotes, explicit public API types, and 100-column formatting.
 - Python Ruff requires `from __future__ import annotations`, absolute imports, one import per line, double quotes, and 100-column formatting; `apps/eve-fit-assistant/rust/lib/` is excluded from root Ruff.
 - Root `rustfmt.toml` uses 100 columns plus field-init and `?` shorthands; the bridge crate stays Rust 2021 because of `flutter_rust_bridge`.
-- Keep FRB-facing APIs small and explicit in `apps/eve-fit-assistant/rust/src/api/`; put core fitting behavior in `apps/eve-fit-assistant/rust/lib/eve-fit-os` when possible. Choose the FRB fn flavor by threading intent: `#[frb(sync)]` runs on the caller's thread/event loop (cheap calls only), `async` runs on the main browser event loop on web (never for CPU-heavy work), and a plain ("normal") fn runs on FRB's thread pool — backed by the Web Worker pool on web, which the atomics build plus COOP/COEP headers (see the web engine build note) enable. Heavy engine work must stay in normal fns.
+- Keep FRB-facing APIs small and explicit in `apps/eve-fit-assistant/rust/src/api/`; put core fitting behavior in `packages/eve-fit-os` when possible. Choose the FRB fn flavor by threading intent: `#[frb(sync)]` runs on the caller's thread/event loop (cheap calls only), `async` runs on the main browser event loop on web (never for CPU-heavy work), and a plain ("normal") fn runs on FRB's thread pool — backed by the Web Worker pool on web, which the atomics build plus COOP/COEP headers (see the web engine build note) enable. Heavy engine work must stay in normal fns.
 - Do not manually edit generated bridge/localization/protobuf/build outputs unless the task is explicitly about generated artifacts; change sources and run the matching generator.
 
 ## Python Pipeline

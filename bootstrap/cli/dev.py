@@ -287,7 +287,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
 
     @env.command("write-backend")
     def dev_env_write_backend():
-        """Write rust/lib/eve-fit-os/.env from efa.dev.toml."""
+        """Write packages/eve-fit-os/.env from efa.dev.toml."""
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         native = bootstrap.config.DEV_CONFIGURATION.native
 

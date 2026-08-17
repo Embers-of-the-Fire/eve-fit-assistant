@@ -312,7 +312,7 @@ wheels = [
 [[package]]
 name = "convert"
 version = "0.1.0"
-source = { editable = "apps/eve-fit-assistant/rust/lib/eve-fit-os" }
+source = { editable = "packages/eve-fit-os" }
 dependencies = [
     { name = "msgpack" },
     { name = "protobuf" },
@@ -462,7 +462,7 @@ requires-dist = [
     { name = "case-converter", specifier = ">=1.2.0" },
     { name = "click", specifier = ">=8.4.2" },
     { name = "colorama", specifier = ">=0.4.6" },
-    { name = "convert", editable = "apps/eve-fit-assistant/rust/lib/eve-fit-os" },
+    { name = "convert", editable = "packages/eve-fit-os" },
     { name = "protobuf", specifier = ">=7.35.1" },
     { name = "pydantic", specifier = ">=2.13.2" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
