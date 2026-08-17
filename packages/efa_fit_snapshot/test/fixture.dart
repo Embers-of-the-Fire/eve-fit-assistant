@@ -16,6 +16,7 @@ FitSnapshot buildFixtureSnapshot({bool withStatistics = true}) {
     character: const SnapshotCharacterData.builtin(SnapshotBuiltinCharacter.all5),
     damageProfile: const SnapshotDamageProfile.uniform(),
     lastModified: DateTime.utc(2025),
+    clock: () => DateTime.utc(2025, 1, 2),
   );
 
   builder.setModule(
