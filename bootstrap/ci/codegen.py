@@ -48,7 +48,11 @@ def _step_protobuf() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Protobuf code generation completed."))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "All files generated successfully."))
 
-    generate_protobuf_ts(execute_command)
+
+def _step_protobuf_ts() -> None:
+    """Generate TypeScript protobuf bindings (requires pnpm)."""
+    generate_protobuf_ts(execute_command, required=True)
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "TypeScript protobuf generation completed."))
 
 
 def _step_frb() -> None:
@@ -97,6 +101,7 @@ def _step_l10n() -> None:
 
 CODEGEN_STEPS = {
     "protobuf": {"run": _step_protobuf, "depends": []},
+    "protobuf_ts": {"run": _step_protobuf_ts, "depends": []},
     "frb": {"run": _step_frb, "depends": []},
     "dart_build_runner": {"run": _step_dart_build_runner, "depends": ["frb", "protobuf"]},
     "l10n": {"run": _step_l10n, "depends": []},
@@ -106,8 +111,8 @@ CODEGEN_STEPS = {
 LANGUAGE_STEPS = {
     "python": ["protobuf"],
     "dart": ["protobuf", "frb", "dart_build_runner", "l10n"],
-    "site": ["protobuf"],
-    "all": ["protobuf", "frb", "dart_build_runner", "l10n"],
+    "site": ["protobuf_ts"],
+    "all": ["protobuf", "protobuf_ts", "frb", "dart_build_runner", "l10n"],
 }
 
 
