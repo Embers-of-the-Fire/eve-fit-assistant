@@ -10,6 +10,12 @@ use crate::error::ApiError;
 use crate::proto::fit as pb;
 use crate::provider::FitDataProvider;
 
+/// Per-group quantity cap for drones/fighters. Legitimate fits stay far below
+/// this (≤25 drones from bandwidth, ≤12 fighters per squadron); without a cap,
+/// a quantity near u32::MAX would expand into an unbounded Vec in
+/// `build_container` and exhaust isolate memory.
+const MAX_GROUP_QUANTITY: u32 = 100;
+
 fn is_valid_state(value: i32) -> bool {
     pb::slots::SlotState::is_valid(value)
 }
@@ -99,10 +105,22 @@ pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError
         if !is_valid_state(drone.state) {
             return Err(ApiError::bad_request("invalid drone slot state"));
         }
+        if drone.quantity > MAX_GROUP_QUANTITY {
+            return Err(ApiError::bad_request(format!(
+                "drone quantity {} exceeds {MAX_GROUP_QUANTITY}",
+                drone.quantity
+            )));
+        }
     }
     for fighter in &state.fighters {
         if !pb::snapshot_fighter::SquadronGroup::is_valid(fighter.group) {
             return Err(ApiError::bad_request("invalid fighter squadron group"));
+        }
+        if fighter.quantity > MAX_GROUP_QUANTITY {
+            return Err(ApiError::bad_request(format!(
+                "fighter quantity {} exceeds {MAX_GROUP_QUANTITY}",
+                fighter.quantity
+            )));
         }
         for ability in &fighter.abilities {
             if !pb::snapshot_fighter::Ability::is_valid(*ability) {
@@ -508,6 +526,35 @@ mod tests {
             level: 6,
         });
         assert!(validate_structure(&request(state)).is_err());
+    }
+
+    #[test]
+    fn rejects_excessive_drone_and_fighter_quantity() {
+        let mut drone_state = state();
+        drone_state.drones.push(pb::FitDrone {
+            type_id: 5,
+            state: pb::slots::SlotState::Active as i32,
+            quantity: MAX_GROUP_QUANTITY + 1,
+        });
+        assert!(validate_structure(&request(drone_state)).is_err());
+
+        let mut fighter_state = state();
+        fighter_state.fighters.push(pb::FitFighter {
+            type_id: 6,
+            quantity: MAX_GROUP_QUANTITY + 1,
+            max_squadron_size: 12,
+            group: pb::snapshot_fighter::SquadronGroup::Light as i32,
+            abilities: vec![],
+        });
+        assert!(validate_structure(&request(fighter_state)).is_err());
+
+        let mut ok_state = state();
+        ok_state.drones.push(pb::FitDrone {
+            type_id: 5,
+            state: pb::slots::SlotState::Active as i32,
+            quantity: MAX_GROUP_QUANTITY,
+        });
+        assert!(validate_structure(&request(ok_state)).is_ok());
     }
 
     #[test]
