@@ -14,6 +14,7 @@ import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fp.dart";
@@ -25,6 +26,7 @@ import "package:package_info_plus/package_info_plus.dart";
 
 part "attribute_debug_view.dart";
 part "debug_log.dart";
+part "fit_upload_token.dart";
 part "force_column.dart";
 part "remote_content_entry.dart";
 
@@ -50,6 +52,7 @@ class DeveloperSettingsPage extends ConsumerWidget {
           const ConfigListTile.custom(AttributeDebugViewTile()),
           const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
           const ConfigListTile.custom(ForceColumnTile()),
+          const ConfigListTile.custom(FitUploadTokenTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

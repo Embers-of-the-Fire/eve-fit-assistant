@@ -1,12 +1,17 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";
+import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
 import "package:eve_fit_assistant/features/fit_link/share_link.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
+import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -38,6 +43,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   Object? _loadingError;
   String? _actionError;
   bool _isExporting = false;
+  FitUploadResponse? _uploadResult;
 
   @override
   void initState() {
@@ -49,94 +55,147 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AppDialog(
-    title: context.l10n.fitExportDialogTitle,
-    content: SizedBox(
-      width: 420,
-      child: _loadingError != null
-          ? Text(context.l10n.fitExportLoadError)
-          : _fit == null
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SegmentedButton<FitTextExportFormat>(
-                  selected: <FitTextExportFormat>{_selectedFormat},
-                  onSelectionChanged: _isExporting
-                      ? null
-                      : (selection) =>
-                            _handleFormatChanged(selection.isEmpty ? null : selection.first),
-                  segments: [
-                    ButtonSegment<FitTextExportFormat>(
-                      value: FitTextExportFormat.native,
-                      label: Text(context.l10n.fitExportFormatNative),
-                    ),
-                    ButtonSegment<FitTextExportFormat>(
-                      value: FitTextExportFormat.eft,
-                      label: Text(context.l10n.fitExportFormatEft),
-                    ),
-                    const ButtonSegment<FitTextExportFormat>(
-                      value: FitTextExportFormat.snapshot,
-                      label: Text("Snapshot"),
+  Widget build(BuildContext context) {
+    final canUpload = ref.watch(
+      fitUploadTokenProvider.select((token) => token.value?.isNotEmpty ?? false),
+    );
+    final uploadResult = _uploadResult;
+    return AppDialog(
+      title: context.l10n.fitExportDialogTitle,
+      content: SizedBox(
+        width: 420,
+        child: _loadingError != null
+            ? Text(context.l10n.fitExportLoadError)
+            : _fit == null
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : uploadResult != null
+            ? _buildUploadResult(context, uploadResult)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SegmentedButton<FitTextExportFormat>(
+                    selected: <FitTextExportFormat>{_selectedFormat},
+                    onSelectionChanged: _isExporting
+                        ? null
+                        : (selection) =>
+                              _handleFormatChanged(selection.isEmpty ? null : selection.first),
+                    segments: [
+                      ButtonSegment<FitTextExportFormat>(
+                        value: FitTextExportFormat.native,
+                        label: Text(context.l10n.fitExportFormatNative),
+                      ),
+                      ButtonSegment<FitTextExportFormat>(
+                        value: FitTextExportFormat.eft,
+                        label: Text(context.l10n.fitExportFormatEft),
+                      ),
+                      ButtonSegment<FitTextExportFormat>(
+                        value: FitTextExportFormat.snapshot,
+                        label: Text(context.l10n.fitExportFormatSnapshot),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _descriptionFor(_selectedFormat, context),
+                    style: context.theme.textTheme.bodyMedium,
+                  ),
+                  if (_selectedFormat == FitTextExportFormat.eft) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.fitExportLossyWarning,
+                      style: context.theme.textTheme.bodySmall?.copyWith(
+                        color: context.theme.colorScheme.error,
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _descriptionFor(_selectedFormat, context),
-                  style: context.theme.textTheme.bodyMedium,
-                ),
-                if (_selectedFormat == FitTextExportFormat.eft) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.fitExportLossyWarning,
-                    style: context.theme.textTheme.bodySmall?.copyWith(
-                      color: context.theme.colorScheme.error,
+                  if (_actionError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _actionError!,
+                      style: context.theme.textTheme.bodySmall?.copyWith(
+                        color: context.theme.colorScheme.error,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-                if (_actionError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _actionError!,
-                    style: context.theme.textTheme.bodySmall?.copyWith(
-                      color: context.theme.colorScheme.error,
-                    ),
-                  ),
-                ],
-              ],
+              ),
+      ),
+      actions: uploadResult != null
+          ? [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(context.l10n.close),
+              ),
+              FilledButton(
+                onPressed: () => unawaited(_handleCopyUploadUrl(uploadResult.fitHash)),
+                child: Text(context.l10n.fitExportCopyLinkButton),
+              ),
+            ]
+          : [
+              if (canUpload && _selectedFormat == FitTextExportFormat.snapshot)
+                TextButton(
+                  onPressed: _fit == null || _isExporting ? null : _handleUpload,
+                  child: Text(context.l10n.fitUploadButton),
+                ),
+              TextButton(
+                onPressed: _fit == null || _isExporting ? null : _handleCopyLink,
+                child: Text(context.l10n.fitExportCopyLinkButton),
+              ),
+              TextButton(
+                onPressed: _fit == null || _isExporting ? null : _handleShare,
+                child: Text(context.l10n.share),
+              ),
+              TextButton(
+                onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
+                child: Text(context.l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _fit == null || _isExporting ? null : _handleCopy,
+                child: Text(_isExporting ? context.l10n.loading : context.l10n.copy),
+              ),
+            ],
+    );
+  }
+
+  Widget _buildUploadResult(BuildContext context, FitUploadResponse result) {
+    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          result.alreadyExisted
+              ? context.l10n.fitUploadSuccessExisting
+              : context.l10n.fitUploadSuccessNew,
+          style: context.theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        Text(context.l10n.fitUploadFitHashLabel, style: context.theme.textTheme.labelMedium),
+        SelectableText(result.fitHash, style: context.theme.textTheme.bodySmall),
+        const SizedBox(height: 8),
+        Text(context.l10n.fitUploadSnapshotUrlLabel, style: context.theme.textTheme.labelMedium),
+        SelectableText(url, style: context.theme.textTheme.bodySmall),
+        if (_actionError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _actionError!,
+            style: context.theme.textTheme.bodySmall?.copyWith(
+              color: context.theme.colorScheme.error,
             ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: _fit == null || _isExporting ? null : _handleCopyLink,
-        child: Text(context.l10n.fitExportCopyLinkButton),
-      ),
-      TextButton(
-        onPressed: _fit == null || _isExporting ? null : _handleShare,
-        child: Text(context.l10n.share),
-      ),
-      TextButton(
-        onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
-        child: Text(context.l10n.cancel),
-      ),
-      FilledButton(
-        onPressed: _fit == null || _isExporting ? null : _handleCopy,
-        child: Text(_isExporting ? context.l10n.loading : context.l10n.copy),
-      ),
-    ],
-  );
+          ),
+        ],
+      ],
+    );
+  }
 
   String _descriptionFor(FitTextExportFormat format, BuildContext context) => switch (format) {
     FitTextExportFormat.native => context.l10n.fitExportFormatNativeDescription,
     FitTextExportFormat.eft => context.l10n.fitExportFormatEftDescription,
-    FitTextExportFormat.snapshot =>
-      "Self-contained protobuf snapshot of this fit (base64-encoded), including localized "
-          "names, slot layout and computed statistics.",
+    FitTextExportFormat.snapshot => context.l10n.fitExportFormatSnapshotDescription,
   };
 
   void _handleFormatChanged(FitTextExportFormat? format) {
@@ -178,6 +237,82 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     await _runExportAction((fit, result) async {
       await SharePlus.instance.share(ShareParams(text: result.text, subject: fit.metadata.name));
     }, onErrorMessage: context.l10n.fitExportShareError);
+  }
+
+  Future<void> _handleUpload() async {
+    final fit = _fit;
+    if (fit == null) return;
+
+    setState(() {
+      _isExporting = true;
+      _actionError = null;
+    });
+    try {
+      final response = await ref.read(fitSnapshotUploadFnProvider)(
+        ref,
+        fitId: widget.fitId,
+        fit: fit,
+      );
+      if (!mounted) return;
+      setState(() => _uploadResult = response);
+    } on FitUploadNotReadyException {
+      warning("Fit upload aborted: data repository is not ready");
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitUploadErrorDataNotReady);
+    } on FitUploadException catch (e, stackTrace) {
+      if (e.code == FitUploadErrorCode.unexpected) {
+        fatal("Fit upload failed unexpectedly", error: e, stackTrace: stackTrace);
+      } else {
+        warning(
+          "Fit upload rejected (${e.code.name})${e.message == null ? "" : ": ${e.message}"}"
+          "${e.issues == null ? "" : "\nissues: ${jsonEncode(e.issues)}"}",
+        );
+      }
+      if (!mounted) return;
+      setState(() => _actionError = _uploadErrorMessage(e));
+    } on Object catch (e, stackTrace) {
+      fatal("Fit upload failed with an unexpected error", error: e, stackTrace: stackTrace);
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitUploadErrorGeneric);
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  String _uploadErrorMessage(FitUploadException e) => switch (e.code) {
+    FitUploadErrorCode.unauthorized => context.l10n.fitUploadErrorUnauthorized,
+    FitUploadErrorCode.snapshotIncomplete => context.l10n.fitUploadErrorSnapshotIncomplete,
+    FitUploadErrorCode.validationFailed => context.l10n.fitUploadErrorValidation(
+      message: _describeUploadFailure(e),
+    ),
+    FitUploadErrorCode.unknownType => context.l10n.fitUploadErrorUnknownType(
+      message: e.message ?? "",
+    ),
+    FitUploadErrorCode.network => context.l10n.fitUploadErrorNetwork,
+    _ => context.l10n.fitUploadErrorGeneric,
+  };
+
+  String _describeUploadFailure(FitUploadException e) => [
+    if (e.message case final message? when message.isNotEmpty) message,
+    if (e.issues != null) jsonEncode(e.issues),
+  ].join(" — ");
+
+  Future<void> _handleCopyUploadUrl(String fitHash) async {
+    final url = FitSnapshotUploadApi.byHashUrl(fitHash);
+    try {
+      await Clipboard.setData(ClipboardData(text: url));
+    } on Object {
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitExportClipboardError);
+      return;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.fitUploadUrlCopied)));
   }
 
   Future<void> _handleCopyLink() async {

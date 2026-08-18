@@ -958,6 +958,8 @@
   "fitExportFormatFittingLinkDescription": "复制可粘贴到 EVE 的装配链接。游戏支持的模块、弹药、无人机和舰载机信息会被保留。",
   "fitExportFormatEft": "EFT 文本",
   "fitExportFormatEftDescription": "复制可用于 pyfa 等第三方工具的 EFT 文本格式。",
+  "fitExportFormatSnapshot": "快照",
+  "fitExportFormatSnapshotDescription": "自包含的 protobuf 配置快照（base64 编码），包含本地化名称、槽位布局与计算属性。",
   "fitExportLossyWarning": "该导出格式会丢失部分配置细节。",
   "fitExportCopied": "已复制配置导出内容。",
   "fitExportClipboardError": "当前无法复制该配置导出内容。",
@@ -965,6 +967,38 @@
   "fitExportCopyLinkButton": "复制链接",
   "fitExportLinkCopied": "已复制配置分享链接。",
   "fitExportLinkTooLarge": "该配置过大，无法生成分享链接，请改用文本导出。",
+  "fitUploadButton": "上传",
+  "fitUploadSuccessNew": "配置已上传至平台。",
+  "fitUploadSuccessExisting": "平台已存在相同配置。",
+  "fitUploadFitHashLabel": "配置哈希",
+  "fitUploadSnapshotUrlLabel": "快照链接",
+  "fitUploadUrlCopied": "已复制快照链接。",
+  "fitUploadErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
+  "fitUploadErrorUnauthorized": "上传令牌无效，请在开发者设置中检查。",
+  "fitUploadErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
+  "fitUploadErrorValidation": "平台拒绝了该配置：{message}",
+  "@fitUploadErrorValidation": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "fitUploadErrorUnknownType": "平台无法识别该配置中的物品：{message}",
+  "@fitUploadErrorUnknownType": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "fitUploadErrorNetwork": "无法连接配置存储服务。",
+  "fitUploadErrorGeneric": "当前无法上传该配置。",
+  "fitUploadTokenTitle": "配置存储上传令牌",
+  "fitUploadTokenConfiguredDescription": "已配置——可向平台上传配置",
+  "fitUploadTokenNotConfiguredDescription": "未配置——上传配置至平台前需要先设置令牌",
+  "fitUploadTokenHint": "api.efa-tech.dev 配置存储的 Bearer 令牌",
+  "fitUploadTokenClearButton": "清除",
   "fitLinkInvalidDialogTitle": "无效的配置链接",
   "fitLinkInvalidDialogDescription": "该链接无效或已损坏，未导入任何数据。",
   "fitListActionExport": "导出",
