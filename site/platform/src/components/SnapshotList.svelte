@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { fetchFits } from "../lib/api";
-import { t } from "../lib/i18n.svelte";
+import { locale, t } from "../lib/i18n.svelte";
 import type { FitListEntry } from "../lib/types";
 
 let fits = $state<FitListEntry[]>([]);
@@ -20,7 +20,8 @@ onMount(async () => {
 
 function formatDate(iso: string): string {
     const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
+    const tag = locale.current === "zh" ? "zh-CN" : "en-US";
+    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(tag);
 }
 </script>
 
