@@ -1,11 +1,15 @@
 packages:
   - "site/*"
   - "worker/*"
+  - "packages/efa_proto_ts"
 
 allowBuilds:
   '@biomejs/biome': true
+  '@bufbuild/buf': true
   '@tailwindcss/oxide': true
   esbuild: true
   sharp: true
   workerd: true
 
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20260818.1'

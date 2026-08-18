@@ -14,6 +14,7 @@ from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
 from bootstrap.data.codegen import CODEGEN_DART
+from bootstrap.data.codegen.protobuf_ts import generate_protobuf_ts
 from bootstrap.log import info
 from bootstrap.log import warning
 from bootstrap.utils import execute_command
@@ -46,6 +47,8 @@ def _step_protobuf() -> None:
 
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Protobuf code generation completed."))
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "All files generated successfully."))
+
+    generate_protobuf_ts(execute_command)
 
 
 def _step_frb() -> None:
@@ -103,7 +106,7 @@ CODEGEN_STEPS = {
 LANGUAGE_STEPS = {
     "python": ["protobuf"],
     "dart": ["protobuf", "frb", "dart_build_runner", "l10n"],
-    "site": [],
+    "site": ["protobuf"],
     "all": ["protobuf", "frb", "dart_build_runner", "l10n"],
 }
 

@@ -59,6 +59,11 @@ dashboards, interactive content. One consistent console look across all of them.
 | `neonGreen` | `#4dffdf` | decorative highlight (sparing) |
 | `neonPurple` | `#9b6dff` | decorative highlight (sparing) |
 | `neonPink` | `#ff4dff` | decorative highlight (sparing) |
+| `consoleSurface` | `#12202a` | cards, panels (site/platform) |
+| `consoleSurfaceAlt` | `#1a2e3a` | hover / nested surfaces (site/platform) |
+| `consoleBorder` | `#22404f` | hairline separators (site/platform) |
+| `consoleTextDim` | `#9db8c6` | secondary text (site/platform) |
+| `consoleTextMuted` | `#64808f` | captions, metadata (site/platform) |
 
 `site/share` currently ships a close neutral-dark approximation (`#0d1117` bg, `#4d9fff`
 accent); when it is next rebuilt it should converge on the exact workload tokens above.

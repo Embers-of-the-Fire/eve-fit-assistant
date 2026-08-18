@@ -1,0 +1,32 @@
+<script lang="ts">
+import { onMount } from "svelte";
+import { initLocale, locale, t } from "../lib/i18n.svelte";
+
+onMount(initLocale);
+</script>
+
+<header class="border-b border-console-border bg-console-surface">
+    <div class="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
+        <a href="/" class="text-lg font-bold tracking-wide text-console-primary">
+            EFA <span class="text-console-text">Platform</span>
+        </a>
+        <nav class="flex flex-1 items-center gap-4 text-sm">
+            <a href="/" class="text-console-text-dim transition-colors hover:text-console-highlight">
+                {t("nav.fits")}
+            </a>
+            <a
+                href="/account"
+                class="text-console-text-dim transition-colors hover:text-console-highlight"
+            >
+                {t("nav.account")}
+            </a>
+        </nav>
+        <button
+            type="button"
+            onclick={() => locale.toggle()}
+            class="rounded border border-console-border px-2 py-1 text-xs text-console-text-dim transition-colors hover:border-console-primary hover:text-console-highlight"
+        >
+            {locale.current === "zh" ? "EN" : "中文"}
+        </button>
+    </div>
+</header>

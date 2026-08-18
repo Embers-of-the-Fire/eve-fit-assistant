@@ -19,6 +19,7 @@ from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
 from bootstrap.data.codegen import CODEGEN_DART
+from bootstrap.data.codegen.protobuf_ts import generate_protobuf_ts
 from bootstrap.log import info
 from bootstrap.log import warning
 from bootstrap.utils import get_command
@@ -75,6 +76,8 @@ def _run_protobuf() -> None:
             + ", ".join(failed)
             + "."
         )
+
+    generate_protobuf_ts(runtime.execute)
 
 
 def _run_rust() -> None:

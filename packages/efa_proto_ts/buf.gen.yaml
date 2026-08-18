@@ -1,0 +1,12 @@
+version: v2
+inputs:
+    - directory: data/schema
+      paths:
+          - data/schema/utils.proto
+          - data/schema/fit.proto
+          - data/schema/fit_snapshot.proto
+          - data/schema/fit_request.proto
+plugins:
+    - local: protoc-gen-es
+      out: packages/efa_proto_ts/src/gen
+      opt: target=ts
