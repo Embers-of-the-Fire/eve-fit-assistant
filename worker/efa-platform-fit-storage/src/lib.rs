@@ -185,9 +185,14 @@ async fn handle_request(env: Env, request_id: &str) -> Result<Response, ApiError
     }
 }
 
-async fn handle_health(env: Env) -> Result<Response, ApiError> {
-    d1::health_check(&platform_db(&env)?).await?;
-    d1::health_check(&fit_db(&env)?).await?;
+async fn handle_health(req: Request, env: Env) -> Result<Response, ApiError> {
+    // Unauthenticated callers get a cheap in-memory liveness reply; the D1
+    // round trips only run for authorized callers to avoid cheap load
+    // amplification against both databases.
+    if auth::check_authorization(&req, &env).is_ok() {
+        d1::health_check(&platform_db(&env)?).await?;
+        d1::health_check(&fit_db(&env)?).await?;
+    }
     Response::from_json(&serde_json::json!({ "ok": true }))
         .map_err(|e| ApiError::internal(format!("failed to build response: {e}")))
 }
@@ -223,8 +228,10 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                     .unwrap_or_else(render_error))
             },
         )
-        .get_async("/platform/storage/fit/health", |_req, ctx| async move {
-            Ok(handle_health(ctx.env).await.unwrap_or_else(render_error))
+        .get_async("/platform/storage/fit/health", |req, ctx| async move {
+            Ok(handle_health(req, ctx.env)
+                .await
+                .unwrap_or_else(render_error))
         })
         .run(req, env)
         .await

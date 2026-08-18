@@ -18,7 +18,7 @@ CORS on all endpoints.
 | `POST /platform/storage/fit/submit` | Bearer | `FitUploadRequest` protobuf body (`Content-Type: application/x-protobuf`) | `FitUploadResponse` protobuf |
 | `GET /platform/storage/fit/by-hash/:fit_hash` | public | — | `FitSnapshot` protobuf bytes; 404 if unknown |
 | `GET /platform/storage/fit/request/:request_id` | public | — | `FitRequestRecord` protobuf; 404 if unknown |
-| `GET /platform/storage/fit/health` | public | — | 200 JSON `{ "ok": true }` after `SELECT 1` on both databases |
+| `GET /platform/storage/fit/health` | public | — | 200 JSON `{ "ok": true }`; with a valid Bearer token it additionally runs `SELECT 1` on both databases and reports failures |
 
 The wire messages live in `data/schema/fit_request.proto` (package `fit`).
 The fit hash is `lowercase_hex(sha256(canonical FitState bytes))`; the
