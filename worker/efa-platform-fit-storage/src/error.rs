@@ -58,9 +58,16 @@ impl ApiError {
     }
 
     pub fn body(&self) -> Value {
+        // 5xx messages carry internal detail (D1 errors, secret state); only log
+        // them server-side and return a fixed string to clients.
+        let message: &str = if self.status >= 500 {
+            "internal server error"
+        } else {
+            &self.message
+        };
         let mut body = json!({
             "error": self.code,
-            "message": self.message,
+            "message": message,
         });
         if let Some(issues) = &self.issues {
             body["issues"] = issues.clone();

@@ -29,6 +29,9 @@ fn add_cors(res: &mut Response) -> Result<()> {
 }
 
 fn render_error(err: ApiError) -> Response {
+    if err.status >= 500 {
+        worker::console_error!("{err}");
+    }
     match Response::from_json(&err.body()) {
         Ok(res) => res.with_status(err.status),
         Err(e) => Response::error(format!("failed to render error: {e}"), 500)
