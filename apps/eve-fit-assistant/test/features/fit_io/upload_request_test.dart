@@ -7,6 +7,7 @@ import "package:efa_proto/fit.pb.dart" show Slots_SlotState;
 import "package:efa_proto/fit_request.pb.dart" hide FitDynamicItem;
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
+import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -217,7 +218,7 @@ void main() {
     });
 
     test("built-in character carries only a display name", () {
-      final character = _build(_makeFit(characterId: "predefined_all_5")).fit.character;
+      final character = _build(_makeFit(characterId: predefinedMaxCharacterId)).fit.character;
       expect(character.hasCharacterId(), isFalse);
       expect(character.names["en"], "All 5");
     });
