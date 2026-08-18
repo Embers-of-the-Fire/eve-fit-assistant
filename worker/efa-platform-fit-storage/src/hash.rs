@@ -14,10 +14,18 @@ pub fn canonical_state(state: &pb::FitState) -> pb::FitState {
     state
         .drones
         .sort_by_key(|d| (d.type_id, d.state, d.quantity));
-    state.fighters.sort_by_key(|f| (f.type_id, f.quantity));
     for fighter in &mut state.fighters {
         fighter.abilities.sort();
     }
+    state.fighters.sort_by_key(|f| {
+        (
+            f.type_id,
+            f.quantity,
+            f.max_squadron_size,
+            f.group,
+            f.abilities.clone(),
+        )
+    });
     state.implants.sort_by_key(|i| i.slot_index);
     state.boosters.sort_by_key(|b| b.slot_index);
     state.skills.sort_by_key(|s| (s.type_id, s.level));
@@ -206,6 +214,37 @@ mod tests {
         let hash_b = fit_hash(&canonical_state(&shuffled(&state)).encode_to_vec());
         assert_eq!(hash_a, hash_b);
         assert_eq!(hash_a.len(), 64);
+    }
+
+    #[test]
+    fn canonical_hash_is_fighter_order_invariant() {
+        let mut state = sample_state();
+        state.fighters = vec![
+            pb::FitFighter {
+                type_id: 40552,
+                quantity: 2,
+                max_squadron_size: 9,
+                group: pb::snapshot_fighter::SquadronGroup::Light as i32,
+                abilities: vec![
+                    pb::snapshot_fighter::Ability::AttackMissiles as i32,
+                    pb::snapshot_fighter::Ability::Turret as i32,
+                ],
+            },
+            pb::FitFighter {
+                type_id: 40552,
+                quantity: 2,
+                max_squadron_size: 12,
+                group: pb::snapshot_fighter::SquadronGroup::Heavy as i32,
+                abilities: vec![pb::snapshot_fighter::Ability::Turret as i32],
+            },
+        ];
+        let mut swapped = state.clone();
+        swapped.fighters.reverse();
+        swapped.fighters[1].abilities.reverse();
+        assert_eq!(
+            fit_hash(&canonical_state(&state).encode_to_vec()),
+            fit_hash(&canonical_state(&swapped).encode_to_vec())
+        );
     }
 
     #[test]
