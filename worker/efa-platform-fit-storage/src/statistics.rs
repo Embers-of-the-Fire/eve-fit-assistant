@@ -71,8 +71,11 @@ fn get_or(item: &Item, attribute_id: i32, default: f64) -> f64 {
 
 /// Capacitor stability point, EVE University formula; port of
 /// `lib/utils/native/algo/capacitor.dart`. Returns a percentage 0..100, or -1
-/// on negative discriminant.
+/// on negative discriminant or non-positive capacity.
 pub fn capacitor_stable_at(capacity: f64, target_recharge_rate: f64, recharge_time_ms: f64) -> f64 {
+    if capacity <= 0.0 {
+        return -1.0;
+    }
     let v = target_recharge_rate;
     let t = recharge_time_ms / 1000.0;
     let cm = capacity;
@@ -315,6 +318,8 @@ mod tests {
         assert_eq!(capacitor_stable_at(1000.0, 0.0, 250_000.0), 100.0);
         // Negative discriminant → -1.
         assert_eq!(capacitor_stable_at(1.0, 1e9, 1.0), -1.0);
+        // Zero capacity → -1 (avoids 0/0 NaN).
+        assert_eq!(capacitor_stable_at(0.0, 10.0, 250_000.0), -1.0);
     }
 
     #[test]
