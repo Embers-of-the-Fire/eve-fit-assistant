@@ -179,6 +179,15 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
         const SizedBox(height: 8),
         Text(context.l10n.fitUploadSnapshotUrlLabel, style: context.theme.textTheme.labelMedium),
         SelectableText(url, style: context.theme.textTheme.bodySmall),
+        if (_actionError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _actionError!,
+            style: context.theme.textTheme.bodySmall?.copyWith(
+              color: context.theme.colorScheme.error,
+            ),
+          ),
+        ],
       ],
     );
   }
