@@ -143,6 +143,57 @@ void main() {
     );
   });
 
+  test("falls back to the status code when the 401 body is empty", () async {
+    final api = _apiWith((options, body) async {
+      return ResponseBody.fromBytes(Uint8List(0), 401);
+    });
+
+    await expectLater(
+      () => api.submit(_request(), token: "t"),
+      throwsA(
+        isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.unauthorized),
+      ),
+    );
+  });
+
+  test("falls back to the status code when the body is a proxy HTML page", () async {
+    final api = _apiWith((options, body) async {
+      return ResponseBody.fromString(
+        "<html><body>404 Not Found</body></html>",
+        404,
+        headers: {
+          Headers.contentTypeHeader: ["text/html"],
+        },
+      );
+    });
+
+    await expectLater(
+      () => api.submit(_request(), token: "t"),
+      throwsA(isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.notFound)),
+    );
+  });
+
+  test("falls back to the status code when the JSON body has no error field", () async {
+    final api = _apiWith((options, body) async {
+      return ResponseBody.fromString(
+        jsonEncode({"message": "token expired"}),
+        401,
+        headers: {
+          Headers.contentTypeHeader: ["application/json"],
+        },
+      );
+    });
+
+    await expectLater(
+      () => api.submit(_request(), token: "t"),
+      throwsA(
+        isA<FitUploadException>()
+            .having((e) => e.code, "code", FitUploadErrorCode.unauthorized)
+            .having((e) => e.message, "message", "token expired"),
+      ),
+    );
+  });
+
   test("maps connection failures to the network code", () async {
     final api = _apiWith((options, body) async {
       throw DioException(

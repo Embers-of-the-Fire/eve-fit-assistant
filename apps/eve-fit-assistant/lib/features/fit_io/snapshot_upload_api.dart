@@ -74,17 +74,28 @@ class FitSnapshotUploadApi {
 
   FitUploadException _mapDioException(DioException e) {
     final body = _decodeErrorBody(e.response?.data);
-    if (body != null) {
-      final code = switch (body.error) {
-        "bad_request" => FitUploadErrorCode.badRequest,
-        "unauthorized" => FitUploadErrorCode.unauthorized,
-        "not_found" => FitUploadErrorCode.notFound,
-        "snapshot_incomplete" => FitUploadErrorCode.snapshotIncomplete,
-        "unknown_type" => FitUploadErrorCode.unknownType,
-        "validation_failed" => FitUploadErrorCode.validationFailed,
-        _ => FitUploadErrorCode.unexpected,
-      };
-      return FitUploadException(code, body.message, body.issues);
+    final envelopeCode = switch (body?.error) {
+      "bad_request" => FitUploadErrorCode.badRequest,
+      "unauthorized" => FitUploadErrorCode.unauthorized,
+      "not_found" => FitUploadErrorCode.notFound,
+      "snapshot_incomplete" => FitUploadErrorCode.snapshotIncomplete,
+      "unknown_type" => FitUploadErrorCode.unknownType,
+      "validation_failed" => FitUploadErrorCode.validationFailed,
+      _ => null,
+    };
+    if (envelopeCode != null) {
+      return FitUploadException(envelopeCode, body?.message, body?.issues);
+    }
+    final statusCode = switch (e.response?.statusCode) {
+      400 => FitUploadErrorCode.badRequest,
+      401 || 403 => FitUploadErrorCode.unauthorized,
+      404 => FitUploadErrorCode.notFound,
+      409 => FitUploadErrorCode.snapshotIncomplete,
+      422 => FitUploadErrorCode.validationFailed,
+      _ => null,
+    };
+    if (statusCode != null) {
+      return FitUploadException(statusCode, body?.message ?? e.message);
     }
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
