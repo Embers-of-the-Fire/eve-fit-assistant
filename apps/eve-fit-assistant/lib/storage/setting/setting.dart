@@ -284,9 +284,9 @@ class AppSettingService extends _$AppSettingService {
   /// scrubs it from disk.
   static Future<void> _migrateFitUploadToken(Map<String, dynamic> json) async {
     final legacy = json.remove(FitUploadTokenStore.legacySettingsKey);
-    if (legacy is String && legacy.isNotEmpty) {
+    if (legacy is String && legacy.trim().isNotEmpty) {
       final store = FitUploadTokenStore();
-      if ((await store.read()).isEmpty) await store.write(legacy);
+      if ((await store.read()).isEmpty) await store.write(legacy.trim());
     }
   }
 
