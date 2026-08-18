@@ -44,12 +44,7 @@ class FitUploadRequestBuilder {
       throw const FitUploadNotReadyException();
     }
 
-    final appVersion = await ref
-        .read(appVersionProvider.future)
-        .then((version) => version, onError: (_) => "unknown");
-    final skills = await ref
-        .read(characterRegistryManagerProvider.notifier)
-        .resolveCharacterSkills(fit.body.characterId, collection.getSkillTypeIds());
+    final emulated = ref.read(nativeEmulatedShipProvider(fitId));
     final characterName = switch (fit.body.characterId) {
       predefinedMaxCharacterId => "All 5",
       predefinedZeroCharacterId => "All 0",
@@ -58,6 +53,13 @@ class FitUploadRequestBuilder {
         ref.read(characterRegistryManagerProvider).characters[characterId]?.name ?? characterId,
     };
 
+    final appVersion = await ref
+        .read(appVersionProvider.future)
+        .then((version) => version, onError: (_) => "unknown");
+    final skills = await ref
+        .read(characterRegistryManagerProvider.notifier)
+        .resolveCharacterSkills(fit.body.characterId, collection.getSkillTypeIds());
+
     return buildFitUploadRequest(
       fit: fit,
       snapshotHash: snapshotHash,
@@ -65,7 +67,7 @@ class FitUploadRequestBuilder {
       skills: skills,
       characterName: characterName,
       collection: collection,
-      emulated: ref.read(nativeEmulatedShipProvider(fitId)),
+      emulated: emulated,
     );
   }
 }
