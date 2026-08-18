@@ -11,7 +11,7 @@ import "package:eve_fit_assistant/features/fit_link/share_link.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
-import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -57,7 +57,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   @override
   Widget build(BuildContext context) {
     final canUpload = ref.watch(
-      appSettingServiceProvider.select((s) => s.fitStorageUploadToken.isNotEmpty),
+      fitUploadTokenProvider.select((token) => token.value?.isNotEmpty ?? false),
     );
     final uploadResult = _uploadResult;
     return AppDialog(
@@ -240,7 +240,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     });
     try {
       final request = await FitUploadRequestBuilder(ref).build(fitId: widget.fitId, fit: fit);
-      final token = ref.read(appSettingServiceProvider).fitStorageUploadToken;
+      final token = await ref.read(fitUploadTokenStoreProvider).read();
       final response = await FitSnapshotUploadApi().submit(request, token: token);
       if (!mounted) return;
       setState(() => _uploadResult = response);

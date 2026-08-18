@@ -6,7 +6,7 @@ class FitUploadTokenTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final configured = ref.watch(
-      appSettingServiceProvider.select((s) => s.fitStorageUploadToken.isNotEmpty),
+      fitUploadTokenProvider.select((token) => token.value?.isNotEmpty ?? false),
     );
     return ListTile(
       leading: const Icon(Icons.key_outlined),
@@ -22,8 +22,9 @@ class FitUploadTokenTile extends ConsumerWidget {
 
   Future<void> _editToken(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController(
-      text: ref.read(appSettingServiceProvider).fitStorageUploadToken,
+      text: await ref.read(fitUploadTokenStoreProvider).read(),
     );
+    if (!context.mounted) return;
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -58,9 +59,6 @@ class FitUploadTokenTile extends ConsumerWidget {
       ),
     );
     if (saved != true) return;
-    final token = controller.text.trim();
-    ref
-        .read(appSettingServiceProvider.notifier)
-        .update((setting) => setting.copyWith(fitStorageUploadToken: token));
+    unawaited(ref.read(fitUploadTokenProvider.notifier).set(controller.text));
   }
 }
