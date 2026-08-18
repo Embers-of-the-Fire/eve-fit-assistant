@@ -3,7 +3,10 @@ use std::collections::{HashMap, HashSet};
 use eve_fit_os::calculate::Ship;
 use eve_fit_os::calculate::item::{FighterAbility, ItemID};
 use eve_fit_os::fit as ef;
-use eve_fit_os::validate::{ValidationIssue, ValidationIssueKind, validate_fit};
+use eve_fit_os::validate::{
+    ValidationErrorKey, ValidationIssue, ValidationIssueKind, ValidationSlotType,
+    ValidationWarningKey, validate_fit,
+};
 use serde_json::{Value, json};
 
 use crate::error::ApiError;
@@ -360,13 +363,65 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
     )
 }
 
+/// Wire code for `ValidationSlotType` in the `issues` array. Explicit mapping:
+/// Debug output is not a stable representation, and the response payload is
+/// part of this crate's API contract.
+fn slot_type_code(slot_type: ValidationSlotType) -> &'static str {
+    match slot_type {
+        ValidationSlotType::High => "High",
+        ValidationSlotType::Medium => "Medium",
+        ValidationSlotType::Low => "Low",
+        ValidationSlotType::Rig => "Rig",
+        ValidationSlotType::SubSystem => "SubSystem",
+        ValidationSlotType::Service => "Service",
+        ValidationSlotType::TacticalMode => "TacticalMode",
+        ValidationSlotType::Implant => "Implant",
+        ValidationSlotType::Booster => "Booster",
+        ValidationSlotType::Drone => "Drone",
+        ValidationSlotType::Fighter => "Fighter",
+        ValidationSlotType::Ship => "Ship",
+    }
+}
+
+/// Wire code for `ValidationErrorKey`; carries the variant name only, not its
+/// field values.
+fn error_kind_code(key: &ValidationErrorKey) -> &'static str {
+    match key {
+        ValidationErrorKey::IncompatibleChargeSize { .. } => "IncompatibleChargeSize",
+        ValidationErrorKey::IncompatibleChargeCapacity { .. } => "IncompatibleChargeCapacity",
+        ValidationErrorKey::IncompatibleChargeGroup { .. } => "IncompatibleChargeGroup",
+        ValidationErrorKey::TooMuchTurret { .. } => "TooMuchTurret",
+        ValidationErrorKey::TooMuchLauncher { .. } => "TooMuchLauncher",
+        ValidationErrorKey::ConflictItem { .. } => "ConflictItem",
+        ValidationErrorKey::DuplicateBooster { .. } => "DuplicateBooster",
+        ValidationErrorKey::IncompatibleShipGroup { .. } => "IncompatibleShipGroup",
+        ValidationErrorKey::IncompatibleShipType { .. } => "IncompatibleShipType",
+        ValidationErrorKey::IncompatibleRigSize { .. } => "IncompatibleRigSize",
+        ValidationErrorKey::PowergridExceeded { .. } => "PowergridExceeded",
+        ValidationErrorKey::CpuExceeded { .. } => "CpuExceeded",
+        ValidationErrorKey::CalibrationExceeded { .. } => "CalibrationExceeded",
+        ValidationErrorKey::DroneBandwidthExceeded { .. } => "DroneBandwidthExceeded",
+        ValidationErrorKey::DroneBayExceeded { .. } => "DroneBayExceeded",
+        ValidationErrorKey::TooManyActiveDrones { .. } => "TooManyActiveDrones",
+        ValidationErrorKey::TooMuchFighterTube { .. } => "TooMuchFighterTube",
+        ValidationErrorKey::TooMuchFighterSquadron { .. } => "TooMuchFighterSquadron",
+        ValidationErrorKey::StateExceedsMax { .. } => "StateExceedsMax",
+    }
+}
+
+fn warning_kind_code(key: &ValidationWarningKey) -> &'static str {
+    match key {
+        ValidationWarningKey::MissingCharge => "MissingCharge",
+    }
+}
+
 fn issue_json(issue: &ValidationIssue) -> Value {
     let (severity, kind) = match &issue.kind {
-        ValidationIssueKind::Error(key) => ("error", format!("{key:?}")),
-        ValidationIssueKind::Warning(key) => ("warning", format!("{key:?}")),
+        ValidationIssueKind::Error(key) => ("error", error_kind_code(key)),
+        ValidationIssueKind::Warning(key) => ("warning", warning_kind_code(key)),
     };
     json!({
-        "slot_type": format!("{:?}", issue.slot_type),
+        "slot_type": slot_type_code(issue.slot_type),
         "index": issue.index,
         "severity": severity,
         "kind": kind,
