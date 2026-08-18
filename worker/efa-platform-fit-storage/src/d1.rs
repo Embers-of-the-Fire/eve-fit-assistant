@@ -81,6 +81,26 @@ async fn run(db: &D1Database, sql: &str, params: &[JsValue]) -> Result<(), ApiEr
     Ok(())
 }
 
+async fn run_change_count(
+    db: &D1Database,
+    sql: &str,
+    params: &[JsValue],
+) -> Result<usize, ApiError> {
+    let result = db
+        .prepare(sql)
+        .bind(params)
+        .map_err(|e| ApiError::internal(format!("D1 bind failed: {e}")))?
+        .run()
+        .await
+        .map_err(|e| ApiError::internal(format!("D1 run failed: {e}")))?;
+    let changes = result
+        .meta()
+        .map_err(|e| ApiError::internal(format!("D1 meta failed: {e}")))?
+        .and_then(|meta| meta.changes)
+        .ok_or_else(|| ApiError::internal("D1 run: missing change count"))?;
+    Ok(changes)
+}
+
 /// Chunked family lookup (spec §7.2). `ids == None` fetches the whole family.
 pub async fn fetch_family(
     db: &D1Database,
@@ -167,6 +187,8 @@ pub async fn fit_exists(db: &D1Database, fit_hash: &str) -> Result<bool, ApiErro
     Ok(!rows.is_empty())
 }
 
+/// Inserts the fit row, tolerating concurrent re-submits of the same fit hash.
+/// Returns `true` when this call inserted the row, `false` when it already existed.
 pub async fn insert_fit(
     db: &D1Database,
     fit_hash: &str,
@@ -174,10 +196,10 @@ pub async fn insert_fit(
     snapshot_hash: &str,
     fit_state: &[u8],
     snapshot: &[u8],
-) -> Result<(), ApiError> {
-    run(
+) -> Result<bool, ApiError> {
+    let changes = run_change_count(
         db,
-        "INSERT INTO fits (fit_hash, server_id, snapshot_hash, fit_state, snapshot) \
+        "INSERT OR IGNORE INTO fits (fit_hash, server_id, snapshot_hash, fit_state, snapshot) \
          VALUES (?, ?, ?, ?, ?)",
         &[
             js_text(fit_hash),
@@ -187,7 +209,8 @@ pub async fn insert_fit(
             js_blob(snapshot),
         ],
     )
-    .await
+    .await?;
+    Ok(changes > 0)
 }
 
 pub async fn insert_request(

@@ -85,8 +85,9 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
     let canonical_bytes = canonical.encode_to_vec();
     let fit_hash = hash::fit_hash(&canonical_bytes);
 
-    // 5. Idempotent re-submit: skip computation when the fit row exists.
-    let already_existed = d1::fit_exists(&fit_db, &fit_hash).await?;
+    // 5. Idempotent re-submit: skip computation when the fit row exists (fast path;
+    //    the insert below is conflict-tolerant and stays authoritative under races).
+    let mut already_existed = d1::fit_exists(&fit_db, &fit_hash).await?;
 
     if !already_existed {
         // 6a. Prefetch the transitive closure (unknown seed type → 422).
@@ -128,7 +129,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
         // 6d/6e. Assemble + store the snapshot.
         let created_at_ms = Date::now().as_millis() as i64;
         let snapshot = snapshot::assemble(&request, &canonical, &ship, &data, created_at_ms);
-        d1::insert_fit(
+        let inserted = d1::insert_fit(
             &fit_db,
             &fit_hash,
             &request.server_id,
@@ -137,6 +138,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
             &snapshot.encode_to_vec(),
         )
         .await?;
+        already_existed = !inserted;
     }
 
     // 7. Record the request (always, also for re-submits).
