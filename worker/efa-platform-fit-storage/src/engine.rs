@@ -101,6 +101,21 @@ pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError
         }
     }
 
+    // group_id is a u8 derived from the entry index in build_container; reject
+    // lists that would overflow it.
+    let max_groups = u8::MAX as usize + 1;
+    if state.drones.len() > max_groups {
+        return Err(ApiError::bad_request(format!(
+            "drone group count {} exceeds {max_groups}",
+            state.drones.len()
+        )));
+    }
+    if state.fighters.len() > max_groups {
+        return Err(ApiError::bad_request(format!(
+            "fighter group count {} exceeds {max_groups}",
+            state.fighters.len()
+        )));
+    }
     for drone in &state.drones {
         if !is_valid_state(drone.state) {
             return Err(ApiError::bad_request("invalid drone slot state"));
@@ -554,6 +569,43 @@ mod tests {
             state: pb::slots::SlotState::Active as i32,
             quantity: MAX_GROUP_QUANTITY,
         });
+        assert!(validate_structure(&request(ok_state)).is_ok());
+    }
+
+    #[test]
+    fn rejects_drone_and_fighter_group_count_overflow() {
+        let max_groups = u8::MAX as usize + 1;
+
+        let mut drone_state = state();
+        drone_state.drones = (0..=max_groups)
+            .map(|i| pb::FitDrone {
+                type_id: i as u32,
+                state: pb::slots::SlotState::Active as i32,
+                quantity: 1,
+            })
+            .collect();
+        assert!(validate_structure(&request(drone_state)).is_err());
+
+        let mut fighter_state = state();
+        fighter_state.fighters = (0..=max_groups)
+            .map(|i| pb::FitFighter {
+                type_id: i as u32,
+                quantity: 1,
+                max_squadron_size: 12,
+                group: pb::snapshot_fighter::SquadronGroup::Light as i32,
+                abilities: vec![],
+            })
+            .collect();
+        assert!(validate_structure(&request(fighter_state)).is_err());
+
+        let mut ok_state = state();
+        ok_state.drones = (0..max_groups)
+            .map(|i| pb::FitDrone {
+                type_id: i as u32,
+                state: pb::slots::SlotState::Active as i32,
+                quantity: 1,
+            })
+            .collect();
         assert!(validate_structure(&request(ok_state)).is_ok());
     }
 
