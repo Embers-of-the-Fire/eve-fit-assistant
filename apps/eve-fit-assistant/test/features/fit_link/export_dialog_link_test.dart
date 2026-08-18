@@ -1,8 +1,11 @@
 import "dart:math";
 
+import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -74,6 +77,18 @@ void main() {
   });
 
   Widget buildDialog(FitStorage fit) => ProviderScope(
+    overrides: [
+      appSettingServiceProvider.overrideWithValue(
+        const AppSetting(
+          locale: Locale.zh,
+          enableDebugLog: false,
+          shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
+          showCheckoutImpactWarnings: true,
+          typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+          developerMode: false,
+        ),
+      ),
+    ],
     child: testApp(
       Scaffold(
         body: FitExportDialog(fitId: fit.metadata.fitId, initialFit: fit),

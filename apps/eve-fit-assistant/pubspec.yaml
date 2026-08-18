@@ -58,6 +58,7 @@ dependencies:
   ffi: ^2.2.0
   file: ^7.0.1
   file_picker: ^12.0.0-beta.7
+  fixnum: ^1.1.1
   flutter_breadcrumb: ^1.0.1
   flutter_easyloading: ^4.0.2
   flutter_launcher_icons: ^0.14.4

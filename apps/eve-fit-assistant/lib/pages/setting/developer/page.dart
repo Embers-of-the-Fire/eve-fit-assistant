@@ -25,6 +25,7 @@ import "package:package_info_plus/package_info_plus.dart";
 
 part "attribute_debug_view.dart";
 part "debug_log.dart";
+part "fit_upload_token.dart";
 part "force_column.dart";
 part "remote_content_entry.dart";
 
@@ -50,6 +51,7 @@ class DeveloperSettingsPage extends ConsumerWidget {
           const ConfigListTile.custom(AttributeDebugViewTile()),
           const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
           const ConfigListTile.custom(ForceColumnTile()),
+          const ConfigListTile.custom(FitUploadTokenTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

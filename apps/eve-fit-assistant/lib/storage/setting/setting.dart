@@ -189,6 +189,7 @@ abstract class AppSetting with _$AppSetting {
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(AiChatSetting()) AiChatSetting aiChat,
     @Default("") String marketServerFallback,
+    @Default("") String fitStorageUploadToken,
     @Default(1.0) double fontScale,
     @JsonKey(
       unknownEnumValue: ForceColumnSelection.disabled,

@@ -18,3 +18,8 @@ database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
 
 [build]
 command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+persist = true
