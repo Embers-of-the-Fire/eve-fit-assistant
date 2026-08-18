@@ -36,10 +36,16 @@ export async function getSnapshotByRequestId(
         .bind(requestId)
         .first<RequestRow>();
     if (!row) return null;
+    let snapshot: FitSnapshot;
+    try {
+        snapshot = fromBinary(FitSnapshotSchema, new Uint8Array(row.snapshot));
+    } catch {
+        return null;
+    }
     return {
         requestId: row.request_id,
         fitHash: row.fit_hash,
-        snapshot: fromBinary(FitSnapshotSchema, new Uint8Array(row.snapshot)),
+        snapshot,
         createdAt: row.created_at,
     };
 }
