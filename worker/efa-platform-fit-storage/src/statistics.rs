@@ -90,23 +90,53 @@ pub fn capacitor_stable_at(capacity: f64, target_recharge_rate: f64, recharge_ti
     solve1.max(solve2) * 100.0
 }
 
-fn defense_layer(
-    hull: &Item,
-    hp_attribute: i32,
-    ehp_attribute: i32,
+/// Attribute IDs backing one defense layer. Named fields make transposed
+/// resonance pairs a compile-time non-issue.
+struct DefenseLayerAttrs {
+    hp: i32,
+    ehp: i32,
     em_resonance: i32,
     thermal_resonance: i32,
     kinetic_resonance: i32,
     explosive_resonance: i32,
-) -> pb::snapshot_statistics::DefenseLayer {
+}
+
+impl DefenseLayerAttrs {
+    const SHIELD: Self = Self {
+        hp: attr_id::SHIELD_CAPACITY,
+        ehp: patch::ATTR_SHIELD_EHP,
+        em_resonance: attr_id::SHIELD_EM_RESONANCE,
+        thermal_resonance: attr_id::SHIELD_THERMAL_RESONANCE,
+        kinetic_resonance: attr_id::SHIELD_KINETIC_RESONANCE,
+        explosive_resonance: attr_id::SHIELD_EXPLOSIVE_RESONANCE,
+    };
+    const ARMOR: Self = Self {
+        hp: attr_id::ARMOR_HP,
+        ehp: patch::ATTR_ARMOR_EHP,
+        em_resonance: attr_id::ARMOR_EM_RESONANCE,
+        thermal_resonance: attr_id::ARMOR_THERMAL_RESONANCE,
+        kinetic_resonance: attr_id::ARMOR_KINETIC_RESONANCE,
+        explosive_resonance: attr_id::ARMOR_EXPLOSIVE_RESONANCE,
+    };
+    const HULL: Self = Self {
+        hp: attr_id::HP,
+        ehp: patch::ATTR_HULL_EHP,
+        em_resonance: attr_id::HULL_EM_RESONANCE,
+        thermal_resonance: attr_id::HULL_THERMAL_RESONANCE,
+        kinetic_resonance: attr_id::HULL_KINETIC_RESONANCE,
+        explosive_resonance: attr_id::HULL_EXPLOSIVE_RESONANCE,
+    };
+}
+
+fn defense_layer(hull: &Item, attrs: DefenseLayerAttrs) -> pb::snapshot_statistics::DefenseLayer {
     pb::snapshot_statistics::DefenseLayer {
-        hp: get(hull, hp_attribute),
-        ehp: get(hull, ehp_attribute),
+        hp: get(hull, attrs.hp),
+        ehp: get(hull, attrs.ehp),
         resistances: pb::DamageProfile {
-            em: 1.0 - get_or(hull, em_resonance, 1.0),
-            thermal: 1.0 - get_or(hull, thermal_resonance, 1.0),
-            kinetic: 1.0 - get_or(hull, kinetic_resonance, 1.0),
-            explosive: 1.0 - get_or(hull, explosive_resonance, 1.0),
+            em: 1.0 - get_or(hull, attrs.em_resonance, 1.0),
+            thermal: 1.0 - get_or(hull, attrs.thermal_resonance, 1.0),
+            kinetic: 1.0 - get_or(hull, attrs.kinetic_resonance, 1.0),
+            explosive: 1.0 - get_or(hull, attrs.explosive_resonance, 1.0),
         },
     }
 }
@@ -256,33 +286,9 @@ pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
         capacitor,
         weapons,
         resources,
-        shield: defense_layer(
-            hull,
-            attr_id::SHIELD_CAPACITY,
-            patch::ATTR_SHIELD_EHP,
-            attr_id::SHIELD_EM_RESONANCE,
-            attr_id::SHIELD_THERMAL_RESONANCE,
-            attr_id::SHIELD_KINETIC_RESONANCE,
-            attr_id::SHIELD_EXPLOSIVE_RESONANCE,
-        ),
-        armor: defense_layer(
-            hull,
-            attr_id::ARMOR_HP,
-            patch::ATTR_ARMOR_EHP,
-            attr_id::ARMOR_EM_RESONANCE,
-            attr_id::ARMOR_THERMAL_RESONANCE,
-            attr_id::ARMOR_KINETIC_RESONANCE,
-            attr_id::ARMOR_EXPLOSIVE_RESONANCE,
-        ),
-        hull: defense_layer(
-            hull,
-            attr_id::HP,
-            patch::ATTR_HULL_EHP,
-            attr_id::HULL_EM_RESONANCE,
-            attr_id::HULL_THERMAL_RESONANCE,
-            attr_id::HULL_KINETIC_RESONANCE,
-            attr_id::HULL_EXPLOSIVE_RESONANCE,
-        ),
+        shield: defense_layer(hull, DefenseLayerAttrs::SHIELD),
+        armor: defense_layer(hull, DefenseLayerAttrs::ARMOR),
+        hull: defense_layer(hull, DefenseLayerAttrs::HULL),
         mobility,
         targeting,
         drones,
@@ -450,5 +456,144 @@ mod tests {
         assert!(!capacitor.is_stable);
         assert_eq!(capacitor.depletes_in_s, Some(120.0));
         assert!(capacitor.stable_fraction.is_none());
+    }
+
+    /// Drift guard: every `attr_id` constant must match the same-named entry
+    /// of `EveConstAttrID` (packages/efa_constant/lib/eve.dart). A wrong or
+    /// missing ID would otherwise degrade to a silent 0.0 statistic.
+    #[test]
+    fn attr_id_matches_eve_const_attr_id() {
+        // (Dart field name, Rust constant) for every entry of `attr_id`.
+        let expected: &[(&str, i32)] = &[
+            ("hp", attr_id::HP),
+            ("powerOutput", attr_id::POWER_OUTPUT),
+            ("maxVelocity", attr_id::MAX_VELOCITY),
+            ("capacity", attr_id::CAPACITY),
+            ("cpuOutput", attr_id::CPU_OUTPUT),
+            ("rechargeRate", attr_id::RECHARGE_RATE),
+            ("capacitorCapacity", attr_id::CAPACITOR_CAPACITY),
+            ("maxTargetRange", attr_id::MAX_TARGET_RANGE),
+            ("maxLockedTargets", attr_id::MAX_LOCKED_TARGETS),
+            ("scanRadarStrength", attr_id::SCAN_RADAR_STRENGTH),
+            ("scanLadarStrength", attr_id::SCAN_LADAR_STRENGTH),
+            (
+                "scanMagnetometricStrength",
+                attr_id::SCAN_MAGNETOMETRIC_STRENGTH,
+            ),
+            (
+                "scanGravimetricStrength",
+                attr_id::SCAN_GRAVIMETRIC_STRENGTH,
+            ),
+            ("shieldCapacity", attr_id::SHIELD_CAPACITY),
+            ("armorHP", attr_id::ARMOR_HP),
+            ("armorEmDamageResonance", attr_id::ARMOR_EM_RESONANCE),
+            (
+                "armorExplosiveDamageResonance",
+                attr_id::ARMOR_EXPLOSIVE_RESONANCE,
+            ),
+            (
+                "armorKineticDamageResonance",
+                attr_id::ARMOR_KINETIC_RESONANCE,
+            ),
+            (
+                "armorThermalDamageResonance",
+                attr_id::ARMOR_THERMAL_RESONANCE,
+            ),
+            ("shieldEmDamageResonance", attr_id::SHIELD_EM_RESONANCE),
+            (
+                "shieldExplosiveDamageResonance",
+                attr_id::SHIELD_EXPLOSIVE_RESONANCE,
+            ),
+            (
+                "shieldKineticDamageResonance",
+                attr_id::SHIELD_KINETIC_RESONANCE,
+            ),
+            (
+                "shieldThermalDamageResonance",
+                attr_id::SHIELD_THERMAL_RESONANCE,
+            ),
+            ("droneCapacity", attr_id::DRONE_CAPACITY),
+            ("maxActiveDrones", attr_id::MAX_ACTIVE_DRONES),
+            ("droneControlDistance", attr_id::DRONE_CONTROL_DISTANCE),
+            ("signatureRadius", attr_id::SIGNATURE_RADIUS),
+            ("scanResolution", attr_id::SCAN_RESOLUTION),
+            (
+                "shipMaintenanceBayCapacity",
+                attr_id::SHIP_MAINTENANCE_BAY_CAPACITY,
+            ),
+            ("specialFuelBayCapacity", attr_id::FUEL_BAY_CAPACITY),
+            ("fleetHangarCapacity", attr_id::FLEET_HANGAR_CAPACITY),
+            ("kineticDamageResonance", attr_id::HULL_KINETIC_RESONANCE),
+            ("thermalDamageResonance", attr_id::HULL_THERMAL_RESONANCE),
+            (
+                "explosiveDamageResonance",
+                attr_id::HULL_EXPLOSIVE_RESONANCE,
+            ),
+            ("emDamageResonance", attr_id::HULL_EM_RESONANCE),
+            ("upgradeCapacity", attr_id::UPGRADE_CAPACITY),
+            ("droneBandwidth", attr_id::DRONE_BANDWIDTH),
+            ("droneBandwidthLoad", attr_id::DRONE_BANDWIDTH_LOAD),
+            ("generalMiningHoldCapacity", attr_id::MINING_HOLD_CAPACITY),
+            ("specialGasHoldCapacity", attr_id::GAS_HOLD_CAPACITY),
+            ("specialMineralHoldCapacity", attr_id::MINERAL_HOLD_CAPACITY),
+            (
+                "specialCommandCenterHoldCapacity",
+                attr_id::COMMAND_CENTER_HOLD_CAPACITY,
+            ),
+            (
+                "specialPlanetaryCommoditiesHoldCapacity",
+                attr_id::PLANETARY_COMMODITIES_HOLD_CAPACITY,
+            ),
+            ("fighterCapacity", attr_id::FIGHTER_CAPACITY),
+            ("specialIceHoldCapacity", attr_id::ICE_HOLD_CAPACITY),
+        ];
+
+        // The mapping must cover every constant declared in `attr_id`.
+        let source = include_str!("statistics.rs");
+        let module_start = source.find("pub mod attr_id {").expect("attr_id module");
+        let module_end = source[module_start..]
+            .find("\n}")
+            .map(|i| module_start + i)
+            .expect("attr_id module end");
+        let declared = source[module_start..module_end]
+            .lines()
+            .filter(|line| line.trim_start().starts_with("pub const"))
+            .count();
+        assert_eq!(
+            expected.len(),
+            declared,
+            "attr_id declares {declared} constants but the drift-check mapping lists {}",
+            expected.len()
+        );
+
+        let dart_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../packages/efa_constant/lib/eve.dart"
+        );
+        let dart = std::fs::read_to_string(dart_path).expect("read EveConstAttrID source");
+        let class_start = dart
+            .find("class EveConstAttrID")
+            .expect("EveConstAttrID class");
+        let class_end = dart[class_start..]
+            .find("\n}")
+            .map(|i| class_start + i)
+            .expect("EveConstAttrID class end");
+        let dart_values: HashMap<&str, i32> = dart[class_start..class_end]
+            .lines()
+            .filter_map(|line| {
+                let line = line.trim();
+                let entry = line.strip_prefix("static const int ")?.strip_suffix(';')?;
+                let (name, value) = entry.split_once(" = ")?;
+                Some((name, value.parse().ok()?))
+            })
+            .collect();
+
+        for &(name, value) in expected {
+            assert_eq!(
+                dart_values.get(name),
+                Some(&value),
+                "EveConstAttrID.{name} drifted from attr_id"
+            );
+        }
     }
 }

@@ -10,12 +10,24 @@ use crate::provider::{
     decode_type, decode_type_dogma,
 };
 
-/// Warfare-buff attribute IDs consulted by the engine's pass 4. The literal is
-/// file-private in the engine; this copy is version-locked via the path
-/// dependency.
+/// Warfare-buff attribute IDs consulted by the engine's pass 4, flattened
+/// from the engine's own table so the two can never drift.
 ///
-/// Source: `packages/eve-fit-os/src/calculate/pass_4.rs` (`WARFARE_BUFFS`).
-pub const WARFARE_BUFF_ATTRIBUTE_IDS: [i32; 8] = [2468, 2469, 2470, 2471, 2472, 2473, 2536, 2537];
+/// Source: `eve_fit_os::calculate::WARFARE_BUFFS`
+/// (`packages/eve-fit-os/src/calculate/pass_4.rs`).
+pub const WARFARE_BUFF_ATTRIBUTE_IDS: [i32; 8] =
+    flatten_buff_pairs(eve_fit_os::calculate::WARFARE_BUFFS);
+
+const fn flatten_buff_pairs(pairs: [(i32, i32); 4]) -> [i32; 8] {
+    let mut ids = [0; 8];
+    let mut i = 0;
+    while i < pairs.len() {
+        ids[i * 2] = pairs[i].0;
+        ids[i * 2 + 1] = pairs[i].1;
+        i += 1;
+    }
+    ids
+}
 
 /// Isolate-cache key: the engine data snapshot selector.
 pub type SnapshotKey = (String, String);
