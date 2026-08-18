@@ -43,3 +43,11 @@ export function initLocale() {
     _locale = detectLocale();
     document.documentElement.lang = _locale;
 }
+
+export function bindDocumentTitle(key: TranslationKey): void {
+    $effect.root(() => {
+        $effect(() => {
+            document.title = `${t(key)} · EFA Platform`;
+        });
+    });
+}

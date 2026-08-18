@@ -1,12 +1,15 @@
 ---
 import Topbar from "../components/Topbar.svelte";
+import { en, type TranslationKey } from "../lib/translations";
 import "../styles/global.css";
 
 interface Props {
-    title: string;
+    title?: string;
+    titleKey?: TranslationKey;
 }
 
-const { title } = Astro.props;
+const { title, titleKey } = Astro.props;
+const resolvedTitle = title ?? (titleKey ? en[titleKey] : "EFA Platform");
 ---
 
 <!doctype html>
@@ -14,12 +17,22 @@ const { title } = Astro.props;
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{title} · EFA Platform</title>
+        <title>{resolvedTitle} · EFA Platform</title>
+        {titleKey && <meta name="efa:title-key" content={titleKey} />}
     </head>
     <body class="min-h-screen">
         <Topbar client:load />
         <main class="mx-auto max-w-5xl px-4 py-8">
             <slot />
         </main>
+        <script>
+            import { bindDocumentTitle } from "../lib/i18n.svelte";
+            import type { TranslationKey } from "../lib/translations";
+
+            const key = document
+                .querySelector('meta[name="efa:title-key"]')
+                ?.getAttribute("content");
+            if (key) bindDocumentTitle(key as TranslationKey);
+        </script>
     </body>
 </html>
