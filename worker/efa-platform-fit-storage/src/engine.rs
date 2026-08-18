@@ -662,11 +662,13 @@ mod tests {
                     attribute_id: 6,
                     value: 1.5,
                 }],
+                type_id: Some(12),
             },
             pb::FitDynamicItem {
                 dynamic_id: 2,
                 base_type_id: 11,
                 attributes: vec![],
+                type_id: None,
             },
         ];
         let container = build_container(&state);

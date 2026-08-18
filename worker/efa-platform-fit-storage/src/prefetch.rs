@@ -349,8 +349,17 @@ where
     }
 
     // Type metadata for name/icon resolution (spec §11); missing rows are
-    // tolerated (empty names, no icon).
-    let wanted = missing(seeds.iter(), &cached_keys(&data.type_meta));
+    // tolerated (empty names, no icon). Includes the mutated type IDs of
+    // dynamic items: the snapshot displays the mutated type while the engine
+    // calculates on the base type.
+    let mut meta_ids = seeds.clone();
+    meta_ids.extend(
+        state
+            .dynamic_items
+            .iter()
+            .filter_map(|d| d.type_id.map(|t| t as i32)),
+    );
+    let wanted = missing(meta_ids.iter(), &cached_keys(&data.type_meta));
     if !wanted.is_empty() {
         let rows = fetch(FetchRequest {
             family: Family::TypeMeta,
@@ -526,6 +535,7 @@ mod tests {
                 dynamic_id: 1,
                 base_type_id: 201,
                 attributes: vec![],
+                type_id: Some(210),
             }],
             ..Default::default()
         }
@@ -595,6 +605,12 @@ mod tests {
                 .or_default()
                 .insert(id, meta("Name"));
         }
+        // Mutated type of the dynamic item: metadata only, not an engine type.
+        fixture
+            .rows
+            .entry(Family::TypeMeta)
+            .or_default()
+            .insert(210, meta("Mutated"));
         fixture
     }
 
@@ -609,6 +625,9 @@ mod tests {
             assert!(data.type_dogma.contains_key(&id), "type_dogma {id}");
             assert!(data.type_meta.contains_key(&id), "type_meta {id}");
         }
+        // Mutated type: metadata prefetched, but not seeded as an engine type.
+        assert!(data.type_meta.contains_key(&210));
+        assert!(!data.types.contains_key(&210));
         assert!(data.dogma_effects.contains_key(&1000));
         for id in [10, 11, 12, 13, 14, 15, 20, 21, 30] {
             assert!(data.dogma_attributes.contains_key(&id), "attribute {id}");

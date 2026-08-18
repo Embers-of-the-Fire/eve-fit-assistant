@@ -170,6 +170,7 @@ mod tests {
                         value: 1.5,
                     },
                 ],
+                type_id: Some(3002),
             }],
             character: Some(pb::FitCharacter {
                 character_id: Some("char-1".to_string()),

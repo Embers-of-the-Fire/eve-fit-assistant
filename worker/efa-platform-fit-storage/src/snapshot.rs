@@ -30,16 +30,20 @@ fn snapshot_type(data: &SnapshotData, type_id: i32) -> pb::SnapshotType {
     }
 }
 
-/// Base (dogma) type of a module: the type ID, or the dynamic item's base
-/// type.
-fn module_base_type_id(state: &pb::FitState, module: &pb::FitModule) -> Option<i32> {
+/// Display type of a module plus, for dynamic items, the unmutated base
+/// (dogma) type: the type ID, or the dynamic item's mutated type and base
+/// type. The mutated type ID is display-only; dogma comes from the base.
+fn module_type_ids(state: &pb::FitState, module: &pb::FitModule) -> Option<(i32, Option<i32>)> {
     match &module.item {
-        Some(pb::fit_module::Item::TypeId(type_id)) => Some(*type_id as i32),
+        Some(pb::fit_module::Item::TypeId(type_id)) => Some((*type_id as i32, None)),
         Some(pb::fit_module::Item::DynamicId(dynamic_id)) => state
             .dynamic_items
             .iter()
             .find(|d| d.dynamic_id == *dynamic_id)
-            .map(|d| d.base_type_id as i32),
+            .map(|d| {
+                let base = d.base_type_id as i32;
+                (d.type_id.map(|t| t as i32).unwrap_or(base), Some(base))
+            }),
         None => None,
     }
 }
@@ -75,7 +79,7 @@ fn snapshot_module(
     ship: &Ship,
     module: &pb::FitModule,
 ) -> Option<pb::SnapshotModule> {
-    let base_type_id = module_base_type_id(state, module)?;
+    let (type_id, origin_type_id) = module_type_ids(state, module)?;
     let engine_slot_type = match pb::SlotType::try_from(module.slot_type) {
         Ok(pb::SlotType::High) => Some(EngineSlotType::High),
         Ok(pb::SlotType::Medium) => Some(EngineSlotType::Medium),
@@ -103,20 +107,21 @@ fn snapshot_module(
             }),
         });
 
-    let is_dynamic = matches!(module.item, Some(pb::fit_module::Item::DynamicId(_)));
     let (is_turret, is_launcher) = if module.slot_type == pb::SlotType::High as i32 {
-        hardpoint_flags(data, base_type_id)
+        // Hardpoint flags come from dogma effects, which dynamic items
+        // inherit from their base type.
+        hardpoint_flags(data, origin_type_id.unwrap_or(type_id))
     } else {
         (false, false)
     };
 
     Some(pb::SnapshotModule {
-        r#type: snapshot_type(data, base_type_id),
+        r#type: snapshot_type(data, type_id),
         state: module.state,
         charge,
         is_turret: Some(is_turret),
         is_launcher: Some(is_launcher),
-        origin_type: is_dynamic.then(|| snapshot_type(data, base_type_id)),
+        origin_type: origin_type_id.map(|base| snapshot_type(data, base)),
         related_values: Vec::new(),
     })
 }
@@ -328,6 +333,17 @@ mod tests {
                 graphic_id: None,
             },
         );
+        data.type_meta.insert(
+            210,
+            crate::proto::platform_data::PlatformTypeMeta {
+                type_id: 210,
+                name: [("en".to_string(), "Mutated Launcher".to_string())]
+                    .into_iter()
+                    .collect(),
+                icon_id: Some(43),
+                graphic_id: None,
+            },
+        );
         data.types.insert(
             100,
             EngineType {
@@ -398,6 +414,7 @@ mod tests {
                 dynamic_id: 5,
                 base_type_id: 201,
                 attributes: vec![],
+                type_id: Some(210),
             }],
             implants: vec![pb::FitImplant {
                 slot_index: 3,
@@ -444,15 +461,23 @@ mod tests {
 
         // Turret flag from dogma effects; charge present.
         let turret_mod = snapshot.high_slots[0].item.as_ref().unwrap();
+        assert_eq!(turret_mod.r#type.type_id, 200);
         assert_eq!(turret_mod.is_turret, Some(true));
         assert_eq!(turret_mod.is_launcher, Some(false));
+        assert!(turret_mod.origin_type.is_none());
         let charge = turret_mod.charge.as_ref().unwrap();
         assert_eq!(charge.r#type.type_id, 300);
         // No calculated item (bare Ship::new) → no quantity.
         assert!(charge.quantity.is_none());
 
-        // Dynamic module: launcher flag from base type, origin_type set.
+        // Dynamic module: mutated type shown, launcher flag and origin_type
+        // from the base type.
         let dyn_mod = snapshot.high_slots[1].item.as_ref().unwrap();
+        assert_eq!(dyn_mod.r#type.type_id, 210);
+        assert_eq!(
+            dyn_mod.r#type.names.get("en").map(String::as_str),
+            Some("Mutated Launcher")
+        );
         assert_eq!(dyn_mod.is_turret, Some(false));
         assert_eq!(dyn_mod.is_launcher, Some(true));
         assert_eq!(dyn_mod.origin_type.as_ref().unwrap().type_id, 201);

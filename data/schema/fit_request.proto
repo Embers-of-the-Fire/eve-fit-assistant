@@ -136,6 +136,11 @@ message FitDynamicItem {
   required uint32 dynamic_id = 1;
   required uint32 base_type_id = 2;
   repeated FitDynamicAttribute attributes = 3;
+
+  /// The mutated (abyssal) type, distinct from the unmutated `base_type_id`.
+  /// Display-only: the engine calculates on the base type plus `attributes`,
+  /// but the snapshot shows this type's name/icon. Absent → show the base.
+  optional uint32 type_id = 4;
 }
 
 message FitDynamicAttribute {
