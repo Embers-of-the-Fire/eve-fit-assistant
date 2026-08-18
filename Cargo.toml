@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "worker/release",
+    "worker/efa-platform-fit-storage",
     "apps/eve-fit-assistant/rust",
     "apps/eve-fit-assistant/rust/lib/efa-chat",
     "packages/eve-fit-os",
