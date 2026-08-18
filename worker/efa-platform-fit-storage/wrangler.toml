@@ -22,4 +22,3 @@ command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-bui
 [observability]
 enabled = true
 head_sampling_rate = 1
-persist = true
