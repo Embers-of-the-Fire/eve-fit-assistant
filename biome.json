@@ -6,7 +6,7 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["site/**/*", "worker/**/*"],
+        "includes": ["site/**/*", "worker/**/*", "packages/efa_fit_snapshot_ts/**/*"],
         "ignoreUnknown": false
     },
     "formatter": {
@@ -40,7 +40,7 @@
     },
     "overrides": [
         {
-            "includes": ["site/**/*.svelte"],
+            "includes": ["site/**/*.svelte", "packages/efa_fit_snapshot_ts/**/*.svelte"],
             "linter": {
                 "rules": {
                     "style": {
