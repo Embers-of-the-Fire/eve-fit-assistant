@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def generate_protobuf_ts(execute: Callable[..., str], *, required: bool = False) -> None:
+def generate_protobuf_ts(execute: Callable[..., str], *, required: bool = False) -> bool:
     """Generate TypeScript protobuf bindings (protobuf-es) for the platform-facing schemas.
 
     ``execute`` matches the signature of ``bootstrap.cli.runtime.execute`` /
@@ -21,6 +21,8 @@ def generate_protobuf_ts(execute: Callable[..., str], *, required: bool = False)
     no protoc required); pnpm puts the package's ``node_modules/.bin`` on PATH so buf can
     resolve the ``protoc-gen-es`` plugin. Skips with a warning when pnpm is unavailable,
     unless ``required`` is set, in which case a missing pnpm raises ``FileNotFoundError``.
+
+    Returns True when the bindings were generated, False when the step was skipped.
     """
     pnpm = shutil.which("pnpm")
     if pnpm is None:
@@ -34,10 +36,11 @@ def generate_protobuf_ts(execute: Callable[..., str], *, required: bool = False)
             "install dependencies with `pnpm install` to enable TypeScript protobuf "
             "generation. Skipping."
         )
-        return
+        return False
 
     execute(
         [pnpm, "--filter", "efa-proto-ts", "generate"],
         "PROTOBUF TS CODEGEN OUTPUT",
         cwd=PROJECT_ROOT,
     )
+    return True

@@ -58,6 +58,8 @@ def _run_protobuf() -> None:
         )
         total += 1
 
+    ts_generated = generate_protobuf_ts(runtime.execute)
+
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Protobuf code generation completed."))
     if len(failed) == 0:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "All files generated successfully."))
@@ -76,8 +78,15 @@ def _run_protobuf() -> None:
             + ", ".join(failed)
             + "."
         )
-
-    generate_protobuf_ts(runtime.execute)
+    if ts_generated:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "TypeScript protobuf bindings generated."))
+    else:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.YELLOW],
+                "TypeScript protobuf bindings skipped (pnpm unavailable).",
+            )
+        )
 
 
 def _run_rust() -> None:
