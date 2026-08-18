@@ -10,11 +10,11 @@ class FitUploadTokenTile extends ConsumerWidget {
     );
     return ListTile(
       leading: const Icon(Icons.key_outlined),
-      title: const Text("Fit storage upload token"),
+      title: Text(context.l10n.fitUploadTokenTitle),
       subtitle: Text(
         configured
-            ? "Configured — fit uploads to the platform are enabled"
-            : "Not configured — required to upload fits to the platform",
+            ? context.l10n.fitUploadTokenConfiguredDescription
+            : context.l10n.fitUploadTokenNotConfiguredDescription,
       ),
       onTap: () => unawaited(_editToken(context, ref)),
     );
@@ -27,15 +27,15 @@ class FitUploadTokenTile extends ConsumerWidget {
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Fit storage upload token"),
+        title: Text(context.l10n.fitUploadTokenTitle),
         content: TextField(
           controller: controller,
           obscureText: true,
           autocorrect: false,
           enableSuggestions: false,
-          decoration: const InputDecoration(
-            hintText: "Bearer token for api.efa-tech.dev fit storage",
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: context.l10n.fitUploadTokenHint,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -44,10 +44,16 @@ class FitUploadTokenTile extends ConsumerWidget {
               controller.text = "";
               Navigator.of(context).pop(true);
             },
-            child: const Text("Clear"),
+            child: Text(context.l10n.fitUploadTokenClearButton),
           ),
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text("Cancel")),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text("Save")),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.l10n.save),
+          ),
         ],
       ),
     );

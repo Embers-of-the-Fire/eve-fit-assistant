@@ -92,9 +92,9 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                         value: FitTextExportFormat.eft,
                         label: Text(context.l10n.fitExportFormatEft),
                       ),
-                      const ButtonSegment<FitTextExportFormat>(
+                      ButtonSegment<FitTextExportFormat>(
                         value: FitTextExportFormat.snapshot,
-                        label: Text("Snapshot"),
+                        label: Text(context.l10n.fitExportFormatSnapshot),
                       ),
                     ],
                   ),
@@ -186,9 +186,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   String _descriptionFor(FitTextExportFormat format, BuildContext context) => switch (format) {
     FitTextExportFormat.native => context.l10n.fitExportFormatNativeDescription,
     FitTextExportFormat.eft => context.l10n.fitExportFormatEftDescription,
-    FitTextExportFormat.snapshot =>
-      "Self-contained protobuf snapshot of this fit (base64-encoded), including localized "
-          "names, slot layout and computed statistics.",
+    FitTextExportFormat.snapshot => context.l10n.fitExportFormatSnapshotDescription,
   };
 
   void _handleFormatChanged(FitTextExportFormat? format) {
