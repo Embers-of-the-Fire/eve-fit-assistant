@@ -116,10 +116,14 @@ pub fn cache_get(key: &SnapshotKey) -> SnapshotData {
 pub fn cache_merge(key: SnapshotKey, data: SnapshotData) {
     ISOLATE_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
-        cache
-            .entry(key)
-            .and_modify(|existing| existing.merge(data.clone()))
-            .or_insert(data);
+        match cache.entry(key) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                entry.get_mut().merge(data);
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(data);
+            }
+        }
     });
 }
 
