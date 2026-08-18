@@ -1,4 +1,3 @@
-use worker::wasm_bindgen::JsCast;
 use worker::{Env, Request};
 
 use crate::error::ApiError;
@@ -25,10 +24,7 @@ pub fn check_authorization(req: &Request, env: &Env) -> Result<(), ApiError> {
     let secret = env
         .secret("FIT_STORAGE_TOKEN")
         .map_err(|_| ApiError::internal("FIT_STORAGE_TOKEN is not set"))?;
-    let token = secret
-        .unchecked_into::<worker::wasm_bindgen::JsValue>()
-        .as_string()
-        .ok_or_else(|| ApiError::internal("FIT_STORAGE_TOKEN is not a string"))?;
+    let token = secret.to_string();
 
     let header = req
         .headers()
