@@ -2,6 +2,8 @@ name = "efa-platform"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
+preview_urls = true
+
 [[d1_databases]]
 binding = "FIT_DB"
 database_name = "efa-platform"
