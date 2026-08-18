@@ -13,12 +13,12 @@ rustup target add wasm32-unknown-unknown
 # Install the Workers Rust build tool
 cargo install -q "worker-build@^0.8"
 
-# Install protoc
-# Fetch the download URL for the latest Linux x86_64 asset from GitHub API
-URL=$(curl -s https://api.github.com/repos/protocolbuffers/protobuf/releases/latest \
-  | jq -r '.assets[] | select(.name | endswith("linux-x86_64.zip")) | .browser_download_url')
-curl -LO $URL
-unzip $(basename $URL) -d $HOME/.local
+# Install protoc (pinned version for reproducible codegen)
+PROTOC_VERSION="35.1"
+URL="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+curl -fLO "$URL"
+unzip "$(basename "$URL")" -d "$HOME/.local"
+rm "$(basename "$URL")"
 
 # Resolve the repository root (this script lives in worker/efa-platform-fit-storage)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
