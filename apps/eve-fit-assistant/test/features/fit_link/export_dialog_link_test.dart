@@ -1,10 +1,14 @@
 import "dart:math";
 
+import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
+import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
+import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
@@ -53,6 +57,15 @@ String _randomText(int length, int seed) {
   );
 }
 
+class _FakeFitUploadToken extends FitUploadToken {
+  _FakeFitUploadToken(this._token);
+
+  final String _token;
+
+  @override
+  Future<String> build() async => _token;
+}
+
 void main() {
   final clipboardWrites = <String>[];
 
@@ -76,25 +89,29 @@ void main() {
     );
   });
 
-  Widget buildDialog(FitStorage fit) => ProviderScope(
-    overrides: [
-      appSettingServiceProvider.overrideWithValue(
-        const AppSetting(
-          locale: Locale.zh,
-          enableDebugLog: false,
-          shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-          showCheckoutImpactWarnings: true,
-          typeListReturnBehavior: TypeListReturnBehavior.previousPage,
-          developerMode: false,
+  Widget buildDialog(FitStorage fit, {String? uploadToken, FitSnapshotUploadFn? uploadFn}) =>
+      ProviderScope(
+        overrides: [
+          appSettingServiceProvider.overrideWithValue(
+            const AppSetting(
+              locale: Locale.zh,
+              enableDebugLog: false,
+              shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
+              showCheckoutImpactWarnings: true,
+              typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+              developerMode: false,
+            ),
+          ),
+          if (uploadToken != null)
+            fitUploadTokenProvider.overrideWith(() => _FakeFitUploadToken(uploadToken)),
+          if (uploadFn != null) fitSnapshotUploadFnProvider.overrideWithValue(uploadFn),
+        ],
+        child: testApp(
+          Scaffold(
+            body: FitExportDialog(fitId: fit.metadata.fitId, initialFit: fit),
+          ),
         ),
-      ),
-    ],
-    child: testApp(
-      Scaffold(
-        body: FitExportDialog(fitId: fit.metadata.fitId, initialFit: fit),
-      ),
-    ),
-  );
+      );
 
   testWidgets("copy link writes the share URL to the clipboard", (tester) async {
     await tester.pumpWidget(buildDialog(_makeFit()));
@@ -119,5 +136,43 @@ void main() {
 
     expect(clipboardWrites, isEmpty);
     expect(find.text("该配置过大，无法生成分享链接，请改用文本导出。"), findsOneWidget);
+  });
+
+  testWidgets("snapshot mode hides the upload button without a token", (tester) async {
+    await tester.pumpWidget(buildDialog(_makeFit(), uploadToken: ""));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("快照"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("上传"), findsNothing);
+  });
+
+  testWidgets("snapshot upload renders the hash and URL after a successful upload", (tester) async {
+    const fitHash = "0123456789abcdef0123456789abcdef";
+    await tester.pumpWidget(
+      buildDialog(
+        _makeFit(),
+        uploadToken: "test-token",
+        uploadFn: (ref, {required fitId, required fit}) async =>
+            FitUploadResponse(fitHash: fitHash),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("上传"), findsNothing);
+
+    await tester.tap(find.text("快照"));
+    await tester.pumpAndSettle();
+
+    final uploadButton = find.text("上传");
+    expect(uploadButton, findsOneWidget);
+
+    await tester.tap(uploadButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text("配置已上传至平台。"), findsOneWidget);
+    expect(find.text(fitHash, findRichText: true), findsOneWidget);
+    expect(find.text(FitSnapshotUploadApi.byHashUrl(fitHash), findRichText: true), findsOneWidget);
   });
 }

@@ -239,9 +239,11 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
       _actionError = null;
     });
     try {
-      final request = await FitUploadRequestBuilder(ref).build(fitId: widget.fitId, fit: fit);
-      final token = await ref.read(fitUploadTokenStoreProvider).read();
-      final response = await FitSnapshotUploadApi().submit(request, token: token);
+      final response = await ref.read(fitSnapshotUploadFnProvider)(
+        ref,
+        fitId: widget.fitId,
+        fit: fit,
+      );
       if (!mounted) return;
       setState(() => _uploadResult = response);
     } on FitUploadNotReadyException {

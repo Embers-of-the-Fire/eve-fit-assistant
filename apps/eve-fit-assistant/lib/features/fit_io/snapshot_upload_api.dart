@@ -4,9 +4,15 @@ import "dart:typed_data";
 import "package:dio/dio.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 const _workerOrigin = "https://api.efa-tech.dev";
 const _submitUrl = "$_workerOrigin/platform/storage/fit/submit";
+
+/// Injectable seam for the upload API, so tests can substitute a fake transport.
+final fitSnapshotUploadApiProvider = Provider<FitSnapshotUploadApi>(
+  (Ref ref) => FitSnapshotUploadApi(),
+);
 
 /// Error codes reported by the fit storage worker, plus client-side categories.
 enum FitUploadErrorCode {
