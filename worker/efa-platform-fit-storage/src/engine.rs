@@ -37,6 +37,11 @@ pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError
 
     let dynamic_ids: HashSet<u32> = state.dynamic_items.iter().map(|d| d.dynamic_id).collect();
 
+    // A (slot_type, index) pair may be occupied by at most one module.
+    // Duplicates would also make the canonical hash order-dependent, since
+    // canonical_state's sort_by_key is stable on equal keys.
+    let mut occupied_slots: HashSet<(i32, u32)> = HashSet::new();
+
     for module in &state.modules {
         let capacity = rack_capacity(layout, module.slot_type)
             .ok_or_else(|| ApiError::bad_request("invalid module slot_type"))?;
@@ -44,6 +49,12 @@ pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError
             return Err(ApiError::bad_request(format!(
                 "module slot index {} out of bounds for slot_type {}",
                 module.index, module.slot_type
+            )));
+        }
+        if !occupied_slots.insert((module.slot_type, module.index)) {
+            return Err(ApiError::bad_request(format!(
+                "duplicate module at slot_type {} index {}",
+                module.slot_type, module.index
             )));
         }
         if !is_valid_state(module.state) {
@@ -418,6 +429,25 @@ mod tests {
             subsystem_type: None,
         });
         assert!(validate_structure(&request(state)).is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_module_slot() {
+        let module = |index| pb::FitModule {
+            item: Some(fit_module::Item::TypeId(1)),
+            slot_type: pb::SlotType::High as i32,
+            index,
+            state: pb::slots::SlotState::Active as i32,
+            charge_type_id: None,
+            subsystem_type: None,
+        };
+        let mut dup = state();
+        dup.modules = vec![module(0), module(0)];
+        assert!(validate_structure(&request(dup)).is_err());
+
+        let mut distinct = state();
+        distinct.modules = vec![module(0), module(1)];
+        assert!(validate_structure(&request(distinct)).is_ok());
     }
 
     #[test]
