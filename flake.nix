@@ -405,6 +405,7 @@
           };
 
           # Code generation shell: protobuf, FRB, dart build_runner, l10n
+          # (jsPackages: TS protobuf bindings via buf from node_modules)
           codegen = pkgs.mkShell {
             packages =
               pythonPackages
@@ -413,6 +414,7 @@
               ++ dartPackages
               ++ protobufPackages
               ++ frbPackages
+              ++ jsPackages
               ++ [ pkgs.libsecret ];
 
             inherit (localeEnv) LANG LC_ALL;

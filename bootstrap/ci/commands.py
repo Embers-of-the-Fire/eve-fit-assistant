@@ -85,7 +85,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @ci.command("lint")
     @click.option(
         "--lang",
-        type=click.Choice(["all", "python", "dart", "rust", "site", "l10n"]),
+        type=click.Choice(["all", "python", "dart", "rust", "site", "snapshot-ts", "l10n"]),
         default="all",
         help="Limit linting to a specific language (default: all).",
     )
@@ -96,7 +96,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @ci.command("codegen")
     @click.option(
         "--lang",
-        type=click.Choice(["all", "python", "dart", "site"]),
+        type=click.Choice(["all", "python", "dart", "site", "snapshot-ts"]),
         default="all",
         help="Generate code for specific language (default: all).",
     )
