@@ -16,7 +16,8 @@
     "dev:redirect": "pnpm --filter issue-redirect dev",
     "check:redirect": "pnpm --filter issue-redirect check",
     "dev:email-filter": "pnpm --filter email-filter dev",
-    "check:email-filter": "pnpm --filter email-filter check"
+    "check:email-filter": "pnpm --filter email-filter check",
+    "check:snapshot-ts": "pnpm --filter efa-fit-snapshot-ts check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7"

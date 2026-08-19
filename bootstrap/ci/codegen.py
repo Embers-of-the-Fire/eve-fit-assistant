@@ -112,6 +112,7 @@ LANGUAGE_STEPS = {
     "python": ["protobuf"],
     "dart": ["protobuf", "frb", "dart_build_runner", "l10n"],
     "site": ["protobuf_ts"],
+    "snapshot-ts": ["protobuf_ts"],
     "all": ["protobuf", "protobuf_ts", "frb", "dart_build_runner", "l10n"],
 }
 

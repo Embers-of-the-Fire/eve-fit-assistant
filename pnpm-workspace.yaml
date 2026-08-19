@@ -2,6 +2,7 @@ packages:
   - "site/*"
   - "worker/*"
   - "packages/efa_proto_ts"
+  - "packages/efa_fit_snapshot_ts"
 
 allowBuilds:
   '@biomejs/biome': true

@@ -12,7 +12,7 @@ from bootstrap.utils import execute_command
 from bootstrap.utils import get_command
 
 
-__all__ = ["run_lint", "run_site_checks"]
+__all__ = ["run_lint", "run_site_checks", "run_snapshot_ts_checks"]
 
 
 def run_lint(
@@ -118,6 +118,13 @@ def run_lint(
         pnpm = get_command("pnpm")
         run_site_checks(pnpm, no_check=no_check, check_only=check_only, dry_run=dry_run)
 
+    if (
+        lang in ("all", "snapshot-ts")
+        and Path("packages/efa_fit_snapshot_ts/package.json").exists()
+    ):
+        pnpm = get_command("pnpm")
+        run_snapshot_ts_checks(pnpm, no_check=no_check, check_only=check_only, dry_run=dry_run)
+
     if lang in ("all", "l10n") and (not no_check or check_only):
         from bootstrap.ci.lint_l10n import run_l10n_lint
 
@@ -153,3 +160,46 @@ def run_site_checks(
 
         _echo("pnpm --filter efa-tech check")
         execute_command([pnpm, "--filter", "efa-tech", "check"], "SVELTE CHECK OUTPUT", dry_run)
+
+
+def run_snapshot_ts_checks(
+    pnpm: str, *, no_check: bool = False, check_only: bool = False, dry_run: bool = False
+) -> None:
+    """Format and lint the snapshot TypeScript package (biome + svelte-check).
+
+    check_only=True: read-only verification (CI mode); exits non-zero on failures.
+    check_only=False: auto-fix mode; formatters modify in-place.
+    """
+
+    def _echo(cmd_str: str) -> None:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + cmd_str)
+
+    if check_only:
+        _echo("pnpm biome format packages/efa_fit_snapshot_ts/")
+        execute_command(
+            [pnpm, "biome", "format", "packages/efa_fit_snapshot_ts/"],
+            "BIOME FORMAT OUTPUT",
+            dry_run,
+        )
+    else:
+        _echo("pnpm biome format --write packages/efa_fit_snapshot_ts/")
+        execute_command(
+            [pnpm, "biome", "format", "--write", "packages/efa_fit_snapshot_ts/"],
+            "BIOME FORMAT OUTPUT",
+            dry_run,
+        )
+
+    if not no_check or check_only:
+        _echo("pnpm biome check packages/efa_fit_snapshot_ts/")
+        execute_command(
+            [pnpm, "biome", "check", "packages/efa_fit_snapshot_ts/"],
+            "BIOME CHECK OUTPUT",
+            dry_run,
+        )
+
+        _echo("pnpm --filter efa-fit-snapshot-ts check")
+        execute_command(
+            [pnpm, "--filter", "efa-fit-snapshot-ts", "check"],
+            "SNAPSHOT TS CHECK OUTPUT",
+            dry_run,
+        )

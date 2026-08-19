@@ -61,6 +61,22 @@ SUITE_DEFINITIONS = [
         "patterns": ["site/**", "pnpm-lock.yaml", "biome.json", "package.json"],
     },
     {
+        "suite": "snapshot-ts",
+        "shell": "js",
+        "lint_command": "uv run x.py ci lint --lang snapshot-ts",
+        "command": "true",
+        "codegen_command": "uv run x.py ci codegen --lang snapshot-ts",
+        "patterns": [
+            "packages/efa_fit_snapshot_ts/**",
+            "packages/efa_proto_ts/**",
+            "data/schema/**",
+            "pnpm-workspace.yaml",
+            "pnpm-lock.yaml",
+            "biome.json",
+            "package.json",
+        ],
+    },
+    {
         "suite": "workflows",
         "shell": "ci",
         "lint_command": "true",
