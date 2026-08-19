@@ -4,6 +4,19 @@
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// D1's documented type conversion reads BLOB columns back as plain number
+// arrays (Array.from over the stored bytes); other environments may yield an
+// ArrayBuffer or a view. Normalize every observed shape into bytes; null
+// means "not a blob we can serve".
+export function normalizeBlob(value: unknown): Uint8Array | null {
+    if (value instanceof ArrayBuffer) return new Uint8Array(value);
+    if (ArrayBuffer.isView(value)) {
+        return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+    }
+    if (Array.isArray(value)) return Uint8Array.from(value as number[]);
+    return null;
+}
+
 // Port of timingSafeEqual in worker/efa-platform-data-sync/src/index.ts.
 export function timingSafeEqual(a: string, b: string): boolean {
     const encoder = new TextEncoder();

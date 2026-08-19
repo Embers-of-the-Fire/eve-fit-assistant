@@ -3,10 +3,37 @@ import { describe, it } from "node:test";
 import {
     decodeCursor,
     encodeCursor,
+    normalizeBlob,
     resolveShipName,
     timingSafeEqual,
     truncateCodePoints,
 } from "../src/util.ts";
+
+describe("normalizeBlob", () => {
+    const bytes = [8, 1, 255];
+
+    it("accepts ArrayBuffer and ArrayBufferView shapes", () => {
+        const view = new Uint8Array(bytes);
+        assert.deepEqual([...normalizeBlob(view.buffer)!], bytes);
+        assert.deepEqual([...normalizeBlob(view)!], bytes);
+        assert.deepEqual([...normalizeBlob(new DataView(view.buffer))!], bytes);
+        const slice = new Uint8Array([0, ...bytes, 0]).subarray(1, 4);
+        assert.deepEqual([...normalizeBlob(slice)!], bytes);
+    });
+
+    it("converts D1's plain number arrays", () => {
+        assert.deepEqual([...normalizeBlob(bytes)!], bytes);
+        assert.equal(normalizeBlob([])!.length, 0);
+    });
+
+    it("rejects non-blob shapes", () => {
+        assert.equal(normalizeBlob(null), null);
+        assert.equal(normalizeBlob(undefined), null);
+        assert.equal(normalizeBlob("8,1,255"), null);
+        assert.equal(normalizeBlob(42), null);
+        assert.equal(normalizeBlob({}), null);
+    });
+});
 
 describe("timingSafeEqual", () => {
     it("compares without early exit on length or content mismatch", () => {
