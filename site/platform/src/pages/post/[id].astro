@@ -26,7 +26,7 @@ const snapshot = stored
           shipNames: stored.snapshot.ship?.type?.names ?? {},
           requestId: stored.requestId,
           fitHash: stored.fitHash,
-          snapshotJson: JSON.stringify(toJson(FitSnapshotSchema, stored.snapshot), null, 2),
+          snapshotJson: toJson(FitSnapshotSchema, stored.snapshot),
       }
     : null;
 ---
