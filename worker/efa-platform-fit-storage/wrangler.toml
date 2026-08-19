@@ -3,7 +3,10 @@ main = "build/index.js"
 compatibility_date = "2026-08-01"
 
 # Binding-only worker: no public route. Reachable via the FIT_STORAGE service
-# binding of efa-platform-api (docs/temp/api-unit/spec.md §5).
+# binding of efa-platform-api (docs/temp/api-unit/spec.md §5). Public Worker
+# URLs are disabled since the endpoints have no authentication checks.
+workers_dev = false
+preview_urls = false
 
 [[d1_databases]]
 binding = "PLATFORM_DB"
