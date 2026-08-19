@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import sys
 
 import click
@@ -340,6 +341,83 @@ def register_dev_commands(cli_group: click.Group) -> None:
             If not specified, the package won't be installed.
         """
         _env_add(list(ctx.args), python, rust, dart, dry_run)
+
+    @dev.command("launch-platform")
+    @click.option(
+        "--build",
+        "force_build",
+        is_flag=True,
+        default=False,
+        help="Rebuild the platform site before launching.",
+    )
+    @click.option(
+        "--port",
+        type=int,
+        default=8787,
+        show_default=True,
+        help="Port the platform site listens on.",
+    )
+    def dev_launch_platform(force_build: bool, port: int):
+        """Launch the discussion platform stack locally (site + API + local D1).
+
+        Starts a wrangler multi-worker dev session with the built Astro site
+        (site/platform) as the primary worker (default http://localhost:8787)
+        and efa-platform-api attached via the PLATFORM_API service binding. All
+        workers share the API worker's local D1 state
+        (worker/efa-platform-api/.wrangler/state), so seed it beforehand with
+        `wrangler d1` commands run from worker/efa-platform-api.
+        """
+        site_config = PROJECT_ROOT / "site" / "platform" / "dist" / "server" / "wrangler.json"
+        api_dir = PROJECT_ROOT / "worker" / "efa-platform-api"
+        api_config = api_dir / "wrangler.toml"
+        persist_dir = api_dir / ".wrangler" / "state"
+
+        if force_build or not site_config.exists():
+            pnpm = get_command("pnpm")
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm build:platform"
+            )
+            runtime.execute(
+                [pnpm, "build:platform"],
+                "PLATFORM BUILD OUTPUT",
+                live_stdout=True,
+                cwd=PROJECT_ROOT,
+            )
+
+        if not site_config.exists():
+            raise click.ClickException(f"Platform site build output not found: {site_config}")
+
+        pnpx = get_command("pnpx")
+        cmd = [
+            pnpx,
+            "wrangler",
+            "dev",
+            "-c",
+            str(site_config),
+            "-c",
+            str(api_config),
+            "--persist-to",
+            str(persist_dir),
+            "--port",
+            str(port),
+        ]
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + "pnpx wrangler dev -c <site> -c <api> --persist-to <api-state> --port "
+            + str(port)
+        )
+        if runtime.is_dry_run():
+            click.echo("[Dry-Run] " + " ".join(cmd))
+            return
+        click.echo(
+            f"Site: http://localhost:{port} (browser islands still read production API data)"
+        )
+        try:
+            result = subprocess.run(cmd, cwd=api_dir, check=False)
+        except KeyboardInterrupt:
+            return
+        if result.returncode != 0:
+            sys.exit(result.returncode)
 
     @cli_group.group()
     def environment():
