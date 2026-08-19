@@ -9,8 +9,8 @@ binding = "PLATFORM_API"
 service = "efa-platform-api"
 
 [[routes]]
-pattern = "platform.efa-tech.dev/*"
-zone_name = "efa-tech.dev"
+pattern = "platform.efa-tech.dev"
+custom_domain = true
 
 # Preview chain (docs/temp/api-unit/spec.md §4.4): the platform API binding
 # targets the preview environment (disposable efa-platform-test data).
