@@ -10,7 +10,7 @@ let { values }: Props = $props();
 
 {#if values.length > 0}
     <div class="efa-related-values">
-        {#each values as value (value.text)}
+        {#each values as value, i (i)}
             <span class="efa-related-value">{value.text}</span>
         {/each}
     </div>
