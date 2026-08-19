@@ -21,7 +21,12 @@ export async function getPostSnapshot(postId: string): Promise<StoredPost | null
         `${BINDING_ORIGIN}/platform/internal/posts/${postId}`,
     );
     if (!recordResponse.ok) return null;
-    const record = (await recordResponse.json()) as { fitHash?: string };
+    let record: { fitHash?: string };
+    try {
+        record = (await recordResponse.json()) as { fitHash?: string };
+    } catch {
+        return null;
+    }
     if (typeof record.fitHash !== "string") return null;
 
     const snapshotResponse = await env.PLATFORM_API.fetch(
