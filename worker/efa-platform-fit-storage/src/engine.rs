@@ -19,6 +19,12 @@ use crate::provider::FitDataProvider;
 /// `build_container` and exhaust isolate memory.
 const MAX_GROUP_QUANTITY: u32 = 100;
 
+/// Free-text upload limits in Unicode code points (docs/temp/api-unit/spec.md
+/// §5.3). Enforced before canonicalization, so an over-limit upload produces
+/// no fit row and no post.
+const MAX_FIT_NAME_CODE_POINTS: usize = 100;
+const MAX_DESCRIPTION_CODE_POINTS: usize = 4000;
+
 fn is_valid_state(value: i32) -> bool {
     pb::slots::SlotState::is_valid(value)
 }
@@ -40,6 +46,18 @@ fn rack_capacity(layout: &pb::SnapshotShipLayout, slot_type: i32) -> Option<u32>
 pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError> {
     if request.fit_name.is_empty() {
         return Err(ApiError::bad_request("fit_name must not be empty"));
+    }
+    if request.fit_name.chars().count() > MAX_FIT_NAME_CODE_POINTS {
+        return Err(ApiError::bad_request(format!(
+            "fit_name exceeds {MAX_FIT_NAME_CODE_POINTS} code points"
+        )));
+    }
+    if let Some(description) = &request.description {
+        if description.chars().count() > MAX_DESCRIPTION_CODE_POINTS {
+            return Err(ApiError::bad_request(format!(
+                "description exceeds {MAX_DESCRIPTION_CODE_POINTS} code points"
+            )));
+        }
     }
     let state = &request.fit;
     let layout = &state.layout;

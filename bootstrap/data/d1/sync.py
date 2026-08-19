@@ -5,7 +5,7 @@ dogma attributes, dogma effects, buff collections) into per-entry rows and
 builds per-entry name/icon metadata from the snapshot's collection and
 localization database, then uploads everything to the platform data-sync
 worker (``api.efa-tech.dev/platform/storage/data-sync``), which stores them in
-the ``efa-platform-prod`` D1 database.
+the ``efa-platform-snapshots`` D1 database.
 
 Layout per family ``<f>``:
   - table ``<f>``:     (content_hash TEXT PRIMARY KEY, content BLOB)

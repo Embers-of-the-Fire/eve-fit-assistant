@@ -35,7 +35,7 @@ class FitUploadNotReadyException implements Exception {
 /// as a provider so widget tests can exercise the upload flow without the data
 /// repository or the network.
 typedef FitSnapshotUploadFn =
-    Future<FitUploadResponse> Function(
+    Future<FitPostSubmitResult> Function(
       WidgetRef ref, {
       required String fitId,
       required FitStorage fit,
@@ -43,7 +43,7 @@ typedef FitSnapshotUploadFn =
 
 final fitSnapshotUploadFnProvider = Provider<FitSnapshotUploadFn>((Ref ref) => _submitFitSnapshot);
 
-Future<FitUploadResponse> _submitFitSnapshot(
+Future<FitPostSubmitResult> _submitFitSnapshot(
   WidgetRef ref, {
   required String fitId,
   required FitStorage fit,

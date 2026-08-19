@@ -1,6 +1,7 @@
--- Remote fit storage: fits keyed by canonical fit-state hash, plus a
--- per-submission request log pointing at the fit hash.
--- See docs/temp/remote-fit/spec.md §8.
+-- Pure content-addressed fit store: fits keyed by canonical fit-state hash.
+-- The legacy `requests` submission log is abolished; post identity lives in
+-- the `posts` table owned by `efa-platform-api` (see its own migrations).
+-- See docs/temp/api-unit/spec.md §4.1.
 
 CREATE TABLE fits (
     fit_hash TEXT PRIMARY KEY,             -- canonical fit hash
@@ -10,10 +11,3 @@ CREATE TABLE fits (
     snapshot BLOB NOT NULL,                -- full FitSnapshot protobuf bytes
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
-
-CREATE TABLE requests (
-    request_id TEXT PRIMARY KEY,           -- UUID v4
-    fit_hash TEXT NOT NULL REFERENCES fits (fit_hash),
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-);
-CREATE INDEX requests_fit_hash ON requests (fit_hash);

@@ -73,7 +73,7 @@ impl SnapshotData {
     }
 }
 
-/// Row families of `efa-platform-prod` (spec §7.2).
+/// Row families of `efa-platform-snapshots` (spec §7.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Family {
     Types,

@@ -1,28 +1,36 @@
 # efa-platform-fit-storage
 
-Remote fit storage & computation service: a Cloudflare Worker (worker-rs) that
-accepts an authorized fit-state upload, computes the fit's statistics with the
-`eve-fit-os` fitting engine, and stores the result as a self-contained
-`FitSnapshot` for later retrieval.
+Pure, content-addressed fit store: a Cloudflare Worker (worker-rs) that accepts
+a fit-state upload, computes the fit's statistics with the `eve-fit-os`
+fitting engine, stores the result as a self-contained `FitSnapshot`, and
+serves snapshots by fit hash. It knows nothing about posts, threads, or
+listing.
 
-Spec: `docs/temp/remote-fit/spec.md`; implementation plan:
-`docs/temp/remote-fit/plan.md`.
+Spec: `docs/temp/api-unit/spec.md`; engine data model:
+`docs/temp/remote-fit/spec.md` §§5–7.
+
+This worker has **no public route**; it is reachable only through the
+`FIT_STORAGE` service binding of `efa-platform-api`. Authentication lives in
+`efa-platform-api`; this worker performs no credential checks.
 
 ## API
 
-Routes are mounted at `api.efa-tech.dev/platform/storage/fit/*`. Permissive
-CORS on all endpoints.
+Protobuf-only (`application/x-protobuf`); error responses keep the JSON
+envelope.
 
-| Endpoint | Auth | Request | Response |
-| --- | --- | --- | --- |
-| `POST /platform/storage/fit/submit` | Bearer | `FitUploadRequest` protobuf body (`Content-Type: application/x-protobuf`) | `FitUploadResponse` protobuf |
-| `GET /platform/storage/fit/by-hash/:fit_hash` | public | — | `FitSnapshot` protobuf bytes; 404 if unknown |
-| `GET /platform/storage/fit/request/:request_id` | public | — | `FitRequestRecord` protobuf; 404 if unknown |
-| `GET /platform/storage/fit/health` | public | — | 200 JSON `{ "ok": true }`; with a valid Bearer token it additionally runs `SELECT 1` on both databases and reports failures |
+| Endpoint | Request | Response |
+| --- | --- | --- |
+| `POST /platform/storage/fit/submit` | `FitUploadRequest` protobuf body | `FitStoreResponse` protobuf |
+| `GET /platform/storage/fit/by-hash/:fit_hash` | — | `FitSnapshot` protobuf bytes; 404 if unknown |
+| `GET /platform/storage/fit/health` | — | 200 JSON `{ "ok": true }` after a `SELECT 1` on both databases |
 
 The wire messages live in `data/schema/fit_request.proto` (package `fit`).
 The fit hash is `lowercase_hex(sha256(canonical FitState bytes))`; the
 canonical form sorts every repeated collection (see `src/hash.rs`).
+
+Oversized free-text fields are rejected with 400 `bad_request` before
+canonicalization (limits in Unicode code points): `fit_name` ≤ 100,
+`description` ≤ 4000.
 
 Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
 `issues` array for `validation_failed`):
@@ -30,16 +38,15 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
 | Status | Code | Condition |
 | --- | --- | --- |
 | 400 | `bad_request` | Malformed protobuf, constraint violations |
-| 401 | `unauthorized` | Missing/invalid Bearer token |
-| 404 | `not_found` | Unknown hash / request ID |
+| 404 | `not_found` | Unknown fit hash |
 | 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` not in the `snapshots` registry |
 | 422 | `unknown_type` | A referenced type ID has no row in the snapshot |
 | 422 | `validation_failed` | Engine `validate_fit` returned Error-level issues |
 
 ## How it works
 
-- Engine data comes from the `efa-platform-prod` D1 database (populated by
-  `worker/efa-platform-data-sync`), addressed by the client-supplied
+- Engine data comes from the `efa-platform-snapshots` D1 database (populated
+  by `worker/efa-platform-data-sync`), addressed by the client-supplied
   `(server_id, snapshot_hash)`. A 3-round transitive-closure prefetch
   (`src/prefetch.rs`) loads exactly the reachable rows; a `thread_local!`
   isolate cache makes warm requests zero-query.
@@ -49,8 +56,8 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
   never a wasm trap.
 - Fits that pass `calculate` + `validate_fit` are stored in the `efa-platform`
   D1 database (`migrations/0001_init.sql`): one `fits` row per canonical hash
-  (idempotent re-submits skip computation) plus one `requests` row per
-  submission.
+  (idempotent re-submits skip computation). The `posts` table in the same
+  database is owned by `efa-platform-api`.
 - Statistics are a field-for-field port of the app's
   `lib/features/fit_io/snapshot_export.dart::_statistics` (`src/statistics.rs`).
 
@@ -71,14 +78,21 @@ JSONs from the submodule's tracked `data/patches/*.yaml` into the gitignored
 `engine-json/` directory, and `install-build.sh` writes a minimal `.env`
 pointing at it (never overwriting an existing one).
 
-Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
+## Preview environment
+
+`wrangler deploy --env preview` targets the `[env.preview]` chain
+(`docs/temp/api-unit/spec.md` §4.4): `FIT_DB` points at the disposable
+`efa-platform-test` database; `PLATFORM_DB` stays on `efa-platform-snapshots`
+(engine data is read-only and shared).
 
 ## Deployment (one-time setup)
 
-1. `wrangler d1 create efa-platform` → paste the real `database_id` into
-   `wrangler.toml` (the committed value is a placeholder).
-2. `wrangler d1 migrations apply efa-platform --remote`.
-3. `wrangler secret put FIT_STORAGE_TOKEN`.
-4. Cloudflare Git integration: build command runs `./install-build.sh` then
+1. `wrangler d1 create efa-platform` / `efa-platform-test` → paste the real
+   `database_id`s into `wrangler.toml`.
+2. `wrangler d1 migrations apply efa-platform --remote` (and `--env preview`
+   for the test database). Migration filenames must never collide with those
+   of `efa-platform-api` — wrangler records applied filenames per database.
+3. Cloudflare Git integration: build command runs `./install-build.sh` then
    `wrangler deploy` (same pattern as `worker/release`; no GitHub Actions
-   changes).
+   changes). The `FIT_STORAGE_TOKEN` secret lives on `efa-platform-api`, not
+   here.

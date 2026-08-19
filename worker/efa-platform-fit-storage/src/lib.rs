@@ -1,7 +1,6 @@
 use prost::Message;
 use worker::*;
 
-mod auth;
 mod d1;
 mod engine;
 mod error;
@@ -16,17 +15,6 @@ use error::ApiError;
 use proto::fit as pb;
 
 const PROTOBUF_CONTENT_TYPE: &str = "application/x-protobuf";
-
-fn add_cors(res: &mut Response) -> Result<()> {
-    let headers = res.headers_mut();
-    headers.set("Access-Control-Allow-Origin", "*")?;
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
-    headers.set(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization",
-    )?;
-    Ok(())
-}
 
 fn render_error(err: ApiError) -> Response {
     if err.status >= 500 {
@@ -58,12 +46,10 @@ fn fit_db(env: &Env) -> Result<D1Database, ApiError> {
         .map_err(|e| ApiError::internal(format!("FIT_DB binding not configured: {e}")))
 }
 
-/// Submit flow (spec §6.2).
+/// Submit flow (docs/temp/api-unit/spec.md §5.2). This worker is binding-only;
+/// authentication lives in `efa-platform-api`.
 async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError> {
-    // 1. Authenticate.
-    auth::check_authorization(&req, &env)?;
-
-    // 2. Decode and structurally validate.
+    // 1. Decode and structurally validate.
     let bytes = req
         .bytes()
         .await
@@ -75,7 +61,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
     let platform_db = platform_db(&env)?;
     let fit_db = fit_db(&env)?;
 
-    // 3. Snapshot completeness.
+    // 2. Snapshot completeness.
     if !d1::snapshot_exists(&platform_db, &request.server_id, &request.snapshot_hash).await? {
         return Err(ApiError::snapshot_incomplete(
             &request.server_id,
@@ -83,17 +69,17 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
         ));
     }
 
-    // 4. Canonicalize → fit hash.
+    // 3. Canonicalize → fit hash.
     let canonical = hash::canonical_state(state);
     let canonical_bytes = canonical.encode_to_vec();
     let fit_hash = hash::fit_hash(&canonical_bytes);
 
-    // 5. Idempotent re-submit: skip computation when the fit row exists (fast path;
+    // 4. Idempotent re-submit: skip computation when the fit row exists (fast path;
     //    the insert below is conflict-tolerant and stays authoritative under races).
     let mut already_existed = d1::fit_exists(&fit_db, &fit_hash).await?;
 
     if !already_existed {
-        // 6a. Prefetch the transitive closure (unknown seed type → 422).
+        // 5a. Prefetch the transitive closure (unknown seed type → 422).
         let key: prefetch::SnapshotKey = (request.server_id.clone(), request.snapshot_hash.clone());
         let mut data = prefetch::cache_get(&key);
         {
@@ -117,7 +103,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
         }
         prefetch::cache_merge(key, data.clone());
 
-        // 6b/6c. Calculate + validate (Error-level issues → 422, nothing stored).
+        // 5b/5c. Calculate + validate (Error-level issues → 422, nothing stored).
         let provider = data.provider();
         let container = engine::build_container(&canonical);
         let (ship, _warnings) = engine::calculate_and_validate(&container, &provider)?;
@@ -129,7 +115,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
             );
         }
 
-        // 6d/6e. Assemble + store the snapshot.
+        // 5d/5e. Assemble + store the snapshot.
         let created_at_ms = Date::now().as_millis() as i64;
         let snapshot = snapshot::assemble(&request, &canonical, &ship, &data, created_at_ms);
         let inserted = d1::insert_fit(
@@ -144,13 +130,8 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
         already_existed = !inserted;
     }
 
-    // 7. Record the request (always, also for re-submits).
-    let request_id = hash::request_id();
-    d1::insert_request(&fit_db, &request_id, &fit_hash).await?;
-
-    // 8. Respond.
-    proto_response(&pb::FitUploadResponse {
-        request_id,
+    // 6. Respond.
+    proto_response(&pb::FitStoreResponse {
         fit_hash,
         already_existed,
     })
@@ -171,40 +152,18 @@ async fn handle_by_hash(env: Env, fit_hash: &str) -> Result<Response, ApiError> 
     }
 }
 
-async fn handle_request(env: Env, request_id: &str) -> Result<Response, ApiError> {
-    let fit_db = fit_db(&env)?;
-    match d1::get_request(&fit_db, request_id).await? {
-        Some((request_id, fit_hash, created_at)) => proto_response(&pb::FitRequestRecord {
-            request_id,
-            fit_hash,
-            created_at,
-        }),
-        None => Err(ApiError::not_found(format!(
-            "unknown request id: {request_id}"
-        ))),
-    }
-}
-
-async fn handle_health(req: Request, env: Env) -> Result<Response, ApiError> {
-    // Unauthenticated callers get a cheap in-memory liveness reply; the D1
-    // round trips only run for authorized callers to avoid cheap load
-    // amplification against both databases.
-    if auth::check_authorization(&req, &env).is_ok() {
-        d1::health_check(&platform_db(&env)?).await?;
-        d1::health_check(&fit_db(&env)?).await?;
-    }
+async fn handle_health(env: Env) -> Result<Response, ApiError> {
+    // Binding-only worker: every caller is internal, so the liveness reply
+    // always includes a D1 round trip on both databases.
+    d1::health_check(&platform_db(&env)?).await?;
+    d1::health_check(&fit_db(&env)?).await?;
     Response::from_json(&serde_json::json!({ "ok": true }))
         .map_err(|e| ApiError::internal(format!("failed to build response: {e}")))
 }
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    if req.method() == Method::Options {
-        let mut res = Response::empty()?;
-        add_cors(&mut res)?;
-        return Ok(res);
-    }
-    let mut res = match Router::new()
+    match Router::new()
         .post_async("/platform/storage/fit/submit", |req, ctx| async move {
             Ok(handle_submit(req, ctx.env)
                 .await
@@ -219,28 +178,15 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                     .unwrap_or_else(render_error))
             },
         )
-        .get_async(
-            "/platform/storage/fit/request/:request_id",
-            |_req, ctx| async move {
-                let request_id = ctx.param("request_id").cloned().unwrap_or_default();
-                Ok(handle_request(ctx.env, &request_id)
-                    .await
-                    .unwrap_or_else(render_error))
-            },
-        )
-        .get_async("/platform/storage/fit/health", |req, ctx| async move {
-            Ok(handle_health(req, ctx.env)
-                .await
-                .unwrap_or_else(render_error))
+        .get_async("/platform/storage/fit/health", |_req, ctx| async move {
+            Ok(handle_health(ctx.env).await.unwrap_or_else(render_error))
         })
         .run(req, env)
         .await
     {
-        Ok(res) => res,
+        Ok(res) => Ok(res),
         // Handlers always return Ok; a routing-level error means no route
         // matched.
-        Err(_) => render_error(ApiError::not_found("unknown route")),
-    };
-    add_cors(&mut res)?;
-    Ok(res)
+        Err(_) => Ok(render_error(ApiError::not_found("unknown route"))),
+    }
 }

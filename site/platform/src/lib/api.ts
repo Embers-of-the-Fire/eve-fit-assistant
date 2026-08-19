@@ -1,4 +1,8 @@
-import type { FitListEntry, ThreadSummary } from "./types";
+import type { PostSummary, ThreadSummary } from "./types";
+
+// Browser islands call the public platform API directly (CORS permits this);
+// SSR frontmatter uses the PLATFORM_API service binding (./platform.ts).
+const API_ORIGIN = "https://api.efa-tech.dev";
 
 async function getJson<T>(url: string): Promise<T> {
     const res = await fetch(url);
@@ -6,12 +10,20 @@ async function getJson<T>(url: string): Promise<T> {
     return (await res.json()) as T;
 }
 
-export async function fetchFits(): Promise<FitListEntry[]> {
-    const data = await getJson<{ fits: FitListEntry[] }>("/api/posts");
-    return data.fits;
+export function localizedName(names: Record<string, string>, locale = "en"): string {
+    return names[locale] ?? names.en ?? Object.values(names)[0] ?? "";
 }
 
-export async function fetchThreads(requestId: string): Promise<ThreadSummary[]> {
-    const data = await getJson<{ threads: ThreadSummary[] }>(`/api/posts/${requestId}/threads`);
+export async function fetchPosts(locale: string, limit = 50): Promise<PostSummary[]> {
+    const data = await getJson<{ posts: PostSummary[] }>(
+        `${API_ORIGIN}/platform/internal/posts?limit=${limit}&locale=${encodeURIComponent(locale)}`,
+    );
+    return data.posts;
+}
+
+export async function fetchThreads(postId: string): Promise<ThreadSummary[]> {
+    const data = await getJson<{ threads: ThreadSummary[] }>(
+        `${API_ORIGIN}/platform/internal/posts/${postId}/threads`,
+    );
     return data.threads;
 }

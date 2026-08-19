@@ -1,6 +1,5 @@
 import "dart:math";
 
-import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
@@ -155,7 +154,7 @@ void main() {
         _makeFit(),
         uploadToken: "test-token",
         uploadFn: (ref, {required fitId, required fit}) async =>
-            FitUploadResponse(fitHash: fitHash),
+            const FitPostSubmitResult(postId: "post-1", fitHash: fitHash, alreadyExisted: false),
       ),
     );
     await tester.pumpAndSettle();

@@ -2,6 +2,6 @@
 
 declare namespace Cloudflare {
     interface Env {
-        FIT_DB: D1Database;
+        PLATFORM_API: Fetcher;
     }
 }

@@ -155,16 +155,13 @@ message FitCharacter {
   map<string, string> names = 2;
 }
 
-message FitUploadResponse {
-  required string request_id = 1;
-  required string fit_hash = 2;
-  required bool already_existed = 3;
-}
+// Removed (docs/temp/api-unit/spec.md §2): FitUploadResponse and
+// FitRequestRecord. Their message names and field numbers (1-3 each) are
+// reserved and must not be reused.
 
-message FitRequestRecord {
-  required string request_id = 1;
-  required string fit_hash = 2;
-
-  /// ISO-8601 UTC.
-  required string created_at = 3;
+/// Internal service-binding response of `efa-platform-fit-storage`'s submit
+/// endpoint (docs/temp/api-unit/spec.md §5.2).
+message FitStoreResponse {
+  required string fit_hash = 1;
+  required bool already_existed = 2;
 }

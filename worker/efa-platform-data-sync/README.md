@@ -1,7 +1,7 @@
 # efa-platform-data-sync — Cloudflare Worker
 
 Ingests per-entry engine data from resource snapshots into the
-`efa-platform-prod` D1 database, keyed by `(server_id, snapshot_hash)` so any
+`efa-platform-snapshots` D1 database, keyed by `(server_id, snapshot_hash)` so any
 historical snapshot stays addressable (checkout-ref semantics).
 
 Mounted at `api.efa-tech.dev/platform/storage/data-sync`.
@@ -94,9 +94,9 @@ Deployed via the Cloudflare Git integration; the build phase runs
 
 One-time setup:
 
-1. `wrangler d1 create efa-platform-prod` and paste the printed `database_id`
+1. `wrangler d1 create efa-platform-snapshots` and paste the printed `database_id`
    into `wrangler.toml`.
-2. `wrangler d1 migrations apply efa-platform-prod --remote`.
+2. `wrangler d1 migrations apply efa-platform-snapshots --remote`.
 3. `wrangler secret put SYNC_TOKEN`; add the same value as the `D1_SYNC_TOKEN`
    secret of the `production-data` GitHub environment.
 

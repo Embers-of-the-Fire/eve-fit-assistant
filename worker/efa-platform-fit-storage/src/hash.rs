@@ -49,10 +49,6 @@ pub fn fit_hash(bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn request_id() -> String {
-    uuid::Uuid::new_v4().to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,12 +253,5 @@ mod tests {
             fit_hash(&canonical_state(&state).encode_to_vec()),
             fit_hash(&canonical_state(&other).encode_to_vec())
         );
-    }
-
-    #[test]
-    fn request_id_is_uuid_v4() {
-        let id = request_id();
-        assert_eq!(id.len(), 36);
-        assert_ne!(request_id(), request_id());
     }
 }

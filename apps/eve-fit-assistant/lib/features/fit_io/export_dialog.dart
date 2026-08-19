@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:convert";
 
-import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
@@ -43,7 +42,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   Object? _loadingError;
   String? _actionError;
   bool _isExporting = false;
-  FitUploadResponse? _uploadResult;
+  FitPostSubmitResult? _uploadResult;
 
   @override
   void initState() {
@@ -161,7 +160,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     );
   }
 
-  Widget _buildUploadResult(BuildContext context, FitUploadResponse result) {
+  Widget _buildUploadResult(BuildContext context, FitPostSubmitResult result) {
     final url = FitSnapshotUploadApi.byHashUrl(result.fitHash);
     return Column(
       mainAxisSize: MainAxisSize.min,

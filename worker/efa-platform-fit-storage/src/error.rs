@@ -24,10 +24,6 @@ impl ApiError {
         Self::new(400, "bad_request", message)
     }
 
-    pub fn unauthorized() -> Self {
-        Self::new(401, "unauthorized", "missing or invalid bearer token")
-    }
-
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(404, "not_found", message)
     }

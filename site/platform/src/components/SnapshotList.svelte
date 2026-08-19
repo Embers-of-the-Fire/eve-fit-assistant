@@ -1,16 +1,16 @@
 <script lang="ts">
 import { onMount } from "svelte";
-import { fetchFits } from "../lib/api";
+import { fetchPosts } from "../lib/api";
 import { locale, t } from "../lib/i18n.svelte";
-import type { FitListEntry } from "../lib/types";
+import type { PostSummary } from "../lib/types";
 
-let fits = $state<FitListEntry[]>([]);
+let posts = $state<PostSummary[]>([]);
 let loading = $state(true);
 let failed = $state(false);
 
 onMount(async () => {
     try {
-        fits = await fetchFits();
+        posts = await fetchPosts(locale.current);
     } catch {
         failed = true;
     } finally {
@@ -32,24 +32,29 @@ function formatDate(iso: string): string {
         <p class="text-console-text-muted">{t("fits.loading")}</p>
     {:else if failed}
         <p class="text-console-danger">{t("fits.error")}</p>
-    {:else if fits.length === 0}
+    {:else if posts.length === 0}
         <p class="text-console-text-muted">{t("fits.empty")}</p>
     {:else}
         <ul class="grid gap-3">
-            {#each fits as fit (fit.requestId)}
+            {#each posts as post (post.postId)}
                 <li>
                     <a
-                        href="/post/{fit.requestId}"
+                        href="/post/{post.postId}"
                         class="block rounded border border-console-border bg-console-surface p-4 transition-colors hover:border-console-primary"
                     >
                         <div class="flex items-baseline justify-between gap-4">
                             <span class="font-semibold text-console-highlight">
-                                {fit.fitName || t("fits.untitled")}
+                                {post.fitName || t("fits.untitled")}
                             </span>
-                            <span class="text-sm text-console-text-dim">{fit.shipName}</span>
+                            <span class="text-sm text-console-text-dim">{post.shipName}</span>
                         </div>
+                        {#if post.description}
+                            <p class="mt-1 line-clamp-2 text-sm text-console-text-dim">
+                                {post.description}
+                            </p>
+                        {/if}
                         <div class="mt-1 text-xs text-console-text-muted">
-                            {t("fits.uploaded")}: {formatDate(fit.createdAt)}
+                            {t("fits.uploaded")}: {formatDate(post.createdAt)}
                         </div>
                     </a>
                 </li>
