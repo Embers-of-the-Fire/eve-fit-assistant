@@ -2,6 +2,8 @@ name = "efa-platform-api"
 compatibility_date = "2026-08-01"
 main = "src/index.ts"
 
+preview_urls = true
+
 [[routes]]
 pattern = "api.efa-tech.dev/platform/internal/*"
 zone_name = "efa-tech.dev"
