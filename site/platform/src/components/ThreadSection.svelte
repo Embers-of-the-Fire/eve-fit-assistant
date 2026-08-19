@@ -5,16 +5,16 @@ import { t } from "../lib/i18n.svelte";
 import type { ThreadSummary } from "../lib/types";
 
 interface Props {
-    requestId: string;
+    postId: string;
 }
 
-const { requestId }: Props = $props();
+const { postId }: Props = $props();
 
 let threads = $state<ThreadSummary[]>([]);
 
 onMount(async () => {
     try {
-        threads = await fetchThreads(requestId);
+        threads = await fetchThreads(postId);
     } catch {
         threads = [];
     }

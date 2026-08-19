@@ -57,28 +57,22 @@ void main() {
     final api = _apiWith((options, body) async {
       captured = options;
       capturedBody = body;
-      return ResponseBody.fromBytes(
-        Uint8List.fromList(
-          FitUploadResponse(
-            requestId: "req-1",
-            fitHash: "abc123",
-            alreadyExisted: true,
-          ).writeToBuffer(),
-        ),
-        200,
+      return ResponseBody.fromString(
+        jsonEncode({"postId": "post-1", "fitHash": "abc123", "alreadyExisted": true}),
+        201,
         headers: {
-          Headers.contentTypeHeader: ["application/x-protobuf"],
+          Headers.contentTypeHeader: ["application/json"],
         },
       );
     });
 
     final response = await api.submit(_request(), token: "secret-token");
 
-    expect(response.requestId, "req-1");
+    expect(response.postId, "post-1");
     expect(response.fitHash, "abc123");
     expect(response.alreadyExisted, isTrue);
 
-    expect(captured?.path, "https://api.efa-tech.dev/platform/storage/fit/submit");
+    expect(captured?.path, "https://api.efa-tech.dev/platform/internal/posts");
     expect(captured?.method, "POST");
     expect(captured?.headers["Authorization"], "Bearer secret-token");
     expect(captured?.contentType, "application/x-protobuf");
@@ -212,7 +206,7 @@ void main() {
   test("builds the public by-hash URL", () {
     expect(
       FitSnapshotUploadApi.byHashUrl("abc123"),
-      "https://api.efa-tech.dev/platform/storage/fit/by-hash/abc123",
+      "https://api.efa-tech.dev/platform/internal/fits/abc123/snapshot",
     );
   });
 }

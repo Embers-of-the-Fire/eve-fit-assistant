@@ -1,0 +1,35 @@
+name = "efa-platform-api"
+compatibility_date = "2026-08-01"
+main = "src/index.ts"
+
+[[routes]]
+pattern = "api.efa-tech.dev/platform/internal/*"
+zone_name = "efa-tech.dev"
+
+[[d1_databases]]
+binding = "FIT_DB"
+database_name = "efa-platform"
+database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
+migrations_dir = "migrations"
+
+[[services]]
+binding = "FIT_STORAGE"
+service = "efa-platform-fit-storage"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Preview chain (docs/temp/api-unit/spec.md §4.4): disposable data.
+[env.preview]
+
+[[env.preview.d1_databases]]
+binding = "FIT_DB"
+database_name = "efa-platform-test"
+database_id = "f2eacd35-db3d-4162-ac6b-d7c69e3e5aef"
+migrations_dir = "migrations"
+
+[[env.preview.services]]
+binding = "FIT_STORAGE"
+service = "efa-platform-fit-storage"
+environment = "preview"

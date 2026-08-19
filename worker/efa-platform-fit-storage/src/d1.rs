@@ -29,13 +29,6 @@ fn row_int(row: &JsValue, index: u32) -> Result<i32, ApiError> {
         .ok_or_else(|| ApiError::internal("D1 row: expected integer column"))
 }
 
-fn row_text(row: &JsValue, index: u32) -> Result<String, ApiError> {
-    js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
-        .ok()
-        .and_then(|v| v.as_string())
-        .ok_or_else(|| ApiError::internal("D1 row: expected text column"))
-}
-
 /// Raw byte access for BLOB columns (spec §14): D1 returns ArrayBuffers.
 fn row_blob(row: &JsValue, index: u32) -> Result<Vec<u8>, ApiError> {
     let value = js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
@@ -69,16 +62,6 @@ async fn raw_query(
         .raw_js_value()
         .await
         .map_err(|e| ApiError::internal(format!("D1 query failed: {e}")))
-}
-
-async fn run(db: &D1Database, sql: &str, params: &[JsValue]) -> Result<(), ApiError> {
-    db.prepare(sql)
-        .bind(params)
-        .map_err(|e| ApiError::internal(format!("D1 bind failed: {e}")))?
-        .run()
-        .await
-        .map_err(|e| ApiError::internal(format!("D1 run failed: {e}")))?;
-    Ok(())
 }
 
 async fn run_change_count(
@@ -211,40 +194,6 @@ pub async fn insert_fit(
     )
     .await?;
     Ok(changes > 0)
-}
-
-pub async fn insert_request(
-    db: &D1Database,
-    request_id: &str,
-    fit_hash: &str,
-) -> Result<(), ApiError> {
-    run(
-        db,
-        "INSERT INTO requests (request_id, fit_hash) VALUES (?, ?)",
-        &[js_text(request_id), js_text(fit_hash)],
-    )
-    .await
-}
-
-/// (request_id, fit_hash, created_at) for the request record endpoint.
-pub async fn get_request(
-    db: &D1Database,
-    request_id: &str,
-) -> Result<Option<(String, String, String)>, ApiError> {
-    let rows = raw_query(
-        db,
-        "SELECT request_id, fit_hash, created_at FROM requests WHERE request_id = ?",
-        &[js_text(request_id)],
-    )
-    .await?;
-    match rows.first() {
-        Some(row) => Ok(Some((
-            row_text(row, 0)?,
-            row_text(row, 1)?,
-            row_text(row, 2)?,
-        ))),
-        None => Ok(None),
-    }
 }
 
 pub async fn health_check(db: &D1Database) -> Result<(), ApiError> {

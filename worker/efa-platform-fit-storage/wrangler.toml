@@ -2,14 +2,13 @@ name = "efa-platform-fit-storage"
 main = "build/index.js"
 compatibility_date = "2026-08-01"
 
-[[routes]]
-pattern = "api.efa-tech.dev/platform/storage/fit/*"
-zone_name = "efa-tech.dev"
+# Binding-only worker: no public route. Reachable via the FIT_STORAGE service
+# binding of efa-platform-api (docs/temp/api-unit/spec.md §5).
 
 [[d1_databases]]
 binding = "PLATFORM_DB"
-database_name = "efa-platform-prod"
-database_id = "21ba756f-dbe2-4254-8d41-c75c3a5d2784"
+database_name = "efa-platform-snapshots"
+database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
 
 [[d1_databases]]
 binding = "FIT_DB"
@@ -22,3 +21,17 @@ command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-bui
 [observability]
 enabled = true
 head_sampling_rate = 1
+
+# Preview chain (spec §4.4): disposable data. Engine data (PLATFORM_DB) is
+# read-only and shared with production.
+[env.preview]
+
+[[env.preview.d1_databases]]
+binding = "PLATFORM_DB"
+database_name = "efa-platform-snapshots"
+database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
+
+[[env.preview.d1_databases]]
+binding = "FIT_DB"
+database_name = "efa-platform-test"
+database_id = "f2eacd35-db3d-4162-ac6b-d7c69e3e5aef"

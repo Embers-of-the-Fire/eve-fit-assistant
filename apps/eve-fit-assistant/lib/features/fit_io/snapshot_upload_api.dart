@@ -7,14 +7,14 @@ import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 const _workerOrigin = "https://api.efa-tech.dev";
-const _submitUrl = "$_workerOrigin/platform/storage/fit/submit";
+const _submitUrl = "$_workerOrigin/platform/internal/posts";
 
 /// Injectable seam for the upload API, so tests can substitute a fake transport.
 final fitSnapshotUploadApiProvider = Provider<FitSnapshotUploadApi>(
   (Ref ref) => FitSnapshotUploadApi(),
 );
 
-/// Error codes reported by the fit storage worker, plus client-side categories.
+/// Error codes reported by the platform API worker, plus client-side categories.
 enum FitUploadErrorCode {
   badRequest,
   unauthorized,
@@ -42,33 +42,54 @@ class FitUploadException implements Exception {
       "${issues == null ? "" : ", issues: ${jsonEncode(issues)}"})";
 }
 
-/// Client for the remote fit storage service
-/// (`worker/efa-platform-fit-storage`, `api.efa-tech.dev/platform/storage/fit`).
+/// Result of `POST /platform/internal/posts` (docs/temp/api-unit/spec.md §6.1):
+/// the post is a fresh publication event (UUID) backed by the content-addressed
+/// fit.
+class FitPostSubmitResult {
+  const FitPostSubmitResult({
+    required this.postId,
+    required this.fitHash,
+    required this.alreadyExisted,
+  });
+
+  factory FitPostSubmitResult.fromJson(Map<String, dynamic> json) => FitPostSubmitResult(
+    postId: json["postId"] as String,
+    fitHash: json["fitHash"] as String,
+    alreadyExisted: json["alreadyExisted"] as bool,
+  );
+
+  final String postId;
+  final String fitHash;
+  final bool alreadyExisted;
+}
+
+/// Client for the platform's public front (`worker/efa-platform-api`,
+/// `api.efa-tech.dev/platform/internal`).
 class FitSnapshotUploadApi {
   FitSnapshotUploadApi({Dio? dio})
     : _dio = dio ?? createRemoteDio(connectTimeout: const Duration(seconds: 10));
 
   final Dio _dio;
 
-  /// Public URL of the stored snapshot for a given fit hash.
-  static String byHashUrl(String fitHash) => "$_workerOrigin/platform/storage/fit/by-hash/$fitHash";
+  /// Public URL of the stored snapshot for a given fit hash (spec §6.2).
+  static String byHashUrl(String fitHash) =>
+      "$_workerOrigin/platform/internal/fits/$fitHash/snapshot";
 
-  Future<FitUploadResponse> submit(FitUploadRequest request, {required String token}) async {
+  Future<FitPostSubmitResult> submit(FitUploadRequest request, {required String token}) async {
     try {
-      final response = await _dio.post<Uint8List>(
+      final response = await _dio.post<Object>(
         _submitUrl,
         data: request.writeToBuffer(),
         options: Options(
           contentType: "application/x-protobuf",
-          responseType: ResponseType.bytes,
           headers: {"Authorization": "Bearer $token"},
         ),
       );
       final data = response.data;
-      if (data == null) {
+      if (data is! Map<String, dynamic>) {
         throw const FitUploadException(FitUploadErrorCode.unexpected);
       }
-      return FitUploadResponse.fromBuffer(data);
+      return FitPostSubmitResult.fromJson(data);
     } on DioException catch (e) {
       throw _mapDioException(e);
     } on FitUploadException {

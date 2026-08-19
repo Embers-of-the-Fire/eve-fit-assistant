@@ -3,7 +3,7 @@ name: Sync snapshot to platform D1
 description: >-
   Sync the built resource snapshots' engine data (types, type dogma, dogma
   attributes, dogma effects, buffs, plus name/icon metadata) into the
-  efa-platform-prod D1 database via the efa-platform-data-sync worker.
+  efa-platform-snapshots D1 database via the efa-platform-data-sync worker.
   Expects the v2-snapshots artifact contents (cache/remote/assets/ and
   snapshot-hashes.json) to already be present in the working directory,
   protobuf bindings generated, and efa.dev.toml initialized.

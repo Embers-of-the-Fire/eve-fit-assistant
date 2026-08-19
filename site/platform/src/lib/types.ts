@@ -1,7 +1,9 @@
-export interface FitListEntry {
-    requestId: string;
+export interface PostSummary {
+    postId: string;
     fitHash: string;
     fitName: string;
+    /** Preview of the fit's description, truncated to 280 code points. */
+    description: string;
     shipName: string;
     shipTypeId: number;
     createdAt: string;

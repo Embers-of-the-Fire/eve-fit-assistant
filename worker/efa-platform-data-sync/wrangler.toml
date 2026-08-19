@@ -4,8 +4,8 @@ main = "src/index.ts"
 
 [[d1_databases]]
 binding = "PLATFORM_DB"
-database_name = "efa-platform-prod"
-database_id = "21ba756f-dbe2-4254-8d41-c75c3a5d2784"
+database_name = "efa-platform-snapshots"
+database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
 migrations_dir = "migrations"
 
 [[routes]]

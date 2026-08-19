@@ -2,13 +2,13 @@
 import { fromJson, type JsonValue } from "@bufbuild/protobuf";
 import { FitSnapshotView } from "efa-fit-snapshot-ts";
 import { FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
-import { localizedName } from "../lib/d1";
+import { localizedName } from "../lib/api";
 import { locale, t } from "../lib/i18n.svelte";
 
 interface SnapshotView {
     fitName: string;
     shipNames: Record<string, string>;
-    requestId: string;
+    postId: string;
     fitHash: string;
     snapshotJson: JsonValue;
 }
@@ -31,7 +31,7 @@ const fitSnapshot = $derived(snapshot ? fromJson(FitSnapshotSchema, snapshot.sna
             {localizedName(snapshot.shipNames, locale.current)}
         </p>
         <p class="mt-1 font-mono text-xs break-all text-console-text-muted">
-            request: {snapshot.requestId}
+            post: {snapshot.postId}
         </p>
         <p class="font-mono text-xs break-all text-console-text-muted">
             fit: {snapshot.fitHash}
