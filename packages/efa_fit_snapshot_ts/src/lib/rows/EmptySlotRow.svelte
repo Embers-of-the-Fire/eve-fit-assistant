@@ -42,6 +42,7 @@ const ctx = snapshotDisplay();
         flex-shrink: 0;
         border: 2px solid var(--efa-state-passive, #2d2d2d);
         border-radius: 2px;
+        background: var(--efa-state-passive, #2d2d2d);
         color: var(--efa-text-muted, #64808f);
         box-sizing: border-box;
     }

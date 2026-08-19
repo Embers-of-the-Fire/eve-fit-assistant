@@ -1,52 +1,45 @@
 <script module lang="ts">
 export type DamageType = "em" | "thermal" | "kinetic" | "explosive";
+
+const TYPE_COLORS: Record<DamageType, string> = {
+    em: "#2196f3",
+    thermal: "#f44336",
+    kinetic: "#9e9e9e",
+    explosive: "#ff9800",
+};
 </script>
 
 <script lang="ts">
 interface Props {
-    /** Filled fraction, 0..1. */
+    /** Raw value; `1 - ratio` is the displayed resistance fraction. */
     ratio: number;
     type: DamageType;
-    size?: number;
 }
 
-let { ratio, type, size = 16 }: Props = $props();
+let { ratio, type }: Props = $props();
 
-const clamped = $derived(Math.min(Math.max(ratio, 0), 1));
+const percent = $derived(Math.round((1 - ratio) * 100));
 </script>
 
 <span
-    class="efa-resonance efa-resonance-{type}"
-    style:width="{size}px"
-    style:height="{size}px"
+    class="efa-resonance"
+    style:background="linear-gradient(to right, {TYPE_COLORS[type]} {percent}%, #000 {percent}%)"
     role="presentation"
 >
-    <span class="efa-resonance-fill" style:height="{clamped * 100}%"></span>
+    {percent}%
 </span>
 
 <style>
     .efa-resonance {
-        display: inline-flex;
-        flex-direction: column-reverse;
-        border: 1px solid var(--efa-border, #22404f);
-        border-radius: 1px;
-        overflow: hidden;
-        box-sizing: border-box;
-    }
-    .efa-resonance-fill {
         display: block;
-        width: 100%;
-    }
-    .efa-resonance-em .efa-resonance-fill {
-        background: #4d9fff;
-    }
-    .efa-resonance-thermal .efa-resonance-fill {
-        background: #e5484d;
-    }
-    .efa-resonance-kinetic .efa-resonance-fill {
-        background: #9aa4af;
-    }
-    .efa-resonance-explosive .efa-resonance-fill {
-        background: #f5a623;
+        margin: 4px 10px;
+        height: 22px;
+        border: 1px solid #fff;
+        border-radius: 1px;
+        box-sizing: border-box;
+        text-align: center;
+        font-size: 13px;
+        line-height: 20px;
+        font-variant-numeric: tabular-nums;
     }
 </style>

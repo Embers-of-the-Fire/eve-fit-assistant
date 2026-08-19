@@ -46,15 +46,11 @@ const maxEhpGlyph: GlyphName = $derived.by(() => {
     return armor >= hull ? "hp-armor" : "hp-hull";
 });
 
-const defenseLayers: { glyph: GlyphName; layer: SnapshotStatistics_DefenseLayer }[] = $derived.by(
-    () => {
-        const layers: { glyph: GlyphName; layer: SnapshotStatistics_DefenseLayer }[] = [];
-        if (stats?.shield) layers.push({ glyph: "hp-shield", layer: stats.shield });
-        if (stats?.armor) layers.push({ glyph: "hp-armor", layer: stats.armor });
-        if (stats?.hull) layers.push({ glyph: "hp-hull", layer: stats.hull });
-        return layers;
-    },
-);
+const defenseLayers: { glyph: GlyphName; layer?: SnapshotStatistics_DefenseLayer }[] = $derived([
+    { glyph: "hp-shield", layer: stats?.shield },
+    { glyph: "hp-armor", layer: stats?.armor },
+    { glyph: "hp-hull", layer: stats?.hull },
+]);
 
 const maxSensor: { glyph: GlyphName; value: number } = $derived.by(() => {
     const targeting = stats?.targeting;
@@ -182,72 +178,68 @@ function holdGlyph(kind: HoldKindType): GlyphName {
             </div>
         {/if}
 
-        {#if stats.shield && stats.armor && stats.hull}
-            <div class="efa-stat-row">
-                <Glyph name={maxEhpGlyph} size={36} />
-                <div class="efa-stat-body">
-                    <div class="efa-stat-line">
-                        <span>{Math.round(hpTotal)} HP</span>
-                        <span class="efa-sep">|</span>
-                        <span>{Math.round(ehpTotal)} EHP</span>
-                    </div>
+        <div class="efa-stat-row">
+            <Glyph name={maxEhpGlyph} size={36} />
+            <div class="efa-stat-body">
+                <div class="efa-stat-line">
+                    <span>{Math.round(hpTotal)} HP</span>
+                    <span class="efa-sep">|</span>
+                    <span>{Math.round(ehpTotal)} EHP</span>
                 </div>
             </div>
-            <table class="efa-defense">
-                <thead>
+        </div>
+        <table class="efa-defense">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>HP</th>
+                    <th>EHP</th>
+                    <th><Glyph name="resist-em" size={20} color="#2196f3" /></th>
+                    <th><Glyph name="resist-thermal" size={20} color="#f44336" /></th>
+                    <th><Glyph name="resist-kinetic" size={20} color="#9e9e9e" /></th>
+                    <th><Glyph name="resist-explosive" size={20} color="#ff9800" /></th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each defenseLayers as { glyph, layer } (glyph)}
                     <tr>
-                        <th></th>
-                        <th>HP</th>
-                        <th>EHP</th>
-                        <th><Glyph name="resist-em" size={20} color="#4d9fff" /></th>
-                        <th><Glyph name="resist-thermal" size={20} color="#e5484d" /></th>
-                        <th><Glyph name="resist-kinetic" size={20} color="#9aa4af" /></th>
-                        <th><Glyph name="resist-explosive" size={20} color="#f5a623" /></th>
+                        <td><Glyph name={glyph} size={20} /></td>
+                        <td>{Math.round(layer?.hp ?? 0)}</td>
+                        <td>{Math.round(layer?.ehp ?? 0)}</td>
+                        <td>
+                            <ResonanceBox ratio={1 - (layer?.resistances?.em ?? 0)} type="em" />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.thermal ?? 0)}
+                                type="thermal"
+                            />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.kinetic ?? 0)}
+                                type="kinetic"
+                            />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.explosive ?? 0)}
+                                type="explosive"
+                            />
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    {#each defenseLayers as { glyph, layer } (glyph)}
-                        <tr>
-                            <td><Glyph name={glyph} size={20} /></td>
-                            <td>{Math.round(layer.hp)}</td>
-                            <td>{Math.round(layer.ehp)}</td>
-                            <td>
-                                <ResonanceBox ratio={1 - (layer.resistances?.em ?? 0)} type="em" />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.thermal ?? 0)}
-                                    type="thermal"
-                                />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.kinetic ?? 0)}
-                                    type="kinetic"
-                                />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.explosive ?? 0)}
-                                    type="explosive"
-                                />
-                            </td>
-                        </tr>
-                    {/each}
-                    {#if profile}
-                        <tr>
-                            <td><Glyph name="turret" size={20} /></td>
-                            <td></td>
-                            <td></td>
-                            <td><ResonanceBox ratio={1 - profile.em} type="em" /></td>
-                            <td><ResonanceBox ratio={1 - profile.thermal} type="thermal" /></td>
-                            <td><ResonanceBox ratio={1 - profile.kinetic} type="kinetic" /></td>
-                            <td><ResonanceBox ratio={1 - profile.explosive} type="explosive" /></td>
-                        </tr>
-                    {/if}
-                </tbody>
-            </table>
-        {/if}
+                {/each}
+                <tr>
+                    <td><Glyph name="turret" size={20} /></td>
+                    <td></td>
+                    <td></td>
+                    <td><ResonanceBox ratio={1 - (profile?.em ?? 0)} type="em" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.thermal ?? 0)} type="thermal" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.kinetic ?? 0)} type="kinetic" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.explosive ?? 0)} type="explosive" /></td>
+                </tr>
+            </tbody>
+        </table>
 
         {#if stats.mobility && stats.targeting}
             <table class="efa-pairs">
@@ -339,12 +331,13 @@ function holdGlyph(kind: HoldKindType): GlyphName {
     }
     .efa-ship-header {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 12px 14px 8px;
+        gap: 16px;
+        padding: 8px 16px;
     }
     .efa-ship-name {
+        flex: 1;
+        min-width: 0;
         font-weight: 700;
         text-align: center;
     }

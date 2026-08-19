@@ -95,7 +95,7 @@ const characterName = $derived.by(() => {
         color: var(--efa-text, #e0f4ff);
     }
     .efa-character-name {
-        font-weight: 600;
+        font-weight: 400;
     }
     .efa-divider {
         border: none;
@@ -140,6 +140,7 @@ const characterName = $derived.by(() => {
         flex-shrink: 0;
         border: 2px solid var(--efa-state-passive, #2d2d2d);
         border-radius: 2px;
+        background: var(--efa-state-passive, #2d2d2d);
         color: var(--efa-text-muted, #64808f);
         box-sizing: border-box;
     }

@@ -3,6 +3,8 @@ export { default as SnapshotEquipmentColumn } from "./columns/EquipmentColumn.sv
 export { default as SnapshotStatisticsColumn } from "./columns/StatisticsColumn.svelte";
 export {
     defaultTypeIconUrl,
+    type IconHint,
+    type IconHintResolver,
     type SnapshotDisplayContext,
     type TypeIconResolver,
 } from "./context.svelte";

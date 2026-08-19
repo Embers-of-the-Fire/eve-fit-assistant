@@ -78,13 +78,19 @@ const fighterBay = $derived(
             {#if (layout?.turretHardpoints ?? 0) > 0 || usedTurret > 0}
                 <span class="efa-hardpoint">
                     <Glyph name="turret" size={16} />
-                    {usedTurret}/{layout?.turretHardpoints ?? 0}
+                    <span class:efa-over={usedTurret > (layout?.turretHardpoints ?? 0)}
+                        >{usedTurret}</span
+                    >
+                    / {layout?.turretHardpoints ?? 0}
                 </span>
             {/if}
             {#if (layout?.launcherHardpoints ?? 0) > 0 || usedLauncher > 0}
                 <span class="efa-hardpoint">
                     <Glyph name="launcher" size={16} />
-                    {usedLauncher}/{layout?.launcherHardpoints ?? 0}
+                    <span class:efa-over={usedLauncher > (layout?.launcherHardpoints ?? 0)}
+                        >{usedLauncher}</span
+                    >
+                    / {layout?.launcherHardpoints ?? 0}
                 </span>
             {/if}
         {/snippet}
@@ -178,6 +184,9 @@ const fighterBay = $derived(
         align-items: center;
         gap: 4px;
         font-variant-numeric: tabular-nums;
+    }
+    .efa-over {
+        color: var(--efa-danger, #f44336);
     }
     .efa-fighter-counters {
         display: flex;
