@@ -1,7 +1,4 @@
 ---
-import { toJson } from "@bufbuild/protobuf";
-import { FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
-
 import PostContent from "../../components/PostContent.svelte";
 import ThreadSection from "../../components/ThreadSection.svelte";
 import Base from "../../layouts/Base.astro";
@@ -23,7 +20,7 @@ const snapshot = stored
           shipNames: stored.snapshot.ship?.type?.names ?? {},
           postId: stored.postId,
           fitHash: stored.fitHash,
-          snapshotJson: toJson(FitSnapshotSchema, stored.snapshot),
+          snapshotJson: stored.snapshotJson,
       }
     : null;
 ---

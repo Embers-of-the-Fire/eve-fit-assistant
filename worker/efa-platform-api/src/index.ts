@@ -1,4 +1,4 @@
-import { fromBinary } from "@bufbuild/protobuf";
+import { fromBinary, toJson } from "@bufbuild/protobuf";
 import { FitStoreResponseSchema } from "efa-proto-ts/fit_request_pb";
 import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 import { Hono } from "hono";
@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import {
     decodeCursor,
     encodeCursor,
+    normalizeBlob,
     resolveShipName,
     timingSafeEqual,
     truncateCodePoints,
@@ -36,6 +37,23 @@ const LIST_CACHE_CONTROL = "public, max-age=30";
 
 function errorJson(status: 400 | 401 | 404 | 500, code: string, message: string): Response {
     return Response.json({ error: code, message }, { status });
+}
+
+// §6.2: raw protobuf responses. D1 hands BLOB columns back as plain number
+// arrays, which are not a valid Response body — always normalize first. A
+// missing/empty blob is a store-side bug, not a client error.
+function blobResponse(value: unknown): Response {
+    const bytes = normalizeBlob(value);
+    if (!bytes || bytes.length === 0) {
+        console.error("stored fit snapshot is missing or unreadable");
+        return errorJson(500, "internal", "internal server error");
+    }
+    return new Response(bytes, {
+        headers: {
+            "Content-Type": PROTOBUF_CONTENT_TYPE,
+            "Cache-Control": IMMUTABLE_CACHE_CONTROL,
+        },
+    });
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -104,14 +122,18 @@ app.post("/posts", async (c) => {
 
     const row = await c.env.FIT_DB.prepare("SELECT snapshot FROM fits WHERE fit_hash = ?")
         .bind(storeResult.fitHash)
-        .first<{ snapshot: ArrayBuffer }>();
+        .first<{ snapshot: unknown }>();
     if (!row) {
         console.error(`fit ${storeResult.fitHash} stored but not readable`);
         return errorJson(500, "internal", "internal server error");
     }
     let snapshot: FitSnapshot;
     try {
-        snapshot = fromBinary(FitSnapshotSchema, new Uint8Array(row.snapshot));
+        const bytes = normalizeBlob(row.snapshot);
+        if (!bytes || bytes.length === 0) throw new Error("stored blob is empty");
+        snapshot = fromBinary(FitSnapshotSchema, bytes);
+        // fromBinary does not enforce proto2 required fields; toJson does.
+        toJson(FitSnapshotSchema, snapshot);
     } catch (err) {
         // A snapshot that fails to decode right after a trusted write indicates
         // a fit-storage write bug: fail, leave the (harmless) fit row, and let
@@ -253,16 +275,11 @@ app.get("/posts/:id/snapshot", async (c) => {
         "SELECT f.snapshot FROM posts p JOIN fits f ON f.fit_hash = p.fit_hash WHERE p.post_id = ?",
     )
         .bind(postId)
-        .first<{ snapshot: ArrayBuffer }>();
+        .first<{ snapshot: unknown }>();
     if (!row) {
         return errorJson(404, "not_found", "unknown post id");
     }
-    return new Response(row.snapshot, {
-        headers: {
-            "Content-Type": PROTOBUF_CONTENT_TYPE,
-            "Cache-Control": IMMUTABLE_CACHE_CONTROL,
-        },
-    });
+    return blobResponse(row.snapshot);
 });
 
 // §6.2: raw FitSnapshot protobuf bytes addressed directly by fit hash.
@@ -270,16 +287,11 @@ app.get("/fits/:fitHash/snapshot", async (c) => {
     const fitHash = c.req.param("fitHash");
     const row = await c.env.FIT_DB.prepare("SELECT snapshot FROM fits WHERE fit_hash = ?")
         .bind(fitHash)
-        .first<{ snapshot: ArrayBuffer }>();
+        .first<{ snapshot: unknown }>();
     if (!row) {
         return errorJson(404, "not_found", "unknown fit hash");
     }
-    return new Response(row.snapshot, {
-        headers: {
-            "Content-Type": PROTOBUF_CONTENT_TYPE,
-            "Cache-Control": IMMUTABLE_CACHE_CONTROL,
-        },
-    });
+    return blobResponse(row.snapshot);
 });
 
 // §6.4: threads (stub).
