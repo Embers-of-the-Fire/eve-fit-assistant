@@ -1,0 +1,37 @@
+---
+import { env } from "cloudflare:workers";
+import { toJson } from "@bufbuild/protobuf";
+import { FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
+
+import PostContent from "../../components/PostContent.svelte";
+import ThreadSection from "../../components/ThreadSection.svelte";
+import Base from "../../layouts/Base.astro";
+import { getSnapshotByRequestId, REQUEST_ID_PATTERN } from "../../lib/d1";
+
+const requestId = Astro.params.id ?? "";
+
+const stored = REQUEST_ID_PATTERN.test(requestId)
+    ? await getSnapshotByRequestId(env.FIT_DB, requestId)
+    : null;
+
+if (!stored) {
+    Astro.response.status = 404;
+}
+
+const fitName = stored?.snapshot.header?.fitName ?? "";
+const titleKey = stored ? (fitName ? undefined : "fits.untitled") : "fit.notFound";
+const snapshot = stored
+    ? {
+          fitName,
+          shipNames: stored.snapshot.ship?.type?.names ?? {},
+          requestId: stored.requestId,
+          fitHash: stored.fitHash,
+          snapshotJson: JSON.stringify(toJson(FitSnapshotSchema, stored.snapshot), null, 2),
+      }
+    : null;
+---
+
+<Base title={fitName || undefined} {titleKey}>
+    <PostContent client:load {snapshot} />
+    {stored && <ThreadSection client:load requestId={stored.requestId} />}
+</Base>

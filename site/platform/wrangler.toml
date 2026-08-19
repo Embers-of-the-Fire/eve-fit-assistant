@@ -1,0 +1,14 @@
+name = "efa-platform"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+preview_urls = true
+
+[[d1_databases]]
+binding = "FIT_DB"
+database_name = "efa-platform"
+database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
+
+[[routes]]
+pattern = "platform.efa-tech.dev/*"
+zone_name = "efa-tech.dev"

@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+    --color-console-bg: #0c1213;
+    --color-console-surface: #12202a;
+    --color-console-surface-alt: #1a2e3a;
+    --color-console-border: #22404f;
+    --color-console-primary: #30b2e6;
+    --color-console-highlight: #4ed4ff;
+    --color-console-teal: #2a7b9c;
+    --color-console-deep: #0a1a2a;
+    --color-console-text: #e0f4ff;
+    --color-console-text-dim: #9db8c6;
+    --color-console-text-muted: #64808f;
+    --color-console-danger: #ef5350;
+}
+
+html {
+    color-scheme: dark;
+}
+
+body {
+    @apply bg-console-bg text-console-text font-sans antialiased;
+}

@@ -19,6 +19,8 @@ from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
 from bootstrap.data.codegen import CODEGEN_DART
+from bootstrap.data.codegen.protobuf_ts import ProtobufTsResult
+from bootstrap.data.codegen.protobuf_ts import generate_protobuf_ts
 from bootstrap.log import info
 from bootstrap.log import warning
 from bootstrap.utils import get_command
@@ -57,6 +59,8 @@ def _run_protobuf() -> None:
         )
         total += 1
 
+    ts_result = generate_protobuf_ts(runtime.execute, dry_run=runtime.is_dry_run())
+
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Protobuf code generation completed."))
     if len(failed) == 0:
         click.echo(styled([Style.BRIGHT, Fore.GREEN], "All files generated successfully."))
@@ -74,6 +78,22 @@ def _run_protobuf() -> None:
             + f" file{'s' if len(failed) > 1 else ''}: "
             + ", ".join(failed)
             + "."
+        )
+    if ts_result is ProtobufTsResult.GENERATED:
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "TypeScript protobuf bindings generated."))
+    elif ts_result is ProtobufTsResult.DRY_RUN:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.YELLOW],
+                "TypeScript protobuf bindings not generated (dry-run).",
+            )
+        )
+    else:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.YELLOW],
+                "TypeScript protobuf bindings skipped (pnpm unavailable).",
+            )
         )
 
 
