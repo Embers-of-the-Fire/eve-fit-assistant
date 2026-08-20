@@ -22,6 +22,7 @@ enum EfaFitFormatErrorCode {
   invalidCompression,
   decodedPayloadTooLarge,
   invalidJson,
+  invalidHash,
 }
 
 class EfaFitFormatException implements Exception {

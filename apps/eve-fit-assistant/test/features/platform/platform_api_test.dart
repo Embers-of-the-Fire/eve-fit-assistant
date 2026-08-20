@@ -5,6 +5,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/features/platform/platform_api.dart";
 import "package:fixnum/fixnum.dart";
@@ -139,6 +140,42 @@ void main() {
         (options) async => _json({"error": "not_found", "message": "unknown fit hash"}, 404),
       );
       expect(await client.getFitSnapshot("missing"), isNull);
+    });
+  });
+
+  group("getFitState", () {
+    final stateBytes = FitState(
+      shipTypeId: 12017,
+      layout: SnapshotShipLayout(
+        highSlots: 1,
+        mediumSlots: 0,
+        lowSlots: 0,
+        rigSlots: 0,
+        subsystemSlots: 0,
+        serviceSlots: 0,
+        turretHardpoints: 0,
+        launcherHardpoints: 0,
+        fighterTubes: 0,
+      ),
+      damageProfile: DamageProfile(em: 0.25, thermal: 0.25, kinetic: 0.25, explosive: 0.25),
+    ).writeToBuffer();
+
+    test("addresses the by-hash state route and decodes the protobuf bytes", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return ResponseBody.fromBytes(stateBytes, 200);
+      });
+      final state = await client.getFitState("abc123");
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/fits/abc123/state");
+      expect(state?.shipTypeId, 12017);
+    });
+
+    test("returns null on 404", () async {
+      final client = _clientWith(
+        (options) async => _json({"error": "not_found", "message": "unknown fit hash"}, 404),
+      );
+      expect(await client.getFitState("missing"), isNull);
     });
   });
 

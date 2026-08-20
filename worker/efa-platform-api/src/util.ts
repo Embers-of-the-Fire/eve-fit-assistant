@@ -4,6 +4,9 @@
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Fit hashes are lowercase hex SHA-256 digests over the canonical fit bytes.
+export const FIT_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
 // D1's documented type conversion reads BLOB columns back as plain number
 // arrays (Array.from over the stored bytes); other environments may yield an
 // ArrayBuffer or a view. Normalize every observed shape into bytes; null

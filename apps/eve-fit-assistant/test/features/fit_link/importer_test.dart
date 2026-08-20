@@ -3,16 +3,23 @@ library;
 
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:archive/archive.dart";
+import "package:dio/dio.dart";
 import "package:efa_fit/efa_fit.dart";
+import "package:efa_proto/fit.pb.dart";
+import "package:efa_proto/fit_request.pb.dart";
+import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/fit_link/importer.dart";
+import "package:eve_fit_assistant/features/platform/platform_api.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
+import "package:fixnum/fixnum.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
@@ -31,6 +38,83 @@ class _FakeFitManager extends FitManager {
 }
 
 final _refCaptureProvider = Provider<Ref>((Ref ref) => ref);
+
+const _fitHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+class _FakeAdapter implements HttpClientAdapter {
+  _FakeAdapter(this._onFetch);
+
+  final Future<ResponseBody> Function(RequestOptions options) _onFetch;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) => _onFetch(options);
+
+  @override
+  void close({bool force = false}) {}
+}
+
+FitState _makeFitState() => FitState(
+  shipTypeId: 12017,
+  layout: SnapshotShipLayout(
+    highSlots: 1,
+    mediumSlots: 0,
+    lowSlots: 0,
+    rigSlots: 0,
+    subsystemSlots: 0,
+    serviceSlots: 0,
+    turretHardpoints: 1,
+    launcherHardpoints: 0,
+    fighterTubes: 0,
+  ),
+  damageProfile: DamageProfile(em: 0.25, thermal: 0.25, kinetic: 0.25, explosive: 0.25),
+  modules: [
+    FitModule(typeId: 12001, slotType: SlotType.HIGH, index: 0, state: Slots_SlotState.ACTIVE),
+  ],
+  character: FitCharacter(names: [const MapEntry("en", "All 5")]),
+);
+
+FitSnapshot _makeSnapshot() => FitSnapshot(
+  version: 1,
+  header: SnapshotHeader(
+    fitName: "Registered Fit",
+    description: "From the platform",
+    lastModifiedMs: Int64(42),
+    createdAtMs: Int64(43),
+  ),
+);
+
+PlatformApiClient _fakeApiClient(FitState? state, FitSnapshot? snapshot) {
+  final dio = Dio(BaseOptions())
+    ..httpClientAdapter = _FakeAdapter((options) async {
+      if (options.path.endsWith("/state")) {
+        if (state == null) {
+          return ResponseBody.fromString(
+            jsonEncode({"error": "not_found", "message": "unknown fit hash"}),
+            404,
+            headers: {
+              Headers.contentTypeHeader: ["application/json"],
+            },
+          );
+        }
+        return ResponseBody.fromBytes(state.writeToBuffer(), 200);
+      }
+      if (snapshot == null) {
+        return ResponseBody.fromString(
+          jsonEncode({"error": "not_found", "message": "unknown fit hash"}),
+          404,
+          headers: {
+            Headers.contentTypeHeader: ["application/json"],
+          },
+        );
+      }
+      return ResponseBody.fromBytes(snapshot.writeToBuffer(), 200);
+    });
+  return PlatformApiClient(dio: dio);
+}
 
 FitStorage _makeFit() => const FitStorage(
   metadata: FitMetadata(
@@ -136,5 +220,70 @@ void main() {
       throwsA(isA<EfaFitFormatException>()),
     );
     expect(fitManager.imported, isEmpty);
+  });
+
+  group("registered links", () {
+    void overrideApi(PlatformApiClient client) {
+      container = ProviderContainer.test(
+        overrides: [
+          fitManagerProvider.overrideWith(() => fitManager),
+          platformApiClientProvider.overrideWithValue(client),
+        ],
+      );
+      importer = FitLinkImporter(container.read(_refCaptureProvider));
+    }
+
+    test("imports the state fetched by fit hash, named from the snapshot", () async {
+      overrideApi(_fakeApiClient(_makeFitState(), _makeSnapshot()));
+
+      final result = await importer.import(
+        Uri.parse("https://platform.efa-tech.dev/share/fit/registered?hash=$_fitHash"),
+      );
+
+      expect(result.fitId, "imported-id");
+      final imported = fitManager.imported.single;
+      expect(imported.metadata.name, "Registered Fit");
+      expect(imported.metadata.description, "From the platform");
+      expect(imported.body.shipTypeId, 12017);
+      expect(imported.body.characterId, "predefined_all_5");
+      expect(imported.body.slots.high, hasLength(1));
+      expect(
+        imported.body.slots.high[0].toNullable()?.itemId,
+        const FitStorageItemId.item(id: 12001),
+      );
+    });
+
+    test("imports via the efa scheme and boot URI forms", () async {
+      overrideApi(_fakeApiClient(_makeFitState(), null));
+
+      await importer.import(Uri.parse("efa://fit/registered?hash=$_fitHash"));
+      await importer.importBootUri(
+        Uri.parse("https://app.efa-tech.dev/fit/registered?hash=$_fitHash"),
+      );
+
+      expect(fitManager.imported, hasLength(2));
+      // Without the snapshot, the name placeholder is left to the manager.
+      expect(fitManager.imported.first.metadata.name, isEmpty);
+    });
+
+    test("an unknown fit hash throws FitLinkNotFoundException", () async {
+      overrideApi(_fakeApiClient(null, null));
+
+      await expectLater(
+        importer.import(Uri.parse("efa://fit/registered?hash=$_fitHash")),
+        throwsA(isA<FitLinkNotFoundException>()),
+      );
+      expect(fitManager.imported, isEmpty);
+    });
+
+    test("a malformed hash is rejected by the parser before any request", () async {
+      overrideApi(_fakeApiClient(_makeFitState(), _makeSnapshot()));
+
+      await expectLater(
+        importer.import(Uri.parse("efa://fit/registered?hash=abc")),
+        throwsA(isA<FitLinkNotFoundException>()),
+      );
+      expect(fitManager.imported, isEmpty);
+    });
   });
 }
