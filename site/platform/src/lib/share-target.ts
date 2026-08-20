@@ -14,6 +14,15 @@ export const WEB_FIT_PATHS: Record<ShareKind, string> = {
     registered: "/fit/registered",
 };
 
+export const SHARE_PAGE_PATHS: Record<ShareKind, string> = {
+    raw: "/share/fit/raw",
+    registered: "/share/fit/registered",
+};
+
+export function registeredSharePageUrl(fitHash: string): string {
+    return `${SHARE_PAGE_PATHS.registered}?hash=${encodeURIComponent(fitHash)}`;
+}
+
 const TARGET_KEY = "efa-share-target";
 
 export function targetUrl(target: ShareTarget, search: string, kind: ShareKind): string {
