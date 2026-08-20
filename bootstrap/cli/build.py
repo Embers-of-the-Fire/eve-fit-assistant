@@ -475,7 +475,7 @@ def register_build_commands(cli_group: click.Group) -> None:
 
         render_cmd = [
             sys.executable,
-            str(PROJECT_ROOT / "site" / "share" / "render_assetlinks.py"),
+            str(PROJECT_ROOT / "site" / "platform" / "render_assetlinks.py"),
             str(output_dir / ".well-known" / "assetlinks.json"),
         ]
         if not os.environ.get("APP_KEY_SHA256", "").strip():

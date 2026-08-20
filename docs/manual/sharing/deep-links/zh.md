@@ -22,7 +22,7 @@ summary: 应用内容中的链接如何跳转到页面或浏览器。
 导出对话框中的**复制链接**操作会生成如下形式的分享链接：
 
 ```text
-https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:...
+https://platform.efa-tech.dev/share/fit/raw?payload=EFA2:...
 ```
 
 链接中的负载以应用原生格式携带完整配置（与 EFA 原生文本导出内容相同），直接编码在 URL 中，不会上传到任何服务器。过大的配置无法以链接形式分享，请改用文本导出。
@@ -42,4 +42,4 @@ https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:...
 - **Linux**——尽力而为：AppImage 的桌面条目声明了 `x-scheme-handler/efa`，但只有当你的 AppImage 集成工具（如 appimaged 或 Gear Lever）安装桌面条目时才会生效。
 - **网页版**——在任一网页版域名打开配置链接都会导入配置，并从地址栏中清除负载。
 
-已损坏或并非配置链接的链接会在应用内显示错误，或在分享站点显示“链接不存在”页面——两种情况下都不会导入任何数据。
+已损坏或并非配置链接的链接会在应用内显示错误，或在链接选择页面显示“链接不存在”——两种情况下都不会导入任何数据。

@@ -2,3 +2,4 @@ dist/
 .astro/
 .wrangler/
 .dev.vars
+public/.well-known/

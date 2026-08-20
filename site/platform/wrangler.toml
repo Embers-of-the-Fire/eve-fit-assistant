@@ -12,6 +12,15 @@ service = "efa-platform-api"
 pattern = "platform.efa-tech.dev"
 custom_domain = true
 
+# Legacy fit-link host. Cloudflare Bulk Redirects (account-level, managed
+# outside this repo) permanently redirect /fit/raw to
+# https://platform.efa-tech.dev/share/fit/raw; this Worker stays attached to
+# the host to keep serving /.well-known/assetlinks.json for Android App Links
+# verification of older app versions.
+[[routes]]
+pattern = "share.platform.efa-tech.dev"
+custom_domain = true
+
 # Preview chain (docs/temp/api-unit/spec.md §4.4): the platform API binding
 # targets the preview environment (disposable efa-platform-test data).
 [env.preview]

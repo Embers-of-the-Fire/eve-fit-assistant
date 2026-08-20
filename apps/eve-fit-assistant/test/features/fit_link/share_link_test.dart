@@ -55,7 +55,7 @@ void main() {
   test("builds a share URL within the budget for a small fit", () {
     final url = builder.buildShareUrl(_makeFit());
     expect(url, isNotNull);
-    expect(url, startsWith("https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:"));
+    expect(url, startsWith("https://platform.efa-tech.dev/share/fit/raw?payload=EFA2:"));
     expect(url!.length, lessThanOrEqualTo(maxFitLinkUrlLength));
   });
 

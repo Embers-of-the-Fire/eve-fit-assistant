@@ -207,7 +207,7 @@ Operational notes:
 
 ### App links and the share host
 
-Fit deep links (`efa://fit/raw?payload=...` and HTTPS links on three hosts) are
+Fit deep links (`efa://fit/raw?payload=...` and HTTPS links on four hosts) are
 wired into releases as follows:
 
 - `APP_KEY_SHA256` (the release-key certificate fingerprint from
@@ -216,35 +216,42 @@ wired into releases as follows:
   the `production-app` environment for real releases) passes it into
   `.github/actions/build-web` as the `app-key-sha256` input, and `x build web`
   renders `build/web/.well-known/assetlinks.json` from
-  `site/share/assetlinks.template.json` via `site/share/render_assetlinks.py`
+  `site/platform/assetlinks.template.json` via `site/platform/render_assetlinks.py`
   (stdlib-only). Non-production builds (test mode, PR previews, nightly) never
   reference the signing variable: the input stays empty, the renderer emits a
   placeholder via `--allow-missing`, and Android App Links verification simply
   fails (links degrade to the browser).
-- The share host `share.platform.efa-tech.dev` is served by a dedicated
-  Cloudflare Pages project `efa-share` using **Git integration** (not GitHub
-  Actions): root directory `site/share`, build command `sh build.sh`, output
-  directory `.svelte-kit/cloudflare`, production branch `dev`. The site is a
-  fully prerendered SvelteKit app (`@sveltejs/adapter-cloudflare`); `build.sh`
-  renders `assetlinks.json` into `static/.well-known/`, installs workspace
-  dependencies from the repo root, builds via `pnpm --filter efa-share build`,
-  and copies the prerendered root page to `404.html` (the root page is the
-  localized not-found state). The production build fails when
-  `APP_KEY_SHA256` is unset, while preview branches get the placeholder
-  (gated on `CF_PAGES_BRANCH`).
-- One-time dashboard setup (no IaC exists): create the `efa-share` Pages
-  project connected to this repository, set `APP_KEY_SHA256` as a Pages
-  project environment variable (production; source of truth is the Bitwarden
-  vault item for the signing key), and attach the custom domain
-  `share.platform.efa-tech.dev`.
+- The canonical share URL is
+  `https://platform.efa-tech.dev/share/fit/raw?payload=...`, served by the
+  `efa-platform` Worker (`site/platform/`): an on-demand Astro route plus the
+  `FitShareLanding` island, `no-store` with `Referrer-Policy: no-referrer` and
+  `frame-ancestors 'none'`. `site/platform/build.sh` renders
+  `public/.well-known/assetlinks.json` before `astro build`. The `efa-platform`
+  Worker deployment is configured outside this repo (Cloudflare dashboard), so
+  the build **fails closed**: it aborts when `APP_KEY_SHA256` is unset unless
+  `ALLOW_MISSING_APP_KEY_SHA256=1` is passed explicitly (local/dev builds only),
+  in which case the renderer emits a placeholder via `--allow-missing`. The
+  production Worker build environment must provision `APP_KEY_SHA256`; the
+  Worker serves the rendered file on both custom domains.
+- The legacy host `share.platform.efa-tech.dev` (links produced by app versions
+  before the move) is handled by two pieces: an account-level Cloudflare Bulk
+  Redirect (dashboard/API-managed, not in this repo) that permanently redirects
+  `share.platform.efa-tech.dev/fit/raw` to
+  `https://platform.efa-tech.dev/share/fit/raw` with **Preserve query string**
+  enabled, and a second custom domain on the `efa-platform` Worker that keeps
+  serving `/.well-known/assetlinks.json` so older app versions retain App Links
+  verification. One-time dashboard setup: create the Bulk Redirect list/rule,
+  detach the custom domain from the retired `efa-share` Pages project, and keep
+  the hostname's DNS record proxied.
 - Release verification checklist addition: after installing a release-signed
   build, run `adb shell pm get-app-links dev.efa_tech.eve_fit_assistant` and
-  confirm the two hosts that serve the release fingerprint
-  (`share.platform.efa-tech.dev` and `app.efa-tech.dev`) show as verified.
-  `app-preview.efa-tech.dev` serves the placeholder fingerprint (see above) and
-  cannot verify a release-signed APK unless `APP_KEY_SHA256` is provisioned for
-  the nightly Pages project, so it is expected to stay unverified. Debug-signed
-  builds never verify, so this check requires a release-signed APK.
+  confirm the hosts that serve the release fingerprint
+  (`platform.efa-tech.dev`, `share.platform.efa-tech.dev`, and
+  `app.efa-tech.dev`) show as verified. `app-preview.efa-tech.dev` serves the
+  placeholder fingerprint (see above) and cannot verify a release-signed APK
+  unless `APP_KEY_SHA256` is provisioned for the nightly Pages project, so it
+  is expected to stay unverified. Debug-signed builds never verify, so this
+  check requires a release-signed APK.
 
 ## Quick reference
 

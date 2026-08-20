@@ -22,7 +22,7 @@ Note: `efa://` links navigate *within* the app. They are not web URLs. For openi
 The export dialog's **Copy link** action produces a share URL like:
 
 ```text
-https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:...
+https://platform.efa-tech.dev/share/fit/raw?payload=EFA2:...
 ```
 
 The payload carries the complete fit in the app-native format (the same content as the EFA native text export), encoded directly in the URL — nothing is uploaded to a server. Fits that are too large to fit in a URL cannot be shared this way; use the text export instead.
@@ -42,4 +42,4 @@ Platform support:
 - **Linux** — best-effort: the AppImage desktop entry declares `x-scheme-handler/efa`, which applies only if your AppImage launcher integration (e.g. appimaged or Gear Lever) installs desktop entries.
 - **Web** — opening a fit link on either web app imports the fit and removes the payload from the address bar.
 
-A link that is damaged or not a fit link shows an error in the app, or a "link not found" page on the share host — nothing is imported in either case.
+A link that is damaged or not a fit link shows an error in the app, or a "link not found" page on the chooser site — nothing is imported in either case.

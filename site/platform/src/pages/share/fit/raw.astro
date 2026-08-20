@@ -1,0 +1,14 @@
+---
+import FitShareLanding from "../../../components/FitShareLanding.svelte";
+import Base from "../../../layouts/Base.astro";
+
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("Referrer-Policy", "no-referrer");
+Astro.response.headers.set("X-Content-Type-Options", "nosniff");
+Astro.response.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+---
+
+<Base titleKey="share.title">
+    <meta slot="head" name="referrer" content="no-referrer" />
+    <FitShareLanding client:load />
+</Base>

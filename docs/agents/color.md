@@ -42,9 +42,9 @@ represent the project to the outside world.
 For **workload platforms** — surfaces where users do actual work: dense data, tools,
 dashboards, interactive content. One consistent console look across all of them.
 
-- **Used by:** the app (all native/web targets), the share platform (`site/share`), and
-  the discussion platform (`site/platform`). New workload surfaces must adopt this family
-  rather than inventing a new one.
+- **Used by:** the app (all native/web targets) and the discussion platform
+  (`site/platform`, which also hosts the fit-share landing page). New workload surfaces
+  must adopt this family rather than inventing a new one.
 - **Mood:** functional terminal; information-dense, restrained glow, borders over shadows.
 - **Reference values** — the app's rendered theme is the Material 3 tonal-spot dark scheme
   derived from seed `#0a1a2a` (`ColorScheme.fromSeed` in `main.dart`); these computed values

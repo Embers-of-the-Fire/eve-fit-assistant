@@ -1,4 +1,6 @@
 export const en = {
+    "notFound.title": "Page not found",
+    "notFound.desc": "The page you are looking for does not exist.",
     "nav.fits": "Fits",
     "nav.account": "Account",
     "fits.title": "Fit Snapshots",
@@ -14,12 +16,34 @@ export const en = {
     "threads.comingSoon": "Discussion threads are coming soon.",
     "account.title": "Account",
     "account.placeholder": "Account features are coming soon.",
+    "share.title": "Open fit link",
+    "share.heading": "Open this fit",
+    "share.description":
+        "This link contains an EVE Fit Assistant fit. Choose where to open it. The fit is imported as a copy; your existing fits are not modified.",
+    "share.optionApp": "Open in app",
+    "share.optionAppDesc": "Import into the installed EVE Fit Assistant app.",
+    "share.optionWeb": "Open in web app",
+    "share.optionWebDesc": "Import into EVE Fit Assistant running in this browser.",
+    "share.optionNightly": "Open in nightly web app",
+    "share.optionNightlyDesc": "Preview build of the web app. May be unstable.",
+    "share.rememberChoice": "Always use this option",
+    "share.redirecting": "Redirecting…",
+    "share.cancelRedirect": "Cancel automatic redirect",
+    "share.resetPreference": "Reset my choice",
+    "share.downloadTitle": "App not installed?",
+    "share.downloadDesc":
+        "Nothing opened. Install EVE Fit Assistant first, then open this link again.",
+    "share.downloadButton": "Download EVE Fit Assistant",
+    "share.notFoundTitle": "Link not found",
+    "share.notFoundDesc": "This link is not a valid fit link. Ask the sender for a new one.",
 } as const;
 
 export type Locale = "en" | "zh";
 export type TranslationKey = keyof typeof en;
 
 export const zh: Record<TranslationKey, string> = {
+    "notFound.title": "页面不存在",
+    "notFound.desc": "您访问的页面不存在。",
     "nav.fits": "配置",
     "nav.account": "账号",
     "fits.title": "配置快照",
@@ -35,4 +59,23 @@ export const zh: Record<TranslationKey, string> = {
     "threads.comingSoon": "讨论功能即将上线。",
     "account.title": "账号",
     "account.placeholder": "账号功能即将上线。",
+    "share.title": "打开配置链接",
+    "share.heading": "打开此配置",
+    "share.description":
+        "此链接包含一个 EVE Fit Assistant 配置。请选择打开方式。配置将作为副本导入，不会修改现有配置。",
+    "share.optionApp": "在应用中打开",
+    "share.optionAppDesc": "导入到已安装的 EVE Fit Assistant 应用。",
+    "share.optionWeb": "在网页版中打开",
+    "share.optionWebDesc": "导入到浏览器中运行的 EVE Fit Assistant。",
+    "share.optionNightly": "在每日构建网页版中打开",
+    "share.optionNightlyDesc": "网页版的预览构建，可能不稳定。",
+    "share.rememberChoice": "始终使用此方式",
+    "share.redirecting": "正在重定向……",
+    "share.cancelRedirect": "取消自动重定向",
+    "share.resetPreference": "重置我的选择",
+    "share.downloadTitle": "尚未安装应用？",
+    "share.downloadDesc": "没有应用响应。请先安装 EVE Fit Assistant，然后重新打开此链接。",
+    "share.downloadButton": "下载 EVE Fit Assistant",
+    "share.notFoundTitle": "链接不存在",
+    "share.notFoundDesc": "此链接不是有效的配置链接。请向发送者索取新的链接。",
 };
