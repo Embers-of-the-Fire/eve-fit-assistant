@@ -256,7 +256,16 @@ void main() {
     });
 
     test("buildFitLinkRegisteredShareUrl rejects malformed hashes", () {
-      expect(() => buildFitLinkRegisteredShareUrl("abc"), throwsA(isA<EfaFitFormatException>()));
+      expect(
+        () => buildFitLinkRegisteredShareUrl("abc"),
+        throwsA(
+          isA<EfaFitFormatException>().having(
+            (e) => e.code,
+            "code",
+            EfaFitFormatErrorCode.invalidHash,
+          ),
+        ),
+      );
     });
   });
 }

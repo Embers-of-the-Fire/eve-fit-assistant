@@ -65,7 +65,7 @@ String buildFitLinkShareUrl(String payload) {
 
 String buildFitLinkRegisteredShareUrl(String fitHash) {
   if (!fitLinkHashPattern.hasMatch(fitHash)) {
-    throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidBase64);
+    throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidHash);
   }
   return "https://$fitLinkPlatformHost$fitLinkRegisteredPlatformPath?$fitLinkHashParam=$fitHash";
 }
