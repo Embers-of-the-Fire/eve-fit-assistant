@@ -1,4 +1,4 @@
-import type { PostSummary, ThreadSummary } from "./types";
+import type { PlatformStats, PostsPage, ThreadSummary } from "./types";
 
 // Browser islands call the public platform API directly (CORS permits this);
 // SSR frontmatter uses the PLATFORM_API service binding (./platform.ts).
@@ -14,11 +14,27 @@ export function localizedName(names: Record<string, string>, locale = "en"): str
     return names[locale] ?? names.en ?? Object.values(names)[0] ?? "";
 }
 
-export async function fetchPosts(locale: string, limit = 50): Promise<PostSummary[]> {
-    const data = await getJson<{ posts: PostSummary[] }>(
-        `${API_ORIGIN}/platform/internal/posts?limit=${limit}&locale=${encodeURIComponent(locale)}`,
+export interface FetchPostsOptions {
+    cursor?: string | null;
+    shipTypeId?: number | null;
+    limit?: number;
+}
+
+export async function fetchPosts(
+    locale: string,
+    options: FetchPostsOptions = {},
+): Promise<PostsPage> {
+    const params = new URLSearchParams({ locale });
+    if (options.limit !== undefined) params.set("limit", String(options.limit));
+    if (options.cursor) params.set("cursor", options.cursor);
+    if (options.shipTypeId) params.set("shipTypeId", String(options.shipTypeId));
+    return getJson<PostsPage>(`${API_ORIGIN}/platform/internal/posts?${params.toString()}`);
+}
+
+export async function fetchStats(locale: string): Promise<PlatformStats> {
+    return getJson<PlatformStats>(
+        `${API_ORIGIN}/platform/internal/stats?locale=${encodeURIComponent(locale)}`,
     );
-    return data.posts;
 }
 
 export async function fetchThreads(postId: string): Promise<ThreadSummary[]> {
