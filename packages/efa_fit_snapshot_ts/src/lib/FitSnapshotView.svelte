@@ -68,16 +68,16 @@ const shipName = $derived(snapshot.ship?.type?.names ?? {});
 
 <style>
     .efa-snapshot {
-        --efa-bg: #0c1213;
+        --efa-bg: #101418;
         --efa-deep: #0a1a2a;
-        --efa-surface: #12202a;
-        --efa-surface-alt: #1a2e3a;
-        --efa-border: #22404f;
-        --efa-text: #e0f4ff;
-        --efa-text-dim: #9db8c6;
-        --efa-text-muted: #64808f;
-        --efa-accent: #30b2e6;
-        --efa-highlight: #4ed4ff;
+        --efa-surface: #101418;
+        --efa-surface-alt: #272a2f;
+        --efa-border: #42474e;
+        --efa-text: #e1e2e8;
+        --efa-text-dim: #c3c7cf;
+        --efa-text-muted: #8d9199;
+        --efa-accent: #9fcafc;
+        --efa-highlight: #d1e4ff;
         --efa-success: #4caf50;
         --efa-warning: #ff9800;
         --efa-danger: #f44336;
@@ -85,7 +85,7 @@ const shipName = $derived(snapshot.ship?.type?.names ?? {});
         --efa-state-online: #bdbdbd;
         --efa-state-overload: #ef5350;
         --efa-state-passive: #2d2d2d;
-        --efa-bar-track: #1a2e3a;
+        --efa-bar-track: #32353a;
 
         container-type: inline-size;
         background: var(--efa-bg);
