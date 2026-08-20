@@ -366,13 +366,32 @@ def register_dev_commands(cli_group: click.Group) -> None:
         workers share the API worker's local D1 state
         (worker/efa-platform-api/.wrangler/state), so seed it beforehand with
         `wrangler d1` commands run from worker/efa-platform-api.
+
+        The site is rebuilt automatically when its sources are newer than the
+        last build output. Edge caching (Workers Cache) is an edge-side
+        feature, so local sessions always render fresh.
         """
-        site_config = PROJECT_ROOT / "site" / "platform" / "dist" / "server" / "wrangler.json"
+        site_dir = PROJECT_ROOT / "site" / "platform"
+        site_config = site_dir / "dist" / "server" / "wrangler.json"
         api_dir = PROJECT_ROOT / "worker" / "efa-platform-api"
         api_config = api_dir / "wrangler.toml"
         persist_dir = api_dir / ".wrangler" / "state"
 
-        if force_build or not site_config.exists():
+        def sources_newer_than_build() -> bool:
+            if not site_config.exists():
+                return True
+            built_mtime = site_config.stat().st_mtime
+            newest = 0.0
+            for path in (site_dir / "src").rglob("*"):
+                if path.is_file():
+                    newest = max(newest, path.stat().st_mtime)
+            for extra in ("astro.config.mjs", "wrangler.toml", "package.json"):
+                path = site_dir / extra
+                if path.exists():
+                    newest = max(newest, path.stat().st_mtime)
+            return newest > built_mtime
+
+        if force_build or sources_newer_than_build():
             pnpm = get_command("pnpm")
             click.echo(
                 styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm build:platform"
