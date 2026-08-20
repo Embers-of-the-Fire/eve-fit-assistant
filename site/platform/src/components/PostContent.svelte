@@ -4,6 +4,7 @@ import { FitSnapshotView } from "efa-fit-snapshot-ts";
 import { FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 import { localizedName } from "../lib/api";
 import { locale, t } from "../lib/i18n.svelte";
+import { registeredSharePageUrl } from "../lib/share-target";
 
 interface SnapshotView {
     fitName: string;
@@ -24,9 +25,19 @@ const fitSnapshot = $derived(snapshot ? fromJson(FitSnapshotSchema, snapshot.sna
 
 {#if snapshot && fitSnapshot}
     <header class="mb-6">
-        <h1 class="text-2xl font-bold text-console-text">
-            {snapshot.fitName || t("fits.untitled")}
-        </h1>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <h1 class="text-2xl font-bold text-console-text">
+                {snapshot.fitName || t("fits.untitled")}
+            </h1>
+            <a
+                href={registeredSharePageUrl(snapshot.fitHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="rounded border border-console-primary px-3 py-1 text-xs text-console-primary transition-colors hover:bg-console-primary hover:text-console-deep"
+            >
+                {t("fit.openInApp")}
+            </a>
+        </div>
         <p class="mt-1 text-sm text-console-text-dim">
             {localizedName(snapshot.shipNames, locale.current)}
         </p>
