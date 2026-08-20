@@ -10,6 +10,7 @@ const stored = POST_ID_PATTERN.test(postId) ? await getPostSnapshot(postId) : nu
 
 if (!stored) {
     Astro.response.status = 404;
+    Astro.cache.set(false);
 }
 
 const fitName = stored?.snapshot.header?.fitName ?? "";

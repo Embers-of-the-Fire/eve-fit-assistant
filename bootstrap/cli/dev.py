@@ -351,19 +351,13 @@ def register_dev_commands(cli_group: click.Group) -> None:
         help="Rebuild the platform site before launching.",
     )
     @click.option(
-        "--fresh-cache",
-        is_flag=True,
-        default=False,
-        help="Wipe the persisted local edge cache (miniflare cache state) before launching.",
-    )
-    @click.option(
         "--port",
         type=int,
         default=8787,
         show_default=True,
         help="Port the platform site listens on.",
     )
-    def dev_launch_platform(force_build: bool, fresh_cache: bool, port: int):
+    def dev_launch_platform(force_build: bool, port: int):
         """Launch the discussion platform stack locally (site + API + local D1).
 
         Starts a wrangler multi-worker dev session with the built Astro site
@@ -374,8 +368,8 @@ def register_dev_commands(cli_group: click.Group) -> None:
         `wrangler d1` commands run from worker/efa-platform-api.
 
         The site is rebuilt automatically when its sources are newer than the
-        last build output; each build embeds a fresh build id that versions the
-        local edge-cache keys, so a rebuild invalidates previously cached HTML.
+        last build output. Edge caching (Workers Cache) is an edge-side
+        feature, so local sessions always render fresh.
         """
         site_dir = PROJECT_ROOT / "site" / "platform"
         site_config = site_dir / "dist" / "server" / "wrangler.json"
@@ -412,13 +406,6 @@ def register_dev_commands(cli_group: click.Group) -> None:
         if not site_config.exists():
             raise click.ClickException(f"Platform site build output not found: {site_config}")
 
-        if fresh_cache:
-            for cache_dir in (persist_dir / "v3" / "cache", persist_dir / "cache"):
-                if cache_dir.exists():
-                    click.echo(f"Removing persisted local edge cache: {cache_dir}")
-                    if not runtime.is_dry_run():
-                        shutil.rmtree(cache_dir)
-
         pnpx = get_command("pnpx")
         cmd = [
             pnpx,
@@ -442,8 +429,7 @@ def register_dev_commands(cli_group: click.Group) -> None:
             click.echo("[Dry-Run] " + " ".join(cmd))
             return
         click.echo(
-            f"Site: http://localhost:{port} (browser islands still read production API data; "
-            "edge cache active, use --fresh-cache to clear it)"
+            f"Site: http://localhost:{port} (browser islands still read production API data)"
         )
         try:
             result = subprocess.run(cmd, cwd=api_dir, check=False)
