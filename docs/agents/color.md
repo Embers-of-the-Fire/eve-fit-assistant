@@ -43,30 +43,30 @@ For **workload platforms** — surfaces where users do actual work: dense data, 
 dashboards, interactive content. One consistent console look across all of them.
 
 - **Used by:** the app (all native/web targets), the share platform (`site/share`), and
-  the future discussion platform. New workload surfaces must adopt this family rather than
-  inventing a new one.
+  the discussion platform (`site/platform`). New workload surfaces must adopt this family
+  rather than inventing a new one.
 - **Mood:** functional terminal; information-dense, restrained glow, borders over shadows.
-- **Reference values** (as deployed in the app):
+- **Reference values** — the app's rendered theme is the Material 3 tonal-spot dark scheme
+  derived from seed `#0a1a2a` (`ColorScheme.fromSeed` in `main.dart`); these computed values
+  are canonical. The legacy named constants (`primaryBlue` `#30b2e6`, `deepBlue` `#0c1213`,
+  `terminalText` `#e0f4ff`, …) still exist in `lib/constant/colors.dart` but are not what
+  the app renders with; do not use them for new surfaces.
 
 | Token | Value | Role |
 | ----- | ----- | ---- |
-| `primaryBlue` | `#30b2e6` | **primary accent** — brand within workload surfaces, primary actions |
-| `deepSpace` | `#0a1a2a` | theme seed / deep background |
-| `deepBlue` | `#0c1213` | background |
-| `cyberTeal` | `#2a7b9c` | secondary surfaces / subdued accent |
-| `neonHighlight` | `#4ed4ff` | **secondary accent** — highlights, links, hover emphasis |
-| `terminalText` | `#e0f4ff` | primary text |
-| `neonGreen` | `#4dffdf` | decorative highlight (sparing) |
-| `neonPurple` | `#9b6dff` | decorative highlight (sparing) |
-| `neonPink` | `#ff4dff` | decorative highlight (sparing) |
-| `consoleSurface` | `#12202a` | cards, panels (site/platform) |
-| `consoleSurfaceAlt` | `#1a2e3a` | hover / nested surfaces (site/platform) |
-| `consoleBorder` | `#22404f` | hairline separators (site/platform) |
-| `consoleTextDim` | `#9db8c6` | secondary text (site/platform) |
-| `consoleTextMuted` | `#64808f` | captions, metadata (site/platform) |
-
-`site/share` currently ships a close neutral-dark approximation (`#0d1117` bg, `#4d9fff`
-accent); when it is next rebuilt it should converge on the exact workload tokens above.
+| `surface` | `#101418` | page background, base surfaces |
+| `surfaceContainerLowest` | `#0b0e13` | inset wells (code blocks) |
+| `surfaceContainerLow` | `#191c20` | cards, panels, topbars |
+| `surfaceContainerHigh` | `#272a2f` | hover / nested surfaces |
+| `surfaceContainerHighest` | `#32353a` | progress/bar tracks |
+| `primary` | `#9fcafc` | **primary accent** — primary actions, active states |
+| `onPrimary` | `#003257` | text/icons on `primary` fills |
+| `primaryContainer` | `#174974` | subdued accent fills |
+| `onPrimaryContainer` | `#d1e4ff` | **secondary accent** — highlights, links, hover emphasis |
+| `outlineVariant` | `#42474e` | hairline separators, frame borders |
+| `outline` | `#8d9199` | captions, metadata |
+| `onSurface` | `#e1e2e8` | primary text |
+| `onSurfaceVariant` | `#c3c7cf` | secondary text |
 
 ### Semantic colors (shared, family-independent)
 

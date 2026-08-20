@@ -1,11 +1,11 @@
 :root {
     color-scheme: dark;
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --accent: #4d9fff;
+    --bg: #101418;
+    --surface: #191c20;
+    --border: #42474e;
+    --text: #e1e2e8;
+    --muted: #c3c7cf;
+    --accent: #9fcafc;
 }
 
 * {
@@ -138,7 +138,7 @@ h2 {
     display: inline-block;
     padding: 8px 16px;
     background: var(--accent);
-    color: #08101e;
+    color: #003257;
     border-radius: 6px;
     text-decoration: none;
     font-weight: 600;
