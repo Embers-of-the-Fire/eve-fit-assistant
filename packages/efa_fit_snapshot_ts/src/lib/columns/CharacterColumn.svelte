@@ -1,6 +1,5 @@
 <script lang="ts">
 import { type FitSnapshot, SnapshotCharacter_Builtin } from "efa-proto-ts/fit_snapshot_pb";
-import Glyph from "../components/Glyph.svelte";
 import SectionHeader from "../components/SectionHeader.svelte";
 import StateIcon from "../components/StateIcon.svelte";
 import TypeIcon from "../components/TypeIcon.svelte";
@@ -34,7 +33,18 @@ const characterName = $derived.by(() => {
 
 <div class="efa-column">
     <div class="efa-character-header">
-        <Glyph name="person" size={22} />
+        <svg
+            class="efa-material-icon"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+        >
+            <path
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+            />
+        </svg>
         <span class="efa-character-name">{characterName}</span>
     </div>
     <hr class="efa-divider" />
@@ -45,8 +55,19 @@ const characterName = $derived.by(() => {
             <ModuleRow module={implant.item} />
         {:else}
             <div class="efa-row">
-                <span class="efa-empty-icon">
-                    <Glyph name="implant" size={20} />
+                <span class="efa-empty-icon efa-implant-icon">
+                    <svg
+                        class="efa-material-icon"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                        />
+                    </svg>
                 </span>
                 <div class="efa-row-body">
                     <div class="efa-empty-title">
@@ -94,8 +115,13 @@ const characterName = $derived.by(() => {
         padding: 12px 14px;
         color: var(--efa-text, #e0f4ff);
     }
+    .efa-material-icon {
+        display: inline-block;
+        flex-shrink: 0;
+        vertical-align: middle;
+    }
     .efa-character-name {
-        font-weight: 600;
+        font-weight: 400;
     }
     .efa-divider {
         border: none;
@@ -140,8 +166,12 @@ const characterName = $derived.by(() => {
         flex-shrink: 0;
         border: 2px solid var(--efa-state-passive, #2d2d2d);
         border-radius: 2px;
+        background: var(--efa-state-passive, #2d2d2d);
         color: var(--efa-text-muted, #64808f);
         box-sizing: border-box;
+    }
+    .efa-implant-icon {
+        color: #ffffff;
     }
     .efa-empty-title {
         color: var(--efa-text-muted, #64808f);

@@ -3,14 +3,14 @@ import type { SnapshotSlot } from "efa-proto-ts/fit_snapshot_pb";
 import type { Snippet } from "svelte";
 import SectionHeader from "../components/SectionHeader.svelte";
 import { snapshotDisplay } from "../context.svelte";
-import type { GlyphName } from "../glyphs";
+import type { EfaIconName } from "../icons";
 import EmptySlotRow from "../rows/EmptySlotRow.svelte";
 import ModuleRow from "../rows/ModuleRow.svelte";
 
 interface Props {
     title: string;
     slots: SnapshotSlot[];
-    placeholder: GlyphName;
+    placeholder: EfaIconName;
     trailing?: Snippet;
 }
 

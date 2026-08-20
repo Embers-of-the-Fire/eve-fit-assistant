@@ -5,7 +5,11 @@ import { defaultCache } from "./lib/cache";
 const FIT_PAGE_PATH = /^\/post\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?$/i;
 
 export const onRequest = defineMiddleware(async (context, next) => {
-    if (context.request.method !== "GET" || !FIT_PAGE_PATH.test(context.url.pathname)) {
+    if (
+        import.meta.env.DEV ||
+        context.request.method !== "GET" ||
+        !FIT_PAGE_PATH.test(context.url.pathname)
+    ) {
         return next();
     }
 

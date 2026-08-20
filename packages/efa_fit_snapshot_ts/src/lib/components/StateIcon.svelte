@@ -40,6 +40,7 @@ const stateClass = $derived(
         flex-shrink: 0;
         border: 2px solid var(--efa-state-passive, #2d2d2d);
         border-radius: 2px;
+        background: var(--efa-state-passive, #2d2d2d);
         overflow: hidden;
         box-sizing: border-box;
     }

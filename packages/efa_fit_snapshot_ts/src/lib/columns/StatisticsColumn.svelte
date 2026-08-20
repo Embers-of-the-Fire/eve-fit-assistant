@@ -6,13 +6,13 @@ import {
     type SnapshotStatistics_DefenseLayer,
 } from "efa-proto-ts/fit_snapshot_pb";
 import CompareRow from "../components/CompareRow.svelte";
-import Glyph from "../components/Glyph.svelte";
+import EfaIcon from "../components/EfaIcon.svelte";
 import ResonanceBox from "../components/ResonanceBox.svelte";
 import ResourceBar from "../components/ResourceBar.svelte";
 import TypeIcon from "../components/TypeIcon.svelte";
 import { snapshotDisplay } from "../context.svelte";
 import { commaSeparated, formatDuration, toMaxDecimals } from "../format";
-import type { GlyphName } from "../glyphs";
+import type { EfaIconName } from "../icons";
 
 interface Props {
     snapshot: FitSnapshot;
@@ -38,7 +38,7 @@ const hpTotal = $derived(
 const ehpTotal = $derived(
     (stats?.shield?.ehp ?? 0) + (stats?.armor?.ehp ?? 0) + (stats?.hull?.ehp ?? 0),
 );
-const maxEhpGlyph: GlyphName = $derived.by(() => {
+const maxEhpIcon: EfaIconName = $derived.by(() => {
     const shield = stats?.shield?.ehp ?? 0;
     const armor = stats?.armor?.ehp ?? 0;
     const hull = stats?.hull?.ehp ?? 0;
@@ -46,38 +46,34 @@ const maxEhpGlyph: GlyphName = $derived.by(() => {
     return armor >= hull ? "hp-armor" : "hp-hull";
 });
 
-const defenseLayers: { glyph: GlyphName; layer: SnapshotStatistics_DefenseLayer }[] = $derived.by(
-    () => {
-        const layers: { glyph: GlyphName; layer: SnapshotStatistics_DefenseLayer }[] = [];
-        if (stats?.shield) layers.push({ glyph: "hp-shield", layer: stats.shield });
-        if (stats?.armor) layers.push({ glyph: "hp-armor", layer: stats.armor });
-        if (stats?.hull) layers.push({ glyph: "hp-hull", layer: stats.hull });
-        return layers;
-    },
-);
+const defenseLayers: { icon: EfaIconName; layer?: SnapshotStatistics_DefenseLayer }[] = $derived([
+    { icon: "hp-shield", layer: stats?.shield },
+    { icon: "hp-armor", layer: stats?.armor },
+    { icon: "hp-hull", layer: stats?.hull },
+]);
 
-const maxSensor: { glyph: GlyphName; value: number } = $derived.by(() => {
+const maxSensor: { icon: EfaIconName; value: number } = $derived.by(() => {
     const targeting = stats?.targeting;
     const radar = targeting?.radarStrength ?? 0;
     const ladar = targeting?.ladarStrength ?? 0;
     const magnetometric = targeting?.magnetometricStrength ?? 0;
     const gravimetric = targeting?.gravimetricStrength ?? 0;
     if (radar >= ladar && radar >= magnetometric && radar >= gravimetric) {
-        return { glyph: "sensor-radar", value: radar };
+        return { icon: "sensor-radar", value: radar };
     }
     if (ladar >= magnetometric && ladar >= gravimetric) {
-        return { glyph: "sensor-ladar", value: ladar };
+        return { icon: "sensor-ladar", value: ladar };
     }
     if (magnetometric >= gravimetric) {
-        return { glyph: "sensor-magnetometric", value: magnetometric };
+        return { icon: "sensor-magnetometric", value: magnetometric };
     }
-    return { glyph: "sensor-gravimetric", value: gravimetric };
+    return { icon: "sensor-gravimetric", value: gravimetric };
 });
 
-const HOLD_GLYPHS: Record<HoldKindType, GlyphName> = {
+const HOLD_ICONS: Record<HoldKindType, EfaIconName> = {
     [SnapshotStatistics_Cargo_HoldKind.FLEET_HANGAR]: "hold-fleet",
     [SnapshotStatistics_Cargo_HoldKind.SHIP_MAINTENANCE_BAY]: "hold-ship",
-    [SnapshotStatistics_Cargo_HoldKind.FIGHTER_BAY]: "drone-bandwidth",
+    [SnapshotStatistics_Cargo_HoldKind.FIGHTER_BAY]: "hold-fighter",
     [SnapshotStatistics_Cargo_HoldKind.MINING_HOLD]: "hold-mining",
     [SnapshotStatistics_Cargo_HoldKind.GAS_HOLD]: "hold-gas",
     [SnapshotStatistics_Cargo_HoldKind.MINERAL_HOLD]: "hold-mineral",
@@ -85,12 +81,12 @@ const HOLD_GLYPHS: Record<HoldKindType, GlyphName> = {
     [SnapshotStatistics_Cargo_HoldKind.COMMAND_CENTER_HOLD]: "hold-command",
     [SnapshotStatistics_Cargo_HoldKind.PLANETARY_COMMODITIES_HOLD]: "hold-planetary",
     [SnapshotStatistics_Cargo_HoldKind.FUEL_BAY]: "hold-fuel",
-    [SnapshotStatistics_Cargo_HoldKind.AMMO_HOLD]: "alpha",
+    [SnapshotStatistics_Cargo_HoldKind.AMMO_HOLD]: "hold-ammo",
     [SnapshotStatistics_Cargo_HoldKind.QUAFE_BAY]: "cargo",
 };
 
-function holdGlyph(kind: HoldKindType): GlyphName {
-    return HOLD_GLYPHS[kind] ?? "cargo";
+function holdIcon(kind: HoldKindType): EfaIconName {
+    return HOLD_ICONS[kind] ?? "cargo";
 }
 </script>
 
@@ -106,7 +102,7 @@ function holdGlyph(kind: HoldKindType): GlyphName {
 
         {#if capacitor}
             <div class="efa-stat-row">
-                <Glyph name="capacitor" size={28} />
+                <EfaIcon name="capacitor" size={28} />
                 <div class="efa-stat-body">
                     <div class="efa-stat-line">
                         {#if !capacitor.isStable && capacitor.depletesInS > 0}
@@ -137,7 +133,7 @@ function holdGlyph(kind: HoldKindType): GlyphName {
 
         {#if stats.weapons}
             <div class="efa-stat-row">
-                <Glyph name="alpha" size={28} />
+                <EfaIcon name="alpha" size={28} />
                 <div class="efa-stat-body">
                     <div class="efa-stat-line">
                         <span>{stats.weapons.dpsTotal.toFixed(1)}/s</span>
@@ -182,118 +178,111 @@ function holdGlyph(kind: HoldKindType): GlyphName {
             </div>
         {/if}
 
-        {#if stats.shield && stats.armor && stats.hull}
-            <div class="efa-stat-row">
-                <Glyph name={maxEhpGlyph} size={36} />
-                <div class="efa-stat-body">
-                    <div class="efa-stat-line">
-                        <span>{Math.round(hpTotal)} HP</span>
-                        <span class="efa-sep">|</span>
-                        <span>{Math.round(ehpTotal)} EHP</span>
-                    </div>
+        <div class="efa-stat-row">
+            <EfaIcon name={maxEhpIcon} size={36} />
+            <div class="efa-stat-body">
+                <div class="efa-stat-line">
+                    <span>{Math.round(hpTotal)} HP</span>
+                    <span class="efa-sep">|</span>
+                    <span>{Math.round(ehpTotal)} EHP</span>
                 </div>
             </div>
-            <table class="efa-defense">
-                <thead>
+        </div>
+        <table class="efa-defense">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>HP</th>
+                    <th>EHP</th>
+                    <th><EfaIcon name="resist-em" size={20} /></th>
+                    <th><EfaIcon name="resist-thermal" size={20} /></th>
+                    <th><EfaIcon name="resist-kinetic" size={20} /></th>
+                    <th><EfaIcon name="resist-explosive" size={20} /></th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each defenseLayers as { icon, layer } (icon)}
                     <tr>
-                        <th></th>
-                        <th>HP</th>
-                        <th>EHP</th>
-                        <th><Glyph name="resist-em" size={20} color="#4d9fff" /></th>
-                        <th><Glyph name="resist-thermal" size={20} color="#e5484d" /></th>
-                        <th><Glyph name="resist-kinetic" size={20} color="#9aa4af" /></th>
-                        <th><Glyph name="resist-explosive" size={20} color="#f5a623" /></th>
+                        <td><EfaIcon name={icon} size={20} /></td>
+                        <td>{Math.round(layer?.hp ?? 0)}</td>
+                        <td>{Math.round(layer?.ehp ?? 0)}</td>
+                        <td>
+                            <ResonanceBox ratio={1 - (layer?.resistances?.em ?? 0)} type="em" />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.thermal ?? 0)}
+                                type="thermal"
+                            />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.kinetic ?? 0)}
+                                type="kinetic"
+                            />
+                        </td>
+                        <td>
+                            <ResonanceBox
+                                ratio={1 - (layer?.resistances?.explosive ?? 0)}
+                                type="explosive"
+                            />
+                        </td>
                     </tr>
-                </thead>
+                {/each}
+                <tr>
+                    <td><EfaIcon name="damage-profile" size={20} /></td>
+                    <td></td>
+                    <td></td>
+                    <td><ResonanceBox ratio={1 - (profile?.em ?? 0)} type="em" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.thermal ?? 0)} type="thermal" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.kinetic ?? 0)} type="kinetic" /></td>
+                    <td><ResonanceBox ratio={1 - (profile?.explosive ?? 0)} type="explosive" /></td>
+                </tr>
+            </tbody>
+        </table>
+
+        {#if (stats.mobility && stats.targeting) || stats.drones}
+            <table class="efa-pairs">
                 <tbody>
-                    {#each defenseLayers as { glyph, layer } (glyph)}
+                    {#if stats.mobility && stats.targeting}
                         <tr>
-                            <td><Glyph name={glyph} size={20} /></td>
-                            <td>{Math.round(layer.hp)}</td>
-                            <td>{Math.round(layer.ehp)}</td>
-                            <td>
-                                <ResonanceBox ratio={1 - (layer.resistances?.em ?? 0)} type="em" />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.thermal ?? 0)}
-                                    type="thermal"
-                                />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.kinetic ?? 0)}
-                                    type="kinetic"
-                                />
-                            </td>
-                            <td>
-                                <ResonanceBox
-                                    ratio={1 - (layer.resistances?.explosive ?? 0)}
-                                    type="explosive"
-                                />
-                            </td>
+                            <td><EfaIcon name="speed" size={20} /></td>
+                            <td>{toMaxDecimals(stats.mobility.maxVelocityMs, 1)} m/s</td>
+                            <td></td>
+                            <td><EfaIcon name="warp" size={20} /></td>
+                            <td>{toMaxDecimals(stats.mobility.warpSpeedAuS, 1)} AU/s</td>
                         </tr>
-                    {/each}
-                    {#if profile}
                         <tr>
-                            <td><Glyph name="turret" size={20} /></td>
+                            <td><EfaIcon name="target-range" size={20} /></td>
+                            <td>{Math.round(stats.targeting.maxTargetRangeM / 1000)} km</td>
                             <td></td>
+                            <td><EfaIcon name="scan-resolution" size={20} /></td>
+                            <td>{Math.round(stats.targeting.scanResolutionMm)} mm</td>
+                        </tr>
+                        <tr>
+                            <td><EfaIcon name="lock-num" size={20} /></td>
+                            <td>{stats.targeting.maxLockedTargets}</td>
                             <td></td>
-                            <td><ResonanceBox ratio={1 - profile.em} type="em" /></td>
-                            <td><ResonanceBox ratio={1 - profile.thermal} type="thermal" /></td>
-                            <td><ResonanceBox ratio={1 - profile.kinetic} type="kinetic" /></td>
-                            <td><ResonanceBox ratio={1 - profile.explosive} type="explosive" /></td>
+                            <td><EfaIcon name={maxSensor.icon} size={20} /></td>
+                            <td>{toMaxDecimals(maxSensor.value, 1)}</td>
+                        </tr>
+                        <tr>
+                            <td><EfaIcon name="align-time" size={20} /></td>
+                            <td>{toMaxDecimals(stats.mobility.alignTimeS, 2)} s</td>
+                            <td></td>
+                            <td><EfaIcon name="signature" size={20} /></td>
+                            <td>{toMaxDecimals(stats.mobility.signatureRadiusM, 0)} m</td>
                         </tr>
                     {/if}
-                </tbody>
-            </table>
-        {/if}
-
-        {#if stats.mobility && stats.targeting}
-            <table class="efa-pairs">
-                <tbody>
-                    <tr>
-                        <td><Glyph name="speed" size={20} /></td>
-                        <td>{toMaxDecimals(stats.mobility.maxVelocityMs, 1)} m/s</td>
-                        <td></td>
-                        <td><Glyph name="warp" size={20} /></td>
-                        <td>{toMaxDecimals(stats.mobility.warpSpeedAuS, 1)} AU/s</td>
-                    </tr>
-                    <tr>
-                        <td><Glyph name="target-range" size={20} /></td>
-                        <td>{Math.round(stats.targeting.maxTargetRangeM / 1000)} km</td>
-                        <td></td>
-                        <td><Glyph name="scan-resolution" size={20} /></td>
-                        <td>{Math.round(stats.targeting.scanResolutionMm)} mm</td>
-                    </tr>
-                    <tr>
-                        <td><Glyph name="lock-num" size={20} /></td>
-                        <td>{stats.targeting.maxLockedTargets}</td>
-                        <td></td>
-                        <td><Glyph name={maxSensor.glyph} size={20} /></td>
-                        <td>{toMaxDecimals(maxSensor.value, 1)}</td>
-                    </tr>
-                    <tr>
-                        <td><Glyph name="align-time" size={20} /></td>
-                        <td>{toMaxDecimals(stats.mobility.alignTimeS, 2)} s</td>
-                        <td></td>
-                        <td><Glyph name="signature" size={20} /></td>
-                        <td>{toMaxDecimals(stats.mobility.signatureRadiusM, 0)} m</td>
-                    </tr>
-                </tbody>
-            </table>
-        {/if}
-
-        {#if stats.drones}
-            <table class="efa-pairs">
-                <tbody>
-                    <tr>
-                        <td><Glyph name="drone" size={20} /></td>
-                        <td>{stats.drones.maxActiveDrones}</td>
-                        <td></td>
-                        <td><Glyph name="drone-range" size={20} /></td>
-                        <td>{toMaxDecimals(stats.drones.controlRangeM / 1000, 1)} km</td>
-                    </tr>
+                    {#if stats.drones}
+                        <tr>
+                            <td><EfaIcon name="drone" size={20} /></td>
+                            <td>{stats.drones.maxActiveDrones}</td>
+                            <td></td>
+                            <td><EfaIcon name="drone-range" size={20} /></td>
+                            <td>{toMaxDecimals(stats.drones.controlRangeM / 1000, 1)} km</td>
+                        </tr>
+                    {/if}
                 </tbody>
             </table>
         {/if}
@@ -301,13 +290,13 @@ function holdGlyph(kind: HoldKindType): GlyphName {
         {#if stats.cargo}
             <div class="efa-cargo">
                 <div class="efa-stat-row">
-                    <Glyph name="mass" size={28} />
+                    <EfaIcon name="mass" size={28} />
                     <div class="efa-stat-body">
                         <div class="efa-stat-line">{commaSeparated(stats.cargo.massKg)} kg</div>
                     </div>
                 </div>
                 <div class="efa-stat-row">
-                    <Glyph name="cargo" size={28} />
+                    <EfaIcon name="cargo" size={28} />
                     <div class="efa-stat-body">
                         <div class="efa-stat-line">{commaSeparated(stats.cargo.capacityM3)} m³</div>
                     </div>
@@ -315,8 +304,8 @@ function holdGlyph(kind: HoldKindType): GlyphName {
                 {#each stats.cargo.holds as hold (hold.kind)}
                     <div class="efa-stat-row">
                         <span class="efa-hold-icons">
-                            <Glyph name="cargo" size={28} />
-                            <Glyph name={holdGlyph(hold.kind)} size={28} />
+                            <EfaIcon name="cargo" size={28} />
+                            <EfaIcon name={holdIcon(hold.kind)} size={28} />
                         </span>
                         <div class="efa-stat-body">
                             <div class="efa-stat-line">
@@ -339,12 +328,13 @@ function holdGlyph(kind: HoldKindType): GlyphName {
     }
     .efa-ship-header {
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 12px 14px 8px;
+        gap: 16px;
+        padding: 8px 16px;
     }
     .efa-ship-name {
+        flex: 1;
+        min-width: 0;
         font-weight: 700;
         text-align: center;
     }

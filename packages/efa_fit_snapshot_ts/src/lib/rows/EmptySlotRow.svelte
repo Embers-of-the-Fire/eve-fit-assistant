@@ -1,12 +1,12 @@
 <script lang="ts">
-import Glyph from "../components/Glyph.svelte";
+import EfaIcon from "../components/EfaIcon.svelte";
 import { snapshotDisplay } from "../context.svelte";
-import type { GlyphName } from "../glyphs";
+import type { EfaIconName } from "../icons";
 
 interface Props {
     index: number;
     slotName: string;
-    placeholder: GlyphName;
+    placeholder: EfaIconName;
 }
 
 let { index, slotName, placeholder }: Props = $props();
@@ -16,7 +16,7 @@ const ctx = snapshotDisplay();
 
 <div class="efa-row efa-row-empty">
     <span class="efa-empty-icon">
-        <Glyph name={placeholder} size={22} />
+        <EfaIcon name={placeholder} size={31} />
     </span>
     <div class="efa-row-body">
         <div class="efa-row-title efa-empty-title">{ctx.t("slotEmpty", { slotName })}</div>
@@ -42,6 +42,7 @@ const ctx = snapshotDisplay();
         flex-shrink: 0;
         border: 2px solid var(--efa-state-passive, #2d2d2d);
         border-radius: 2px;
+        background: var(--efa-state-passive, #2d2d2d);
         color: var(--efa-text-muted, #64808f);
         box-sizing: border-box;
     }

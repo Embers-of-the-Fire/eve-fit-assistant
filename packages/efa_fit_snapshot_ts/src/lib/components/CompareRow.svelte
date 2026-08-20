@@ -1,11 +1,10 @@
 <script lang="ts">
-import { commaSeparated, toMaxDecimals } from "../format";
-import type { GlyphName } from "../glyphs";
-import Glyph from "./Glyph.svelte";
-import ResourceBar from "./ResourceBar.svelte";
+import type { EfaIconName } from "../icons";
+import EfaIcon from "./EfaIcon.svelte";
+import ResourceBar, { resourceUsage } from "./ResourceBar.svelte";
 
 interface Props {
-    icon: GlyphName;
+    icon: EfaIconName;
     used: number;
     all: number;
     unit?: string;
@@ -14,13 +13,15 @@ interface Props {
 }
 
 let { icon, used, all, unit, warning = true, iconSize = 28 }: Props = $props();
+
+const usage = $derived(resourceUsage(used, all, warning));
 </script>
 
 <div class="efa-compare-row">
-    <Glyph name={icon} size={iconSize} />
+    <EfaIcon name={icon} size={iconSize} />
     <div class="efa-compare-body">
-        <div class="efa-compare-text" class:efa-compare-over={warning && used > all}>
-            {commaSeparated(Math.round(used * 10) / 10)} / {toMaxDecimals(all, 1)}{unit
+        <div class="efa-compare-text">
+            <span class="efa-usage-{usage}">{used.toFixed(0)}</span>/{all.toFixed(0)}{unit
                 ? ` ${unit}`
                 : ""}
         </div>
@@ -46,7 +47,13 @@ let { icon, used, all, unit, warning = true, iconSize = 28 }: Props = $props();
         text-align: end;
         font-variant-numeric: tabular-nums;
     }
-    .efa-compare-over {
-        color: var(--efa-danger, #ef5350);
+    .efa-usage-success {
+        color: var(--efa-success, #4caf50);
+    }
+    .efa-usage-warning {
+        color: var(--efa-warning, #ff9800);
+    }
+    .efa-usage-danger {
+        color: var(--efa-danger, #f44336);
     }
 </style>

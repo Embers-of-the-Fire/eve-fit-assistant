@@ -6,11 +6,11 @@ import {
     SnapshotStatistics_Cargo_HoldKind,
 } from "efa-proto-ts/fit_snapshot_pb";
 import CapacityCounter from "../components/CapacityCounter.svelte";
-import Glyph from "../components/Glyph.svelte";
+import EfaIcon from "../components/EfaIcon.svelte";
 import SectionHeader from "../components/SectionHeader.svelte";
 import { snapshotDisplay } from "../context.svelte";
 import { commaSeparated } from "../format";
-import type { GlyphName } from "../glyphs";
+import type { EfaIconName } from "../icons";
 import DroneRow from "../rows/DroneRow.svelte";
 import EmptySlotRow from "../rows/EmptySlotRow.svelte";
 import FighterRow from "../rows/FighterRow.svelte";
@@ -26,7 +26,7 @@ let { snapshot }: Props = $props();
 
 const ctx = snapshotDisplay();
 
-function subsystemPlaceholder(type: Subsystem_SubsystemType): GlyphName {
+function subsystemPlaceholder(type: Subsystem_SubsystemType): EfaIconName {
     switch (type) {
         case Subsystem_SubsystemType.CORE:
             return "subsystem-core";
@@ -77,14 +77,20 @@ const fighterBay = $derived(
         {#snippet trailing()}
             {#if (layout?.turretHardpoints ?? 0) > 0 || usedTurret > 0}
                 <span class="efa-hardpoint">
-                    <Glyph name="turret" size={16} />
-                    {usedTurret}/{layout?.turretHardpoints ?? 0}
+                    <EfaIcon name="turret-num" size={16} />
+                    <span class:efa-over={usedTurret > (layout?.turretHardpoints ?? 0)}
+                        >{usedTurret}</span
+                    >
+                    / {layout?.turretHardpoints ?? 0}
                 </span>
             {/if}
             {#if (layout?.launcherHardpoints ?? 0) > 0 || usedLauncher > 0}
                 <span class="efa-hardpoint">
-                    <Glyph name="launcher" size={16} />
-                    {usedLauncher}/{layout?.launcherHardpoints ?? 0}
+                    <EfaIcon name="launcher-num" size={16} />
+                    <span class:efa-over={usedLauncher > (layout?.launcherHardpoints ?? 0)}
+                        >{usedLauncher}</span
+                    >
+                    / {layout?.launcherHardpoints ?? 0}
                 </span>
             {/if}
         {/snippet}
@@ -178,6 +184,9 @@ const fighterBay = $derived(
         align-items: center;
         gap: 4px;
         font-variant-numeric: tabular-nums;
+    }
+    .efa-over {
+        color: var(--efa-danger, #f44336);
     }
     .efa-fighter-counters {
         display: flex;
