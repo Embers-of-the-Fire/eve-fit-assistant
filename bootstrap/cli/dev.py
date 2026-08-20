@@ -351,13 +351,19 @@ def register_dev_commands(cli_group: click.Group) -> None:
         help="Rebuild the platform site before launching.",
     )
     @click.option(
+        "--fresh-cache",
+        is_flag=True,
+        default=False,
+        help="Wipe the persisted local edge cache (miniflare cache state) before launching.",
+    )
+    @click.option(
         "--port",
         type=int,
         default=8787,
         show_default=True,
         help="Port the platform site listens on.",
     )
-    def dev_launch_platform(force_build: bool, port: int):
+    def dev_launch_platform(force_build: bool, fresh_cache: bool, port: int):
         """Launch the discussion platform stack locally (site + API + local D1).
 
         Starts a wrangler multi-worker dev session with the built Astro site
@@ -366,13 +372,32 @@ def register_dev_commands(cli_group: click.Group) -> None:
         workers share the API worker's local D1 state
         (worker/efa-platform-api/.wrangler/state), so seed it beforehand with
         `wrangler d1` commands run from worker/efa-platform-api.
+
+        The site is rebuilt automatically when its sources are newer than the
+        last build output; each build embeds a fresh build id that versions the
+        local edge-cache keys, so a rebuild invalidates previously cached HTML.
         """
-        site_config = PROJECT_ROOT / "site" / "platform" / "dist" / "server" / "wrangler.json"
+        site_dir = PROJECT_ROOT / "site" / "platform"
+        site_config = site_dir / "dist" / "server" / "wrangler.json"
         api_dir = PROJECT_ROOT / "worker" / "efa-platform-api"
         api_config = api_dir / "wrangler.toml"
         persist_dir = api_dir / ".wrangler" / "state"
 
-        if force_build or not site_config.exists():
+        def sources_newer_than_build() -> bool:
+            if not site_config.exists():
+                return True
+            built_mtime = site_config.stat().st_mtime
+            newest = 0.0
+            for path in (site_dir / "src").rglob("*"):
+                if path.is_file():
+                    newest = max(newest, path.stat().st_mtime)
+            for extra in ("astro.config.mjs", "wrangler.toml", "package.json"):
+                path = site_dir / extra
+                if path.exists():
+                    newest = max(newest, path.stat().st_mtime)
+            return newest > built_mtime
+
+        if force_build or sources_newer_than_build():
             pnpm = get_command("pnpm")
             click.echo(
                 styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm build:platform"
@@ -386,6 +411,13 @@ def register_dev_commands(cli_group: click.Group) -> None:
 
         if not site_config.exists():
             raise click.ClickException(f"Platform site build output not found: {site_config}")
+
+        if fresh_cache:
+            for cache_dir in (persist_dir / "v3" / "cache", persist_dir / "cache"):
+                if cache_dir.exists():
+                    click.echo(f"Removing persisted local edge cache: {cache_dir}")
+                    if not runtime.is_dry_run():
+                        shutil.rmtree(cache_dir)
 
         pnpx = get_command("pnpx")
         cmd = [
@@ -410,7 +442,8 @@ def register_dev_commands(cli_group: click.Group) -> None:
             click.echo("[Dry-Run] " + " ".join(cmd))
             return
         click.echo(
-            f"Site: http://localhost:{port} (browser islands still read production API data)"
+            f"Site: http://localhost:{port} (browser islands still read production API data; "
+            "edge cache active, use --fresh-cache to clear it)"
         )
         try:
             result = subprocess.run(cmd, cwd=api_dir, check=False)
