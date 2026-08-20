@@ -83,7 +83,7 @@ void main() {
   test("imports a valid link exactly once", () async {
     final fit = _makeFit();
     final uri = Uri.parse(
-      "https://share.platform.efa-tech.dev/fit/raw?payload=${encodeEfaFitLinkPayload(encodeNativeFitPayload(fit))}",
+      "https://platform.efa-tech.dev/share/fit/raw?payload=${encodeEfaFitLinkPayload(encodeNativeFitPayload(fit))}",
     );
 
     final result = await importer.import(uri);

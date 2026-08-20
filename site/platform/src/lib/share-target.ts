@@ -5,7 +5,15 @@ export const WEB_URL = "https://app.efa-tech.dev";
 export const NIGHTLY_URL = "https://app-preview.efa-tech.dev";
 export const DOWNLOAD_URL = "https://efa-tech.dev/download";
 
+export const WEB_FIT_PATH = "/fit/raw";
+
 const TARGET_KEY = "efa-share-target";
+
+export function targetUrl(target: ShareTarget, search: string): string {
+    if (target === "app") return APP_URI_BASE + search;
+    const base = target === "nightly" ? NIGHTLY_URL : WEB_URL;
+    return base + WEB_FIT_PATH + search;
+}
 
 export function readRememberedTarget(): ShareTarget | null {
     try {

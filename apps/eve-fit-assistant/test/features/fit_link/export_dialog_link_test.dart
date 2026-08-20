@@ -122,7 +122,7 @@ void main() {
     expect(clipboardWrites, hasLength(1));
     expect(
       clipboardWrites.single,
-      startsWith("https://share.platform.efa-tech.dev/fit/raw?payload=EFA2:"),
+      startsWith("https://platform.efa-tech.dev/share/fit/raw?payload=EFA2:"),
     );
   });
 

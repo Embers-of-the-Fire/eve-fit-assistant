@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 SCRIPT_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "site" / "share" / "render_assetlinks.py"
+    Path(__file__).resolve().parent.parent.parent / "site" / "platform" / "render_assetlinks.py"
 )
 
 

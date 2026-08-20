@@ -39,6 +39,12 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="platform.efa-tech.dev" android:pathPrefix="/share/fit/"/>
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="share.platform.efa-tech.dev" android:pathPrefix="/fit/"/>
             </intent-filter>
             <intent-filter android:autoVerify="true">

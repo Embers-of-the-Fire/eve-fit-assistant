@@ -1,14 +1,21 @@
 import "package:efa_fit/src/efa_format.dart";
 
 const String efaScheme = "efa";
-const String fitLinkShareHost = "share.platform.efa-tech.dev";
+const String fitLinkPlatformHost = "platform.efa-tech.dev";
+const String fitLinkLegacyShareHost = "share.platform.efa-tech.dev";
 const String fitLinkProdHost = "app.efa-tech.dev";
 const String fitLinkNightlyHost = "app-preview.efa-tech.dev";
 const String fitLinkCanonicalPath = "/fit/raw";
+const String fitLinkPlatformPath = "/share/fit/raw";
 const String fitLinkPayloadParam = "payload";
 const int maxFitLinkUrlLength = 8000;
 
-const List<String> fitLinkHttpsHosts = [fitLinkShareHost, fitLinkProdHost, fitLinkNightlyHost];
+const List<String> fitLinkLegacyHttpsHosts = [
+  fitLinkLegacyShareHost,
+  fitLinkProdHost,
+  fitLinkNightlyHost,
+];
+const List<String> fitLinkHttpsHosts = [fitLinkPlatformHost, ...fitLinkLegacyHttpsHosts];
 
 class FitLinkNotFoundException implements Exception {
   const FitLinkNotFoundException(this.uri);
@@ -28,7 +35,7 @@ class FitLinkParseResult {
 
 String buildFitLinkShareUrl(String payload) {
   validateEfaFitLinkPayload(payload);
-  final url = "https://$fitLinkShareHost$fitLinkCanonicalPath?$fitLinkPayloadParam=$payload";
+  final url = "https://$fitLinkPlatformHost$fitLinkPlatformPath?$fitLinkPayloadParam=$payload";
   if (url.length > maxFitLinkUrlLength) {
     throw const EfaFitFormatException(EfaFitFormatErrorCode.payloadTooLarge);
   }
@@ -43,8 +50,14 @@ String? canonicalPathOf(Uri uri) {
     return normalized.toLowerCase() == fitLinkCanonicalPath ? fitLinkCanonicalPath : null;
   }
   if (scheme == "https") {
-    if (!fitLinkHttpsHosts.contains(uri.host.toLowerCase())) return null;
-    return uri.path == fitLinkCanonicalPath ? fitLinkCanonicalPath : null;
+    final host = uri.host.toLowerCase();
+    if (host == fitLinkPlatformHost) {
+      return uri.path == fitLinkPlatformPath ? fitLinkPlatformPath : null;
+    }
+    if (fitLinkLegacyHttpsHosts.contains(host)) {
+      return uri.path == fitLinkCanonicalPath ? fitLinkCanonicalPath : null;
+    }
+    return null;
   }
   return null;
 }

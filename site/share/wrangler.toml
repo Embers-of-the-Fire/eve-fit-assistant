@@ -1,6 +1,0 @@
-name = "efa-platform-share"
-pages_build_output_dir = ".svelte-kit/cloudflare"
-compatibility_date = "2026-08-01"
-
-[env.production.vars]
-APP_KEY_SHA256 = "E6:DF:FB:CD:4C:AB:27:5A:6C:1A:2B:16:3A:22:89:30:55:D3:D0:82:48:91:F8:CD:AD:1C:36:92:53:39:90:AB"

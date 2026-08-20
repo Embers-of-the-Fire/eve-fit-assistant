@@ -37,7 +37,8 @@ void main() {
     ]) {
       intake.dispatch(Uri.parse("https://$host/fit/raw?payload=EFA2:abc"));
     }
-    expect(fitLinks, hasLength(3));
+    intake.dispatch(Uri.parse("https://platform.efa-tech.dev/share/fit/raw?payload=EFA2:abc"));
+    expect(fitLinks, hasLength(4));
     expect(internalLinks, isEmpty);
   });
 

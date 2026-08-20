@@ -23,17 +23,38 @@ void main() {
       expect(result!.payload, payload);
     });
 
-    test("accepts all three https hosts", () {
-      for (final host in fitLinkHttpsHosts) {
+    test("accepts the platform host with the platform path", () {
+      final result = parseFitLinkUri(
+        Uri.parse("https://$fitLinkPlatformHost$fitLinkPlatformPath?payload=$payload"),
+      );
+      expect(result, isNotNull);
+      expect(result!.payload, payload);
+    });
+
+    test("accepts all legacy https hosts with the canonical path", () {
+      for (final host in fitLinkLegacyHttpsHosts) {
         final result = parseFitLinkUri(Uri.parse("https://$host/fit/raw?payload=$payload"));
         expect(result, isNotNull, reason: host);
         expect(result!.payload, payload);
       }
     });
 
+    test("rejects paths on the wrong host", () {
+      expect(
+        parseFitLinkUri(Uri.parse("https://$fitLinkPlatformHost/fit/raw?payload=$payload")),
+        isNull,
+      );
+      expect(
+        parseFitLinkUri(
+          Uri.parse("https://$fitLinkLegacyShareHost/share/fit/raw?payload=$payload"),
+        ),
+        isNull,
+      );
+    });
+
     test("https path is case-sensitive", () {
       expect(
-        parseFitLinkUri(Uri.parse("https://$fitLinkShareHost/FIT/RAW?payload=$payload")),
+        parseFitLinkUri(Uri.parse("https://$fitLinkLegacyShareHost/FIT/RAW?payload=$payload")),
         isNull,
       );
     });
@@ -46,22 +67,25 @@ void main() {
     test("unknown paths return null", () {
       expect(parseFitLinkUri(Uri.parse("efa://manual/fitting?payload=$payload")), isNull);
       expect(
-        parseFitLinkUri(Uri.parse("https://$fitLinkShareHost/fit/id?payload=$payload")),
+        parseFitLinkUri(Uri.parse("https://$fitLinkLegacyShareHost/fit/id?payload=$payload")),
         isNull,
       );
-      expect(parseFitLinkUri(Uri.parse("https://$fitLinkShareHost/?payload=$payload")), isNull);
+      expect(
+        parseFitLinkUri(Uri.parse("https://$fitLinkLegacyShareHost/?payload=$payload")),
+        isNull,
+      );
     });
 
     test("other schemes return null", () {
       expect(
-        parseFitLinkUri(Uri.parse("http://$fitLinkShareHost/fit/raw?payload=$payload")),
+        parseFitLinkUri(Uri.parse("http://$fitLinkLegacyShareHost/fit/raw?payload=$payload")),
         isNull,
       );
     });
 
     test("extra query parameters are preserved and payload stays verbatim", () {
       final result = parseFitLinkUri(
-        Uri.parse("https://$fitLinkShareHost/fit/raw?payload=$payload&utm_source=x&foo=bar"),
+        Uri.parse("https://$fitLinkLegacyShareHost/fit/raw?payload=$payload&utm_source=x&foo=bar"),
       );
       expect(result, isNotNull);
       expect(result!.payload, payload);
@@ -71,7 +95,7 @@ void main() {
 
     test("missing payload returns null", () {
       expect(parseFitLinkUri(Uri.parse("efa://fit/raw")), isNull);
-      expect(parseFitLinkUri(Uri.parse("https://$fitLinkShareHost/fit/raw")), isNull);
+      expect(parseFitLinkUri(Uri.parse("https://$fitLinkLegacyShareHost/fit/raw")), isNull);
     });
   });
 
@@ -83,7 +107,7 @@ void main() {
     });
 
     test("rejects other paths", () {
-      expect(parseFitLinkBootUri(Uri.parse("https://$fitLinkShareHost/fit?id=1")), isNull);
+      expect(parseFitLinkBootUri(Uri.parse("https://$fitLinkLegacyShareHost/fit?id=1")), isNull);
     });
   });
 
@@ -91,7 +115,7 @@ void main() {
     test("builds the canonical share URL", () {
       expect(
         buildFitLinkShareUrl(payload),
-        "https://share.platform.efa-tech.dev/fit/raw?payload=$payload",
+        "https://platform.efa-tech.dev/share/fit/raw?payload=$payload",
       );
     });
 
