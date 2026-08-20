@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import {
     decodeCursor,
     encodeCursor,
+    FIT_HASH_PATTERN,
     normalizeBlob,
     resolveShipName,
     timingSafeEqual,
@@ -285,6 +286,9 @@ app.get("/posts/:id/snapshot", async (c) => {
 // §6.2: raw FitSnapshot protobuf bytes addressed directly by fit hash.
 app.get("/fits/:fitHash/snapshot", async (c) => {
     const fitHash = c.req.param("fitHash");
+    if (!FIT_HASH_PATTERN.test(fitHash)) {
+        return errorJson(400, "bad_request", "invalid fit hash");
+    }
     const row = await c.env.FIT_DB.prepare("SELECT snapshot FROM fits WHERE fit_hash = ?")
         .bind(fitHash)
         .first<{ snapshot: unknown }>();
@@ -299,6 +303,9 @@ app.get("/fits/:fitHash/snapshot", async (c) => {
 // character skills) and is what registered fit links import from.
 app.get("/fits/:fitHash/state", async (c) => {
     const fitHash = c.req.param("fitHash");
+    if (!FIT_HASH_PATTERN.test(fitHash)) {
+        return errorJson(400, "bad_request", "invalid fit hash");
+    }
     const row = await c.env.FIT_DB.prepare("SELECT fit_state FROM fits WHERE fit_hash = ?")
         .bind(fitHash)
         .first<{ fit_state: unknown }>();
