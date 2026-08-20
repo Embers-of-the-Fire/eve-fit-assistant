@@ -243,6 +243,14 @@ class CharacterRegistryManager extends _$CharacterRegistryManager {
     );
   }
 
+  /// Creates a character from an explicit skill map, for fit imports whose
+  /// character does not exist locally (e.g. registered fit links).
+  Future<CharacterStorage> importCharacter({
+    required String name,
+    required Map<int, int> skills,
+    String description = "",
+  }) => _createCharacterFromSkills(name: name, description: description, skills: skills);
+
   Future<CharacterStorage> saveCharacter(CharacterStorage character, {bool touch = true}) async {
     if (isBuiltInCharacterId(character.characterId)) {
       throw StateError("Built-in characters cannot be modified: ${character.characterId}");

@@ -1,18 +1,25 @@
 export type ShareTarget = "app" | "web" | "nightly";
+export type ShareKind = "raw" | "registered";
 
-export const APP_URI_BASE = "efa://fit/raw";
+export const APP_URI_BASES: Record<ShareKind, string> = {
+    raw: "efa://fit/raw",
+    registered: "efa://fit/registered",
+};
 export const WEB_URL = "https://app.efa-tech.dev";
 export const NIGHTLY_URL = "https://app-preview.efa-tech.dev";
 export const DOWNLOAD_URL = "https://efa-tech.dev/download";
 
-export const WEB_FIT_PATH = "/fit/raw";
+export const WEB_FIT_PATHS: Record<ShareKind, string> = {
+    raw: "/fit/raw",
+    registered: "/fit/registered",
+};
 
 const TARGET_KEY = "efa-share-target";
 
-export function targetUrl(target: ShareTarget, search: string): string {
-    if (target === "app") return APP_URI_BASE + search;
+export function targetUrl(target: ShareTarget, search: string, kind: ShareKind): string {
+    if (target === "app") return APP_URI_BASES[kind] + search;
     const base = target === "nightly" ? NIGHTLY_URL : WEB_URL;
-    return base + WEB_FIT_PATH + search;
+    return base + WEB_FIT_PATHS[kind] + search;
 }
 
 export function readRememberedTarget(): ShareTarget | null {

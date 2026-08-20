@@ -8,7 +8,14 @@ const String fitLinkNightlyHost = "app-preview.efa-tech.dev";
 const String fitLinkCanonicalPath = "/fit/raw";
 const String fitLinkPlatformPath = "/share/fit/raw";
 const String fitLinkPayloadParam = "payload";
+const String fitLinkRegisteredCanonicalPath = "/fit/registered";
+const String fitLinkRegisteredPlatformPath = "/share/fit/registered";
+const String fitLinkHashParam = "hash";
 const int maxFitLinkUrlLength = 8000;
+
+/// A registered fit hash is the lowercase hex sha256 of the canonical fit
+/// state (`worker/efa-platform-fit-storage/src/hash.rs`).
+final RegExp fitLinkHashPattern = RegExp(r"^[0-9a-f]{64}$");
 
 const List<String> fitLinkLegacyHttpsHosts = [
   fitLinkLegacyShareHost,
@@ -26,11 +33,25 @@ class FitLinkNotFoundException implements Exception {
   String toString() => "FitLinkNotFoundException($uri)";
 }
 
-class FitLinkParseResult {
-  const FitLinkParseResult({required this.payload, required this.queryParameters});
+sealed class FitLinkParseResult {
+  const FitLinkParseResult({required this.queryParameters});
+
+  final Map<String, String> queryParameters;
+}
+
+/// A raw fit link: the fit travels inside the URL itself (`?payload=EFA2:...`).
+class FitLinkRaw extends FitLinkParseResult {
+  const FitLinkRaw({required this.payload, required super.queryParameters});
 
   final String payload;
-  final Map<String, String> queryParameters;
+}
+
+/// A registered fit link: the URL carries only the content-addressed fit hash
+/// (`?hash=...`); the fit is retrieved from the platform API by the consumer.
+class FitLinkRegistered extends FitLinkParseResult {
+  const FitLinkRegistered({required this.fitHash, required super.queryParameters});
+
+  final String fitHash;
 }
 
 String buildFitLinkShareUrl(String payload) {
@@ -42,20 +63,41 @@ String buildFitLinkShareUrl(String payload) {
   return url;
 }
 
+String buildFitLinkRegisteredShareUrl(String fitHash) {
+  if (!fitLinkHashPattern.hasMatch(fitHash)) {
+    throw const EfaFitFormatException(EfaFitFormatErrorCode.invalidBase64);
+  }
+  return "https://$fitLinkPlatformHost$fitLinkRegisteredPlatformPath?$fitLinkHashParam=$fitHash";
+}
+
+/// The canonical fit path of [uri] (`/fit/raw` or `/fit/registered`),
+/// null when [uri] is not a recognized fit link.
 String? canonicalPathOf(Uri uri) {
   final scheme = uri.scheme.toLowerCase();
   if (scheme == efaScheme) {
     final combined = uri.hasAuthority ? "${uri.host}${uri.path}" : uri.path;
     final normalized = combined.startsWith("/") ? combined : "/$combined";
-    return normalized.toLowerCase() == fitLinkCanonicalPath ? fitLinkCanonicalPath : null;
+    return switch (normalized.toLowerCase()) {
+      fitLinkCanonicalPath => fitLinkCanonicalPath,
+      fitLinkRegisteredCanonicalPath => fitLinkRegisteredCanonicalPath,
+      _ => null,
+    };
   }
   if (scheme == "https") {
     final host = uri.host.toLowerCase();
     if (host == fitLinkPlatformHost) {
-      return uri.path == fitLinkPlatformPath ? fitLinkPlatformPath : null;
+      return switch (uri.path) {
+        fitLinkPlatformPath => fitLinkCanonicalPath,
+        fitLinkRegisteredPlatformPath => fitLinkRegisteredCanonicalPath,
+        _ => null,
+      };
     }
     if (fitLinkLegacyHttpsHosts.contains(host)) {
-      return uri.path == fitLinkCanonicalPath ? fitLinkCanonicalPath : null;
+      return switch (uri.path) {
+        fitLinkCanonicalPath => fitLinkCanonicalPath,
+        fitLinkRegisteredCanonicalPath => fitLinkRegisteredCanonicalPath,
+        _ => null,
+      };
     }
     return null;
   }
@@ -63,23 +105,34 @@ String? canonicalPathOf(Uri uri) {
 }
 
 FitLinkParseResult? parseFitLinkUri(Uri uri) {
-  if (canonicalPathOf(uri) == null) return null;
-  return _readQuery(uri);
+  final canonicalPath = canonicalPathOf(uri);
+  if (canonicalPath == null) return null;
+  return _readQuery(uri, canonicalPath);
 }
 
 FitLinkParseResult? parseFitLinkBootUri(Uri uri) {
-  if (uri.path != fitLinkCanonicalPath) return null;
-  return _readQuery(uri);
+  final canonicalPath = switch (uri.path) {
+    fitLinkCanonicalPath => fitLinkCanonicalPath,
+    fitLinkRegisteredCanonicalPath => fitLinkRegisteredCanonicalPath,
+    _ => null,
+  };
+  if (canonicalPath == null) return null;
+  return _readQuery(uri, canonicalPath);
 }
 
-FitLinkParseResult? _readQuery(Uri uri) {
+FitLinkParseResult? _readQuery(Uri uri, String canonicalPath) {
   final Map<String, String> queryParameters;
   try {
     queryParameters = uri.queryParameters;
   } on FormatException {
     return null;
   }
+  if (canonicalPath == fitLinkRegisteredCanonicalPath) {
+    final fitHash = queryParameters[fitLinkHashParam];
+    if (fitHash == null || !fitLinkHashPattern.hasMatch(fitHash)) return null;
+    return FitLinkRegistered(fitHash: fitHash, queryParameters: queryParameters);
+  }
   final payload = queryParameters[fitLinkPayloadParam];
   if (payload == null) return null;
-  return FitLinkParseResult(payload: payload, queryParameters: queryParameters);
+  return FitLinkRaw(payload: payload, queryParameters: queryParameters);
 }

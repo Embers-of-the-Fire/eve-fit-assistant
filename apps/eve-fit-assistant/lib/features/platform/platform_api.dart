@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -173,6 +174,18 @@ class PlatformApiClient {
   Future<FitSnapshot?> getFitSnapshot(String fitHash) async {
     try {
       return FitSnapshot.fromBuffer(await _getBytes("/platform/internal/fits/$fitHash/snapshot"));
+    } on PlatformApiException catch (e) {
+      if (e.isNotFound) return null;
+      rethrow;
+    }
+  }
+
+  /// The stored canonical fit state addressed directly by fit hash (§6.2);
+  /// null when the fit does not exist. Unlike the snapshot, the state is
+  /// full-fidelity and is what registered fit links import from.
+  Future<FitState?> getFitState(String fitHash) async {
+    try {
+      return FitState.fromBuffer(await _getBytes("/platform/internal/fits/$fitHash/state"));
     } on PlatformApiException catch (e) {
       if (e.isNotFound) return null;
       rethrow;

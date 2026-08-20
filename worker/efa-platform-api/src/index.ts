@@ -294,6 +294,20 @@ app.get("/fits/:fitHash/snapshot", async (c) => {
     return blobResponse(row.snapshot);
 });
 
+// §6.2: raw canonical FitState protobuf bytes addressed directly by fit hash.
+// Unlike the snapshot, the state is full-fidelity (dynamic items, custom
+// character skills) and is what registered fit links import from.
+app.get("/fits/:fitHash/state", async (c) => {
+    const fitHash = c.req.param("fitHash");
+    const row = await c.env.FIT_DB.prepare("SELECT fit_state FROM fits WHERE fit_hash = ?")
+        .bind(fitHash)
+        .first<{ fit_state: unknown }>();
+    if (!row) {
+        return errorJson(404, "not_found", "unknown fit hash");
+    }
+    return blobResponse(row.fit_state);
+});
+
 // §6.4: threads (stub).
 app.get("/posts/:id/threads", (c) => {
     return c.json({ threads: [] });

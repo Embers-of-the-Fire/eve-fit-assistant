@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { isValidFitHash } from "../lib/fit-hash";
 import { isValidPayload } from "../lib/fit-payload";
 import { t } from "../lib/i18n.svelte";
 import {
@@ -7,6 +8,7 @@ import {
     DOWNLOAD_URL,
     readRememberedTarget,
     rememberTarget,
+    type ShareKind,
     type ShareTarget,
     targetUrl,
 } from "../lib/share-target";
@@ -14,6 +16,8 @@ import FitLinkNotFound from "./FitLinkNotFound.svelte";
 
 const REDIRECT_DELAY_MS = 750;
 const APP_FAILURE_TIMEOUT_MS = 2500;
+
+let { kind = "raw" }: { kind?: ShareKind } = $props();
 
 let checked = $state(false);
 let valid = $state(false);
@@ -47,7 +51,7 @@ function redirectTo(target: ShareTarget) {
     redirecting = true;
     stopTimers();
     redirectTimer = setTimeout(() => {
-        location.href = targetUrl(target, location.search);
+        location.href = targetUrl(target, location.search, kind);
         if (target === "app") watchAppLaunch();
     }, REDIRECT_DELAY_MS);
 }
@@ -99,7 +103,11 @@ function resetPreference() {
 }
 
 onMount(() => {
-    valid = isValidPayload(new URLSearchParams(location.search).get("payload"));
+    const params = new URLSearchParams(location.search);
+    valid =
+        kind === "registered"
+            ? isValidFitHash(params.get("hash"))
+            : isValidPayload(params.get("payload"));
     checked = true;
     if (!valid) return stopTimers;
     const remembered = readRememberedTarget();
