@@ -226,9 +226,13 @@ wired into releases as follows:
   `efa-platform` Worker (`site/platform/`): an on-demand Astro route plus the
   `FitShareLanding` island, `no-store` with `Referrer-Policy: no-referrer` and
   `frame-ancestors 'none'`. `site/platform/build.sh` renders
-  `public/.well-known/assetlinks.json` before `astro build` (real fingerprint
-  when `APP_KEY_SHA256` is set in the build environment, placeholder via
-  `--allow-missing` otherwise); the Worker serves it on both custom domains.
+  `public/.well-known/assetlinks.json` before `astro build`. The `efa-platform`
+  Worker deployment is configured outside this repo (Cloudflare dashboard), so
+  the build **fails closed**: it aborts when `APP_KEY_SHA256` is unset unless
+  `ALLOW_MISSING_APP_KEY_SHA256=1` is passed explicitly (local/dev builds only),
+  in which case the renderer emits a placeholder via `--allow-missing`. The
+  production Worker build environment must provision `APP_KEY_SHA256`; the
+  Worker serves the rendered file on both custom domains.
 - The legacy host `share.platform.efa-tech.dev` (links produced by app versions
   before the move) is handled by two pieces: an account-level Cloudflare Bulk
   Redirect (dashboard/API-managed, not in this repo) that permanently redirects
