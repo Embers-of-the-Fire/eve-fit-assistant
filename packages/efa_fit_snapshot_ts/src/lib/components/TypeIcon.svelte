@@ -1,6 +1,6 @@
 <script lang="ts">
 import { snapshotDisplay } from "../context.svelte";
-import Glyph from "./Glyph.svelte";
+import EfaIcon from "./EfaIcon.svelte";
 
 interface Props {
     typeId: number;
@@ -20,7 +20,7 @@ $effect(() => {
 </script>
 
 {#if failed}
-    <Glyph name="unknown" {size} />
+    <EfaIcon name="unknown" {size} />
 {:else}
     <img
         class="efa-type-icon"

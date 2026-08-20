@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { SnapshotDisplayValue } from "efa-proto-ts/fit_snapshot_pb";
 import { snapshotDisplay } from "../context.svelte";
-import Glyph from "./Glyph.svelte";
+import EfaIcon from "./EfaIcon.svelte";
 
 interface Props {
     values: SnapshotDisplayValue[];
@@ -10,6 +10,13 @@ interface Props {
 let { values }: Props = $props();
 
 const ctx = snapshotDisplay();
+
+let failed = $state(new Set<number>());
+
+$effect(() => {
+    void values;
+    failed = new Set();
+});
 
 function hintUrl(value: SnapshotDisplayValue): string | undefined {
     const icon = value.icon;
@@ -26,10 +33,17 @@ function hintUrl(value: SnapshotDisplayValue): string | undefined {
         {#each values as value, i (i)}
             {@const url = hintUrl(value)}
             <span class="efa-related-value">
-                {#if url}
-                    <img class="efa-related-icon" src={url} width="18" height="18" alt="" />
+                {#if url && !failed.has(i)}
+                    <img
+                        class="efa-related-icon"
+                        src={url}
+                        width="18"
+                        height="18"
+                        alt=""
+                        onerror={() => failed.add(i)}
+                    />
                 {:else}
-                    <Glyph name="unknown" size={18} />
+                    <EfaIcon name="unknown" size={18} />
                 {/if}
                 <span class="efa-related-text">{value.text}</span>
             </span>

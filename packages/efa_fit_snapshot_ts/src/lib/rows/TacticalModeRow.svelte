@@ -1,10 +1,10 @@
 <script lang="ts">
 import { Slots_SlotState, TacticalMode_TacticalModeVariant } from "efa-proto-ts/fit_pb";
 import type { SnapshotTacticalMode } from "efa-proto-ts/fit_snapshot_pb";
-import Glyph from "../components/Glyph.svelte";
+import EfaIcon from "../components/EfaIcon.svelte";
 import StateIcon from "../components/StateIcon.svelte";
 import { snapshotDisplay } from "../context.svelte";
-import type { GlyphName } from "../glyphs";
+import type { EfaIconName } from "../icons";
 
 interface Props {
     mode: SnapshotTacticalMode;
@@ -14,7 +14,7 @@ let { mode }: Props = $props();
 
 const ctx = snapshotDisplay();
 
-const glyph: GlyphName = $derived(
+const icon: EfaIconName = $derived(
     mode.variant === TacticalMode_TacticalModeVariant.DEFENSE
         ? "mode-defense"
         : mode.variant === TacticalMode_TacticalModeVariant.SPEED
@@ -27,7 +27,7 @@ const glyph: GlyphName = $derived(
 
 <div class="efa-row">
     <StateIcon state={Slots_SlotState.ACTIVE} shape="circle">
-        <Glyph name={glyph} size={20} />
+        <EfaIcon name={icon} size={31} />
     </StateIcon>
     <div class="efa-row-body">
         <div class="efa-row-title">{mode.type ? ctx.name(mode.type.names) : ""}</div>

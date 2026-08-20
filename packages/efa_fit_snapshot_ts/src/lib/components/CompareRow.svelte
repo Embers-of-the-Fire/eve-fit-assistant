@@ -1,10 +1,10 @@
 <script lang="ts">
-import type { GlyphName } from "../glyphs";
-import Glyph from "./Glyph.svelte";
+import type { EfaIconName } from "../icons";
+import EfaIcon from "./EfaIcon.svelte";
 import ResourceBar, { resourceUsage } from "./ResourceBar.svelte";
 
 interface Props {
-    icon: GlyphName;
+    icon: EfaIconName;
     used: number;
     all: number;
     unit?: string;
@@ -18,7 +18,7 @@ const usage = $derived(resourceUsage(used, all, warning));
 </script>
 
 <div class="efa-compare-row">
-    <Glyph name={icon} size={iconSize} />
+    <EfaIcon name={icon} size={iconSize} />
     <div class="efa-compare-body">
         <div class="efa-compare-text">
             <span class="efa-usage-{usage}">{used.toFixed(0)}</span>/{all.toFixed(0)}{unit
