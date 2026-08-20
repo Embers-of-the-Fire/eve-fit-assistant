@@ -1,4 +1,6 @@
 export const en = {
+    "notFound.title": "Page not found",
+    "notFound.desc": "The page you are looking for does not exist.",
     "nav.fits": "Fits",
     "nav.account": "Account",
     "fits.title": "Fit Snapshots",
@@ -40,6 +42,8 @@ export type Locale = "en" | "zh";
 export type TranslationKey = keyof typeof en;
 
 export const zh: Record<TranslationKey, string> = {
+    "notFound.title": "页面不存在",
+    "notFound.desc": "您访问的页面不存在。",
     "nav.fits": "配置",
     "nav.account": "账号",
     "fits.title": "配置快照",
