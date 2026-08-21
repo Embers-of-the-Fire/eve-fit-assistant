@@ -112,6 +112,11 @@ const LOGIN_IP_LIMIT = 30;
 const LOGIN_IP_WINDOW_SEC = 5 * 60;
 const RESET_EMAIL_LIMIT = 3;
 const RESET_EMAIL_WINDOW_SEC = 60 * 60;
+// Loose per-IP cap on the unauthenticated token routes (/refresh, /logout):
+// they accept any body and would otherwise give callers free D1 reads with
+// random tokens. Kept as loose as login-ip for the same CGNAT reason.
+const TOKEN_IP_LIMIT = 30;
+const TOKEN_IP_WINDOW_SEC = 5 * 60;
 
 // The rotation stash must outlive the grace window so a replay inside the
 // window always finds it: 61 s is the smallest TTL KV accepts above the 60 s
@@ -431,6 +436,16 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (!parsed.success) {
             return errorJson(400, "bad_request", "invalid request body");
         }
+        const limited = await rateLimited(
+            c,
+            "token-ip",
+            clientIp(c),
+            TOKEN_IP_LIMIT,
+            TOKEN_IP_WINDOW_SEC,
+        );
+        if (limited) {
+            return limited;
+        }
         const secret = requireSecret(c);
         if (!secret) {
             return errorJson(500, "internal", "internal server error");
@@ -498,6 +513,16 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         const parsed = RefreshSchema.safeParse(await c.req.json().catch(() => null));
         if (!parsed.success) {
             return errorJson(400, "bad_request", "invalid request body");
+        }
+        const limited = await rateLimited(
+            c,
+            "token-ip",
+            clientIp(c),
+            TOKEN_IP_LIMIT,
+            TOKEN_IP_WINDOW_SEC,
+        );
+        if (limited) {
+            return limited;
         }
         const refreshHash = await hashRefreshToken(parsed.data.refreshToken);
         const session = await getSessionByRefreshHash(c.env.FIT_DB, refreshHash);
