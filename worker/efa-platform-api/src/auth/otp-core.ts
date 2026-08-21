@@ -17,6 +17,8 @@ export interface OtpEntry {
     codeHmac: string;
     attempts: number;
     expiresAtMs: number; // ms epoch; DO storage has no TTL, so expiry is lazy
+    // (the Durable Object in otp-state.ts schedules an alarm to reclaim the
+    // instance once both the entry and the cooldown have lapsed)
 }
 
 // The resend cooldown is deliberately separate from the code entry: consuming

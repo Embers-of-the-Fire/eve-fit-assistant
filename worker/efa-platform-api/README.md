@@ -41,7 +41,11 @@ stash. State that must be atomic — OTP consumption, OTP failure counts, and
 rate-limit counters — lives in two SQLite-backed Durable Object classes
 (`OtpState`, one instance per purpose+email; `RateLimitWindow`, one per
 bucket+key), whose per-instance serialization plus single-transaction
-read-modify-write removes the race KV's non-atomic updates had. Idle
+read-modify-write removes the race KV's non-atomic updates had. Each
+`OtpState` instance schedules its Durable Object alarm at the later of the
+code expiry and the resend cooldown and `deleteAll()`s its storage when the
+alarm fires, so abandoned (purpose, email) instances do not accumulate billed
+SQLite storage. Idle
 instances hibernate, which removes duration charges only while an object
 qualifies for hibernation; requests and SQLite storage operations still
 incur charges, so monitor usage against the plan's included Durable Object
