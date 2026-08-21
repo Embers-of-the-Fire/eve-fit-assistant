@@ -15,6 +15,12 @@ onMount(initLocale);
                 {t("nav.fits")}
             </a>
             <a
+                href="/ships"
+                class="text-console-text-dim transition-colors hover:text-console-highlight"
+            >
+                {t("nav.ships")}
+            </a>
+            <a
                 href="/account"
                 class="text-console-text-dim transition-colors hover:text-console-highlight"
             >

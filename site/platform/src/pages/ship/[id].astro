@@ -1,0 +1,25 @@
+---
+import NotFound from "../../components/NotFound.svelte";
+import ShipDetail from "../../components/ShipDetail.svelte";
+import Base from "../../layouts/Base.astro";
+
+const raw = Astro.params.id ?? "";
+const shipTypeId = Number(raw);
+const valid = /^\d+$/.test(raw) && Number.isSafeInteger(shipTypeId) && shipTypeId > 0;
+
+if (!valid) {
+    Astro.response.status = 404;
+}
+---
+
+{
+    valid ? (
+        <Base titleKey="ships.pageTitle">
+            <ShipDetail client:load {shipTypeId} />
+        </Base>
+    ) : (
+        <Base titleKey="notFound.title">
+            <NotFound client:load />
+        </Base>
+    )
+}

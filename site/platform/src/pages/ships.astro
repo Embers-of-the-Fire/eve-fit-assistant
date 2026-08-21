@@ -1,0 +1,8 @@
+---
+import ShipDirectory from "../components/ShipDirectory.svelte";
+import Base from "../layouts/Base.astro";
+---
+
+<Base titleKey="ships.pageTitle">
+    <ShipDirectory client:load />
+</Base>

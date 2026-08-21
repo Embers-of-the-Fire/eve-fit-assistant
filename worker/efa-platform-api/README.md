@@ -6,8 +6,6 @@ table, orchestrates submissions through the `FIT_STORAGE` service binding of
 `efa-platform-fit-storage`, and serves all public endpoints under
 `api.efa-tech.dev/platform/internal/*`.
 
-Spec: `docs/temp/api-unit/spec.md` §6.
-
 ## API
 
 All public responses carry `Access-Control-Allow-Origin: *`. Errors are JSON
@@ -22,7 +20,9 @@ passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 | `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt }`; 400 on malformed UUID |
 | `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes, immutable cache |
 | `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache |
-| `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`), `Cache-Control: public, max-age=30` |
+| `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`, `shipTypeId`, `window` = 24h/7d/30d/all), `Cache-Control: public, max-age=30` |
+| `GET /platform/internal/ships` | public | Ship directory aggregated from `posts` (`q` name search, `window`, keyset `cursor`, `limit` ≤ 50, `locale`), `max-age=30` |
+| `GET /platform/internal/ships/:id` | public | Per-ship aggregate `{ shipTypeId, shipName, postCount, firstPostAt, lastPostAt }`; 404 when the ship has no posts |
 | `GET /platform/internal/posts/:id/threads` | public | Stub: `{ "threads": [] }` |
 | `GET /platform/internal/health` | public | `{ "ok": true }`; a valid Bearer token additionally pings D1 and the fit-storage binding |
 
@@ -56,8 +56,8 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 
 ## Preview environment
 
-`wrangler deploy --env preview` targets the `[env.preview]` chain
-(`docs/temp/api-unit/spec.md` §4.4): `FIT_DB` points at the disposable
+`wrangler deploy --env preview` targets the `[env.preview]` preview chain:
+`FIT_DB` points at the disposable
 `efa-platform-test` database and the `FIT_STORAGE` binding targets the
 `preview` environment of `efa-platform-fit-storage`.
 

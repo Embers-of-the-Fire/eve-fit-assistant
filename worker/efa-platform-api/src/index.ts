@@ -5,18 +5,23 @@ import { Hono } from "hono";
 
 import {
     decodeCursor,
+    decodeShipCursor,
     encodeCursor,
+    encodeShipCursor,
+    escapeLikePattern,
     FIT_HASH_PATTERN,
     normalizeBlob,
+    parseLimit,
+    parseTimeWindow,
     resolveShipName,
     timingSafeEqual,
     truncateCodePoints,
     UUID_PATTERN,
 } from "./util";
 
-// Public front of the platform (docs/temp/api-unit/spec.md §6). Owns the
-// `posts` table, orchestrates submissions through the FIT_STORAGE service
-// binding, and holds the platform's Bearer credential.
+// Public front of the platform. Owns the `posts` table, orchestrates
+// submissions through the FIT_STORAGE service binding, and holds the
+// platform's Bearer credential.
 
 interface Env {
     FIT_DB: D1Database;
@@ -29,18 +34,22 @@ const FIT_STORAGE_ORIGIN = "https://efa-platform-fit-storage.internal";
 
 const DEFAULT_LIST_LIMIT = 20;
 const MAX_LIST_LIMIT = 50;
-// §4.2: posts.description is a preview of the snapshot's description.
+const STATS_TOP_SHIPS_LIMIT = 10;
+// posts.description is a preview of the snapshot's description.
 const DESCRIPTION_PREVIEW_CODE_POINTS = 280;
+// Free-text ship search is capped like the other free-text fields.
+const MAX_SHIP_QUERY_CODE_POINTS = 100;
 
 const PROTOBUF_CONTENT_TYPE = "application/x-protobuf";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const LIST_CACHE_CONTROL = "public, max-age=30";
+const STATS_CACHE_CONTROL = "public, max-age=60";
 
 function errorJson(status: 400 | 401 | 404 | 500, code: string, message: string): Response {
     return Response.json({ error: code, message }, { status });
 }
 
-// §6.2: raw protobuf responses. D1 hands BLOB columns back as plain number
+// Raw protobuf responses. D1 hands BLOB columns back as plain number
 // arrays, which are not a valid Response body — always normalize first. A
 // missing/empty blob is a store-side bug, not a client error.
 function blobResponse(value: unknown): Response {
@@ -80,7 +89,7 @@ app.options("*", () => {
     });
 });
 
-// §6.1: create post.
+// Create post.
 app.post("/posts", async (c) => {
     const token = c.env.FIT_STORAGE_TOKEN;
     if (!token) {
@@ -188,18 +197,33 @@ interface PostRow {
     created_at: string;
 }
 
-// §6.3: list posts (keyset pagination over posts_created_at, pure SQL).
+// List posts (keyset pagination over posts_created_at, pure SQL).
 app.get("/posts", async (c) => {
     let limit = DEFAULT_LIST_LIMIT;
     const limitRaw = c.req.query("limit");
     if (limitRaw !== undefined) {
-        const parsed = Number.parseInt(limitRaw, 10);
-        if (Number.isNaN(parsed)) {
+        const parsed = parseLimit(limitRaw, MAX_LIST_LIMIT);
+        if (parsed === null) {
             return errorJson(400, "bad_request", "malformed limit");
         }
-        limit = Math.min(Math.max(parsed, 1), MAX_LIST_LIMIT);
+        limit = parsed;
     }
     const locale = c.req.query("locale") ?? "en";
+
+    let shipTypeId: number | null = null;
+    const shipTypeIdRaw = c.req.query("shipTypeId");
+    if (shipTypeIdRaw !== undefined) {
+        const parsed = Number(shipTypeIdRaw);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+            return errorJson(400, "bad_request", "malformed shipTypeId");
+        }
+        shipTypeId = parsed;
+    }
+
+    const windowModifier = parseTimeWindow(c.req.query("window"));
+    if (windowModifier === "invalid") {
+        return errorJson(400, "bad_request", "malformed window");
+    }
 
     const cursorRaw = c.req.query("cursor");
     let cursor: { createdAt: string; postId: string } | null = null;
@@ -212,14 +236,24 @@ app.get("/posts", async (c) => {
 
     const columns =
         "post_id, fit_hash, fit_name, description, ship_names, ship_type_id, last_modified_ms, generator, created_at";
-    const statement = cursor
-        ? c.env.FIT_DB.prepare(
-              `SELECT ${columns} FROM posts WHERE (created_at, post_id) < (?, ?) ` +
-                  "ORDER BY created_at DESC, post_id DESC LIMIT ?",
-          ).bind(cursor.createdAt, cursor.postId, limit + 1)
-        : c.env.FIT_DB.prepare(
-              `SELECT ${columns} FROM posts ORDER BY created_at DESC, post_id DESC LIMIT ?`,
-          ).bind(limit + 1);
+    const conditions: string[] = [];
+    const binds: (string | number)[] = [];
+    if (shipTypeId !== null) {
+        conditions.push("ship_type_id = ?");
+        binds.push(shipTypeId);
+    }
+    if (windowModifier !== null) {
+        conditions.push("created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)");
+        binds.push(windowModifier);
+    }
+    if (cursor) {
+        conditions.push("(created_at, post_id) < (?, ?)");
+        binds.push(cursor.createdAt, cursor.postId);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")} ` : "";
+    const statement = c.env.FIT_DB.prepare(
+        `SELECT ${columns} FROM posts ${where}ORDER BY created_at DESC, post_id DESC LIMIT ?`,
+    ).bind(...binds, limit + 1);
     const { results } = await statement.all<PostRow>();
 
     const page = results.slice(0, limit);
@@ -249,7 +283,7 @@ app.get("/posts", async (c) => {
     );
 });
 
-// §6.2: post record.
+// Post record.
 app.get("/posts/:id", async (c) => {
     const postId = c.req.param("id");
     if (!UUID_PATTERN.test(postId)) {
@@ -266,7 +300,7 @@ app.get("/posts/:id", async (c) => {
     return c.json({ postId: row.post_id, fitHash: row.fit_hash, createdAt: row.created_at });
 });
 
-// §6.2: raw FitSnapshot protobuf bytes behind a post.
+// Raw FitSnapshot protobuf bytes behind a post.
 app.get("/posts/:id/snapshot", async (c) => {
     const postId = c.req.param("id");
     if (!UUID_PATTERN.test(postId)) {
@@ -283,7 +317,7 @@ app.get("/posts/:id/snapshot", async (c) => {
     return blobResponse(row.snapshot);
 });
 
-// §6.2: raw FitSnapshot protobuf bytes addressed directly by fit hash.
+// Raw FitSnapshot protobuf bytes addressed directly by fit hash.
 app.get("/fits/:fitHash/snapshot", async (c) => {
     const fitHash = c.req.param("fitHash");
     if (!FIT_HASH_PATTERN.test(fitHash)) {
@@ -298,7 +332,7 @@ app.get("/fits/:fitHash/snapshot", async (c) => {
     return blobResponse(row.snapshot);
 });
 
-// §6.2: raw canonical FitState protobuf bytes addressed directly by fit hash.
+// Raw canonical FitState protobuf bytes addressed directly by fit hash.
 // Unlike the snapshot, the state is full-fidelity (dynamic items, custom
 // character skills) and is what registered fit links import from.
 app.get("/fits/:fitHash/state", async (c) => {
@@ -315,12 +349,187 @@ app.get("/fits/:fitHash/state", async (c) => {
     return blobResponse(row.fit_state);
 });
 
-// §6.4: threads (stub).
+// Threads (stub).
 app.get("/posts/:id/threads", (c) => {
     return c.json({ threads: [] });
 });
 
-// §6.5: health; a valid Bearer token additionally pings D1 and the binding.
+interface StatsRow {
+    total_posts: number;
+    distinct_ships: number;
+    posts_last_7d: number | null;
+}
+
+interface TopShipRow {
+    ship_type_id: number;
+    ship_names: string;
+    post_count: number;
+}
+
+// Platform stats (pure SQL aggregation over posts; names localized at
+// projection like the list endpoint).
+app.get("/stats", async (c) => {
+    const locale = c.req.query("locale") ?? "en";
+    const totals = await c.env.FIT_DB.prepare(
+        "SELECT COUNT(*) AS total_posts, COUNT(DISTINCT ship_type_id) AS distinct_ships, " +
+            "SUM(created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 days')) AS posts_last_7d " +
+            "FROM posts",
+    ).first<StatsRow>();
+    const { results: topRows } = await c.env.FIT_DB.prepare(
+        "SELECT ship_type_id, ship_names, COUNT(*) AS post_count FROM posts " +
+            "GROUP BY ship_type_id ORDER BY post_count DESC, ship_type_id ASC LIMIT ?",
+    )
+        .bind(STATS_TOP_SHIPS_LIMIT)
+        .all<TopShipRow>();
+
+    return c.json(
+        {
+            totalPosts: totals?.total_posts ?? 0,
+            distinctShips: totals?.distinct_ships ?? 0,
+            postsLast7d: totals?.posts_last_7d ?? 0,
+            topShips: topRows.map((row) => ({
+                shipTypeId: row.ship_type_id,
+                shipName: resolveShipName(row.ship_names, locale),
+                postCount: row.post_count,
+            })),
+        },
+        200,
+        { "Cache-Control": STATS_CACHE_CONTROL },
+    );
+});
+
+interface ShipRow {
+    ship_type_id: number;
+    ship_names: string;
+    post_count: number;
+    last_post_at: string;
+}
+
+// Ship directory (aggregation over posts; keyset pagination over
+// (post_count, ship_type_id); names localized at projection like the list
+// endpoint).
+app.get("/ships", async (c) => {
+    let limit = DEFAULT_LIST_LIMIT;
+    const limitRaw = c.req.query("limit");
+    if (limitRaw !== undefined) {
+        const parsed = parseLimit(limitRaw, MAX_LIST_LIMIT);
+        if (parsed === null) {
+            return errorJson(400, "bad_request", "malformed limit");
+        }
+        limit = parsed;
+    }
+    const locale = c.req.query("locale") ?? "en";
+
+    const windowModifier = parseTimeWindow(c.req.query("window"));
+    if (windowModifier === "invalid") {
+        return errorJson(400, "bad_request", "malformed window");
+    }
+
+    let query: string | null = null;
+    const queryRaw = c.req.query("q");
+    if (queryRaw !== undefined) {
+        const trimmed = queryRaw.trim();
+        if ([...trimmed].length > MAX_SHIP_QUERY_CODE_POINTS) {
+            return errorJson(400, "bad_request", "ship query too long");
+        }
+        if (trimmed.length > 0) {
+            query = trimmed.toLowerCase();
+        }
+    }
+
+    const cursorRaw = c.req.query("cursor");
+    let cursor: { postCount: number; shipTypeId: number } | null = null;
+    if (cursorRaw !== undefined) {
+        cursor = decodeShipCursor(cursorRaw);
+        if (!cursor) {
+            return errorJson(400, "bad_request", "malformed cursor");
+        }
+    }
+
+    const conditions: string[] = [];
+    const binds: (string | number)[] = [];
+    if (windowModifier !== null) {
+        conditions.push("created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?)");
+        binds.push(windowModifier);
+    }
+    if (query !== null) {
+        conditions.push(
+            "(LOWER(json_extract(ship_names, '$.en')) LIKE ? ESCAPE '\\' OR " +
+                "LOWER(json_extract(ship_names, '$.zh')) LIKE ? ESCAPE '\\')",
+        );
+        const pattern = `%${escapeLikePattern(query)}%`;
+        binds.push(pattern, pattern);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")} ` : "";
+    let having = "";
+    if (cursor) {
+        having = "HAVING (post_count < ?) OR (post_count = ? AND ship_type_id > ?) ";
+        binds.push(cursor.postCount, cursor.postCount, cursor.shipTypeId);
+    }
+    const statement = c.env.FIT_DB.prepare(
+        "SELECT ship_type_id, ship_names, COUNT(*) AS post_count, MAX(created_at) AS last_post_at " +
+            `FROM posts ${where}GROUP BY ship_type_id ${having}` +
+            "ORDER BY post_count DESC, ship_type_id ASC LIMIT ?",
+    ).bind(...binds, limit + 1);
+    const { results } = await statement.all<ShipRow>();
+
+    const page = results.slice(0, limit);
+    let nextCursor: string | null = null;
+    if (results.length > limit && page.length > 0) {
+        const last = page[page.length - 1];
+        nextCursor = encodeShipCursor(last.post_count, last.ship_type_id);
+    }
+
+    return c.json(
+        {
+            ships: page.map((row) => ({
+                shipTypeId: row.ship_type_id,
+                shipName: resolveShipName(row.ship_names, locale),
+                postCount: row.post_count,
+                lastPostAt: row.last_post_at,
+            })),
+            nextCursor,
+        },
+        200,
+        { "Cache-Control": LIST_CACHE_CONTROL },
+    );
+});
+
+// Per-ship detail aggregate behind the ship directory's detail page.
+app.get("/ships/:id", async (c) => {
+    const shipTypeId = Number(c.req.param("id"));
+    if (!Number.isSafeInteger(shipTypeId) || shipTypeId <= 0) {
+        return errorJson(400, "bad_request", "invalid ship type id");
+    }
+    const locale = c.req.query("locale") ?? "en";
+    const row = await c.env.FIT_DB.prepare(
+        "SELECT ship_names, COUNT(*) AS post_count, MIN(created_at) AS first_post_at, " +
+            "MAX(created_at) AS last_post_at FROM posts WHERE ship_type_id = ?",
+    )
+        .bind(shipTypeId)
+        .first<{
+            ship_names: string | null;
+            post_count: number;
+            first_post_at: string | null;
+            last_post_at: string | null;
+        }>();
+    if (!row || row.post_count === 0) {
+        return errorJson(404, "not_found", "unknown ship type id");
+    }
+    return c.json(
+        {
+            shipTypeId,
+            shipName: resolveShipName(row.ship_names ?? "{}", locale),
+            postCount: row.post_count,
+            firstPostAt: row.first_post_at,
+            lastPostAt: row.last_post_at,
+        },
+        200,
+        { "Cache-Control": STATS_CACHE_CONTROL },
+    );
+});
+
+// Health; a valid Bearer token additionally pings D1 and the binding.
 app.get("/health", async (c) => {
     const token = c.env.FIT_STORAGE_TOKEN;
     const header = c.req.header("Authorization") ?? "";

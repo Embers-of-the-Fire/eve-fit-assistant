@@ -46,7 +46,7 @@ fn fit_db(env: &Env) -> Result<D1Database, ApiError> {
         .map_err(|e| ApiError::internal(format!("FIT_DB binding not configured: {e}")))
 }
 
-/// Submit flow (docs/temp/api-unit/spec.md §5.2). This worker is binding-only;
+/// Submit flow. This worker is binding-only;
 /// authentication lives in `efa-platform-api`.
 async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError> {
     // 1. Decode and structurally validate.

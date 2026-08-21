@@ -1,8 +1,8 @@
 ---
-import SnapshotList from "../components/SnapshotList.svelte";
+import Frontpage from "../components/Frontpage.svelte";
 import Base from "../layouts/Base.astro";
 ---
 
-<Base titleKey="nav.fits">
-    <SnapshotList client:load />
+<Base titleKey="home.pageTitle">
+    <Frontpage client:load />
 </Base>

@@ -19,6 +19,46 @@ export interface ThreadSummary {
     lastActivityAt: string;
 }
 
+export interface PostsPage {
+    posts: PostSummary[];
+    nextCursor: string | null;
+}
+
+export interface TopShip {
+    shipTypeId: number;
+    shipName: string;
+    postCount: number;
+}
+
+export interface PlatformStats {
+    totalPosts: number;
+    distinctShips: number;
+    postsLast7d: number;
+    topShips: TopShip[];
+}
+
+export type TimeWindow = "24h" | "7d" | "30d" | "all";
+
+export interface ShipSummary {
+    shipTypeId: number;
+    shipName: string;
+    postCount: number;
+    lastPostAt: string;
+}
+
+export interface ShipsPage {
+    ships: ShipSummary[];
+    nextCursor: string | null;
+}
+
+export interface ShipDetail {
+    shipTypeId: number;
+    shipName: string;
+    postCount: number;
+    firstPostAt: string;
+    lastPostAt: string;
+}
+
 export interface ApiError {
     error: string;
     message: string;

@@ -42,9 +42,8 @@ class FitUploadException implements Exception {
       "${issues == null ? "" : ", issues: ${jsonEncode(issues)}"})";
 }
 
-/// Result of `POST /platform/internal/posts` (docs/temp/api-unit/spec.md §6.1):
-/// the post is a fresh publication event (UUID) backed by the content-addressed
-/// fit.
+/// Result of `POST /platform/internal/posts`: the post is a fresh publication
+/// event (UUID) backed by the content-addressed fit.
 class FitPostSubmitResult {
   const FitPostSubmitResult({
     required this.postId,

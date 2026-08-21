@@ -1,7 +1,6 @@
 -- Platform posts: the publication of a fit at a point in time, owned by
 -- efa-platform-api. Joins into fits by fit_hash (no FK: cross-ownership;
 -- integrity is guaranteed by the submit orchestration).
--- See docs/temp/api-unit/spec.md §4.2.
 --
 -- Migration filenames must never collide with efa-platform-fit-storage's
 -- (`0001_init.sql` there) — wrangler records applied filenames per database.
