@@ -15,8 +15,10 @@ let activeShip = $state<TopShip | null>(null);
 let initialLoading = $state(true);
 let failed = $state(false);
 let loadingMore = $state(false);
+let feedVersion = 0;
 
 async function loadFirstPage() {
+    const version = ++feedVersion;
     initialLoading = true;
     failed = false;
     try {
@@ -24,17 +26,20 @@ async function loadFirstPage() {
             limit: PAGE_SIZE,
             shipTypeId: activeShip?.shipTypeId ?? null,
         });
+        if (version !== feedVersion) return;
         posts = page.posts;
         nextCursor = page.nextCursor;
     } catch {
+        if (version !== feedVersion) return;
         failed = true;
     } finally {
-        initialLoading = false;
+        if (version === feedVersion) initialLoading = false;
     }
 }
 
 async function loadMore() {
     if (!nextCursor || loadingMore) return;
+    const version = feedVersion;
     loadingMore = true;
     try {
         const page = await fetchPosts(locale.current, {
@@ -42,12 +47,13 @@ async function loadMore() {
             cursor: nextCursor,
             shipTypeId: activeShip?.shipTypeId ?? null,
         });
+        if (version !== feedVersion) return;
         posts = [...posts, ...page.posts];
         nextCursor = page.nextCursor;
     } catch {
-        nextCursor = null;
+        if (version === feedVersion) nextCursor = null;
     } finally {
-        loadingMore = false;
+        if (version === feedVersion) loadingMore = false;
     }
 }
 
