@@ -232,3 +232,59 @@ jobs:
           name: diagnostics-data-d1-sync
           redact-values: |
             ${{ secrets.D1_SYNC_TOKEN }}
+
+  notify-qqbot:
+    name: Announce data update to QQ bot
+    needs: [publish, d1-sync]
+    runs-on: ubuntu-slim
+    # Post-publish announcement, real releases only: in test mode the d1-sync
+    # job is skipped and this job follows suit, so mock releases never reach
+    # the bot. The production-data environment supplies the bot's bearer
+    # secret.
+    if: |
+      always() &&
+      needs.publish.result == 'success' &&
+      needs.d1-sync.result == 'success' &&
+      inputs.test_mode == false
+    environment: production-data
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: v2-snapshots
+          path: .
+
+      # Event API contract (bofa-qqbot EVENT.md): bearer auth plus
+      # {"type": "data_update", "payload": {servers: [{id, name, build,
+      # version, createdAt}]}}. snapshot-hashes.json lists exactly the servers
+      # rebuilt in this run (the publish step's merge only carries forward
+      # in-memory); each snapshot's metadata.json carries the localized name,
+      # game build/version, and creation timestamp.
+      - name: Post data_update event
+        env:
+          QQBOT_EVENT_SECRET: ${{ secrets.QQBOT_EVENT_SECRET }}
+        run: |
+          set -euo pipefail
+          servers="[]"
+          while IFS=$'\t' read -r server_id hash; do
+            meta="cache/remote/assets/resources/${hash}/metadata.json"
+            if [ ! -f "$meta" ]; then
+              echo "::error::Missing snapshot metadata for ${server_id}: ${meta}"
+              exit 1
+            fi
+            servers=$(jq --argjson acc "$servers" \
+              '$acc + [{
+                id: .serverId,
+                name: (.name.zh // .name.en // .serverId),
+                build: (.gameBuild | tonumber),
+                version: .gameVersion,
+                createdAt: .createdAt
+              }]' "$meta")
+          done < <(jq -r 'to_entries[] | [.key, .value] | @tsv' snapshot-hashes.json)
+          payload=$(jq -n --argjson servers "$servers" \
+            '{type: "data_update", payload: {servers: $servers}}')
+          response=$(curl --fail-with-body -sS --retry 3 --retry-all-errors --retry-delay 5 \
+            -X POST "https://bot.efa-tech.dev/event" \
+            -H "Authorization: Bearer ${QQBOT_EVENT_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          echo "QQ bot response: $response"
