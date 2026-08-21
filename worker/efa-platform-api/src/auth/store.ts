@@ -138,8 +138,11 @@ export async function getSessionByRefreshHash(
 // The claim is conditional (`replaced_by IS NULL`) and the successor insert
 // only applies for the request that won the claim, so concurrent rotations of
 // the same token cannot create orphan or competing successor sessions.
-// Returns true when this caller claimed the rotation and may issue the
-// successor's refresh token; false when another rotation got there first.
+// Returns true only when the guarded successor insert applied — the caller
+// claimed the rotation, the successor row exists, and the caller may issue
+// the successor's refresh token. False when the claim lost or the guarded
+// insert was skipped; in both cases there is no successor row to issue a
+// token for.
 export async function rotateSession(
     db: D1Database,
     sessionId: string,
@@ -153,7 +156,7 @@ export async function rotateSession(
     },
     graceUntil: string,
 ): Promise<boolean> {
-    const [claim] = await db.batch([
+    const [, insert] = await db.batch([
         db
             .prepare(
                 "UPDATE auth_sessions SET replaced_by = ?, rotation_grace_until = ? " +
@@ -178,7 +181,7 @@ export async function rotateSession(
                 successor.sessionId,
             ),
     ]);
-    return claim.meta.changes === 1;
+    return insert.meta.changes === 1;
 }
 
 export async function revokeSession(db: D1Database, sessionId: string): Promise<void> {

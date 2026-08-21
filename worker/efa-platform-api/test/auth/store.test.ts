@@ -73,8 +73,8 @@ describe("rotateSession", () => {
         const winner = successor(userId, "hash-winner");
         assert.equal(await rotateSession(db, sessionId, winner, GRACE_UNTIL), true);
 
-        // A concurrent request that read the session before the claim loses
-        // the race: its claim matches zero rows and its successor is dropped.
+        // A later rotation of the same session loses: its claim matches zero
+        // rows and its successor is dropped.
         const loser = successor(userId, "hash-loser");
         assert.equal(await rotateSession(db, sessionId, loser, GRACE_UNTIL), false);
 
@@ -90,6 +90,38 @@ describe("rotateSession", () => {
         const next = successor(userId, "hash-new");
         assert.equal(await rotateSession(db, randomUUID(), next, GRACE_UNTIL), false);
         assert.equal(await getSessionByRefreshHash(db, "hash-new"), null);
+    });
+
+    it("reports failure when the claim matches but the guarded insert is skipped", async () => {
+        const db = setupDb();
+        const userId = await seedUser(db);
+        const sessionId = await seedSession(db, userId, "hash-old");
+
+        // Simulate replaced_by changing between the claim and the guarded
+        // insert: the claim applies, but the insert's WHERE EXISTS no longer
+        // matches, so no successor row is created and the caller must not
+        // issue a token for it.
+        const hijacked = randomUUID();
+        const interleaved = {
+            prepare: (sql: string) => db.prepare(sql),
+            batch: async (statements: { run(): Promise<{ meta: { changes: number } }> }[]) => {
+                const results = [] as { meta: { changes: number } }[];
+                results.push(await statements[0].run());
+                await db
+                    .prepare("UPDATE auth_sessions SET replaced_by = ? WHERE session_id = ?")
+                    .bind(hijacked, sessionId)
+                    .run();
+                results.push(await statements[1].run());
+                return results;
+            },
+        } as unknown as D1Database;
+
+        const next = successor(userId, "hash-new");
+        assert.equal(await rotateSession(interleaved, sessionId, next, GRACE_UNTIL), false);
+        // The return value matches successor-row presence: none was inserted.
+        assert.equal(await getSessionByRefreshHash(db, "hash-new"), null);
+        const previous = await getSessionByRefreshHash(db, "hash-old");
+        assert.equal(previous?.replaced_by, hijacked);
     });
 
     it("rolls back the claim when the successor insert fails", async () => {
