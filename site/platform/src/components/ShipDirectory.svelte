@@ -16,6 +16,7 @@ let activeWindow = $state<TimeWindow>("all");
 let initialLoading = $state(true);
 let failed = $state(false);
 let loadingMore = $state(false);
+let loadMoreFailed = $state(false);
 let directoryVersion = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let fetchedLocale: Locale | null = null;
@@ -24,6 +25,7 @@ async function loadFirstPage() {
     const version = ++directoryVersion;
     fetchedLocale = locale.current;
     loadingMore = false;
+    loadMoreFailed = false;
     initialLoading = true;
     failed = false;
     try {
@@ -47,6 +49,7 @@ async function loadMore() {
     if (!nextCursor || loadingMore) return;
     const version = directoryVersion;
     loadingMore = true;
+    loadMoreFailed = false;
     try {
         const page = await fetchShips(locale.current, {
             limit: PAGE_SIZE,
@@ -58,7 +61,8 @@ async function loadMore() {
         ships = [...ships, ...page.ships];
         nextCursor = page.nextCursor;
     } catch {
-        if (version !== directoryVersion) nextCursor = null;
+        if (version !== directoryVersion) return;
+        loadMoreFailed = true;
     } finally {
         if (version === directoryVersion) loadingMore = false;
     }
@@ -168,6 +172,9 @@ onMount(() => {
         </ul>
         {#if nextCursor}
             <div class="mt-4 text-center">
+                {#if loadMoreFailed}
+                    <p class="mb-2 text-sm text-console-danger">{t("feed.loadMoreFailed")}</p>
+                {/if}
                 <button
                     type="button"
                     onclick={loadMore}
