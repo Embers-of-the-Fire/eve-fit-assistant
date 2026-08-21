@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import { createAuthApp } from "../../src/auth/router.ts";
-import { loadAuthDatabase, TestD1Database, TestKV, type TestStatement } from "./helpers.ts";
+import {
+    loadAuthDatabase,
+    TestD1Database,
+    TestKV,
+    TestOtpStateNamespace,
+    TestRateLimitNamespace,
+    type TestStatement,
+} from "./helpers.ts";
 
 const SECRET = "test-secret";
 const PASSWORD = "password-1234";
@@ -30,6 +37,8 @@ interface PostOptions {
 function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
     const db = loadAuthDatabase();
     const kv = new TestKV();
+    const otp = new TestOtpStateNamespace();
+    const rl = new TestRateLimitNamespace();
     const emails: CapturedEmail[] = [];
     const app = createAuthApp({
         sendEmail: (_env, input) => {
@@ -41,6 +50,8 @@ function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
     const env = {
         FIT_DB: wrapDb ? wrapDb(d1) : d1,
         AUTH_KV: kv,
+        AUTH_OTP: otp,
+        AUTH_RATE_LIMIT: rl,
         AUTH_TOKEN_SECRET: SECRET,
     };
     const post = (path: string, body: unknown, options?: PostOptions): Promise<Response> =>
@@ -78,7 +89,21 @@ function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
         assert.equal(res.status, 200);
         return (await res.json()) as TokenPair;
     };
-    return { db, kv, emails, post, lastEmail, wrongCode, signup, verify, login, refresh, register };
+    return {
+        db,
+        kv,
+        otp,
+        rl,
+        emails,
+        post,
+        lastEmail,
+        wrongCode,
+        signup,
+        verify,
+        login,
+        refresh,
+        register,
+    };
 }
 
 // D1 shim that hides the users row from the first email lookup, simulating a
@@ -116,6 +141,8 @@ describe("error handling", () => {
         const env = {
             FIT_DB: brokenDb,
             AUTH_KV: new TestKV(),
+            AUTH_OTP: new TestOtpStateNamespace(),
+            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
             AUTH_TOKEN_SECRET: SECRET,
         };
         const res = await Promise.resolve(
@@ -151,7 +178,7 @@ describe("signup and verify-email", () => {
         assert.equal(ctx.emails.length, 1);
 
         // Pending after cooldown: resends.
-        ctx.kv.advance(61 * 1000);
+        ctx.otp.advance(61 * 1000);
         assert.equal((await ctx.signup(email)).status, 200);
         assert.equal(ctx.emails.length, 2);
 
@@ -179,7 +206,7 @@ describe("signup and verify-email", () => {
         const email = "user@example.com";
 
         assert.equal((await ctx.signup(email)).status, 201);
-        ctx.kv.advance(61 * 1000);
+        ctx.otp.advance(61 * 1000);
         // Repeat signup with a different password: accepted as a resend, but
         // the submitted password is ignored.
         assert.equal((await ctx.post("/signup", { email, password: NEW_PASSWORD })).status, 200);
@@ -274,7 +301,7 @@ describe("login", () => {
         assert.equal(((await pending.json()) as { error: string }).error, "email_unverified");
         assert.equal(ctx.emails.length, 1);
         // After the cooldown the nudge resends.
-        ctx.kv.advance(61 * 1000);
+        ctx.otp.advance(61 * 1000);
         assert.equal((await ctx.login(email, PASSWORD)).status, 403);
         assert.equal(ctx.emails.length, 2);
 
@@ -477,12 +504,12 @@ describe("reset-password", () => {
         await ctx.register(email);
 
         for (let i = 0; i < 3; i++) {
-            ctx.kv.advance(61 * 1000);
+            ctx.otp.advance(61 * 1000);
             assert.equal((await ctx.post("/reset-password", { email })).status, 200);
         }
         assert.equal(ctx.emails.filter((m) => m.purpose === "reset").length, 3);
 
-        ctx.kv.advance(61 * 1000);
+        ctx.otp.advance(61 * 1000);
         assert.equal((await ctx.post("/reset-password", { email })).status, 200);
         assert.equal(ctx.emails.filter((m) => m.purpose === "reset").length, 3);
     });

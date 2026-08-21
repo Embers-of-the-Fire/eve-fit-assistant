@@ -22,10 +22,27 @@ database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
 migrations_dir = "migrations"
 
 # Namespace IDs are provisioned manually (`wrangler kv namespace create
-# efa-platform-auth`, plus a preview namespace) and pasted here.
+# efa-platform-auth`, plus a preview namespace) and pasted here. Holds only
+# the short-lived refresh-rotation stash.
 [[kv_namespaces]]
 binding = "AUTH_KV"
 id = "ea552ca4c83941688be5a7eb8d415164"
+
+# Atomic auth state (OTPs, rate-limit counters). One instance per key;
+# SQLite-backed; no manual provisioning — created at deploy via the migration
+# below. NOT inherited by [env.preview]: repeated there (isolated as a
+# separate deployment).
+[[durable_objects.bindings]]
+name = "AUTH_OTP"
+class_name = "OtpState"
+
+[[durable_objects.bindings]]
+name = "AUTH_RATE_LIMIT"
+class_name = "RateLimitWindow"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["OtpState", "RateLimitWindow"]
 
 [[services]]
 binding = "FIT_STORAGE"
@@ -63,6 +80,14 @@ migrations_dir = "migrations"
 [[env.preview.kv_namespaces]]
 binding = "AUTH_KV"
 id = "65ece8bdad724e63951b1143fb1fe9ba"
+
+[[env.preview.durable_objects.bindings]]
+name = "AUTH_OTP"
+class_name = "OtpState"
+
+[[env.preview.durable_objects.bindings]]
+name = "AUTH_RATE_LIMIT"
+class_name = "RateLimitWindow"
 
 [[env.preview.services]]
 binding = "FIT_STORAGE"

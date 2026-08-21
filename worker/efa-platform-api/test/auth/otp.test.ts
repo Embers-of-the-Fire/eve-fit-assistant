@@ -10,13 +10,13 @@ import {
     storeOtp,
     verifyOtp,
 } from "../../src/auth/otp.ts";
-import { TestKV } from "./helpers.ts";
+import { TestOtpStateNamespace } from "./helpers.ts";
 
 const SECRET = "test-secret";
 const EMAIL = "user@example.com";
 
-function kv(): TestKV {
-    return new TestKV();
+function kv(): TestOtpStateNamespace {
+    return new TestOtpStateNamespace();
 }
 
 describe("generateOtpCode", () => {
@@ -81,6 +81,30 @@ describe("otp store/verify", () => {
         await storeOtp(store as never, SECRET, "verify", EMAIL, code);
         store.advance((OTP_TTL_SEC + 1) * 1000);
         assert.equal(await verifyOtp(store as never, SECRET, "verify", EMAIL, code), "expired");
+    });
+
+    it("serializes concurrent verifications: only one consumes the code", async () => {
+        const store = kv();
+        const code = generateOtpCode();
+        await storeOtp(store as never, SECRET, "verify", EMAIL, code);
+        const results = await Promise.all([
+            verifyOtp(store as never, SECRET, "verify", EMAIL, code),
+            verifyOtp(store as never, SECRET, "verify", EMAIL, code),
+        ]);
+        assert.deepEqual([...results].sort(), ["expired", "ok"]);
+    });
+
+    it("counts every failed attempt under concurrency", async () => {
+        const store = kv();
+        await storeOtp(store as never, SECRET, "verify", EMAIL, "123456");
+        const results = await Promise.all(
+            Array.from({ length: OTP_MAX_ATTEMPTS }, () =>
+                verifyOtp(store as never, SECRET, "verify", EMAIL, "654321"),
+            ),
+        );
+        assert.ok(results.every((r) => r === "invalid"));
+        // All five attempts landed: the correct code is now burned too.
+        assert.equal(await verifyOtp(store as never, SECRET, "verify", EMAIL, "123456"), "expired");
     });
 });
 

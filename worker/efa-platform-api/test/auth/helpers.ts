@@ -1,8 +1,18 @@
-// Shared test doubles: a KV shim with manual time control and a D1 shim over
-// node:sqlite loading the real migration SQL.
+// Shared test doubles: a KV shim with manual time control, a D1 shim over
+// node:sqlite loading the real migration SQL, and in-memory Durable Object
+// namespace doubles that run the real transactional core functions.
 
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
+import {
+    type OtpEntry,
+    type OtpVerifyResult,
+    otpStateClear,
+    otpStateHasCooldown,
+    otpStateStore,
+    otpStateVerify,
+} from "../../src/auth/otp-core.ts";
+import { type RateLimitOutcome, rateWindowHit } from "../../src/auth/rate-core.ts";
 
 export class TestKV {
     private readonly store = new Map<string, { value: string; expiresAt: number }>();
@@ -110,4 +120,101 @@ export function loadAuthDatabase(): DatabaseSync {
     const db = new DatabaseSync(":memory:");
     db.exec(readFileSync(new URL("../../migrations/0003_auth.sql", import.meta.url), "utf8"));
     return db;
+}
+
+// In-memory Durable Object storage. transaction() serializes closures per
+// instance through a promise chain, mirroring the per-instance input-gate
+// serialization of a real Durable Object (and unlike plain KV, where
+// concurrent read-modify-write interleaves).
+class TestDurableStorage {
+    private readonly map = new Map<string, unknown>();
+    private queue: Promise<unknown> = Promise.resolve();
+
+    get<T>(key: string): Promise<T | undefined> {
+        return Promise.resolve(this.map.get(key) as T | undefined);
+    }
+
+    put(key: string, value: unknown): Promise<void> {
+        this.map.set(key, value);
+        return Promise.resolve();
+    }
+
+    delete(key: string): Promise<boolean> {
+        return Promise.resolve(this.map.delete(key));
+    }
+
+    transaction<T>(closure: (tx: TestDurableStorage) => Promise<T>): Promise<T> {
+        const result = this.queue.then(() => closure(this));
+        this.queue = result.catch(() => {});
+        return result;
+    }
+}
+
+// Double for the AUTH_OTP namespace. advance() shifts the time seen by
+// subsequent queries (verify/hasCooldown), like TestKV.advance: timestamps
+// written by store stay fixed at write time.
+export class TestOtpStateNamespace {
+    private readonly instances = new Map<string, TestDurableStorage>();
+    private offsetMs = 0;
+
+    advance(ms: number): void {
+        this.offsetMs += ms;
+    }
+
+    idFromName(name: string): string {
+        return name;
+    }
+
+    private instance(name: string): TestDurableStorage {
+        let storage = this.instances.get(name);
+        if (!storage) {
+            storage = new TestDurableStorage();
+            this.instances.set(name, storage);
+        }
+        return storage;
+    }
+
+    get(name: string) {
+        const storage = this.instance(name);
+        return {
+            store: (entry: OtpEntry, cooldownUntilMs: number): Promise<void> =>
+                storage.transaction((tx) => otpStateStore(tx, entry, cooldownUntilMs)),
+            verify: (candidateHmac: string, nowMs: number): Promise<OtpVerifyResult> =>
+                storage.transaction((tx) =>
+                    otpStateVerify(tx, candidateHmac, nowMs + this.offsetMs),
+                ),
+            hasCooldown: (nowMs: number): Promise<boolean> =>
+                storage.transaction((tx) => otpStateHasCooldown(tx, nowMs + this.offsetMs)),
+            clear: (): Promise<void> => storage.transaction((tx) => otpStateClear(tx)),
+        };
+    }
+}
+
+// Double for the AUTH_RATE_LIMIT namespace; advance() shifts query time like
+// TestOtpStateNamespace.
+export class TestRateLimitNamespace {
+    private readonly instances = new Map<string, TestDurableStorage>();
+    private offsetMs = 0;
+
+    advance(ms: number): void {
+        this.offsetMs += ms;
+    }
+
+    idFromName(name: string): string {
+        return name;
+    }
+
+    get(name: string) {
+        let storage = this.instances.get(name);
+        if (!storage) {
+            storage = new TestDurableStorage();
+            this.instances.set(name, storage);
+        }
+        return {
+            hit: (limit: number, windowSec: number, nowMs: number): Promise<RateLimitOutcome> =>
+                storage.transaction((tx) =>
+                    rateWindowHit(tx, limit, windowSec, nowMs + this.offsetMs),
+                ),
+        };
+    }
 }

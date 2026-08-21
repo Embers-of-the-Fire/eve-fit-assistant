@@ -1,15 +1,16 @@
-// One-time passcodes: 6-digit codes stored in KV only as keyed HMACs, never
-// in plaintext. Codes are single-use, TTL-bound, and self-limiting on failed
-// attempts. KV eventual consistency is acceptable here: a verify request that
-// lands before propagation simply reads as "no code issued".
+// One-time passcodes: 6-digit codes stored only as keyed HMACs, never in
+// plaintext. Codes are single-use, TTL-bound, and self-limiting on failed
+// attempts. State lives in the OtpState Durable Object (one instance per
+// purpose+email), whose per-instance serialization makes consumption and
+// attempt counting atomic; see otp-state.ts / otp-core.ts.
 
-import { timingSafeEqual } from "../util.ts";
+import { OTP_MAX_ATTEMPTS, type OtpVerifyResult } from "./otp-core.ts";
+import type { OtpState } from "./otp-state.ts";
 
 export type OtpPurpose = "verify" | "reset";
-export type OtpVerifyResult = "ok" | "invalid" | "expired";
+export { OTP_MAX_ATTEMPTS, type OtpVerifyResult };
 
 export const OTP_TTL_SEC = 10 * 60;
-export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_RESEND_COOLDOWN_SEC = 60;
 // Per purpose+email daily send cap, enforced by the caller through the
 // rate-limit helper.
@@ -18,18 +19,12 @@ export const OTP_DAILY_SEND_WINDOW_SEC = 24 * 60 * 60;
 
 const OTP_MODULUS = 1_000_000;
 
-interface OtpEntry {
-    codeHmac: string;
-    attempts: number;
-    sentAt: number; // ms epoch; used to preserve the remaining TTL on updates
-}
-
 function otpKey(purpose: OtpPurpose, email: string): string {
     return `otp:${purpose}:${email}`;
 }
 
-function cooldownKey(purpose: OtpPurpose, email: string): string {
-    return `otp-cd:${purpose}:${email}`;
+function otpStub(ns: DurableObjectNamespace<OtpState>, purpose: OtpPurpose, email: string) {
+    return ns.get(ns.idFromName(otpKey(purpose, email)));
 }
 
 // Rejection-sampled uniform 6-digit code (Math.random is not a CSPRNG).
@@ -70,93 +65,50 @@ function codeHmac(
 }
 
 export async function storeOtp(
-    kv: KVNamespace,
+    ns: DurableObjectNamespace<OtpState>,
     secret: string,
     purpose: OtpPurpose,
     email: string,
     code: string,
     nowMs: number = Date.now(),
 ): Promise<void> {
-    const entry: OtpEntry = {
-        codeHmac: await codeHmac(secret, purpose, email, code),
-        attempts: 0,
-        sentAt: nowMs,
-    };
-    await kv.put(otpKey(purpose, email), JSON.stringify(entry), { expirationTtl: OTP_TTL_SEC });
-    await kv.put(cooldownKey(purpose, email), "1", { expirationTtl: OTP_RESEND_COOLDOWN_SEC });
+    await otpStub(ns, purpose, email).store(
+        {
+            codeHmac: await codeHmac(secret, purpose, email, code),
+            attempts: 0,
+            expiresAtMs: nowMs + OTP_TTL_SEC * 1000,
+        },
+        nowMs + OTP_RESEND_COOLDOWN_SEC * 1000,
+    );
 }
 
 export async function hasOtpCooldown(
-    kv: KVNamespace,
+    ns: DurableObjectNamespace<OtpState>,
     purpose: OtpPurpose,
     email: string,
+    nowMs: number = Date.now(),
 ): Promise<boolean> {
-    return (await kv.get(cooldownKey(purpose, email))) !== null;
+    return otpStub(ns, purpose, email).hasCooldown(nowMs);
 }
 
 // Drop the stored code and its resend cooldown, e.g. when the send itself
 // failed and the user should be able to retry immediately.
-export async function clearOtp(kv: KVNamespace, purpose: OtpPurpose, email: string): Promise<void> {
-    await kv.delete(otpKey(purpose, email));
-    await kv.delete(cooldownKey(purpose, email));
-}
-
-function parseEntry(raw: string | null): OtpEntry | null {
-    if (raw === null) {
-        return null;
-    }
-    try {
-        const entry = JSON.parse(raw) as OtpEntry;
-        if (
-            typeof entry.codeHmac !== "string" ||
-            typeof entry.attempts !== "number" ||
-            typeof entry.sentAt !== "number"
-        ) {
-            return null;
-        }
-        return entry;
-    } catch {
-        return null;
-    }
+export async function clearOtp(
+    ns: DurableObjectNamespace<OtpState>,
+    purpose: OtpPurpose,
+    email: string,
+): Promise<void> {
+    await otpStub(ns, purpose, email).clear();
 }
 
 export async function verifyOtp(
-    kv: KVNamespace,
+    ns: DurableObjectNamespace<OtpState>,
     secret: string,
     purpose: OtpPurpose,
     email: string,
     code: string,
     nowMs: number = Date.now(),
 ): Promise<OtpVerifyResult> {
-    const key = otpKey(purpose, email);
-    const entry = parseEntry(await kv.get(key));
-    if (!entry) {
-        return "expired";
-    }
-    const remainingTtlSec = Math.floor((entry.sentAt + OTP_TTL_SEC * 1000 - nowMs) / 1000);
-    if (remainingTtlSec <= 0) {
-        await kv.delete(key);
-        return "expired";
-    }
-    if (entry.attempts >= OTP_MAX_ATTEMPTS) {
-        // Burned by too many wrong guesses; the caller must resend a fresh code.
-        await kv.delete(key);
-        return "expired";
-    }
     const candidate = await codeHmac(secret, purpose, email, code);
-    if (timingSafeEqual(candidate, entry.codeHmac)) {
-        await kv.delete(key);
-        return "ok";
-    }
-    entry.attempts += 1;
-    if (entry.attempts >= OTP_MAX_ATTEMPTS) {
-        await kv.delete(key);
-    } else {
-        // KV expirationTtl has a 60 s floor; the sentAt check above stays
-        // authoritative for the real expiry.
-        await kv.put(key, JSON.stringify(entry), {
-            expirationTtl: Math.max(60, remainingTtlSec),
-        });
-    }
-    return "invalid";
+    return otpStub(ns, purpose, email).verify(candidate, nowMs);
 }

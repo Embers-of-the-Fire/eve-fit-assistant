@@ -1,36 +1,19 @@
-// KV-backed fixed-window rate limiting. Counters are approximate (KV is
-// eventually consistent and the read-modify-write is not atomic), which is
-// acceptable for abuse throttling.
+// Fixed-window rate limiting backed by the RateLimitWindow Durable Object
+// (one instance per bucket+key), whose per-instance serialization makes the
+// counter read-check-increment atomic; see rate-window.ts / rate-core.ts.
 
-export interface RateLimitOutcome {
-    allowed: boolean;
-    retryAfterSec: number;
-}
+import type { RateLimitOutcome } from "./rate-core.ts";
+import type { RateLimitWindow } from "./rate-window.ts";
 
-// Cloudflare KV expirationTtl has a 60 s floor.
-const MIN_KV_TTL_SEC = 60;
+export type { RateLimitOutcome };
 
 export async function fixedWindowLimit(
-    kv: KVNamespace,
+    ns: DurableObjectNamespace<RateLimitWindow>,
     bucket: string,
     key: string,
     limit: number,
     windowSec: number,
     nowMs: number = Date.now(),
 ): Promise<RateLimitOutcome> {
-    const nowSec = Math.floor(nowMs / 1000);
-    const windowIndex = Math.floor(nowSec / windowSec);
-    const kvKey = `rl:${bucket}:${key}:${windowIndex}`;
-    const elapsedSec = nowSec - windowIndex * windowSec;
-    const remainingSec = windowSec - elapsedSec;
-
-    const raw = await kv.get(kvKey);
-    const count = raw === null ? 0 : Number.parseInt(raw, 10);
-    if (count >= limit) {
-        return { allowed: false, retryAfterSec: remainingSec };
-    }
-    await kv.put(kvKey, String(count + 1), {
-        expirationTtl: Math.max(MIN_KV_TTL_SEC, remainingSec),
-    });
-    return { allowed: true, retryAfterSec: 0 };
+    return ns.get(ns.idFromName(`rl:${bucket}:${key}`)).hit(limit, windowSec, nowMs);
 }

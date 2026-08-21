@@ -4,6 +4,11 @@ import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_p
 import { Hono } from "hono";
 
 import { type AuthEnv, authApp } from "./auth/router";
+
+// Durable Object classes must be exported from the worker entrypoint.
+export { OtpState } from "./auth/otp-state";
+export { RateLimitWindow } from "./auth/rate-window";
+
 import {
     decodeCursor,
     decodeShipCursor,

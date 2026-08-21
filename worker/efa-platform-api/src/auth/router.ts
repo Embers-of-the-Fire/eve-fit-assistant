@@ -1,7 +1,8 @@
 // Email+password authentication sub-app. All endpoints are POST with JSON
 // bodies; errors follow the platform envelope { "error": code, "message" }.
-// Persistent state lives in D1 (users, sessions); TTL-bound state (OTPs,
-// cooldowns, rate-limit counters, rotation stashes) lives in AUTH_KV.
+// Persistent state lives in D1 (users, sessions); atomic OTP and rate-limit
+// state lives in the AUTH_OTP / AUTH_RATE_LIMIT Durable Objects; AUTH_KV
+// holds only the short-lived rotation stash.
 
 import { Hono } from "hono";
 import { z } from "zod";
@@ -16,7 +17,9 @@ import {
     storeOtp,
     verifyOtp,
 } from "./otp.ts";
+import type { OtpState } from "./otp-state.ts";
 import { hashPassword, ITERATIONS, verifyPassword } from "./passwords.ts";
+import type { RateLimitWindow } from "./rate-window.ts";
 import { fixedWindowLimit } from "./ratelimit.ts";
 import {
     activateUser,
@@ -45,6 +48,8 @@ import {
 export interface AuthEnv extends OtpEmailEnv {
     FIT_DB: D1Database;
     AUTH_KV: KVNamespace;
+    AUTH_OTP: DurableObjectNamespace<OtpState>;
+    AUTH_RATE_LIMIT: DurableObjectNamespace<RateLimitWindow>;
     AUTH_TOKEN_SECRET?: string;
 }
 
@@ -150,7 +155,13 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         limit: number,
         windowSec: number,
     ): Promise<Response | null> {
-        const outcome = await fixedWindowLimit(c.env.AUTH_KV, bucket, key, limit, windowSec);
+        const outcome = await fixedWindowLimit(
+            c.env.AUTH_RATE_LIMIT,
+            bucket,
+            key,
+            limit,
+            windowSec,
+        );
         if (outcome.allowed) {
             return null;
         }
@@ -170,11 +181,11 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         email: string,
         locale: string,
     ): Promise<{ outcome: OtpSendOutcome; retryAfterSec: number }> {
-        if (await hasOtpCooldown(c.env.AUTH_KV, purpose, email)) {
+        if (await hasOtpCooldown(c.env.AUTH_OTP, purpose, email)) {
             return { outcome: "cooldown", retryAfterSec: 0 };
         }
         const daily = await fixedWindowLimit(
-            c.env.AUTH_KV,
+            c.env.AUTH_RATE_LIMIT,
             "otp-send",
             `${purpose}:${email}`,
             OTP_DAILY_SEND_LIMIT,
@@ -184,11 +195,11 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             return { outcome: "limited", retryAfterSec: daily.retryAfterSec };
         }
         const code = generateOtpCode();
-        await storeOtp(c.env.AUTH_KV, secret, purpose, email, code);
+        await storeOtp(c.env.AUTH_OTP, secret, purpose, email, code);
         const sent = await sendEmail(c.env, { to: email, code, purpose, locale });
         if (!sent) {
             // Leave no state behind so an immediate retry can resend.
-            await clearOtp(c.env.AUTH_KV, purpose, email);
+            await clearOtp(c.env.AUTH_OTP, purpose, email);
             return { outcome: "failed", retryAfterSec: 0 };
         }
         return { outcome: "sent", retryAfterSec: 0 };
@@ -360,7 +371,7 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (user.status === "active") {
             return errorJson(409, "already_verified", "email is already verified");
         }
-        const result = await verifyOtp(c.env.AUTH_KV, secret, "verify", email, code);
+        const result = await verifyOtp(c.env.AUTH_OTP, secret, "verify", email, code);
         if (result !== "ok") {
             return otpFailureResponse(result);
         }
@@ -530,7 +541,7 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         const user = await getUserByEmail(c.env.FIT_DB, email);
         if (user?.status === "active") {
             const bucket = await fixedWindowLimit(
-                c.env.AUTH_KV,
+                c.env.AUTH_RATE_LIMIT,
                 "reset-email",
                 email,
                 RESET_EMAIL_LIMIT,
@@ -559,7 +570,7 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (user?.status !== "active") {
             return errorJson(401, "otp_expired", "code expired or never issued");
         }
-        const result = await verifyOtp(c.env.AUTH_KV, secret, "reset", email, code);
+        const result = await verifyOtp(c.env.AUTH_OTP, secret, "reset", email, code);
         if (result !== "ok") {
             return otpFailureResponse(result);
         }
