@@ -1,7 +1,8 @@
 <script lang="ts">
-import { onMount } from "svelte";
+import { onMount, untrack } from "svelte";
 import { fetchShips } from "../lib/api";
 import { initLocale, locale, t } from "../lib/i18n.svelte";
+import type { Locale } from "../lib/translations";
 import type { ShipSummary, TimeWindow } from "../lib/types";
 
 const PAGE_SIZE = 24;
@@ -17,9 +18,11 @@ let failed = $state(false);
 let loadingMore = $state(false);
 let directoryVersion = 0;
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+let fetchedLocale: Locale | null = null;
 
 async function loadFirstPage() {
     const version = ++directoryVersion;
+    fetchedLocale = locale.current;
     loadingMore = false;
     initialLoading = true;
     failed = false;
@@ -78,6 +81,12 @@ function formatDate(iso: string): string {
     const tag = locale.current === "zh" ? "zh-CN" : "en-US";
     return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString(tag);
 }
+
+$effect(() => {
+    const current = locale.current;
+    if (fetchedLocale === null || current === fetchedLocale) return;
+    untrack(loadFirstPage);
+});
 
 onMount(() => {
     initLocale();
