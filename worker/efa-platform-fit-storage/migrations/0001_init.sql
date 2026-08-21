@@ -1,7 +1,6 @@
 -- Pure content-addressed fit store: fits keyed by canonical fit-state hash.
 -- The legacy `requests` submission log is abolished; post identity lives in
 -- the `posts` table owned by `efa-platform-api` (see its own migrations).
--- See docs/temp/api-unit/spec.md §4.1.
 
 CREATE TABLE fits (
     fit_hash TEXT PRIMARY KEY,             -- canonical fit hash

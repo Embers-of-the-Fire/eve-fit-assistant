@@ -6,9 +6,6 @@ fitting engine, stores the result as a self-contained `FitSnapshot`, and
 serves snapshots by fit hash. It knows nothing about posts, threads, or
 listing.
 
-Spec: `docs/temp/api-unit/spec.md`; engine data model:
-`docs/temp/remote-fit/spec.md` §§5–7.
-
 This worker has **no public route**; it is reachable only through the
 `FIT_STORAGE` service binding of `efa-platform-api`. Authentication lives in
 `efa-platform-api`; this worker performs no credential checks.
@@ -80,8 +77,8 @@ pointing at it (never overwriting an existing one).
 
 ## Preview environment
 
-`wrangler deploy --env preview` targets the `[env.preview]` chain
-(`docs/temp/api-unit/spec.md` §4.4): `FIT_DB` points at the disposable
+`wrangler deploy --env preview` targets the `[env.preview]` preview chain:
+`FIT_DB` points at the disposable
 `efa-platform-test` database; `PLATFORM_DB` stays on `efa-platform-snapshots`
 (engine data is read-only and shared).
 

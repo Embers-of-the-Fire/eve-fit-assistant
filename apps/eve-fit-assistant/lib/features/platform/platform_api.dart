@@ -121,7 +121,7 @@ class PlatformApiException implements Exception {
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
-/// `api.efa-tech.dev/platform/internal`; docs/temp/api-unit/spec.md §6).
+/// `api.efa-tech.dev/platform/internal`).
 ///
 /// All endpoints here are public reads; post creation goes through
 /// `FitSnapshotUploadApi.submit`.

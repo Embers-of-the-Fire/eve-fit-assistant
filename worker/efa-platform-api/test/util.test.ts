@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
     decodeCursor,
+    decodeShipCursor,
     encodeCursor,
+    encodeShipCursor,
+    escapeLikePattern,
     normalizeBlob,
+    parseTimeWindow,
     resolveShipName,
     timingSafeEqual,
     truncateCodePoints,
@@ -95,5 +99,56 @@ describe("resolveShipName", () => {
     it("degrades to empty on malformed JSON", () => {
         assert.equal(resolveShipName("not json", "en"), "");
         assert.equal(resolveShipName("{}", "en"), "");
+    });
+});
+
+describe("parseTimeWindow", () => {
+    it("maps preset tokens to SQLite datetime modifiers", () => {
+        assert.equal(parseTimeWindow("24h"), "-1 day");
+        assert.equal(parseTimeWindow("7d"), "-7 days");
+        assert.equal(parseTimeWindow("30d"), "-30 days");
+    });
+
+    it("treats an absent parameter and 'all' as no condition", () => {
+        assert.equal(parseTimeWindow(undefined), null);
+        assert.equal(parseTimeWindow("all"), null);
+    });
+
+    it("rejects unknown tokens", () => {
+        assert.equal(parseTimeWindow("1h"), "invalid");
+        assert.equal(parseTimeWindow(""), "invalid");
+        assert.equal(parseTimeWindow("-7 days"), "invalid");
+    });
+});
+
+describe("ship cursor tokens", () => {
+    it("round-trips", () => {
+        const token = encodeShipCursor(42, 24692);
+        assert.deepEqual(decodeShipCursor(token), { postCount: 42, shipTypeId: 24692 });
+    });
+
+    it("produces unpadded base64url", () => {
+        assert.match(encodeShipCursor(42, 24692), /^[A-Za-z0-9_-]+$/);
+    });
+
+    it("rejects malformed tokens", () => {
+        assert.equal(decodeShipCursor(""), null);
+        assert.equal(decodeShipCursor("!!!not-base64!!!"), null);
+        assert.equal(decodeShipCursor(btoa("no-separator")), null);
+        assert.equal(decodeShipCursor(btoa("|24692")), null);
+        assert.equal(decodeShipCursor(btoa("not-a-number|24692")), null);
+        assert.equal(decodeShipCursor(btoa("42|0")), null);
+        assert.equal(decodeShipCursor(btoa("42|-1")), null);
+        assert.equal(decodeShipCursor(btoa("-1|24692")), null);
+        assert.equal(decodeShipCursor(btoa("42|24692|extra")), null);
+    });
+});
+
+describe("escapeLikePattern", () => {
+    it("escapes LIKE wildcards and the escape character itself", () => {
+        assert.equal(escapeLikePattern("Heron"), "Heron");
+        assert.equal(escapeLikePattern("100%"), "100\\%");
+        assert.equal(escapeLikePattern("a_b"), "a\\_b");
+        assert.equal(escapeLikePattern("a\\b"), "a\\\\b");
     });
 });

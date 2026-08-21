@@ -22,7 +22,7 @@ service = "efa-platform-fit-storage"
 enabled = true
 head_sampling_rate = 1
 
-# Preview chain (docs/temp/api-unit/spec.md §4.4): disposable data.
+# Preview chain: disposable data.
 [env.preview]
 
 [[env.preview.d1_databases]]

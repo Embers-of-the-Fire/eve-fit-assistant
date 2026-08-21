@@ -19,9 +19,8 @@ use crate::provider::FitDataProvider;
 /// `build_container` and exhaust isolate memory.
 const MAX_GROUP_QUANTITY: u32 = 100;
 
-/// Free-text upload limits in Unicode code points (docs/temp/api-unit/spec.md
-/// §5.3). Enforced before canonicalization, so an over-limit upload produces
-/// no fit row and no post.
+/// Free-text upload limits in Unicode code points. Enforced before
+/// canonicalization, so an over-limit upload produces no fit row and no post.
 const MAX_FIT_NAME_CODE_POINTS: usize = 100;
 const MAX_DESCRIPTION_CODE_POINTS: usize = 4000;
 

@@ -2,9 +2,8 @@ import { env } from "cloudflare:workers";
 import { fromBinary, type JsonValue, toJson } from "@bufbuild/protobuf";
 import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 
-// SSR access to the platform API through the PLATFORM_API service binding
-// (docs/temp/api-unit/spec.md §7.1). The hostname is a placeholder; only the
-// path is routed by the bound worker.
+// SSR access to the platform API through the PLATFORM_API service binding.
+// The hostname is a placeholder; only the path is routed by the bound worker.
 
 const BINDING_ORIGIN = "https://efa-platform-api.internal";
 

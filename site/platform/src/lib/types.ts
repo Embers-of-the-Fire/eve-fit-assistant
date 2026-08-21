@@ -37,6 +37,28 @@ export interface PlatformStats {
     topShips: TopShip[];
 }
 
+export type TimeWindow = "24h" | "7d" | "30d" | "all";
+
+export interface ShipSummary {
+    shipTypeId: number;
+    shipName: string;
+    postCount: number;
+    lastPostAt: string;
+}
+
+export interface ShipsPage {
+    ships: ShipSummary[];
+    nextCursor: string | null;
+}
+
+export interface ShipDetail {
+    shipTypeId: number;
+    shipName: string;
+    postCount: number;
+    firstPostAt: string;
+    lastPostAt: string;
+}
+
 export interface ApiError {
     error: string;
     message: string;

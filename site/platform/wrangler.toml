@@ -21,8 +21,8 @@ custom_domain = true
 pattern = "share.platform.efa-tech.dev"
 custom_domain = true
 
-# Preview chain (docs/temp/api-unit/spec.md §4.4): the platform API binding
-# targets the preview environment (disposable efa-platform-test data).
+# Preview chain: the platform API binding targets the preview environment
+# (disposable efa-platform-test data).
 [env.preview]
 
 [[env.preview.services]]

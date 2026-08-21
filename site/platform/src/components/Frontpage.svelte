@@ -4,6 +4,7 @@ import { fetchPosts, fetchStats } from "../lib/api";
 import { initLocale, locale, t } from "../lib/i18n.svelte";
 import { DOWNLOAD_URL, WEB_URL } from "../lib/share-target";
 import type { PlatformStats, PostSummary, TopShip } from "../lib/types";
+import PostCard from "./PostCard.svelte";
 
 const GITHUB_URL = "https://github.com/Embers-of-the-Fire/eve-fit-assistant";
 const PAGE_SIZE = 20;
@@ -66,12 +67,6 @@ function selectShip(ship: TopShip) {
 function clearFilter() {
     activeShip = null;
     loadFirstPage();
-}
-
-function formatDate(iso: string): string {
-    const date = new Date(iso);
-    const tag = locale.current === "zh" ? "zh-CN" : "en-US";
-    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(tag);
 }
 
 onMount(() => {
@@ -137,9 +132,17 @@ onMount(() => {
 
     {#if stats.topShips.length > 0}
         <section class="mb-8">
-            <h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-console-text-muted">
-                {t("ships.popular")}
-            </h2>
+            <div class="mb-3 flex items-center justify-between gap-2">
+                <h2 class="text-xs font-semibold uppercase tracking-widest text-console-text-muted">
+                    {t("ships.popular")}
+                </h2>
+                <a
+                    href="/ships"
+                    class="text-xs text-console-text-dim transition-colors hover:text-console-highlight"
+                >
+                    {t("ships.browseAll")} →
+                </a>
+            </div>
             <div class="flex flex-wrap gap-2">
                 {#each stats.topShips as ship (ship.shipTypeId)}
                     <button
@@ -208,26 +211,7 @@ onMount(() => {
         <ul class="grid gap-3">
             {#each posts as post (post.postId)}
                 <li>
-                    <a
-                        href="/post/{post.postId}"
-                        class="block rounded border border-console-border bg-console-surface p-4 transition-colors hover:border-console-primary"
-                    >
-                        <p class="text-xs uppercase tracking-wide text-console-text-muted">
-                            {post.shipName}
-                        </p>
-                        <p class="mt-1 font-semibold text-console-highlight">
-                            {post.fitName || t("fits.untitled")}
-                        </p>
-                        {#if post.description}
-                            <p class="mt-1 line-clamp-2 text-sm text-console-text-dim">
-                                {post.description}
-                            </p>
-                        {/if}
-                        <p class="mt-2 text-xs text-console-text-muted">
-                            {t("fits.uploaded")}: {formatDate(post.createdAt)}{#if post.generator}
-                                · {post.generator}{/if}
-                        </p>
-                    </a>
+                    <PostCard {post} />
                 </li>
             {/each}
         </ul>

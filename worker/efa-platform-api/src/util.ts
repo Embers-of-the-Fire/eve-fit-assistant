@@ -74,3 +74,49 @@ export function resolveShipName(shipNamesJson: string, locale: string): string {
     }
     return names[locale] ?? names.en ?? Object.values(names)[0] ?? "";
 }
+
+// Time-window filters over posts.created_at: the token maps to a SQLite
+// datetime modifier; "all" (or an absent parameter) means no time condition.
+const TIME_WINDOW_MODIFIERS: Record<string, string> = {
+    "24h": "-1 day",
+    "7d": "-7 days",
+    "30d": "-30 days",
+};
+
+export function parseTimeWindow(raw: string | undefined): string | null | "invalid" {
+    if (raw === undefined || raw === "all") return null;
+    return TIME_WINDOW_MODIFIERS[raw] ?? "invalid";
+}
+
+// The ship-directory cursor token is the opaque base64url encoding of
+// `{post_count}|{ship_type_id}`; clients must not parse it.
+export function encodeShipCursor(postCount: number, shipTypeId: number): string {
+    return btoa(`${postCount}|${shipTypeId}`)
+        .replaceAll("+", "-")
+        .replaceAll("/", "_")
+        .replaceAll("=", "");
+}
+
+export function decodeShipCursor(token: string): { postCount: number; shipTypeId: number } | null {
+    let raw: string;
+    try {
+        const base64 = token.replaceAll("-", "+").replaceAll("_", "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        raw = atob(padded);
+    } catch {
+        return null;
+    }
+    const separator = raw.lastIndexOf("|");
+    if (separator <= 0) return null;
+    const postCount = Number(raw.slice(0, separator));
+    const shipTypeId = Number(raw.slice(separator + 1));
+    if (!Number.isSafeInteger(postCount) || postCount < 0) return null;
+    if (!Number.isSafeInteger(shipTypeId) || shipTypeId <= 0) return null;
+    return { postCount, shipTypeId };
+}
+
+// Escape the wildcard characters of a LIKE pattern (used with ESCAPE '\') so
+// a free-text query matches literally.
+export function escapeLikePattern(query: string): string {
+    return query.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+}
