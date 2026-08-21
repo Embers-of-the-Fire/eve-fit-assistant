@@ -16,7 +16,7 @@ import {
     storeOtp,
     verifyOtp,
 } from "./otp.ts";
-import { hashPassword, verifyPassword } from "./passwords.ts";
+import { hashPassword, ITERATIONS, verifyPassword } from "./passwords.ts";
 import { fixedWindowLimit } from "./ratelimit.ts";
 import {
     activateUser,
@@ -90,8 +90,7 @@ const ResetConfirmSchema = z.object({
 
 // Same shape as a real hash, used to keep the unknown-email path of /login
 // on the same code path (and timing profile) as the known-email path.
-const DUMMY_PASSWORD_HASH =
-    "pbkdf2$210000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const DUMMY_PASSWORD_HASH = `pbkdf2$${ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=`;
 
 const SIGNUP_IP_LIMIT = 5;
 const SIGNUP_IP_WINDOW_SEC = 60 * 60;

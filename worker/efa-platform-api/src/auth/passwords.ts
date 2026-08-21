@@ -3,7 +3,10 @@
 // later without invalidating existing hashes.
 
 const ALGORITHM = "pbkdf2";
-const ITERATIONS = 210_000;
+// The Workers runtime hard-caps PBKDF2 iterations (currently 100,000 — see
+// workerd's checkPbkdfLimits); stay well below it so the cap can shrink
+// without breaking hashing.
+export const ITERATIONS = 50_000;
 const SALT_BYTES = 16;
 const DERIVED_BITS = 256;
 

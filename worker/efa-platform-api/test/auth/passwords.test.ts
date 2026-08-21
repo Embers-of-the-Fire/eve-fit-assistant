@@ -8,7 +8,7 @@ describe("passwords", () => {
         const parts = stored.split("$");
         assert.equal(parts.length, 4);
         assert.equal(parts[0], "pbkdf2");
-        assert.equal(parts[1], "210000");
+        assert.equal(parts[1], "50000");
         assert.ok(await verifyPassword("correct horse battery", stored));
     });
 
