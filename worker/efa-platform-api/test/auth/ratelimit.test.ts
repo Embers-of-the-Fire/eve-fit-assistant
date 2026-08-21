@@ -25,10 +25,19 @@ describe("fixedWindowLimit", () => {
 
     it("resets when the window rolls over", async () => {
         const kv = new TestKV();
-        await fixedWindowLimit(kv as never, "bucket", "key", 1, 300);
-        assert.equal((await fixedWindowLimit(kv as never, "bucket", "key", 1, 300)).allowed, false);
+        // Aligned to a 300 s window boundary so +301 s crosses into the next window.
+        const startMs = 1_200_000;
+        await fixedWindowLimit(kv as never, "bucket", "key", 1, 300, startMs);
+        assert.equal(
+            (await fixedWindowLimit(kv as never, "bucket", "key", 1, 300, startMs)).allowed,
+            false,
+        );
+        const afterMs = startMs + 301 * 1000;
         kv.advance(301 * 1000);
-        assert.equal((await fixedWindowLimit(kv as never, "bucket", "key", 1, 300)).allowed, true);
+        assert.equal(
+            (await fixedWindowLimit(kv as never, "bucket", "key", 1, 300, afterMs)).allowed,
+            true,
+        );
     });
 
     it("handles windows shorter than the KV TTL floor", async () => {
