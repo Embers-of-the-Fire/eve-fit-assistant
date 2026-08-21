@@ -3,6 +3,7 @@ import { FitStoreResponseSchema } from "efa-proto-ts/fit_request_pb";
 import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 import { Hono } from "hono";
 
+import { type AuthEnv, authApp } from "./auth/router";
 import {
     decodeCursor,
     decodeShipCursor,
@@ -23,13 +24,13 @@ import {
 // submissions through the FIT_STORAGE service binding, and holds the
 // platform's Bearer credential.
 
-interface Env {
-    FIT_DB: D1Database;
+interface Env extends AuthEnv {
     FIT_STORAGE: Fetcher;
     FIT_STORAGE_TOKEN?: string;
 }
 
 const MOUNT_PATH = "/platform/internal";
+const AUTH_MOUNT_PATH = "/platform/auth";
 const FIT_STORAGE_ORIGIN = "https://efa-platform-fit-storage.internal";
 
 const DEFAULT_LIST_LIMIT = 20;
@@ -67,27 +68,6 @@ function blobResponse(value: unknown): Response {
 }
 
 const app = new Hono<{ Bindings: Env }>();
-
-app.use("*", async (c, next) => {
-    try {
-        await next();
-    } catch (err) {
-        console.error("Unhandled error", err);
-        c.res = errorJson(500, "internal", "internal server error");
-    }
-    c.res.headers.set("Access-Control-Allow-Origin", "*");
-});
-
-app.options("*", () => {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
-    });
-});
 
 // Create post.
 app.post("/posts", async (c) => {
@@ -552,5 +532,28 @@ app.onError((err, _c) => {
 });
 
 const root = new Hono<{ Bindings: Env }>();
+
+root.use("*", async (c, next) => {
+    try {
+        await next();
+    } catch (err) {
+        console.error("Unhandled error", err);
+        c.res = errorJson(500, "internal", "internal server error");
+    }
+    c.res.headers.set("Access-Control-Allow-Origin", "*");
+});
+
+root.options("*", () => {
+    return new Response(null, {
+        status: 204,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+    });
+});
+
 root.route(MOUNT_PATH, app);
+root.route(AUTH_MOUNT_PATH, authApp);
 export default root;

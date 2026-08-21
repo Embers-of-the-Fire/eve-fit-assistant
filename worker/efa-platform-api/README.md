@@ -3,8 +3,38 @@
 Public front of the platform: a Cloudflare Worker (TypeScript) shared by the
 discussion site (`site/platform`) and the Flutter app. It owns the `posts`
 table, orchestrates submissions through the `FIT_STORAGE` service binding of
-`efa-platform-fit-storage`, and serves all public endpoints under
-`api.efa-tech.dev/platform/internal/*`.
+`efa-platform-fit-storage`, serves all public endpoints under
+`api.efa-tech.dev/platform/internal/*`, and hosts the platform's email+password
+authentication backend under `api.efa-tech.dev/platform/auth/*`.
+
+## Auth API
+
+All auth endpoints are `POST` with JSON request/response bodies and share the
+platform error envelope. [ENDPOINTS.md](ENDPOINTS.md) is the canonical
+request/response schema reference. Tokens are transported in JSON bodies (no cookies).
+Passwords are PBKDF2-HMAC-SHA256 hashes; access tokens are 15-minute HS256
+JWTs carrying a `tv` (token version) claim checked against `users.token_version`
+on authenticated calls; refresh tokens are opaque 30-day tokens rotated on
+every refresh, with only their SHA-256 hash stored. OTPs are 6-digit codes
+stored as keyed HMACs in `AUTH_KV` (10-minute TTL, 5 attempts, 60-second
+resend cooldown) and delivered via Resend (bilingual en/zh templates selected
+by the optional `locale` field).
+
+| Endpoint | Description |
+| --- | --- |
+| `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP |
+| `/platform/auth/verify-email` | `{email, code}` — activates the pending user and issues a token pair (`200`); `401 otp_invalid`/`otp_expired`; `409 already_verified` |
+| `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend) when pending; uniform `401 invalid_credentials` otherwise. 20/day per account, 30/5min per IP (loose on purpose: CGNAT) |
+| `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`) |
+| `/platform/auth/logout` | `{refreshToken}` — revokes that session; always `200 {ok:true}` |
+| `/platform/auth/deregister` | Bearer access token — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions; `200 {ok:true}`; the address is free for re-signup |
+| `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email) |
+| `/platform/auth/reset-password/confirm` | `{email, code, newPassword}` — updates the hash, bumps `token_version`, revokes all sessions, issues a fresh pair (`200`); `401` on invalid/expired OTP |
+
+Rate-limit excess returns `429 {error:"rate_limited"}` with a `Retry-After`
+header. Sessions live only in D1 (KV eventual consistency is incompatible
+with rotation/reuse semantics); `AUTH_KV` holds OTPs, cooldowns, rate-limit
+counters, and the short-lived rotation stash.
 
 ## API
 
@@ -35,8 +65,10 @@ unauthenticated.
 
 One physical D1 database (`efa-platform`) with disjoint table ownership:
 `posts` is written only here (`migrations/0001_posts.sql`); `fits` is written
-only by `efa-platform-fit-storage`. Migration filenames must never collide
-across the two workers — wrangler records applied filenames per database.
+only by `efa-platform-fit-storage`; the auth tables (`users`, `auth_sessions`,
+`migrations/0003_auth.sql`) are written only here. Migration filenames must
+never collide across the two workers — wrangler records applied filenames per
+database.
 
 The list endpoint is pure SQL over `posts`: the display summary is
 denormalized at post creation (`description` truncated to 280 code points,
@@ -65,5 +97,13 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 
 1. Apply migrations: `wrangler d1 migrations apply efa-platform --remote`
    (and `--env preview` for `efa-platform-test`).
-2. `wrangler secret put FIT_STORAGE_TOKEN` (re-provision the existing value).
-3. `wrangler deploy`. Workers are deployed manually; no CI deploys exist.
+2. Create the auth KV namespaces: `wrangler kv namespace create
+   efa-platform-auth` (plus a preview namespace) and paste the IDs into
+   `wrangler.toml` (`[[kv_namespaces]]` and `[[env.preview.kv_namespaces]]`).
+3. `wrangler secret put FIT_STORAGE_TOKEN` (re-provision the existing value),
+   `wrangler secret put AUTH_TOKEN_SECRET` (JWT/OTP HMAC key), and
+   `wrangler secret put RESEND_API_KEY` — each for the default and `preview`
+   environments.
+4. Verify the `platform.efa-tech.dev` sender subdomain in Resend (DKIM/SPF DNS
+   records). The sender address itself is the plain `EMAIL_FROM` var.
+5. `wrangler deploy`. Workers are deployed manually; no CI deploys exist.

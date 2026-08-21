@@ -4,6 +4,11 @@ Compact repo guidance for future OpenCode sessions. Prefer executable config and
 
 Detailed subsystem docs live in `docs/agents/` (index: @docs/agents/README) and are referenced from the relevant sections below with `@docs/agents/...` links.
 
+## Overall Guideline
+
+- You *MUST* always fetch official documentations as the source of truth. *DO NOT* use your world knowledge.
+- For every assumptions or conclusions that made without accessing docs, you *MUST* give a URL to prove your words.
+
 ## Workspace Shape
 
 - The Flutter/Dart app lives in `apps/eve-fit-assistant/`, managed as a melos pub workspace (root `pubspec.yaml` is the workspace root; Flutter-scoped tasks — tests, analyze, format, build_runner, l10n, platform builds — are melos `app:*` scripts there, and `./x` delegates to them). Generated Dart outputs include `lib/native/`, `lib/data/l10n/`, `*.g.dart`, and `*.freezed.dart` (app-relative).
