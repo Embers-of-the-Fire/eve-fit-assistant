@@ -206,8 +206,8 @@ app.get("/posts", async (c) => {
     let shipTypeId: number | null = null;
     const shipTypeIdRaw = c.req.query("shipTypeId");
     if (shipTypeIdRaw !== undefined) {
-        const parsed = Number.parseInt(shipTypeIdRaw, 10);
-        if (Number.isNaN(parsed) || parsed <= 0) {
+        const parsed = Number(shipTypeIdRaw);
+        if (!Number.isSafeInteger(parsed) || parsed <= 0) {
             return errorJson(400, "bad_request", "malformed shipTypeId");
         }
         shipTypeId = parsed;
