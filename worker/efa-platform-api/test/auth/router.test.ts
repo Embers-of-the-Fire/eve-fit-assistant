@@ -158,6 +158,30 @@ describe("error handling", () => {
         assert.equal(res.status, 500);
         assert.deepEqual(await res.json(), { error: "internal", message: "internal server error" });
     });
+
+    it("answers 500 when AUTH_TOKEN_SECRET is not set", async () => {
+        const app = createAuthApp({
+            sendEmail: () => Promise.resolve(true),
+        });
+        const env = {
+            FIT_DB: new TestD1Database(loadAuthDatabase()),
+            AUTH_KV: new TestKV(),
+            AUTH_OTP: new TestOtpStateNamespace(),
+            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
+        };
+        const res = await Promise.resolve(
+            app.fetch(
+                new Request("https://example.com/login", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ email: "user@example.com", password: PASSWORD }),
+                }),
+                env as never,
+            ),
+        );
+        assert.equal(res.status, 500);
+        assert.deepEqual(await res.json(), { error: "internal", message: "internal server error" });
+    });
 });
 
 describe("signup and verify-email", () => {
@@ -530,5 +554,31 @@ describe("reset-password", () => {
             ).status,
             400,
         );
+    });
+
+    it("consumes the code on success so it cannot be replayed", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+
+        // /verify-email: a second attempt with the consumed code never
+        // reaches verification again (the account is already active).
+        assert.equal((await ctx.signup(email)).status, 201);
+        const verifyCode = ctx.lastEmail(email, "verify").code;
+        assert.equal((await ctx.post("/verify-email", { email, code: verifyCode })).status, 200);
+        assert.equal((await ctx.post("/verify-email", { email, code: verifyCode })).status, 409);
+
+        // /reset-password/confirm: replaying the consumed code fails as expired.
+        assert.equal((await ctx.post("/reset-password", { email })).status, 200);
+        const resetCode = ctx.lastEmail(email, "reset").code;
+        const confirm = (): Promise<Response> =>
+            ctx.post("/reset-password/confirm", {
+                email,
+                code: resetCode,
+                newPassword: NEW_PASSWORD,
+            });
+        assert.equal((await confirm()).status, 200);
+        const replayed = await confirm();
+        assert.equal(replayed.status, 401);
+        assert.equal(((await replayed.json()) as { error: string }).error, "otp_expired");
     });
 });
