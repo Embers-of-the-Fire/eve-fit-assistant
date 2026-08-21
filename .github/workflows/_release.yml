@@ -698,3 +698,58 @@ jobs:
               });
               core.info(`Uploaded asset: ${name}`);
             }
+
+  notify-qqbot:
+    name: Announce release to QQ bot
+    needs: [verify, tag]
+    runs-on: ubuntu-slim
+    # Post-upload announcement, real releases only: in test mode the tag job is
+    # skipped and this job follows suit, so mock releases never reach the bot.
+    # The production-app environment supplies the bot's bearer secret.
+    if: |
+      always() &&
+      needs.verify.result == 'success' &&
+      needs.tag.result == 'success' &&
+      inputs.test_mode == false
+    environment: production-app
+    env:
+      TAG: ${{ needs.verify.outputs.tag }}
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Event API contract (bofa-qqbot EVENT.md): bearer auth plus
+      # {"type": "release-created", "payload": {version, tag, changelog}}.
+      - name: Post release-created event
+        env:
+          QQBOT_EVENT_SECRET: ${{ secrets.QQBOT_EVENT_SECRET }}
+        run: |
+          set -euo pipefail
+          semver="${VERSION%%+*}"
+          notes="docs/changelog/${semver//./-}/content.zh.md"
+          if [ ! -f "$notes" ]; then
+            echo "::error::Missing $notes"
+            exit 1
+          fi
+          # Strip the leading H1: the bot's template renders its own
+          # "# EFA <version>" heading (mirrors the tag job's notes assembly).
+          payload=$(jq -n \
+            --arg version "$VERSION" \
+            --arg tag "$TAG" \
+            --rawfile raw "$notes" \
+            '{
+              type: "release-created",
+              payload: {
+                version: $version,
+                tag: $tag,
+                changelog: ($raw | sub("^#[^\\n]*\\n"; "") | gsub("^\\s+|\\s+$"; ""))
+              }
+            }')
+          response=$(curl --fail-with-body -sS --retry 3 --retry-all-errors --retry-delay 5 \
+            -X POST "https://bot.efa-tech.dev/event" \
+            -H "Authorization: Bearer ${QQBOT_EVENT_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          echo "QQ bot response: $response"

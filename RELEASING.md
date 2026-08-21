@@ -147,6 +147,9 @@ The `release.yml` workflow on the merge commit then:
 6. Publishes the release note as a remote announcement entry so users are notified
    of the new version.
 7. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
+8. Posts a `release-created` event (version, tag, and the Chinese release note) to the
+   bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`), which broadcasts the
+   announcement to the configured QQ groups.
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 
@@ -158,7 +161,7 @@ environment protection rules gate which refs may do so.
 
 | Environment | Protection | Contents | Consumed by |
 |-------------|------------|----------|-------------|
-| `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`; web deploy secrets `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`. Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases, including `site-deploy` to the `efa-app` Pages project) |
+| `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`; web deploy secrets `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`; announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases, including `site-deploy` to the `efa-app` Pages project) |
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish job (real data releases) |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
