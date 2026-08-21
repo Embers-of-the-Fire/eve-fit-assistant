@@ -21,13 +21,18 @@ let failed = $state(false);
 let loadingMore = $state(false);
 let loadMoreFailed = $state(false);
 let feedVersion = 0;
+let detailVersion = 0;
 let fetchedLocale: Locale | null = null;
 
 async function loadDetail() {
+    const version = ++detailVersion;
     detailFailed = false;
     try {
-        detail = await fetchShip(shipTypeId, locale.current);
+        const result = await fetchShip(shipTypeId, locale.current);
+        if (version !== detailVersion) return;
+        detail = result;
     } catch {
+        if (version !== detailVersion) return;
         detailFailed = true;
     }
 }
