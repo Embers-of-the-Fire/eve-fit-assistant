@@ -44,3 +44,21 @@ export async function rateWindowHit(
     await tx.put(WINDOW_KEY, { windowIndex, count: count + 1 });
     return { allowed: true, retryAfterSec: 0 };
 }
+
+// Give back one previously counted hit, e.g. when an email send failed after
+// the quota check and the attempt should not consume the user's allowance.
+// Only meaningful inside the window the hit was counted in: a rolled-over or
+// empty window is left untouched, and the count never drops below zero.
+export async function rateWindowRefund(
+    tx: RateTxn,
+    windowSec: number,
+    nowMs: number,
+): Promise<void> {
+    const nowSec = Math.floor(nowMs / 1000);
+    const windowIndex = Math.floor(nowSec / windowSec);
+
+    const stored = await tx.get<RateWindow>(WINDOW_KEY);
+    if (stored?.windowIndex === windowIndex && stored.count > 0) {
+        await tx.put(WINDOW_KEY, { windowIndex, count: stored.count - 1 });
+    }
+}

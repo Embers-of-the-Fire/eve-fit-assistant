@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
+import { OTP_DAILY_SEND_LIMIT } from "../../src/auth/otp.ts";
 import { createAuthApp } from "../../src/auth/router.ts";
 import {
     loadAuthDatabase,
@@ -310,6 +311,53 @@ describe("signup and verify-email", () => {
         assert.ok(Number(denied.headers.get("retry-after")) > 0);
         // A different IP is unaffected.
         assert.equal((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status, 201);
+    });
+
+    it("does not burn the daily send quota when the email send fails", async () => {
+        let deliver = false;
+        const emails: CapturedEmail[] = [];
+        const app = createAuthApp({
+            sendEmail: (_env, input) => {
+                if (!deliver) {
+                    return Promise.resolve(false);
+                }
+                emails.push({ ...input });
+                return Promise.resolve(true);
+            },
+        });
+        const env = {
+            FIT_DB: new TestD1Database(loadAuthDatabase()),
+            AUTH_KV: new TestKV(),
+            AUTH_OTP: new TestOtpStateNamespace(),
+            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
+            AUTH_TOKEN_SECRET: SECRET,
+        };
+        const email = "user@example.com";
+        // Each attempt uses a fresh IP so the per-IP signup cap does not mask
+        // the per-address daily send quota under test.
+        const signup = (ip: string): Promise<Response> =>
+            Promise.resolve(
+                app.fetch(
+                    new Request("https://example.com/signup", {
+                        method: "POST",
+                        headers: { "content-type": "application/json", "CF-Connecting-IP": ip },
+                        body: JSON.stringify({ email, password: PASSWORD }),
+                    }),
+                    env as never,
+                ),
+            );
+
+        // A provider outage: every attempt fails, so the address stays
+        // pending and each retry follows the resend path.
+        for (let i = 0; i < OTP_DAILY_SEND_LIMIT; i++) {
+            assert.equal((await signup(`203.0.113.${i}`)).status, 500);
+        }
+        assert.equal(emails.length, 0);
+
+        // The provider recovers: no slot was consumed, so the resend goes out.
+        deliver = true;
+        assert.equal((await signup(DEFAULT_IP)).status, 200);
+        assert.equal(emails.length, 1);
     });
 });
 

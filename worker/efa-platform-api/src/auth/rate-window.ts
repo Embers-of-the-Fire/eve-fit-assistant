@@ -12,7 +12,7 @@
 // the cloudflare:workers runtime module.
 
 import { DurableObject } from "cloudflare:workers";
-import { type RateLimitOutcome, rateWindowHit } from "./rate-core.ts";
+import { type RateLimitOutcome, rateWindowHit, rateWindowRefund } from "./rate-core.ts";
 
 export class RateLimitWindow extends DurableObject {
     hit(limit: number, windowSec: number, nowMs: number): Promise<RateLimitOutcome> {
@@ -21,6 +21,12 @@ export class RateLimitWindow extends DurableObject {
         // atomicity.
         return this.ctx.storage.transaction(() =>
             rateWindowHit(this.ctx.storage, limit, windowSec, nowMs),
+        );
+    }
+
+    refund(windowSec: number, nowMs: number): Promise<void> {
+        return this.ctx.storage.transaction(() =>
+            rateWindowRefund(this.ctx.storage, windowSec, nowMs),
         );
     }
 }

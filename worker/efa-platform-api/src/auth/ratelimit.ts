@@ -17,3 +17,16 @@ export async function fixedWindowLimit(
 ): Promise<RateLimitOutcome> {
     return ns.get(ns.idFromName(`rl:${bucket}:${key}`)).hit(limit, windowSec, nowMs);
 }
+
+// Decrement the counter by one, refunding a hit whose guarded action failed
+// (see rate-core.ts). Only used where the quota must count successful
+// actions, not attempts.
+export async function fixedWindowRefund(
+    ns: DurableObjectNamespace<RateLimitWindow>,
+    bucket: string,
+    key: string,
+    windowSec: number,
+    nowMs: number = Date.now(),
+): Promise<void> {
+    return ns.get(ns.idFromName(`rl:${bucket}:${key}`)).refund(windowSec, nowMs);
+}

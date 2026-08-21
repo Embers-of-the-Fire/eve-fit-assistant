@@ -20,7 +20,7 @@ import {
 import type { OtpState } from "./otp-state.ts";
 import { hashPassword, ITERATIONS, verifyPassword } from "./passwords.ts";
 import type { RateLimitWindow } from "./rate-window.ts";
-import { fixedWindowLimit } from "./ratelimit.ts";
+import { fixedWindowLimit, fixedWindowRefund } from "./ratelimit.ts";
 import {
     activateUser,
     deregisterUser,
@@ -203,8 +203,16 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         await storeOtp(c.env.AUTH_OTP, secret, purpose, email, code);
         const sent = await sendEmail(c.env, { to: email, code, purpose, locale });
         if (!sent) {
-            // Leave no state behind so an immediate retry can resend.
+            // Leave no state behind so an immediate retry can resend: clear
+            // the OTP and refund the daily send quota, so a failed send does
+            // not burn one of the user's OTP_DAILY_SEND_LIMIT slots.
             await clearOtp(c.env.AUTH_OTP, purpose, email);
+            await fixedWindowRefund(
+                c.env.AUTH_RATE_LIMIT,
+                "otp-send",
+                `${purpose}:${email}`,
+                OTP_DAILY_SEND_WINDOW_SEC,
+            );
             return { outcome: "failed", retryAfterSec: 0 };
         }
         return { outcome: "sent", retryAfterSec: 0 };

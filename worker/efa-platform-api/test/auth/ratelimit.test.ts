@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { fixedWindowLimit } from "../../src/auth/ratelimit.ts";
+import { fixedWindowLimit, fixedWindowRefund } from "../../src/auth/ratelimit.ts";
 import { TestRateLimitNamespace } from "./helpers.ts";
 
 describe("fixedWindowLimit", () => {
@@ -54,5 +54,51 @@ describe("fixedWindowLimit", () => {
         );
         assert.equal(outcomes.filter((o) => o.allowed).length, 3);
         assert.equal(outcomes.filter((o) => !o.allowed).length, 7);
+    });
+});
+
+describe("fixedWindowRefund", () => {
+    it("frees a slot so a previously denied hit passes again", async () => {
+        const ns = new TestRateLimitNamespace();
+        assert.equal((await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed, true);
+        assert.equal(
+            (await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed,
+            false,
+        );
+        await fixedWindowRefund(ns as never, "bucket", "key", 3600);
+        assert.equal((await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed, true);
+        assert.equal(
+            (await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed,
+            false,
+        );
+    });
+
+    it("never drives the count below zero", async () => {
+        const ns = new TestRateLimitNamespace();
+        await fixedWindowRefund(ns as never, "bucket", "key", 3600);
+        await fixedWindowRefund(ns as never, "bucket", "key", 3600);
+        assert.equal((await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed, true);
+        assert.equal(
+            (await fixedWindowLimit(ns as never, "bucket", "key", 1, 3600)).allowed,
+            false,
+        );
+    });
+
+    it("does not touch a window that has rolled over", async () => {
+        const ns = new TestRateLimitNamespace();
+        // Aligned to a 300 s window boundary so +301 s crosses into the next window.
+        const startMs = 1_200_000;
+        await fixedWindowLimit(ns as never, "bucket", "key", 1, 300, startMs);
+        const afterMs = startMs + 301 * 1000;
+        // The new window starts empty; refunding must not drive it negative.
+        await fixedWindowRefund(ns as never, "bucket", "key", 300, afterMs);
+        assert.equal(
+            (await fixedWindowLimit(ns as never, "bucket", "key", 1, 300, afterMs)).allowed,
+            true,
+        );
+        assert.equal(
+            (await fixedWindowLimit(ns as never, "bucket", "key", 1, 300, afterMs)).allowed,
+            false,
+        );
     });
 });

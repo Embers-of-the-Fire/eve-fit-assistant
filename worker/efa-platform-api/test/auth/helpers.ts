@@ -12,7 +12,11 @@ import {
     otpStateStore,
     otpStateVerify,
 } from "../../src/auth/otp-core.ts";
-import { type RateLimitOutcome, rateWindowHit } from "../../src/auth/rate-core.ts";
+import {
+    type RateLimitOutcome,
+    rateWindowHit,
+    rateWindowRefund,
+} from "../../src/auth/rate-core.ts";
 
 export class TestKV {
     private readonly store = new Map<string, { value: string; expiresAt: number }>();
@@ -215,6 +219,8 @@ export class TestRateLimitNamespace {
                 storage.transaction((tx) =>
                     rateWindowHit(tx, limit, windowSec, nowMs + this.offsetMs),
                 ),
+            refund: (windowSec: number, nowMs: number): Promise<void> =>
+                storage.transaction((tx) => rateWindowRefund(tx, windowSec, nowMs + this.offsetMs)),
         };
     }
 }
