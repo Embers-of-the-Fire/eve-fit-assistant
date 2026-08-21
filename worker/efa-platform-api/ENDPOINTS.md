@@ -21,7 +21,9 @@ Returned by `verify-email`, `login`, `refresh`, and `reset-password/confirm`.
 - `accessToken`: HS256 JWT, 15-minute TTL, claims `{sub, iat, exp, jti, tv}`
   (`tv` is the account's token version, checked on authenticated calls).
 - `refreshToken`: opaque, 30-day TTL, rotated on every `refresh`; only its
-  SHA-256 hash is stored server-side.
+  SHA-256 hash is stored server-side (the sole plaintext copy is the ~61 s
+  rotation stash in `AUTH_KV`, kept so a replayed rotation inside the grace
+  window returns the same pair).
 - `expiresIn`: access-token lifetime in seconds.
 
 ### Error envelope

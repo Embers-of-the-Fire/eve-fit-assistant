@@ -1,5 +1,8 @@
 // Token primitives: HS256 access JWTs and opaque refresh tokens. WebCrypto
-// only. Only SHA-256 hashes of refresh tokens are ever persisted.
+// only. Only SHA-256 hashes of refresh tokens are ever persisted, with one
+// exception: the rotation stash in AUTH_KV (see router.ts) holds the
+// just-issued successor pair in plaintext for ~61 s so a replayed rotation
+// inside the grace window returns the same pair.
 
 export const ACCESS_TOKEN_TTL_SEC = 15 * 60;
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;

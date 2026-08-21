@@ -108,9 +108,13 @@ const LOGIN_IP_WINDOW_SEC = 5 * 60;
 const RESET_EMAIL_LIMIT = 3;
 const RESET_EMAIL_WINDOW_SEC = 60 * 60;
 
-// The rotation stash outlives the grace window so a replay inside the window
-// always finds it.
-const ROTATION_STASH_TTL_SEC = 120;
+// The rotation stash must outlive the grace window so a replay inside the
+// window always finds it: 61 s is the smallest TTL KV accepts above the 60 s
+// grace window (KV's minimum expirationTtl is 60 s).
+// Exception to the hashes-only invariant (see tokens.ts): the stash holds the
+// successor refresh and access tokens in plaintext so a replayed rotation can
+// be answered with the same pair.
+const ROTATION_STASH_TTL_SEC = 61;
 
 interface TokenPair {
     accessToken: string;

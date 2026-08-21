@@ -15,7 +15,10 @@ request/response schema reference. Tokens are transported in JSON bodies (no coo
 Passwords are PBKDF2-HMAC-SHA256 hashes; access tokens are 15-minute HS256
 JWTs carrying a `tv` (token version) claim checked against `users.token_version`
 on authenticated calls; refresh tokens are opaque 30-day tokens rotated on
-every refresh, with only their SHA-256 hash stored. OTPs are 6-digit codes
+every refresh, with only their SHA-256 hash stored. One exception: the
+rotation stash in `AUTH_KV` keeps the just-issued successor pair in plaintext
+for ~61 s so a replayed rotation inside the 60 s grace window returns the same
+pair. OTPs are 6-digit codes
 stored as keyed HMACs in `AUTH_KV` (10-minute TTL, 5 attempts, 60-second
 resend cooldown) and delivered via Resend (bilingual en/zh templates selected
 by the optional `locale` field).
