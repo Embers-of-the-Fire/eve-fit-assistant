@@ -19,6 +19,7 @@ let feedVersion = 0;
 
 async function loadFirstPage() {
     const version = ++feedVersion;
+    loadingMore = false;
     initialLoading = true;
     failed = false;
     try {
