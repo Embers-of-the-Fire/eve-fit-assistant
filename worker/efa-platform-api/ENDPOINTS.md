@@ -134,8 +134,9 @@ Responses:
 
 - `200 { "ok": true }` — the email is tombstoned
   (`deleted-<user_id>@deregistered.invalid`), the password hash blanked, the
-  token version bumped, and every session revoked. The address is immediately
-  free for re-signup.
+  token version bumped, and every session revoked with its retained PII
+  (`user_agent`, `ip`) cleared — all in one atomic batch. The address is
+  immediately free for re-signup.
 - `401 invalid_token` — missing/invalid/expired access token, or a stale token
   version.
 

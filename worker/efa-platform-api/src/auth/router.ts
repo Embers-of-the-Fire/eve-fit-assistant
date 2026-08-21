@@ -548,7 +548,6 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             return errorJson(401, "invalid_token", "missing or invalid access token");
         }
         await deregisterUser(c.env.FIT_DB, user.user_id);
-        await revokeAllUserSessions(c.env.FIT_DB, user.user_id);
         return c.json({ ok: true }, 200);
     });
 

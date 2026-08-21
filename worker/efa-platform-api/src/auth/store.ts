@@ -72,17 +72,27 @@ export async function updateUserPassword(
         .run();
 }
 
-// Anonymize the account: tombstone the email so the address is free for
-// re-signup, blank the hash, and bump token_version so outstanding access
-// tokens fail their version check. The row stays for referential integrity.
+// Anonymize the account in one atomic batch: tombstone the email so the
+// address is free for re-signup, blank the hash, and bump token_version so
+// outstanding access tokens fail their version check; revoke all sessions
+// and clear their retained PII (user_agent, ip). The user row stays for
+// referential integrity.
 export async function deregisterUser(db: D1Database, userId: string): Promise<void> {
-    await db
-        .prepare(
-            "UPDATE users SET email = ?, password_hash = '', status = 'deregistered', " +
-                `token_version = token_version + 1, ${TOUCH} WHERE user_id = ?`,
-        )
-        .bind(`deleted-${userId}@deregistered.invalid`, userId)
-        .run();
+    await db.batch([
+        db
+            .prepare(
+                "UPDATE users SET email = ?, password_hash = '', status = 'deregistered', " +
+                    `token_version = token_version + 1, ${TOUCH} WHERE user_id = ?`,
+            )
+            .bind(`deleted-${userId}@deregistered.invalid`, userId),
+        db
+            .prepare(
+                "UPDATE auth_sessions SET " +
+                    "revoked_at = COALESCE(revoked_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), " +
+                    "user_agent = NULL, ip = NULL WHERE user_id = ?",
+            )
+            .bind(userId),
+    ]);
 }
 
 export async function insertSession(

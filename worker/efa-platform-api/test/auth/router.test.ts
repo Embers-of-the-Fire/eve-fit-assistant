@@ -454,6 +454,17 @@ describe("deregister", () => {
         assert.equal(user.password_hash, "");
         assert.match(user.email, /^deleted-[0-9a-f-]{36}@deregistered\.invalid$/);
 
+        // Sessions are revoked and their retained PII is cleared.
+        const sessions = ctx.db
+            .prepare("SELECT revoked_at, user_agent, ip FROM auth_sessions")
+            .all() as { revoked_at: string | null; user_agent: string | null; ip: string | null }[];
+        assert.ok(sessions.length > 0);
+        for (const session of sessions) {
+            assert.ok(session.revoked_at !== null);
+            assert.equal(session.user_agent, null);
+            assert.equal(session.ip, null);
+        }
+
         // The old access token fails its token-version check; the session is gone.
         assert.equal(
             (

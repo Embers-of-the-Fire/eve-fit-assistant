@@ -30,7 +30,7 @@ by the optional `locale` field).
 | `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend) when pending; uniform `401 invalid_credentials` otherwise. 20/day per account, 30/5min per IP (loose on purpose: CGNAT) |
 | `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`) |
 | `/platform/auth/logout` | `{refreshToken}` — revokes that session; always `200 {ok:true}` |
-| `/platform/auth/deregister` | Bearer access token — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions; `200 {ok:true}`; the address is free for re-signup |
+| `/platform/auth/deregister` | Bearer access token — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions and clears their retained PII (`user_agent`, `ip`) in one atomic batch; `200 {ok:true}`; the address is free for re-signup |
 | `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email) |
 | `/platform/auth/reset-password/confirm` | `{email, code, newPassword}` — updates the hash, bumps `token_version`, revokes all sessions, issues a fresh pair (`200`); `401` on invalid/expired OTP |
 
