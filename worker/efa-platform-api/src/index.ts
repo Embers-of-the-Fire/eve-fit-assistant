@@ -11,6 +11,7 @@ import {
     escapeLikePattern,
     FIT_HASH_PATTERN,
     normalizeBlob,
+    parseLimit,
     parseTimeWindow,
     resolveShipName,
     timingSafeEqual,
@@ -201,11 +202,11 @@ app.get("/posts", async (c) => {
     let limit = DEFAULT_LIST_LIMIT;
     const limitRaw = c.req.query("limit");
     if (limitRaw !== undefined) {
-        const parsed = Number.parseInt(limitRaw, 10);
-        if (Number.isNaN(parsed)) {
+        const parsed = parseLimit(limitRaw, MAX_LIST_LIMIT);
+        if (parsed === null) {
             return errorJson(400, "bad_request", "malformed limit");
         }
-        limit = Math.min(Math.max(parsed, 1), MAX_LIST_LIMIT);
+        limit = parsed;
     }
     const locale = c.req.query("locale") ?? "en";
 
@@ -411,11 +412,11 @@ app.get("/ships", async (c) => {
     let limit = DEFAULT_LIST_LIMIT;
     const limitRaw = c.req.query("limit");
     if (limitRaw !== undefined) {
-        const parsed = Number.parseInt(limitRaw, 10);
-        if (Number.isNaN(parsed)) {
+        const parsed = parseLimit(limitRaw, MAX_LIST_LIMIT);
+        if (parsed === null) {
             return errorJson(400, "bad_request", "malformed limit");
         }
-        limit = Math.min(Math.max(parsed, 1), MAX_LIST_LIMIT);
+        limit = parsed;
     }
     const locale = c.req.query("locale") ?? "en";
 

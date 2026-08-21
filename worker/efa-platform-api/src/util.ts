@@ -39,6 +39,16 @@ export function truncateCodePoints(text: string, limit: number): string {
     return [...text].slice(0, limit).join("");
 }
 
+// The `limit` query parameter must be a plain decimal integer: parseInt's
+// numeric-prefix leniency ("20junk" -> 20) would otherwise let malformed
+// values through. Returns null for anything but an all-digit string,
+// otherwise the value clamped to [1, maxLimit].
+export function parseLimit(raw: string, maxLimit: number): number | null {
+    if (!/^\d+$/.test(raw)) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Math.min(Math.max(parsed, 1), maxLimit);
+}
+
 // The cursor token is the opaque base64url encoding of `{created_at}|{post_id}`;
 // clients must not parse it.
 export function encodeCursor(createdAt: string, postId: string): string {

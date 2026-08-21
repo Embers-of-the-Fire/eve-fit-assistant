@@ -7,6 +7,7 @@ import {
     encodeShipCursor,
     escapeLikePattern,
     normalizeBlob,
+    parseLimit,
     parseTimeWindow,
     resolveShipName,
     timingSafeEqual,
@@ -141,6 +142,31 @@ describe("ship cursor tokens", () => {
         assert.equal(decodeShipCursor(btoa("42|-1")), null);
         assert.equal(decodeShipCursor(btoa("-1|24692")), null);
         assert.equal(decodeShipCursor(btoa("42|24692|extra")), null);
+    });
+});
+
+describe("parseLimit", () => {
+    it("accepts plain decimal integers", () => {
+        assert.equal(parseLimit("1", 50), 1);
+        assert.equal(parseLimit("20", 50), 20);
+        assert.equal(parseLimit("007", 50), 7);
+    });
+
+    it("clamps to [1, maxLimit]", () => {
+        assert.equal(parseLimit("0", 50), 1);
+        assert.equal(parseLimit("999", 50), 50);
+    });
+
+    it("rejects numeric prefixes and non-decimal values", () => {
+        assert.equal(parseLimit("20junk", 50), null);
+        assert.equal(parseLimit("20.5", 50), null);
+        assert.equal(parseLimit("-1", 50), null);
+        assert.equal(parseLimit("+1", 50), null);
+        assert.equal(parseLimit(" 20", 50), null);
+        assert.equal(parseLimit("20 ", 50), null);
+        assert.equal(parseLimit("0x20", 50), null);
+        assert.equal(parseLimit("", 50), null);
+        assert.equal(parseLimit("junk", 50), null);
     });
 });
 
