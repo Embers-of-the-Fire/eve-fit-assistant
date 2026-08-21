@@ -29,6 +29,7 @@ import {
     getUserById,
     insertSession,
     insertUser,
+    invalidateUserTokens,
     revokeAllUserSessions,
     revokeSession,
     rotateSession,
@@ -493,8 +494,9 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
                 return errorJson(401, "invalid_token", "refresh token is invalid or expired");
             }
             // A token older than the grace window is a genuine reuse signal:
-            // revoke the user's whole session chain.
-            await revokeAllUserSessions(c.env.FIT_DB, session.user_id);
+            // revoke the user's whole session chain and bump token_version so
+            // access tokens issued before the detection are invalidated too.
+            await invalidateUserTokens(c.env.FIT_DB, session.user_id);
             return errorJson(401, "invalid_token", "refresh token is invalid or expired");
         }
 

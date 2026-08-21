@@ -465,6 +465,27 @@ describe("refresh", () => {
         assert.equal((await ctx.refresh(pair1.refreshToken)).status, 401);
         // The reuse signal killed the whole chain, including the successor.
         assert.equal((await ctx.refresh(pair2.refreshToken)).status, 401);
+        // Access tokens issued before the detection fail their version check.
+        assert.equal(
+            (
+                await ctx.post(
+                    "/deregister",
+                    {},
+                    { headers: { authorization: `Bearer ${pair1.accessToken}` } },
+                )
+            ).status,
+            401,
+        );
+        assert.equal(
+            (
+                await ctx.post(
+                    "/deregister",
+                    {},
+                    { headers: { authorization: `Bearer ${pair2.accessToken}` } },
+                )
+            ).status,
+            401,
+        );
     });
 
     it("rejects unknown, expired, and revoked tokens", async () => {

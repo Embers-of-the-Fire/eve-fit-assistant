@@ -3,8 +3,10 @@ import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import {
     getSessionByRefreshHash,
+    getUserById,
     insertSession,
     insertUser,
+    invalidateUserTokens,
     rotateSession,
 } from "../../src/auth/store.ts";
 import { loadAuthDatabase, TestD1Database } from "./helpers.ts";
@@ -103,5 +105,24 @@ describe("rotateSession", () => {
 
         const previous = await getSessionByRefreshHash(db, "hash-old");
         assert.equal(previous?.replaced_by, null);
+    });
+});
+
+describe("invalidateUserTokens", () => {
+    it("revokes all sessions and bumps token_version atomically", async () => {
+        const db = setupDb();
+        const userId = await seedUser(db);
+        await seedSession(db, userId, "hash-a");
+        await seedSession(db, userId, "hash-b");
+
+        const before = await getUserById(db, userId);
+        await invalidateUserTokens(db, userId);
+
+        const after = await getUserById(db, userId);
+        assert.equal(after?.token_version, (before?.token_version ?? 0) + 1);
+        for (const hash of ["hash-a", "hash-b"]) {
+            const session = await getSessionByRefreshHash(db, hash);
+            assert.ok(session?.revoked_at !== null);
+        }
     });
 });

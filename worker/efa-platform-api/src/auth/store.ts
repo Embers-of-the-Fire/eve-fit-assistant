@@ -200,3 +200,23 @@ export async function revokeAllUserSessions(db: D1Database, userId: string): Pro
         .bind(userId)
         .run();
 }
+
+// Refresh-token reuse response: revoke the user's whole session chain and
+// bump token_version so access tokens the attacker may already hold fail
+// their version check. Both statements run in one atomic batch so a partial
+// failure cannot leave the account half-invalidated.
+export async function invalidateUserTokens(db: D1Database, userId: string): Promise<void> {
+    await db.batch([
+        db
+            .prepare(
+                "UPDATE auth_sessions SET revoked_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
+                    "WHERE user_id = ? AND revoked_at IS NULL",
+            )
+            .bind(userId),
+        db
+            .prepare(
+                `UPDATE users SET token_version = token_version + 1, ${TOUCH} WHERE user_id = ?`,
+            )
+            .bind(userId),
+    ]);
+}
