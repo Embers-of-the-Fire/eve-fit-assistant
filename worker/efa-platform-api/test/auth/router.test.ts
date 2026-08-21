@@ -534,7 +534,7 @@ describe("deregister", () => {
 
         const res = await ctx.post(
             "/deregister",
-            {},
+            { password: PASSWORD },
             { headers: { authorization: `Bearer ${pair.accessToken}` } },
         );
         assert.equal(res.status, 200);
@@ -575,6 +575,52 @@ describe("deregister", () => {
 
         // The address is free for re-signup.
         assert.equal((await ctx.signup(email)).status, 201);
+    });
+
+    it("requires the current password in addition to the access token", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        const pair = await ctx.register(email);
+        const headers = { authorization: `Bearer ${pair.accessToken}` };
+
+        // A valid access token alone is not enough.
+        const noPassword = await ctx.post("/deregister", {}, { headers });
+        assert.equal(noPassword.status, 400);
+
+        const wrong = await ctx.post("/deregister", { password: "wrong-password" }, { headers });
+        assert.equal(wrong.status, 401);
+        assert.equal(((await wrong.json()) as { error: string }).error, "invalid_credentials");
+
+        // The account is untouched and still usable.
+        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+
+        assert.equal(
+            (await ctx.post("/deregister", { password: PASSWORD }, { headers })).status,
+            200,
+        );
+        assert.equal((await ctx.login(email, PASSWORD)).status, 401);
+    });
+
+    it("rate limits failed deregister attempts per account and IP", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        const pair = await ctx.register(email);
+        const headers = { authorization: `Bearer ${pair.accessToken}` };
+        const deregister = (password: string, options?: PostOptions): Promise<Response> =>
+            ctx.post("/deregister", { password }, { ...options, headers });
+
+        for (let i = 0; i < 5; i++) {
+            assert.equal((await deregister("wrong-password")).status, 401);
+        }
+        // The sixth attempt from the same IP is blocked, even with the right
+        // password.
+        const denied = await deregister(PASSWORD);
+        assert.equal(denied.status, 429);
+        assert.ok(Number(denied.headers.get("retry-after")) > 0);
+
+        // The block is scoped to the source IP: the correct password still
+        // deregisters from anywhere else.
+        assert.equal((await deregister(PASSWORD, { ip: "203.0.113.99" })).status, 200);
     });
 });
 

@@ -127,9 +127,10 @@ Responses:
 
 ### `/deregister`
 
-Anonymizes the account and revokes all credentials.
+Anonymizes the account and revokes all credentials. Irreversible, so it
+re-authenticates: the current password is required on top of the access token.
 
-Request: no body; requires `Authorization: Bearer <accessToken>`.
+Request: `{ password: string }`; requires `Authorization: Bearer <accessToken>`.
 
 Responses:
 
@@ -138,8 +139,12 @@ Responses:
   token version bumped, and every session revoked with its retained PII
   (`user_agent`, `ip`) cleared — all in one atomic batch. The address is
   immediately free for re-signup.
+- `400 bad_request` — malformed body (missing `password`).
 - `401 invalid_token` — missing/invalid/expired access token, or a stale token
   version.
+- `401 invalid_credentials` — wrong password.
+- `429 rate_limited` — 5 failed attempts/30 min per account+IP (successful
+  calls are refunded and never consume quota).
 
 ### `/reset-password`
 
@@ -176,4 +181,5 @@ Exceeded limits return `429 { "error": "rate_limited" }` with `Retry-After`.
 | OTP verify attempts | 5 per issued code |
 | `login` per account+IP | 5 failures / 30 min |
 | `login` per IP | 30 / 5 min |
+| `deregister` per account+IP | 5 failures / 30 min |
 | `reset-password` per address | 3 / hour |

@@ -98,6 +98,9 @@ const ResetConfirmSchema = z.object({
     code: codeField,
     newPassword: passwordField,
 });
+// /deregister re-authenticates: the current password is required on top of
+// the access token, so a stolen token alone cannot destroy the account.
+const DeregisterSchema = z.object({ password: z.string().min(1).max(128) });
 
 // Same shape as a real hash, used to keep the unknown-email path of /login
 // on the same code path (and timing profile) as the known-email path.
@@ -122,6 +125,12 @@ const RESET_EMAIL_WINDOW_SEC = 60 * 60;
 // random tokens. Kept as loose as login-ip for the same CGNAT reason.
 const TOKEN_IP_LIMIT = 30;
 const TOKEN_IP_WINDOW_SEC = 5 * 60;
+// /deregister is irreversible, so its password re-check gets the same
+// failure-counting treatment as /login: keyed on account+IP, successes are
+// refunded, and the cap keeps a stolen access token from turning into a
+// password oracle for account destruction.
+const DEREGISTER_ACCOUNT_LIMIT = 5;
+const DEREGISTER_ACCOUNT_WINDOW_SEC = 30 * 60;
 
 // The rotation stash must outlive the grace window so a replay inside the
 // window always finds it: 61 s is the smallest TTL KV accepts above the 60 s
@@ -581,6 +590,34 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (user?.status !== "active" || user.token_version !== claims.tv) {
             return errorJson(401, "invalid_token", "missing or invalid access token");
         }
+        const parsed = DeregisterSchema.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return errorJson(400, "bad_request", "invalid request body");
+        }
+        // Keyed on account+IP like /login: one source can only exhaust its
+        // own pair's budget and cannot lock the account out from elsewhere.
+        const accountKey = `${user.user_id}:${clientIp(c)}`;
+        const limited = await rateLimited(
+            c,
+            "deregister-account",
+            accountKey,
+            DEREGISTER_ACCOUNT_LIMIT,
+            DEREGISTER_ACCOUNT_WINDOW_SEC,
+        );
+        if (limited) {
+            return limited;
+        }
+        if (!(await verifyPassword(parsed.data.password, user.password_hash))) {
+            return errorJson(401, "invalid_credentials", "incorrect password");
+        }
+        // The quota counts failed attempts only; a correct password refunds
+        // its hit so a legitimate deregistration never consumes budget.
+        await fixedWindowRefund(
+            c.env.AUTH_RATE_LIMIT,
+            "deregister-account",
+            accountKey,
+            DEREGISTER_ACCOUNT_WINDOW_SEC,
+        );
         await deregisterUser(c.env.FIT_DB, user.user_id);
         return c.json({ ok: true }, 200);
     });
