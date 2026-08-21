@@ -49,7 +49,11 @@ allocations.
 
 ## API
 
-All public responses carry `Access-Control-Allow-Origin: *`. Errors are JSON
+Responses under `/platform/internal` carry `Access-Control-Allow-Origin: *`.
+The `/platform/auth` mount instead answers CORS only for the platform's own
+web origins (the allowlist in `src/root.ts`), so arbitrary sites cannot relay
+the token and email flows through a visitor's browser; clients without an
+`Origin` header (the native app) are unaffected. Errors are JSON
 `{ "error": <code>, "message": <string> }` with status 400 `bad_request`, 401
 `unauthorized`, 404 `not_found`, 500 `internal`; errors from fit-storage are
 passed through unchanged (e.g. 409 `snapshot_incomplete`, 422

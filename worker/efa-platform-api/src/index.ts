@@ -4,6 +4,7 @@ import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_p
 import { Hono } from "hono";
 
 import { type AuthEnv, authApp } from "./auth/router";
+import { createRootApp } from "./root";
 
 // Durable Object classes must be exported from the worker entrypoint.
 export { OtpState } from "./auth/otp-state";
@@ -34,8 +35,6 @@ interface Env extends AuthEnv {
     FIT_STORAGE_TOKEN?: string;
 }
 
-const MOUNT_PATH = "/platform/internal";
-const AUTH_MOUNT_PATH = "/platform/auth";
 const FIT_STORAGE_ORIGIN = "https://efa-platform-fit-storage.internal";
 
 const DEFAULT_LIST_LIMIT = 20;
@@ -536,29 +535,6 @@ app.onError((err, _c) => {
     return errorJson(500, "internal", "internal server error");
 });
 
-const root = new Hono<{ Bindings: Env }>();
-
-root.use("*", async (c, next) => {
-    try {
-        await next();
-    } catch (err) {
-        console.error("Unhandled error", err);
-        c.res = errorJson(500, "internal", "internal server error");
-    }
-    c.res.headers.set("Access-Control-Allow-Origin", "*");
-});
-
-root.options("*", () => {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
-    });
-});
-
-root.route(MOUNT_PATH, app);
-root.route(AUTH_MOUNT_PATH, authApp);
-export default root;
+// Root composition and the CORS policy live in root.ts (kept free of
+// cloudflare:workers imports so tests can exercise the wiring under Node).
+export default createRootApp(app, authApp);

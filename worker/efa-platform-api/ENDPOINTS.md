@@ -2,7 +2,10 @@
 
 Base URL: `https://api.efa-tech.dev/platform/auth`. All endpoints are `POST`
 with JSON request and response bodies (`Content-Type: application/json`).
-Tokens are transported in response bodies; there are no cookies.
+Tokens are transported in response bodies; there are no cookies. Cross-origin
+browser access is restricted to the platform's own web origins (the allowlist
+in `src/root.ts`); non-browser clients send no `Origin` header and are
+unaffected.
 
 ## Common shapes
 
