@@ -42,8 +42,10 @@ rate-limit counters — lives in two SQLite-backed Durable Object classes
 (`OtpState`, one instance per purpose+email; `RateLimitWindow`, one per
 bucket+key), whose per-instance serialization plus single-transaction
 read-modify-write removes the race KV's non-atomic updates had. Idle
-instances hibernate (no duration charge), so at authentication volume the
-metered cost stays within the included Durable Object allocations.
+instances hibernate, which removes duration charges only while an object
+qualifies for hibernation; requests and SQLite storage operations still
+incur charges, so monitor usage against the plan's included Durable Object
+allocations.
 
 ## API
 
@@ -106,16 +108,19 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 
 1. Apply migrations: `wrangler d1 migrations apply efa-platform --remote`
    (and `--env preview` for `efa-platform-test`).
-2. Create the auth KV namespace (rotation stash only): `wrangler kv namespace create
-   efa-platform-auth` (plus a preview namespace) and paste the IDs into
-   `wrangler.toml` (`[[kv_namespaces]]` and `[[env.preview.kv_namespaces]]`).
+2. Create the auth KV namespaces (rotation stash only): `wrangler kv namespace create
+   efa-platform-auth` for the default environment and `wrangler kv namespace create
+   efa-platform-auth --env preview` for the preview environment, then paste the
+   IDs into `wrangler.toml` (`[[kv_namespaces]]` and
+   `[[env.preview.kv_namespaces]]`). Note: `--preview` selects a KV preview
+   namespace; it does not select `[env.preview]` — use `--env preview`.
    The Durable Object classes need no manual provisioning: the `v1`
    `new_sqlite_classes` migration in `wrangler.toml` creates them at deploy
    time (and again on the first `--env preview` deploy).
 3. `wrangler secret put FIT_STORAGE_TOKEN` (re-provision the existing value),
    `wrangler secret put AUTH_TOKEN_SECRET` (JWT/OTP HMAC key), and
-   `wrangler secret put RESEND_API_KEY` — each for the default and `preview`
-   environments.
+   `wrangler secret put RESEND_API_KEY` — run each once for the default
+   environment and once with `--env preview`.
 4. Verify the `platform.efa-tech.dev` sender subdomain in Resend (DKIM/SPF DNS
    records). The sender address itself is the plain `EMAIL_FROM` var.
 5. `wrangler deploy`. Workers are deployed manually; no CI deploys exist.
