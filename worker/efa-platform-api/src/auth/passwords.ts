@@ -7,6 +7,11 @@ const ALGORITHM = "pbkdf2";
 // workerd's checkPbkdfLimits); stay well below it so the cap can shrink
 // without breaking hashing.
 export const ITERATIONS = 50_000;
+// Verification rejects any stored hash above the Workers runtime cap
+// (100,000, per workerd's checkPbkdfLimits) before derivation, so a crafted
+// hash cannot request excessive PBKDF2 work or exceed Web Crypto's unsigned
+// long range and make deriveBits reject.
+const MAX_ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const DERIVED_BITS = 256;
 
@@ -68,7 +73,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
         return false;
     }
     const iterations = Number(parts[1]);
-    if (!Number.isSafeInteger(iterations) || iterations <= 0) {
+    if (!Number.isSafeInteger(iterations) || iterations <= 0 || iterations > MAX_ITERATIONS) {
         return false;
     }
     const salt = base64ToBytes(parts[2]);

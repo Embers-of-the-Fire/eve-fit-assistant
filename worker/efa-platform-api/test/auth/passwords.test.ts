@@ -38,4 +38,15 @@ describe("passwords", () => {
             assert.equal(await verifyPassword(stored, malformed), false, malformed);
         }
     });
+
+    it("rejects iteration counts above the Workers cap without deriving", async () => {
+        const parts = (await hashPassword("some-password")).split("$");
+        // Just above workerd's 100,000 cap.
+        parts[1] = "100001";
+        assert.equal(await verifyPassword("some-password", parts.join("$")), false);
+        // Above Web Crypto's unsigned long range (2^32 - 1), which would make
+        // deriveBits reject; verification must return false instead.
+        parts[1] = "4294967296";
+        assert.equal(await verifyPassword("some-password", parts.join("$")), false);
+    });
 });
