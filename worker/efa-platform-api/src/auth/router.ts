@@ -528,9 +528,18 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             refreshToken: minted.refreshToken,
             expiresIn: ACCESS_TOKEN_TTL_SEC,
         };
-        await c.env.AUTH_KV.put(rotationStashKey(refreshHash), JSON.stringify(pair), {
-            expirationTtl: ROTATION_STASH_TTL_SEC,
-        });
+        // Best-effort: the rotation is already committed in D1, so a failed
+        // stash write must not fail the response — otherwise the client loses
+        // the minted token and the grace-window replay path finds nothing,
+        // forcing a full re-login. Degraded replay is acceptable; the client
+        // still holds a working refresh token.
+        try {
+            await c.env.AUTH_KV.put(rotationStashKey(refreshHash), JSON.stringify(pair), {
+                expirationTtl: ROTATION_STASH_TTL_SEC,
+            });
+        } catch (err) {
+            console.error("rotation stash write failed", err);
+        }
         return c.json(pair, 200);
     });
 
