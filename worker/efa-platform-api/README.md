@@ -25,13 +25,13 @@ by the optional `locale` field).
 
 | Endpoint | Description |
 | --- | --- |
-| `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP |
+| `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP, plus the shared OTP send limits: 60 s resend cooldown per purpose+address (silent) and 10 sends/day per purpose+address (`429`) |
 | `/platform/auth/verify-email` | `{email, code}` — activates the pending user and issues a token pair (`200`); `401 otp_invalid`/`otp_expired`; `409 already_verified` |
-| `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend) when pending; uniform `401 invalid_credentials` otherwise. 20/day per account, 30/5min per IP (loose on purpose: CGNAT) |
+| `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend, cooldown applies) when pending; uniform `401 invalid_credentials` otherwise. 20/day per account, 30/5min per IP (loose on purpose: CGNAT) |
 | `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`) |
 | `/platform/auth/logout` | `{refreshToken}` — revokes that session; always `200 {ok:true}` |
 | `/platform/auth/deregister` | Bearer access token — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions and clears their retained PII (`user_agent`, `ip`) in one atomic batch; `200 {ok:true}`; the address is free for re-signup |
-| `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email) |
+| `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email, plus the shared OTP 60 s cooldown and 10/day cap, all enforced silently) |
 | `/platform/auth/reset-password/confirm` | `{email, code, newPassword}` — updates the hash, bumps `token_version`, revokes all sessions, issues a fresh pair (`200`); `401` on invalid/expired OTP |
 
 Rate-limit excess returns `429 {error:"rate_limited"}` with a `Retry-After`
