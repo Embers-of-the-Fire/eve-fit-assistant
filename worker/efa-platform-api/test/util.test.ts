@@ -120,6 +120,14 @@ describe("parseTimeWindow", () => {
         assert.equal(parseTimeWindow(""), "invalid");
         assert.equal(parseTimeWindow("-7 days"), "invalid");
     });
+
+    it("rejects inherited Object.prototype property names", () => {
+        assert.equal(parseTimeWindow("__proto__"), "invalid");
+        assert.equal(parseTimeWindow("constructor"), "invalid");
+        assert.equal(parseTimeWindow("toString"), "invalid");
+        assert.equal(parseTimeWindow("hasOwnProperty"), "invalid");
+        assert.equal(parseTimeWindow("valueOf"), "invalid");
+    });
 });
 
 describe("ship cursor tokens", () => {

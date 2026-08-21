@@ -95,7 +95,11 @@ const TIME_WINDOW_MODIFIERS: Record<string, string> = {
 
 export function parseTimeWindow(raw: string | undefined): string | null | "invalid" {
     if (raw === undefined || raw === "all") return null;
-    return TIME_WINDOW_MODIFIERS[raw] ?? "invalid";
+    // Own-property check: a plain index lookup would also resolve inherited
+    // Object.prototype members ("__proto__", "constructor", "toString", ...)
+    // and leak them to D1 as the datetime modifier instead of rejecting them.
+    if (!Object.hasOwn(TIME_WINDOW_MODIFIERS, raw)) return "invalid";
+    return TIME_WINDOW_MODIFIERS[raw];
 }
 
 // The ship-directory cursor token is the opaque base64url encoding of
