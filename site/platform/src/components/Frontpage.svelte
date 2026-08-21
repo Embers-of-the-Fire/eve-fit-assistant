@@ -1,8 +1,9 @@
 <script lang="ts">
-import { onMount } from "svelte";
+import { onMount, untrack } from "svelte";
 import { fetchPosts, fetchStats } from "../lib/api";
 import { initLocale, locale, t } from "../lib/i18n.svelte";
 import { DOWNLOAD_URL, WEB_URL } from "../lib/share-target";
+import type { Locale } from "../lib/translations";
 import type { PlatformStats, PostSummary, TopShip } from "../lib/types";
 import PostCard from "./PostCard.svelte";
 
@@ -17,9 +18,24 @@ let initialLoading = $state(true);
 let failed = $state(false);
 let loadingMore = $state(false);
 let feedVersion = 0;
+let statsVersion = 0;
+let fetchedLocale: Locale | null = null;
+
+async function loadStats() {
+    const version = ++statsVersion;
+    try {
+        const value = await fetchStats(locale.current);
+        if (version !== statsVersion) return;
+        stats = value;
+    } catch {
+        if (version !== statsVersion) return;
+        stats = null;
+    }
+}
 
 async function loadFirstPage() {
     const version = ++feedVersion;
+    fetchedLocale = locale.current;
     loadingMore = false;
     initialLoading = true;
     failed = false;
@@ -69,15 +85,18 @@ function clearFilter() {
     loadFirstPage();
 }
 
+$effect(() => {
+    const current = locale.current;
+    if (fetchedLocale === null || current === fetchedLocale) return;
+    untrack(() => {
+        loadStats();
+        loadFirstPage();
+    });
+});
+
 onMount(() => {
     initLocale();
-    fetchStats(locale.current)
-        .then((value) => {
-            stats = value;
-        })
-        .catch(() => {
-            stats = null;
-        });
+    loadStats();
     loadFirstPage();
 });
 </script>
