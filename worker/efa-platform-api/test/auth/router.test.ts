@@ -393,17 +393,42 @@ describe("login", () => {
         assert.ok(pair.refreshToken.length > 0);
     });
 
-    it("rate limits login attempts per account", async () => {
+    it("rate limits failed login attempts per account and IP", async () => {
         const ctx = setup();
         const email = "user@example.com";
         await ctx.register(email);
 
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 5; i++) {
             assert.equal((await ctx.login(email, "wrong-password")).status, 401);
         }
+        // The sixth attempt from the same IP is blocked, even with the right
+        // password.
         const denied = await ctx.login(email, PASSWORD);
         assert.equal(denied.status, 429);
         assert.ok(Number(denied.headers.get("retry-after")) > 0);
+
+        // The block is scoped to the source IP: the account still logs in
+        // from anywhere else.
+        assert.equal((await ctx.login(email, PASSWORD, { ip: "203.0.113.99" })).status, 200);
+    });
+
+    it("does not count successful logins against the failure limit", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        await ctx.register(email);
+
+        // Repeated successful logins never exhaust the budget.
+        for (let i = 0; i < 10; i++) {
+            assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+        }
+        // A success just below saturation still goes through and frees its
+        // slot, so it cannot tip the counter over the limit.
+        for (let i = 0; i < 4; i++) {
+            assert.equal((await ctx.login(email, "wrong-password")).status, 401);
+        }
+        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+        assert.equal((await ctx.login(email, "wrong-password")).status, 401);
+        assert.equal((await ctx.login(email, PASSWORD)).status, 429);
     });
 });
 

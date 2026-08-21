@@ -90,7 +90,8 @@ Responses:
   design).
 - `403 email_unverified` — account is pending; a fresh verification code is
   resent best-effort (cooldown applies).
-- `429 rate_limited` — 20 logins/day per account or 30/5 min per IP (the IP
+- `429 rate_limited` — 5 failed logins/30 min per account+IP (successful
+  logins are refunded and never consume quota) or 30/5 min per IP (the IP
   limit is deliberately loose: mobile carriers share exit IPs via CGNAT).
 
 ### `/refresh`
@@ -173,6 +174,6 @@ Exceeded limits return `429 { "error": "rate_limited" }` with `Retry-After`.
 | `signup` per IP | 5 / hour |
 | OTP sends per purpose+address | 60 s cooldown + 10 / day |
 | OTP verify attempts | 5 per issued code |
-| `login` per account | 20 / day |
+| `login` per account+IP | 5 failures / 30 min |
 | `login` per IP | 30 / 5 min |
 | `reset-password` per address | 3 / hour |

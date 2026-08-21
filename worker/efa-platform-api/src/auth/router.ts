@@ -104,10 +104,14 @@ const DUMMY_PASSWORD_HASH = `pbkdf2$${ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA==$AAAAA
 
 const SIGNUP_IP_LIMIT = 5;
 const SIGNUP_IP_WINDOW_SEC = 60 * 60;
-const LOGIN_ACCOUNT_LIMIT = 20;
-const LOGIN_ACCOUNT_WINDOW_SEC = 24 * 60 * 60;
+// Counts failed attempts only: a correct password refunds its hit, so a
+// legitimate sign-in never consumes quota. Keyed on email+IP (see /login), so
+// knowing a victim's address is not enough to lock the account out — one
+// source can only exhaust its own pair's budget.
+const LOGIN_ACCOUNT_LIMIT = 5;
+const LOGIN_ACCOUNT_WINDOW_SEC = 30 * 60;
 // Deliberately loose: mobile carriers use CGNAT, so many unrelated users
-// share exit IPs. The per-account limit carries the real weight.
+// share exit IPs. The per-account+IP failure limit carries the real weight.
 const LOGIN_IP_LIMIT = 30;
 const LOGIN_IP_WINDOW_SEC = 5 * 60;
 const RESET_EMAIL_LIMIT = 3;
@@ -408,10 +412,13 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             return limitedIp;
         }
         const { email, password } = parsed.data;
+        // Keyed on email+IP so one source cannot exhaust a shared account
+        // budget and knowing an address alone cannot lock the account out.
+        const accountKey = `${email}:${clientIp(c)}`;
         const limitedAccount = await rateLimited(
             c,
             "login-account",
-            email,
+            accountKey,
             LOGIN_ACCOUNT_LIMIT,
             LOGIN_ACCOUNT_WINDOW_SEC,
         );
@@ -436,6 +443,14 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (!(await verifyPassword(password, user.password_hash))) {
             return errorJson(401, "invalid_credentials", "invalid email or password");
         }
+        // The quota counts failed attempts only, so refund the hit taken
+        // above: a correct password must never consume the budget.
+        await fixedWindowRefund(
+            c.env.AUTH_RATE_LIMIT,
+            "login-account",
+            accountKey,
+            LOGIN_ACCOUNT_WINDOW_SEC,
+        );
         return c.json(await issueTokenPair(c, secret, user), 200);
     });
 
