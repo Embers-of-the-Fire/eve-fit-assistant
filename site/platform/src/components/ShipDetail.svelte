@@ -21,6 +21,7 @@ let loadingMore = $state(false);
 let feedVersion = 0;
 
 async function loadDetail() {
+    detailFailed = false;
     try {
         detail = await fetchShip(shipTypeId, locale.current);
     } catch {
@@ -74,6 +75,11 @@ async function loadMore() {
 function selectWindow(window: TimeWindow) {
     if (activeWindow === window) return;
     activeWindow = window;
+    loadFirstPage();
+}
+
+function retry() {
+    loadDetail();
     loadFirstPage();
 }
 
@@ -143,7 +149,7 @@ onMount(() => {
             <p class="text-console-danger">{t("fits.error")}</p>
             <button
                 type="button"
-                onclick={loadFirstPage}
+                onclick={retry}
                 class="mt-2 rounded border border-console-border px-3 py-1 text-sm text-console-text-dim transition-colors hover:border-console-primary hover:text-console-highlight"
             >
                 {t("feed.retry")}
