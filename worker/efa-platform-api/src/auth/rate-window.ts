@@ -16,6 +16,11 @@ import { type RateLimitOutcome, rateWindowHit } from "./rate-core.ts";
 
 export class RateLimitWindow extends DurableObject {
     hit(limit: number, windowSec: number, nowMs: number): Promise<RateLimitOutcome> {
-        return this.ctx.storage.transaction((tx) => rateWindowHit(tx, limit, windowSec, nowMs));
+        // The callback txn object is obsolete in the SQLite storage API; call
+        // get/put on ctx.storage directly — transaction() still provides the
+        // atomicity.
+        return this.ctx.storage.transaction(() =>
+            rateWindowHit(this.ctx.storage, limit, windowSec, nowMs),
+        );
     }
 }

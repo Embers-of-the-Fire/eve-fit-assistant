@@ -17,8 +17,9 @@ interface RateWindow {
 
 const WINDOW_KEY = "window";
 
-// Minimal transactional-storage surface shared by DurableObjectTransaction
-// and the in-memory test double.
+// Minimal transactional-storage surface shared by DurableObjectStorage (used
+// directly inside storage.transaction(); the callback txn object is obsolete
+// in the SQLite storage API) and the in-memory test double.
 export interface RateTxn {
     get<T>(key: string): Promise<T | undefined>;
     put(key: string, value: unknown): Promise<unknown>;
