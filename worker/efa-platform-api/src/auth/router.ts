@@ -26,9 +26,9 @@ import {
     getUserById,
     insertSession,
     insertUser,
-    markSessionRotated,
     revokeAllUserSessions,
     revokeSession,
+    rotateSession,
     type UserRow,
     updateUserPassword,
 } from "./store.ts";
@@ -62,6 +62,11 @@ function errorJson(
     headers?: Record<string, string>,
 ): Response {
     return Response.json({ error: code, message }, { status, headers });
+}
+
+// D1 (and node:sqlite in tests) reports key violations only in the message.
+function isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Error && error.message.includes("UNIQUE constraint failed");
 }
 
 const emailField = z
@@ -185,25 +190,67 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         return { outcome: "sent", retryAfterSec: 0 };
     }
 
-    async function createSession(
+    // Shared resend path for a signup that finds the address already pending:
+    // the submitted password is ignored and the password hash from the
+    // initial signup is kept; only a fresh verification code goes out.
+    async function resendSignupOtp(
+        c: { env: AuthEnv },
+        secret: string,
+        email: string,
+        locale: string | undefined,
+    ): Promise<Response> {
+        const send = await sendOtp(c, secret, "verify", email, locale ?? "en");
+        if (send.outcome === "failed") {
+            return errorJson(500, "internal", "internal server error");
+        }
+        if (send.outcome === "limited") {
+            return errorJson(429, "rate_limited", "too many requests", {
+                "Retry-After": String(send.retryAfterSec),
+            });
+        }
+        return Response.json({ ok: true });
+    }
+
+    // Mint a session id and refresh token without touching the database; the
+    // caller decides how the row is persisted (plain insert for login/verify,
+    // atomic rotation claim for refresh).
+    async function mintSession(
         c: { env: AuthEnv; req: { header: (name: string) => string | undefined } },
         userId: string,
         nowMs: number,
-    ): Promise<{ sessionId: string; refreshToken: string }> {
+    ): Promise<{
+        sessionId: string;
+        userId: string;
+        refreshToken: string;
+        refreshHash: string;
+        expiresAt: string;
+        userAgent: string | null;
+        ip: string | null;
+    }> {
         const refreshToken = generateRefreshToken();
         const refreshHash = await hashRefreshToken(refreshToken);
         const sessionId = crypto.randomUUID();
         const userAgent = c.req.header("User-Agent") ?? null;
         const ip = c.req.header("CF-Connecting-IP") ?? null;
-        await insertSession(c.env.FIT_DB, {
+        return {
             sessionId,
             userId,
+            refreshToken,
             refreshHash,
             expiresAt: new Date(nowMs + REFRESH_TOKEN_TTL_MS).toISOString(),
             userAgent: userAgent === null ? null : userAgent.slice(0, 255),
             ip,
-        });
-        return { sessionId, refreshToken };
+        };
+    }
+
+    async function createSession(
+        c: { env: AuthEnv; req: { header: (name: string) => string | undefined } },
+        userId: string,
+        nowMs: number,
+    ): Promise<{ sessionId: string; refreshToken: string }> {
+        const minted = await mintSession(c, userId, nowMs);
+        await insertSession(c.env.FIT_DB, minted);
+        return { sessionId: minted.sessionId, refreshToken: minted.refreshToken };
     }
 
     async function issueTokenPair(
@@ -244,25 +291,40 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         }
         const { email, password, locale } = parsed.data;
 
+        // A repeat signup for an already-pending address only resends the
+        // code: the submitted password is ignored and the password from the
+        // initial signup is kept.
         const existing = await getUserByEmail(c.env.FIT_DB, email);
         if (existing?.status === "active") {
             return errorJson(409, "email_taken", "an account with this email already exists");
         }
         if (existing?.status === "pending") {
-            const send = await sendOtp(c, secret, "verify", email, locale ?? "en");
-            if (send.outcome === "failed") {
-                return errorJson(500, "internal", "internal server error");
-            }
-            if (send.outcome === "limited") {
-                return errorJson(429, "rate_limited", "too many requests", {
-                    "Retry-After": String(send.retryAfterSec),
-                });
-            }
-            return c.json({ ok: true }, 200);
+            return resendSignupOtp(c, secret, email, locale);
         }
 
         const userId = crypto.randomUUID();
-        await insertUser(c.env.FIT_DB, userId, email, await hashPassword(password));
+        try {
+            await insertUser(c.env.FIT_DB, userId, email, await hashPassword(password));
+        } catch (error) {
+            // Two concurrent signups for the same new address can both pass
+            // the existence check above; the loser's insert then violates the
+            // UNIQUE(email) constraint. Catch only that error, reload the
+            // row, and follow the normal pending-resend or active-conflict
+            // path instead of returning a 500.
+            if (!isUniqueConstraintError(error)) {
+                throw error;
+            }
+            const raced = await getUserByEmail(c.env.FIT_DB, email);
+            if (raced?.status === "active") {
+                return errorJson(409, "email_taken", "an account with this email already exists");
+            }
+            if (raced?.status === "pending") {
+                return resendSignupOtp(c, secret, email, locale);
+            }
+            // The conflicting row vanished between the failed insert and the
+            // reload; nothing sensible remains but the generic failure.
+            throw error;
+        }
         const send = await sendOtp(c, secret, "verify", email, locale ?? "en");
         if (send.outcome === "failed") {
             // The pending row stays; a retried signup follows the resend path.
@@ -388,20 +450,27 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             return errorJson(401, "invalid_token", "refresh token is invalid or expired");
         }
 
-        const { sessionId, refreshToken: newRefreshToken } = await createSession(
-            c,
-            user.user_id,
-            nowMs,
-        );
-        await markSessionRotated(
+        const minted = await mintSession(c, user.user_id, nowMs);
+        // Atomic claim: a concurrent rotation of the same token loses here and
+        // must not issue its minted token, so no orphan or competing successor
+        // session is ever created. The loser follows the same replay path as a
+        // client that lost the rotation response.
+        const claimed = await rotateSession(
             c.env.FIT_DB,
             session.session_id,
-            sessionId,
+            minted,
             new Date(nowMs + ROTATION_GRACE_MS).toISOString(),
         );
+        if (!claimed) {
+            const stashed = await c.env.AUTH_KV.get(rotationStashKey(refreshHash));
+            if (stashed !== null) {
+                return c.json(JSON.parse(stashed) as TokenPair, 200);
+            }
+            return errorJson(401, "invalid_token", "refresh token is invalid or expired");
+        }
         const pair: TokenPair = {
             accessToken: await signAccessToken(secret, user.user_id, user.token_version, nowMs),
-            refreshToken: newRefreshToken,
+            refreshToken: minted.refreshToken,
             expiresIn: ACCESS_TOKEN_TTL_SEC,
         };
         await c.env.AUTH_KV.put(rotationStashKey(refreshHash), JSON.stringify(pair), {

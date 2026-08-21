@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
 import { createAuthApp } from "../../src/auth/router.ts";
-import { loadAuthDatabase, TestD1Database, TestKV } from "./helpers.ts";
+import { loadAuthDatabase, TestD1Database, TestKV, type TestStatement } from "./helpers.ts";
 
 const SECRET = "test-secret";
 const PASSWORD = "password-1234";
@@ -26,7 +27,7 @@ interface PostOptions {
     headers?: Record<string, string>;
 }
 
-function setup() {
+function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
     const db = loadAuthDatabase();
     const kv = new TestKV();
     const emails: CapturedEmail[] = [];
@@ -36,8 +37,9 @@ function setup() {
             return Promise.resolve(true);
         },
     });
+    const d1 = new TestD1Database(db);
     const env = {
-        FIT_DB: new TestD1Database(db),
+        FIT_DB: wrapDb ? wrapDb(d1) : d1,
         AUTH_KV: kv,
         AUTH_TOKEN_SECRET: SECRET,
     };
@@ -77,6 +79,24 @@ function setup() {
         return (await res.json()) as TokenPair;
     };
     return { db, kv, emails, post, lastEmail, wrongCode, signup, verify, login, refresh, register };
+}
+
+// D1 shim that hides the users row from the first email lookup, simulating a
+// signup that passes the existence check but then loses the insert race
+// against a concurrent request for the same address.
+function hideFirstEmailLookup(db: TestD1Database): TestD1Database {
+    let hidden = false;
+    return {
+        prepare: (sql: string): TestStatement => {
+            if (!hidden && sql.startsWith("SELECT * FROM users WHERE email")) {
+                hidden = true;
+                return db
+                    .prepare("SELECT * FROM users WHERE email = ?")
+                    .bind("missing@example.com");
+            }
+            return db.prepare(sql);
+        },
+    } as TestD1Database;
 }
 
 describe("error handling", () => {
@@ -152,6 +172,55 @@ describe("signup and verify-email", () => {
             ((await (await ctx.signup(email)).json()) as { error: string }).error,
             "email_taken",
         );
+    });
+
+    it("keeps the initial password when a pending signup is repeated", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+
+        assert.equal((await ctx.signup(email)).status, 201);
+        ctx.kv.advance(61 * 1000);
+        // Repeat signup with a different password: accepted as a resend, but
+        // the submitted password is ignored.
+        assert.equal((await ctx.post("/signup", { email, password: NEW_PASSWORD })).status, 200);
+
+        assert.equal((await ctx.verify(email)).status, 200);
+        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+        assert.equal((await ctx.login(email, NEW_PASSWORD)).status, 401);
+    });
+
+    it("treats a lost insert race against a pending row as a resend", async () => {
+        const ctx = setup(hideFirstEmailLookup);
+        const email = "user@example.com";
+        // The concurrent winner's row lands between the existence check and
+        // the insert, which then fails on UNIQUE(email).
+        ctx.db
+            .prepare(
+                "INSERT INTO users (user_id, email, password_hash, status) " +
+                    "VALUES (?, ?, ?, 'pending')",
+            )
+            .run(randomUUID(), email, "hash-from-concurrent-winner");
+
+        const res = await ctx.signup(email);
+        assert.equal(res.status, 200);
+        assert.deepEqual(await res.json(), { ok: true });
+        assert.equal(ctx.emails.length, 1);
+    });
+
+    it("treats a lost insert race against an active row as email_taken", async () => {
+        const ctx = setup(hideFirstEmailLookup);
+        const email = "user@example.com";
+        ctx.db
+            .prepare(
+                "INSERT INTO users (user_id, email, password_hash, status) " +
+                    "VALUES (?, ?, ?, 'active')",
+            )
+            .run(randomUUID(), email, "hash-from-concurrent-winner");
+
+        const res = await ctx.signup(email);
+        assert.equal(res.status, 409);
+        assert.equal(((await res.json()) as { error: string }).error, "email_taken");
+        assert.equal(ctx.emails.length, 0);
     });
 
     it("rejects malformed bodies", async () => {

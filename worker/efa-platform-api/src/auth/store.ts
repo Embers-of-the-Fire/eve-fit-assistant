@@ -122,18 +122,53 @@ export async function getSessionByRefreshHash(
         .first<SessionRow>();
 }
 
-export async function markSessionRotated(
+// Claim `sessionId` for rotation and insert its successor in one atomic D1
+// batch (D1 batches execute as a single SQL transaction with statements
+// applied sequentially, so the guarded insert observes this batch's claim).
+// The claim is conditional (`replaced_by IS NULL`) and the successor insert
+// only applies for the request that won the claim, so concurrent rotations of
+// the same token cannot create orphan or competing successor sessions.
+// Returns true when this caller claimed the rotation and may issue the
+// successor's refresh token; false when another rotation got there first.
+export async function rotateSession(
     db: D1Database,
     sessionId: string,
-    successorId: string,
+    successor: {
+        sessionId: string;
+        userId: string;
+        refreshHash: string;
+        expiresAt: string;
+        userAgent: string | null;
+        ip: string | null;
+    },
     graceUntil: string,
-): Promise<void> {
-    await db
-        .prepare(
-            "UPDATE auth_sessions SET replaced_by = ?, rotation_grace_until = ? WHERE session_id = ?",
-        )
-        .bind(successorId, graceUntil, sessionId)
-        .run();
+): Promise<boolean> {
+    const [claim] = await db.batch([
+        db
+            .prepare(
+                "UPDATE auth_sessions SET replaced_by = ?, rotation_grace_until = ? " +
+                    "WHERE session_id = ? AND replaced_by IS NULL",
+            )
+            .bind(successor.sessionId, graceUntil, sessionId),
+        db
+            .prepare(
+                "INSERT INTO auth_sessions " +
+                    "(session_id, user_id, refresh_hash, expires_at, user_agent, ip) " +
+                    "SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (" +
+                    "SELECT 1 FROM auth_sessions WHERE session_id = ? AND replaced_by = ?)",
+            )
+            .bind(
+                successor.sessionId,
+                successor.userId,
+                successor.refreshHash,
+                successor.expiresAt,
+                successor.userAgent,
+                successor.ip,
+                sessionId,
+                successor.sessionId,
+            ),
+    ]);
+    return claim.meta.changes === 1;
 }
 
 export async function revokeSession(db: D1Database, sessionId: string): Promise<void> {

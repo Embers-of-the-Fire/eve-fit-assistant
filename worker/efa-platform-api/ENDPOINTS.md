@@ -58,7 +58,8 @@ Responses:
 
 - `201 { "userId": "<uuid>" }` — pending user created, code sent.
 - `200 { "ok": true }` — email already pending; code resent unless the 60 s
-  resend cooldown is active (then nothing is sent).
+  resend cooldown is active (then nothing is sent). The submitted password is
+  ignored: the account keeps the password from the initial signup.
 - `409 email_taken` — an active account with this email exists.
 - `429 rate_limited` — 5 signups/hour per IP, or 10 OTP sends/day per address.
 
@@ -106,6 +107,9 @@ Rotation semantics:
 - Presenting the immediately-previous token within its ~60 s grace window
   returns the *same* successor pair (idempotent replay — a response lost after
   server-side rotation must not log the client out).
+- Concurrent rotations of the same token resolve to a single successor: the
+  rotation claim is atomic, so the losing request follows the replay path
+  above instead of minting a competing session.
 - Presenting a rotated-out token after its grace window is treated as theft:
   the account's entire session chain is revoked and the call returns `401`.
 

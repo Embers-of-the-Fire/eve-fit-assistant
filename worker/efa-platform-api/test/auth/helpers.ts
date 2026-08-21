@@ -69,9 +69,13 @@ export class TestStatement {
         return Promise.resolve({ results: rows as T[] });
     }
 
-    run(): Promise<{ meta: { changes: number } }> {
+    runSync(): number {
         const info = this.db.prepare(this.sql).run(...this.boundParams());
-        return Promise.resolve({ meta: { changes: Number(info.changes) } });
+        return Number(info.changes);
+    }
+
+    run(): Promise<{ meta: { changes: number } }> {
+        return Promise.resolve({ meta: { changes: this.runSync() } });
     }
 }
 
@@ -84,6 +88,21 @@ export class TestD1Database {
 
     prepare(sql: string): TestStatement {
         return new TestStatement(this.db, sql);
+    }
+
+    // Mirrors D1's batch contract: the statements run sequentially inside a
+    // single transaction that rolls back if any statement fails, and each
+    // result reports its own change count.
+    batch(statements: TestStatement[]): Promise<{ meta: { changes: number } }[]> {
+        this.db.exec("BEGIN");
+        try {
+            const results = statements.map((stmt) => ({ meta: { changes: stmt.runSync() } }));
+            this.db.exec("COMMIT");
+            return Promise.resolve(results);
+        } catch (error) {
+            this.db.exec("ROLLBACK");
+            throw error;
+        }
     }
 }
 
