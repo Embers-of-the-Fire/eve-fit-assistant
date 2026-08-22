@@ -17,11 +17,19 @@ class _FakeAccountTokenStore extends AccountTokenStore {
   AccountSession? session;
   String cfAccessToken = "";
 
+  /// Simulates a secure-storage failure on [writeSession]. The stored
+  /// session is left untouched, mirroring the atomic single-key write.
+  Exception? writeError;
+
   @override
   Future<AccountSession?> readSession() async => session;
 
   @override
-  Future<void> writeSession(AccountSession value) async => session = value;
+  Future<void> writeSession(AccountSession value) async {
+    final error = writeError;
+    if (error != null) throw error;
+    session = value;
+  }
 
   @override
   Future<void> clearSession() async => session = null;
@@ -173,6 +181,21 @@ void main() {
     expect(store.session?.refreshToken, "refresh-old");
   });
 
+  test("startup refresh keeps the stored session when persisting the rotation fails", () async {
+    seedSignedIn();
+    store.writeError = Exception("secure storage unavailable");
+
+    final result = await state();
+
+    // The rotation succeeded server-side but could not be persisted: the
+    // stored pair stays intact (no partial session state) and the app keeps
+    // working on it instead of reporting a signed-in state with nothing
+    // durable behind it.
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-old");
+  });
+
   test("startup refresh signs out when the refresh token is dead", () async {
     seedSignedIn();
     api.refreshError = const AccountApiException(401, "invalid_token");
@@ -313,6 +336,27 @@ void main() {
     expect(api.deregisterBearer, _jwt("user-new"));
     // A successful deregistration clears the rotated pair again.
     expect(store.session, isNull);
+  });
+
+  test("concurrent refreshes are serialized and rotate the pair only once", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = _pair("new");
+
+    // Both calls enter the refresh path while the stored pair is expired.
+    // The second one must observe the rotated pair on its re-read inside the
+    // critical section instead of refreshing again with the same (now
+    // server-side dead) refresh token.
+    await Future.wait([controller().deregister("secret-pw"), controller().deregister("secret-pw")]);
+
+    expect(api.refreshCalls, 1);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
   });
 
   test("a refresh rejected as invalid signs the session out", () async {
