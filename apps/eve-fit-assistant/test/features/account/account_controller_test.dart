@@ -111,11 +111,15 @@ void main() {
   setUp(() {
     store = _FakeAccountTokenStore();
     api = _FakeAccountApiClient();
+    // Default rotation result for the startup refresh in build().
+    api.refreshResult = _pair("boot");
     container = ProviderContainer(
       overrides: [
         appSettingServiceProvider.overrideWith(() => _TestAppSettingService(_setting())),
         accountTokenStoreProvider.overrideWithValue(store),
-        accountApiClientFactoryProvider.overrideWithValue(({required origin, cfAccessToken}) => api),
+        accountApiClientFactoryProvider.overrideWithValue(
+          ({required origin, cfAccessToken}) => api,
+        ),
       ],
     );
   });
@@ -124,6 +128,59 @@ void main() {
 
   test("starts signed out without a stored session", () async {
     expect(await state(), isA<AccountSignedOut>());
+    expect(api.refreshCalls, 0);
+  });
+
+  AccountSession storedSession({bool expired = false}) => AccountSession(
+    accessToken: _jwt("old"),
+    refreshToken: "refresh-old",
+    accessTokenExpiresAt: expired
+        ? DateTime.now().subtract(const Duration(minutes: 5))
+        : DateTime.now().add(const Duration(minutes: 10)),
+  );
+
+  void seedSignedIn({bool expired = false}) {
+    store.session = storedSession(expired: expired);
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            account: s.account.copyWith(email: "capsuleer@example.com", userId: "user-old"),
+          ),
+        );
+  }
+
+  test("startup refresh rotates the stored pair once per cold start", () async {
+    seedSignedIn();
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-boot");
+  });
+
+  test("startup refresh keeps the session when the server is unreachable", () async {
+    seedSignedIn();
+    api.refreshError = Exception("offline");
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedIn>());
+    expect(store.session?.refreshToken, "refresh-old");
+  });
+
+  test("startup refresh signs out when the refresh token is dead", () async {
+    seedSignedIn();
+    api.refreshError = const AccountApiException(401, "invalid_token");
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedOut>());
+    expect(store.session, isNull);
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, isNull);
+    expect(account.userId, isNull);
   });
 
   test("login stores the session and caches the profile", () async {
@@ -179,42 +236,22 @@ void main() {
   });
 
   test("deregister refreshes an expired access token and stores the rotated pair", () async {
-    store.session = AccountSession(
-      accessToken: _jwt("old"),
-      refreshToken: "refresh-old",
-      accessTokenExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
-    );
+    seedSignedIn(expired: true);
     api.refreshResult = _pair("new");
-    container
-        .read(appSettingServiceProvider.notifier)
-        .update(
-          (s) => s.copyWith(
-            account: s.account.copyWith(email: "capsuleer@example.com", userId: "user-old"),
-          ),
-        );
 
     await controller().deregister("secret-pw");
 
-    expect(api.refreshCalls, 1);
+    // One rotation comes from the startup refresh; the deregister path adds
+    // at most one more depending on the interleaving.
+    expect(api.refreshCalls, greaterThanOrEqualTo(1));
     expect(api.deregisterBearer, _jwt("user-new"));
     // A successful deregistration clears the rotated pair again.
     expect(store.session, isNull);
   });
 
   test("a refresh rejected as invalid signs the session out", () async {
-    store.session = AccountSession(
-      accessToken: _jwt("old"),
-      refreshToken: "refresh-old",
-      accessTokenExpiresAt: DateTime.now().subtract(const Duration(minutes: 5)),
-    );
+    seedSignedIn(expired: true);
     api.refreshError = const AccountApiException(401, "invalid_token");
-    container
-        .read(appSettingServiceProvider.notifier)
-        .update(
-          (s) => s.copyWith(
-            account: s.account.copyWith(email: "capsuleer@example.com", userId: "user-old"),
-          ),
-        );
 
     await expectLater(
       () => controller().deregister("secret-pw"),

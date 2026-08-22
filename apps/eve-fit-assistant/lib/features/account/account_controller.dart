@@ -39,6 +39,10 @@ AccountApiClientFactory accountApiClientFactory(Ref ref) =>
 /// refresh, logout, deregistration) against the auth API and keeps the local
 /// session state: tokens in secure storage, the display profile (email,
 /// user id) cached in [AppSetting.account].
+///
+/// The session is rotated once per cold start (the provider is eagerly
+/// instantiated from `initWithRef`), which keeps the 30-day refresh token
+/// alive for active users and drops stale sessions early.
 @riverpodSingleton
 class AccountController extends _$AccountController {
   @override
@@ -49,6 +53,29 @@ class AccountController extends _$AccountController {
     final userId = account.userId;
     if (session == null || email == null || userId == null) {
       return const AccountSignedOut();
+    }
+    return _startupRefresh(session, email: email, userId: userId);
+  }
+
+  /// Rotates the stored session. Offline-tolerant: any failure other than
+  /// the server rejecting the token keeps the session as-is.
+  Future<AccountState> _startupRefresh(
+    AccountSession session, {
+    required String email,
+    required String userId,
+  }) async {
+    try {
+      final pair = await (await _client()).refresh(refreshToken: session.refreshToken);
+      await ref.read(accountTokenStoreProvider).writeSession(_sessionFromPair(pair));
+    } on AccountApiException catch (e) {
+      if (e.isInvalidToken) {
+        // The refresh token is dead (expired, revoked, or reused): sign out.
+        await _clearStoredSession();
+        return const AccountSignedOut();
+      }
+      // e.g. rate-limited: keep the stored session.
+    } on Object {
+      // Offline or unreachable: keep the stored session.
     }
     return AccountSignedIn(email: email, userId: userId);
   }
@@ -169,10 +196,15 @@ class AccountController extends _$AccountController {
   }
 
   Future<void> _clearSession() async {
+    await _clearStoredSession();
+    state = const AsyncData(AccountSignedOut());
+  }
+
+  /// Storage-only session clear, safe to call from `build` (no state set).
+  Future<void> _clearStoredSession() async {
     await ref.read(accountTokenStoreProvider).clearSession();
     ref
         .read(appSettingServiceProvider.notifier)
         .update((s) => s.copyWith(account: s.account.copyWith(email: null, userId: null)));
-    state = const AsyncData(AccountSignedOut());
   }
 }
