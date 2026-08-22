@@ -73,10 +73,21 @@ class AccountApiEndpointTile extends ConsumerWidget {
         ),
       );
       if (saved != true || !context.mounted) return;
-      final origin = controller.text.trim();
+      // Normalize: an empty field means the production origin.
+      String normalize(String value) {
+        final trimmed = value.trim();
+        return trimmed.isEmpty ? accountApiProductionOrigin : trimmed;
+      }
+
+      final previous = normalize(ref.read(appSettingServiceProvider).account.customOrigin);
+      final next = normalize(controller.text);
+      // Only an actual endpoint switch updates settings and signs out.
+      if (previous == next) return;
       ref
           .read(appSettingServiceProvider.notifier)
-          .update((s) => s.copyWith(account: s.account.copyWith(customOrigin: origin)));
+          .update(
+            (s) => s.copyWith(account: s.account.copyWith(customOrigin: controller.text.trim())),
+          );
       // Sessions are scoped to their origin; never carry one across endpoints.
       await ref.read(accountControllerProvider.notifier).signOutLocal();
     } finally {
