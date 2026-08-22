@@ -1,0 +1,467 @@
+@TestOn("vm")
+library;
+
+import "dart:convert";
+
+import "package:dio/dio.dart";
+import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/features/account/account_api.dart";
+import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/token_store.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_test/flutter_test.dart";
+
+class _FakeAccountTokenStore extends AccountTokenStore {
+  AccountSession? session;
+  String cfAccessToken = "";
+
+  /// Simulates a secure-storage failure on [writeSession]. The stored
+  /// session is left untouched, mirroring the atomic single-key write.
+  Exception? writeError;
+
+  @override
+  Future<AccountSession?> readSession() async => session;
+
+  @override
+  Future<void> writeSession(AccountSession value) async {
+    final error = writeError;
+    if (error != null) throw error;
+    session = value;
+  }
+
+  @override
+  Future<void> clearSession() async => session = null;
+
+  @override
+  Future<String> readCfAccessToken() async => cfAccessToken;
+}
+
+class _FakeAccountApiClient extends AccountApiClient {
+  _FakeAccountApiClient() : super(origin: "https://test.invalid", dio: Dio());
+
+  Object? loginError;
+  AuthTokenPair? loginResult;
+  Object? refreshError;
+  AuthTokenPair? refreshResult;
+  String? loggedOutRefreshToken;
+  String? deregisterBearer;
+  String? deregisterPassword;
+  int refreshCalls = 0;
+
+  @override
+  Future<AuthTokenPair> login({required String email, required String password}) async {
+    final error = loginError;
+    if (error != null) throw error;
+    return loginResult!;
+  }
+
+  @override
+  Future<AuthTokenPair> refresh({required String refreshToken}) async {
+    refreshCalls++;
+    final error = refreshError;
+    if (error != null) throw error;
+    return refreshResult!;
+  }
+
+  @override
+  Future<void> logout({required String refreshToken}) async => loggedOutRefreshToken = refreshToken;
+
+  @override
+  Future<void> deregister({required String accessToken, required String password}) async {
+    deregisterBearer = accessToken;
+    deregisterPassword = password;
+  }
+}
+
+class _TestAppSettingService extends AppSettingService {
+  _TestAppSettingService(this._initial);
+
+  final AppSetting _initial;
+
+  @override
+  AppSetting build() => _initial;
+
+  @override
+  void update(AppSetting Function(AppSetting) updater) => state = updater(state);
+}
+
+AppSetting _setting() => const AppSetting(
+  locale: Locale.en,
+  enableDebugLog: false,
+  shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
+  showCheckoutImpactWarnings: true,
+  typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+  developerMode: false,
+);
+
+String _jwt(String subject) {
+  String segment(Object value) => base64Url.encode(utf8.encode(jsonEncode(value)));
+  return "${segment({"alg": "HS256", "typ": "JWT"})}.${segment({"sub": subject, "tv": 0})}.sig";
+}
+
+AuthTokenPair _pair(String suffix) => AuthTokenPair(
+  accessToken: _jwt("user-$suffix"),
+  refreshToken: "refresh-$suffix",
+  expiresIn: 900,
+);
+
+/// A rotation result for the seeded account: the server rotates the tokens
+/// but the access-token subject stays the account's user id (`user-old`,
+/// matching the identity cached by [seedSignedIn]).
+AuthTokenPair _rotatedPair(String refreshSuffix) => AuthTokenPair(
+  accessToken: _jwt("user-old"),
+  refreshToken: "refresh-$refreshSuffix",
+  expiresIn: 900,
+);
+
+void main() {
+  late _FakeAccountTokenStore store;
+  late _FakeAccountApiClient api;
+  late ProviderContainer container;
+  String? capturedOrigin;
+
+  AccountController controller() => container.read(accountControllerProvider.notifier);
+
+  Future<AccountState> state() => container.read(accountControllerProvider.future);
+
+  setUp(() {
+    store = _FakeAccountTokenStore();
+    api = _FakeAccountApiClient();
+    // Default rotation result for the startup refresh in build().
+    api.refreshResult = _rotatedPair("boot");
+    capturedOrigin = null;
+    container = ProviderContainer(
+      overrides: [
+        appSettingServiceProvider.overrideWith(() => _TestAppSettingService(_setting())),
+        accountTokenStoreProvider.overrideWithValue(store),
+        accountApiClientFactoryProvider.overrideWithValue(({required origin, cfAccessToken}) {
+          capturedOrigin = origin;
+          return api;
+        }),
+      ],
+    );
+  });
+
+  tearDown(() => container.dispose());
+
+  test("starts signed out without a stored session", () async {
+    expect(await state(), isA<AccountSignedOut>());
+    expect(api.refreshCalls, 0);
+  });
+
+  AccountSession storedSession({bool expired = false}) => AccountSession(
+    accessToken: _jwt("old"),
+    refreshToken: "refresh-old",
+    accessTokenExpiresAt: expired
+        ? DateTime.now().subtract(const Duration(minutes: 5))
+        : DateTime.now().add(const Duration(minutes: 10)),
+  );
+
+  void seedSignedIn({bool expired = false}) {
+    store.session = storedSession(expired: expired);
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            account: s.account.copyWith(email: "capsuleer@example.com", userId: "user-old"),
+          ),
+        );
+  }
+
+  test("startup refresh rotates the stored pair once per cold start", () async {
+    seedSignedIn();
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-boot");
+  });
+
+  test("startup refresh keeps the session when the server is unreachable", () async {
+    seedSignedIn();
+    api.refreshError = Exception("offline");
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedIn>());
+    expect(store.session?.refreshToken, "refresh-old");
+  });
+
+  test("startup refresh keeps the stored session when persisting the rotation fails", () async {
+    seedSignedIn();
+    store.writeError = Exception("secure storage unavailable");
+
+    final result = await state();
+
+    // The rotation succeeded server-side but could not be persisted: the
+    // stored pair stays intact (no partial session state) and the app keeps
+    // working on it instead of reporting a signed-in state with nothing
+    // durable behind it.
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-old");
+  });
+
+  test("startup refresh signs out when the refresh token is dead", () async {
+    seedSignedIn();
+    api.refreshError = const AccountApiException(401, "invalid_token");
+
+    final result = await state();
+
+    expect(result, isA<AccountSignedOut>());
+    expect(store.session, isNull);
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, isNull);
+    expect(account.userId, isNull);
+  });
+
+  test("login stores the session and caches the profile", () async {
+    api.loginResult = _pair("1");
+
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    final signedIn = await state();
+    expect(signedIn, isA<AccountSignedIn>());
+    expect((signedIn as AccountSignedIn).email, "capsuleer@example.com");
+    expect(signedIn.userId, "user-1");
+    expect(store.session?.refreshToken, "refresh-1");
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, "capsuleer@example.com");
+    expect(account.userId, "user-1");
+  });
+
+  test("a login failure leaves the state signed out", () async {
+    api.loginError = const AccountApiException(401, "invalid_credentials");
+
+    await expectLater(
+      () => controller().login("a@b.c", "wrong"),
+      throwsA(isA<AccountApiException>()),
+    );
+    expect(await state(), isA<AccountSignedOut>());
+    expect(store.session, isNull);
+  });
+
+  test("login rejects a token pair without a usable JWT subject", () async {
+    seedSignedIn();
+    await state();
+    api.loginResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    await expectLater(
+      () => controller().login("capsuleer@example.com", "secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // The malformed pair is never stored and the cached identity is cleared.
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, isNull);
+    expect(account.userId, isNull);
+  });
+
+  test("startup refresh keeps the stored session when the rotated pair has no subject", () async {
+    seedSignedIn();
+    api.refreshResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    final result = await state();
+
+    // The malformed pair is never persisted: the stored session stays intact
+    // and the state keeps identifying the prior account.
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-old");
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.userId, "user-old");
+  });
+
+  test(
+    "startup refresh keeps the stored session when the rotated pair subject mismatches",
+    () async {
+      seedSignedIn();
+      api.refreshResult = _pair("other");
+
+      final result = await state();
+
+      // A pair identifying another account must not replace the stored access
+      // token while the state still identifies the prior account.
+      expect(result, isA<AccountSignedIn>());
+      expect((result as AccountSignedIn).userId, "user-old");
+      expect(api.refreshCalls, 1);
+      expect(store.session?.refreshToken, "refresh-old");
+    },
+  );
+
+  test("expiry refresh rejects a rotated pair without a usable JWT subject", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    await expectLater(
+      () => controller().deregister("secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // The malformed pair is neither stored nor returned, and the doomed
+    // session (its refresh token was rotated server-side) is cleared.
+    expect(api.refreshCalls, 1);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
+  test("expiry refresh rejects a rotated pair with a mismatched JWT subject", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = _pair("other");
+
+    await expectLater(
+      () => controller().deregister("secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // A pair identifying another account is neither stored nor returned, and
+    // the doomed session is cleared like a rejected refresh.
+    expect(api.refreshCalls, 1);
+    expect(api.deregisterBearer, isNull);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
+  test("ignores the stored custom origin when developer mode is off", () async {
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) =>
+              s.copyWith(account: s.account.copyWith(customOrigin: "https://preview.example.com")),
+        );
+    api.loginResult = _pair("1");
+
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    expect(capturedOrigin, accountApiProductionOrigin);
+    // The stored override is retained for when developer mode is re-enabled.
+    expect(
+      container.read(appSettingServiceProvider).account.customOrigin,
+      "https://preview.example.com",
+    );
+  });
+
+  test("uses the trimmed custom origin when developer mode is on", () async {
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            developerMode: true,
+            account: s.account.copyWith(customOrigin: " https://preview.example.com "),
+          ),
+        );
+    api.loginResult = _pair("1");
+
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    expect(capturedOrigin, "https://preview.example.com");
+  });
+
+  test("logout revokes the stored refresh token and clears the profile", () async {
+    api.loginResult = _pair("1");
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    await controller().logout();
+
+    expect(api.loggedOutRefreshToken, "refresh-1");
+    expect(await state(), isA<AccountSignedOut>());
+    expect(store.session, isNull);
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, isNull);
+    expect(account.userId, isNull);
+  });
+
+  test("deregister reuses a valid access token without refreshing", () async {
+    api.loginResult = _pair("1");
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    await controller().deregister("secret-pw");
+
+    expect(api.refreshCalls, 0);
+    expect(api.deregisterBearer, _jwt("user-1"));
+    expect(api.deregisterPassword, "secret-pw");
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
+  test("deregister refreshes an expired access token and stores the rotated pair", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = _rotatedPair("new");
+
+    await controller().deregister("secret-pw");
+
+    // The deregister path rotates exactly once; a duplicate refresh would
+    // rotate the refresh token twice and could invalidate the stored pair.
+    expect(api.refreshCalls, 1);
+    expect(api.deregisterBearer, _jwt("user-old"));
+    // A successful deregistration clears the rotated pair again.
+    expect(store.session, isNull);
+  });
+
+  test("concurrent refreshes are serialized and rotate the pair only once", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = _rotatedPair("new");
+
+    // Both calls enter the refresh path while the stored pair is expired.
+    // The second one must observe the rotated pair on its re-read inside the
+    // critical section instead of refreshing again with the same (now
+    // server-side dead) refresh token.
+    await Future.wait([controller().deregister("secret-pw"), controller().deregister("secret-pw")]);
+
+    expect(api.refreshCalls, 1);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
+  test("a refresh rejected as invalid signs the session out", () async {
+    seedSignedIn(expired: true);
+    api.refreshError = const AccountApiException(401, "invalid_token");
+
+    await expectLater(
+      () => controller().deregister("secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+    expect(await state(), isA<AccountSignedOut>());
+    expect(store.session, isNull);
+  });
+}

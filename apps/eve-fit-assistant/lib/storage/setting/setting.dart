@@ -31,6 +31,21 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
       _$RemoteContentSettingFromJson(json);
 }
 
+/// Platform account settings: a developer-only API origin override plus the
+/// local profile cache of the signed-in account (the auth API has no `/me`
+/// endpoint, so the profile shown in the UI is cached here at login/signup).
+@freezed
+abstract class AccountSetting with _$AccountSetting {
+  const factory AccountSetting({
+    /// Blank selects the production origin (`api.efa-tech.dev`).
+    @Default("") String customOrigin,
+    String? email,
+    String? userId,
+  }) = _AccountSetting;
+
+  factory AccountSetting.fromJson(Map<String, dynamic> json) => _$AccountSettingFromJson(json);
+}
+
 @freezed
 abstract class AiChatModel with _$AiChatModel {
   const factory AiChatModel({required String id, String? ownedBy}) = _AiChatModel;
@@ -189,6 +204,7 @@ abstract class AppSetting with _$AppSetting {
     @Default(false) bool aiAssistantDisclaimerAcked,
     @Default(RemoteContentSetting()) RemoteContentSetting remoteContent,
     @Default(AiChatSetting()) AiChatSetting aiChat,
+    @Default(AccountSetting()) AccountSetting account,
     @Default("") String marketServerFallback,
     @Default(1.0) double fontScale,
     @JsonKey(

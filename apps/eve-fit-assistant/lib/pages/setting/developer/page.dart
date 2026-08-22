@@ -8,6 +8,9 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/components/list/dropdown_list_tile.dart";
 import "package:eve_fit_assistant/config/force_column.dart";
+import "package:eve_fit_assistant/features/account/account_api.dart";
+import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/token_store.dart";
 import "package:eve_fit_assistant/features/app_update/app_update_gate.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
@@ -24,6 +27,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:font_awesome_flutter/font_awesome_flutter.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
+part "account_endpoint.dart";
 part "attribute_debug_view.dart";
 part "debug_log.dart";
 part "fit_upload_token.dart";
@@ -53,6 +57,8 @@ class DeveloperSettingsPage extends ConsumerWidget {
           const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
           const ConfigListTile.custom(ForceColumnTile()),
           const ConfigListTile.custom(FitUploadTokenTile()),
+          const ConfigListTile.custom(AccountApiEndpointTile()),
+          const ConfigListTile.custom(CloudflareAccessTokenTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

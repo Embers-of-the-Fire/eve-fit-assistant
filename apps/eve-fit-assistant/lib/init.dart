@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
+import "package:eve_fit_assistant/features/account/account_controller.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
@@ -194,7 +195,10 @@ void initErrorBoundary() {
 void initWithRef(WidgetRef ref) {
   ref
     ..read(fitManagerProvider)
-    ..read(nativeFitEngineServiceProvider);
+    ..read(nativeFitEngineServiceProvider)
+    // Eagerly instantiate the account controller: its build rotates the
+    // session once per cold start (startup refresh).
+    ..read(accountControllerProvider);
   unawaited(_initVersionTracking(ref));
 }
 

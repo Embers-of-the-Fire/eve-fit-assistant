@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules for devices running Android 12 (API 31) or higher when
+  the app targets API 31+. Covers both cloud backups and device-to-device
+  transfers (the latter apply even where android:allowBackup="false" would not).
+  https://developer.android.com/identity/data/autobackup#IncludingFiles
+
+  See backup_rules.xml for why the flutter_secure_storage SharedPreferences
+  files are excluded.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { describe, it } from "node:test";
-import { OTP_DAILY_SEND_LIMIT } from "../../src/auth/otp.ts";
+import { OTP_DAILY_SEND_LIMIT, OTP_VERIFY_RESEND_COOLDOWN_SEC } from "../../src/auth/otp.ts";
 import { createAuthApp } from "../../src/auth/router.ts";
 import {
     loadAuthDatabase,
@@ -202,8 +202,8 @@ describe("signup and verify-email", () => {
         assert.equal((await ctx.signup("  User@Example.COM ")).status, 200);
         assert.equal(ctx.emails.length, 1);
 
-        // Pending after cooldown: resends.
-        ctx.otp.advance(61 * 1000);
+        // Pending after the verification resend cooldown: resends.
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         assert.equal((await ctx.signup(email)).status, 200);
         assert.equal(ctx.emails.length, 2);
 
@@ -231,7 +231,7 @@ describe("signup and verify-email", () => {
         const email = "user@example.com";
 
         assert.equal((await ctx.signup(email)).status, 201);
-        ctx.otp.advance(61 * 1000);
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         // Repeat signup with a different password: accepted as a resend, but
         // the submitted password is ignored.
         assert.equal((await ctx.post("/signup", { email, password: NEW_PASSWORD })).status, 200);
@@ -361,6 +361,90 @@ describe("signup and verify-email", () => {
     });
 });
 
+describe("signup resend", () => {
+    it("resends for a pending address and reports the cooldown as 429", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        assert.equal((await ctx.signup(email)).status, 201);
+
+        // Inside the resend cooldown armed by the initial signup: 429 with
+        // Retry-After instead of a silent 200, and no second email.
+        const denied = await ctx.post("/signup/resend", { email });
+        assert.equal(denied.status, 429);
+        assert.equal(((await denied.json()) as { error: string }).error, "rate_limited");
+        const retryAfter = Number(denied.headers.get("retry-after"));
+        assert.ok(retryAfter > 0 && retryAfter <= OTP_VERIFY_RESEND_COOLDOWN_SEC);
+        assert.equal(ctx.emails.length, 1);
+
+        // After the cooldown the resend goes out and rearms it.
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        const res = await ctx.post("/signup/resend", { email });
+        assert.equal(res.status, 200);
+        assert.deepEqual(await res.json(), { ok: true });
+        assert.equal(ctx.emails.length, 2);
+        assert.equal(ctx.lastEmail(email, "verify").purpose, "verify");
+        assert.equal((await ctx.post("/signup/resend", { email })).status, 429);
+    });
+
+    it("serializes parallel resends: exactly one sends, the rest get 429", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        assert.equal((await ctx.signup(email)).status, 201);
+        // Move past the cooldown armed by the initial signup so every
+        // parallel request races on the reservation.
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+
+        const responses = await Promise.all(
+            Array.from({ length: 3 }, () => ctx.post("/signup/resend", { email })),
+        );
+        assert.deepEqual(responses.map((r) => r.status).sort(), [200, 429, 429]);
+        // Exactly one new email went out, and the code in it is the one that
+        // was stored — no losing request overwrote the winner's code.
+        assert.equal(ctx.emails.length, 2);
+        assert.equal((await ctx.verify(email)).status, 200);
+    });
+
+    it("is enumeration-safe for unknown and active addresses", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+
+        const unknown = await ctx.post("/signup/resend", { email: "ghost@example.com" });
+        assert.equal(unknown.status, 200);
+        assert.deepEqual(await unknown.json(), { ok: true });
+
+        await ctx.register(email);
+        const active = await ctx.post("/signup/resend", { email });
+        assert.equal(active.status, 200);
+        assert.deepEqual(await active.json(), { ok: true });
+        // Only the initial signup's verification email went out.
+        assert.equal(ctx.emails.filter((m) => m.purpose === "verify").length, 1);
+    });
+
+    it("rejects malformed bodies", async () => {
+        const ctx = setup();
+        assert.equal((await ctx.post("/signup/resend", { email: "not-an-email" })).status, 400);
+        assert.equal((await ctx.post("/signup/resend", {})).status, 400);
+        assert.equal((await ctx.post("/signup/resend", "junk")).status, 400);
+    });
+
+    it("shares the per-IP signup budget", async () => {
+        const ctx = setup();
+        for (let i = 0; i < 5; i++) {
+            assert.equal(
+                (await ctx.post("/signup/resend", { email: `user${i}@example.com` })).status,
+                200,
+            );
+        }
+        const denied = await ctx.post("/signup/resend", { email: "user6@example.com" });
+        assert.equal(denied.status, 429);
+        assert.equal(((await denied.json()) as { error: string }).error, "rate_limited");
+        // The budget is shared with /signup itself.
+        assert.equal((await ctx.signup("user6@example.com")).status, 429);
+        // A different IP is unaffected.
+        assert.equal((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status, 201);
+    });
+});
+
 describe("login", () => {
     it("handles pending, bad, and good credentials", async () => {
         const ctx = setup();
@@ -373,7 +457,7 @@ describe("login", () => {
         assert.equal(((await pending.json()) as { error: string }).error, "email_unverified");
         assert.equal(ctx.emails.length, 1);
         // After the cooldown the nudge resends.
-        ctx.otp.advance(61 * 1000);
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         assert.equal((await ctx.login(email, PASSWORD)).status, 403);
         assert.equal(ctx.emails.length, 2);
 

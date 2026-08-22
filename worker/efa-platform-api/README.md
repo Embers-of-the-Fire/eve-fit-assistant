@@ -19,13 +19,15 @@ every refresh, with only their SHA-256 hash stored. One exception: the
 rotation stash in `AUTH_KV` keeps the just-issued successor pair in plaintext
 for ~61 s so a replayed rotation inside the 60 s grace window returns the same
 pair. OTPs are 6-digit codes
-stored as keyed HMACs (10-minute TTL, 5 attempts, 60-second
-resend cooldown) and delivered via Resend (bilingual en/zh templates selected
+stored as keyed HMACs (10-minute TTL, 5 attempts, per-purpose resend
+cooldown: 10 minutes for verification, 60 seconds for reset) and delivered
+via Resend (bilingual en/zh templates selected
 by the optional `locale` field).
 
 | Endpoint | Description |
 | --- | --- |
-| `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP, plus the shared OTP send limits: 60 s resend cooldown per purpose+address (silent) and 10 sends/day per purpose+address (`429`) |
+| `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP, plus the shared OTP send limits: per purpose+address resend cooldown (10 min for verification, silent) and 10 sends/day per purpose+address (`429`) |
+| `/platform/auth/signup/resend` | `{email, locale?}` — resends the verification OTP for a pending address without requiring the password. Always `200 {ok:true}` for unknown or active addresses (no enumeration); `429` with `Retry-After` when the pending address is inside its 10-minute resend cooldown or has exhausted the shared 10 verification sends/day per address. Shares the `/signup` 5/h per-IP budget |
 | `/platform/auth/verify-email` | `{email, code}` — activates the pending user and issues a token pair (`200`); `401 otp_invalid`/`otp_expired`; `409 already_verified` |
 | `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend, cooldown applies) when pending; uniform `401 invalid_credentials` otherwise. 5 failed attempts/30min per account+IP (successes are refunded), 30/5min per IP (loose on purpose: CGNAT) |
 | `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`). 30 requests/5 min per IP (`429`, shared with `/logout`) |

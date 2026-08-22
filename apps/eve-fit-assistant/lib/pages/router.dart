@@ -12,6 +12,10 @@ import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
+import "package:eve_fit_assistant/pages/setting/account/login_page.dart";
+import "package:eve_fit_assistant/pages/setting/account/page.dart";
+import "package:eve_fit_assistant/pages/setting/account/register_page.dart";
+import "package:eve_fit_assistant/pages/setting/account/reset_page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/collect_logs_page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/remote_content.dart";
@@ -84,6 +88,19 @@ class AppRouter extends RootStackRouter {
       },
     ),
     AutoRoute(path: "/setting/remote-content", page: RemoteContentSettingsRoute.page),
+    AutoRoute(
+      path: "/setting/account",
+      page: AccountRoute.page,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Account",
+          usage: "platform account: sign in, register, sign out and delete account",
+        ),
+      },
+    ),
+    AutoRoute(path: "/setting/account/login", page: AccountLoginRoute.page),
+    AutoRoute(path: "/setting/account/register", page: AccountRegisterRoute.page),
+    AutoRoute(path: "/setting/account/reset-password", page: AccountResetPasswordRoute.page),
     AutoRoute(path: "/setting/collect-logs", page: CollectLogsRoute.page),
     AutoRoute(
       path: "/setting/data/storage",

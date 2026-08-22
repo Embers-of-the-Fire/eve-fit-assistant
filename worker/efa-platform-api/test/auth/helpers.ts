@@ -8,7 +8,9 @@ import {
     type OtpEntry,
     type OtpVerifyResult,
     otpStateClear,
+    otpStateCooldownRemainingMs,
     otpStateHasCooldown,
+    otpStateReserve,
     otpStateStore,
     otpStateVerify,
 } from "../../src/auth/otp-core.ts";
@@ -155,8 +157,10 @@ class TestDurableStorage {
 }
 
 // Double for the AUTH_OTP namespace. advance() shifts the time seen by
-// subsequent queries (verify/hasCooldown), like TestKV.advance: timestamps
-// written by store stay fixed at write time.
+// subsequent queries (verify/hasCooldown), like TestKV.advance. Stores are
+// timestamped by the caller in wall-clock time, so store() shifts them into
+// the advanced world as well: without that, an advance beyond an entry's
+// TTL would make every subsequently stored entry born-expired.
 export class TestOtpStateNamespace {
     private readonly instances = new Map<string, TestDurableStorage>();
     private offsetMs = 0;
@@ -182,13 +186,30 @@ export class TestOtpStateNamespace {
         const storage = this.instance(name);
         return {
             store: (entry: OtpEntry, cooldownUntilMs: number): Promise<void> =>
-                storage.transaction((tx) => otpStateStore(tx, entry, cooldownUntilMs)),
+                storage.transaction((tx) =>
+                    otpStateStore(
+                        tx,
+                        { ...entry, expiresAtMs: entry.expiresAtMs + this.offsetMs },
+                        cooldownUntilMs + this.offsetMs,
+                    ),
+                ),
+            reserve: (entry: OtpEntry, cooldownUntilMs: number, nowMs: number): Promise<number> =>
+                storage.transaction((tx) =>
+                    otpStateReserve(
+                        tx,
+                        { ...entry, expiresAtMs: entry.expiresAtMs + this.offsetMs },
+                        cooldownUntilMs + this.offsetMs,
+                        nowMs + this.offsetMs,
+                    ),
+                ),
             verify: (candidateHmac: string, nowMs: number): Promise<OtpVerifyResult> =>
                 storage.transaction((tx) =>
                     otpStateVerify(tx, candidateHmac, nowMs + this.offsetMs),
                 ),
             hasCooldown: (nowMs: number): Promise<boolean> =>
                 storage.transaction((tx) => otpStateHasCooldown(tx, nowMs + this.offsetMs)),
+            cooldownRemainingMs: (nowMs: number): Promise<number> =>
+                storage.transaction((tx) => otpStateCooldownRemainingMs(tx, nowMs + this.offsetMs)),
             clear: (): Promise<void> => storage.transaction((tx) => otpStateClear(tx)),
         };
     }

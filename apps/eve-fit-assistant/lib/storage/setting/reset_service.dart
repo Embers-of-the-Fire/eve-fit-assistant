@@ -2,6 +2,7 @@ import "package:efa_compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
+import "package:eve_fit_assistant/features/account/token_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/repo_store.dart";
@@ -18,7 +19,15 @@ import "package:path/path.dart" as p;
 /// caller should restart the process so that app initialization rebuilds default
 /// state and the welcome/setup flow is shown.
 class ResetStorageService {
-  const ResetStorageService();
+  const ResetStorageService({Future<void> Function()? clearAccountCredentials})
+    : _clearAccountCredentials = clearAccountCredentials ?? _defaultClearAccountCredentials;
+
+  /// Drops the platform account session and developer Cloudflare Access
+  /// credentials held in secure storage (not covered by the file/OPFS wipes).
+  /// Injectable because secure storage needs the platform binding.
+  final Future<void> Function() _clearAccountCredentials;
+
+  static Future<void> _defaultClearAccountCredentials() => AccountTokenStore().clearAll();
 
   /// Deletes all mutable app data and clears in-memory caches.
   ///
@@ -26,12 +35,17 @@ class ResetStorageService {
   /// base directories themselves). On web it clears the OPFS repo tree and the
   /// IndexedDB-backed user document stores.
   Future<void> resetAll() async {
-    if (kIsWeb) {
-      await _resetWeb();
-    } else {
-      await _resetNative();
+    try {
+      if (kIsWeb) {
+        await _resetWeb();
+      } else {
+        await _resetNative();
+      }
+      await RemoteCache.clear();
+    } finally {
+      // Always drop credentials, even if the storage wipes above failed.
+      await _clearAccountCredentials();
     }
-    await RemoteCache.clear();
   }
 
   Future<void> _resetNative() async {
