@@ -212,6 +212,28 @@ void main() {
     expect(store.session, isNull);
   });
 
+  test("login rejects a token pair without a usable JWT subject", () async {
+    seedSignedIn();
+    await state();
+    api.loginResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    await expectLater(
+      () => controller().login("capsuleer@example.com", "secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // The malformed pair is never stored and the cached identity is cleared.
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.email, isNull);
+    expect(account.userId, isNull);
+  });
+
   test("ignores the stored custom origin when developer mode is off", () async {
     container
         .read(appSettingServiceProvider.notifier)

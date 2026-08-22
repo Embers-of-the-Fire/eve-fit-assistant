@@ -190,10 +190,16 @@ class AccountController extends _$AccountController {
   );
 
   Future<void> _acceptTokenPair(String email, AuthTokenPair pair) async {
-    await ref.read(accountTokenStoreProvider).writeSession(_sessionFromPair(pair));
     // The auth API has no profile endpoint; the user id comes from the JWT
     // subject and the email is the address the user just authenticated with.
-    final userId = decodeJwtSubject(pair.accessToken) ?? "";
+    // Reject a pair whose access token carries no usable subject: persisting
+    // it would create a signed-in state with an invalid cached identity.
+    final userId = decodeJwtSubject(pair.accessToken);
+    if (userId == null || userId.isEmpty) {
+      await _clearSession();
+      throw const AccountApiException(null, "invalid_token", "access token has no usable subject");
+    }
+    await ref.read(accountTokenStoreProvider).writeSession(_sessionFromPair(pair));
     ref
         .read(appSettingServiceProvider.notifier)
         .update(
