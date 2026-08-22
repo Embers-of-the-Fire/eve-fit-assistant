@@ -3,12 +3,12 @@ import { FitStoreResponseSchema } from "efa-proto-ts/fit_request_pb";
 import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 import { Hono } from "hono";
 
-import { type AuthEnv, authApp } from "./auth/router";
-import { createRootApp } from "./root";
+import { type AuthEnv, authApp } from "./auth/router.ts";
+import { createRootApp } from "./root.ts";
 
 // Durable Object classes must be exported from the worker entrypoint.
-export { OtpState } from "./auth/otp-state";
-export { RateLimitWindow } from "./auth/rate-window";
+export { OtpState } from "./auth/otp-state.ts";
+export { RateLimitWindow } from "./auth/rate-window.ts";
 
 import {
     decodeCursor,
@@ -24,7 +24,7 @@ import {
     timingSafeEqual,
     truncateCodePoints,
     UUID_PATTERN,
-} from "./util";
+} from "./util.ts";
 
 // Public front of the platform. Owns the `posts` table, orchestrates
 // submissions through the FIT_STORAGE service binding, and holds the
