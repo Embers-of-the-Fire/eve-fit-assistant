@@ -20,6 +20,7 @@ import {
     type OtpEntry,
     type OtpVerifyResult,
     otpStateClear,
+    otpStateCooldownRemainingMs,
     otpStateHasCooldown,
     otpStateStore,
     otpStateVerify,
@@ -44,6 +45,10 @@ export class OtpState extends DurableObject {
 
     hasCooldown(nowMs: number): Promise<boolean> {
         return this.ctx.storage.transaction((tx) => otpStateHasCooldown(tx, nowMs));
+    }
+
+    cooldownRemainingMs(nowMs: number): Promise<number> {
+        return this.ctx.storage.transaction((tx) => otpStateCooldownRemainingMs(tx, nowMs));
     }
 
     clear(): Promise<void> {

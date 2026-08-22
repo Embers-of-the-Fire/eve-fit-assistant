@@ -12,10 +12,18 @@ export { OTP_MAX_ATTEMPTS, type OtpVerifyResult };
 
 export const OTP_TTL_SEC = 10 * 60;
 export const OTP_RESEND_COOLDOWN_SEC = 60;
+// Verification codes stay valid for the full TTL, so resending one sooner
+// than that only spams the inbox: verification sends for the same address
+// are spaced by the code TTL instead of the generic cooldown.
+export const OTP_VERIFY_RESEND_COOLDOWN_SEC = OTP_TTL_SEC;
 // Per purpose+email daily send cap, enforced by the caller through the
 // rate-limit helper.
 export const OTP_DAILY_SEND_LIMIT = 10;
 export const OTP_DAILY_SEND_WINDOW_SEC = 24 * 60 * 60;
+
+function resendCooldownSec(purpose: OtpPurpose): number {
+    return purpose === "verify" ? OTP_VERIFY_RESEND_COOLDOWN_SEC : OTP_RESEND_COOLDOWN_SEC;
+}
 
 const OTP_MODULUS = 1_000_000;
 
@@ -78,7 +86,7 @@ export async function storeOtp(
             attempts: 0,
             expiresAtMs: nowMs + OTP_TTL_SEC * 1000,
         },
-        nowMs + OTP_RESEND_COOLDOWN_SEC * 1000,
+        nowMs + resendCooldownSec(purpose) * 1000,
     );
 }
 
@@ -89,6 +97,18 @@ export async function hasOtpCooldown(
     nowMs: number = Date.now(),
 ): Promise<boolean> {
     return otpStub(ns, purpose, email).hasCooldown(nowMs);
+}
+
+// Milliseconds until the resend cooldown lapses (0 when no cooldown is
+// active), so callers can report a Retry-After instead of swallowing the
+// resend silently.
+export async function otpCooldownRemainingMs(
+    ns: DurableObjectNamespace<OtpState>,
+    purpose: OtpPurpose,
+    email: string,
+    nowMs: number = Date.now(),
+): Promise<number> {
+    return otpStub(ns, purpose, email).cooldownRemainingMs(nowMs);
 }
 
 // Drop the stored code and its resend cooldown, e.g. when the send itself

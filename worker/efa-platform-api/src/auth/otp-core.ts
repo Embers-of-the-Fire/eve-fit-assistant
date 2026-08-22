@@ -74,8 +74,12 @@ export async function otpStateVerify(
 }
 
 export async function otpStateHasCooldown(tx: OtpTxn, nowMs: number): Promise<boolean> {
+    return (await otpStateCooldownRemainingMs(tx, nowMs)) > 0;
+}
+
+export async function otpStateCooldownRemainingMs(tx: OtpTxn, nowMs: number): Promise<number> {
     const cooldownUntilMs = await tx.get<number>(COOLDOWN_KEY);
-    return cooldownUntilMs !== undefined && cooldownUntilMs > nowMs;
+    return cooldownUntilMs !== undefined && cooldownUntilMs > nowMs ? cooldownUntilMs - nowMs : 0;
 }
 
 export async function otpStateClear(tx: OtpTxn): Promise<void> {

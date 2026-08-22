@@ -14,6 +14,7 @@ import {
     OTP_DAILY_SEND_LIMIT,
     OTP_DAILY_SEND_WINDOW_SEC,
     type OtpPurpose,
+    otpCooldownRemainingMs,
     storeOtp,
     verifyOtp,
 } from "./otp.ts";
@@ -89,6 +90,9 @@ const SignupSchema = z.object({
     password: passwordField,
     locale: localeField,
 });
+// Dedicated verification-code resend: same shape as the reset request (no
+// password — a repeat /signup requires one even though it is ignored).
+const SignupResendSchema = z.object({ email: emailField, locale: localeField });
 const VerifyEmailSchema = z.object({ email: emailField, code: codeField });
 const LoginSchema = z.object({ email: emailField, password: z.string().min(1).max(128) });
 const RefreshSchema = z.object({ refreshToken: z.string().min(1).max(128) });
@@ -378,6 +382,49 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             });
         }
         return c.json({ userId }, 201);
+    });
+
+    // Resend for the register flow's verification step, reachable when the
+    // client no longer has the signup password (e.g. after the /login
+    // email_unverified redirect). Enumeration-safe like /reset-password:
+    // unknown or active addresses always get 200 without a send. A pending
+    // address inside its resend cooldown gets 429 with Retry-After instead
+    // of the silent 200, so the user is told to wait rather than watching
+    // for an email that never leaves.
+    app.post("/signup/resend", async (c) => {
+        const parsed = SignupResendSchema.safeParse(await c.req.json().catch(() => null));
+        if (!parsed.success) {
+            return errorJson(400, "bad_request", "invalid request body");
+        }
+        // Shares the /signup per-IP budget: both endpoints send verification
+        // emails and nothing else.
+        const limited = await rateLimited(
+            c,
+            "signup-ip",
+            clientIp(c),
+            SIGNUP_IP_LIMIT,
+            SIGNUP_IP_WINDOW_SEC,
+        );
+        if (limited) {
+            return limited;
+        }
+        const secret = requireSecret(c);
+        if (!secret) {
+            return errorJson(500, "internal", "internal server error");
+        }
+        const { email, locale } = parsed.data;
+
+        const user = await getUserByEmail(c.env.FIT_DB, email);
+        if (user?.status !== "pending") {
+            return c.json({ ok: true }, 200);
+        }
+        const cooldownMs = await otpCooldownRemainingMs(c.env.AUTH_OTP, "verify", email);
+        if (cooldownMs > 0) {
+            return errorJson(429, "rate_limited", "too many requests", {
+                "Retry-After": String(Math.ceil(cooldownMs / 1000)),
+            });
+        }
+        return resendSignupOtp(c, secret, email, locale);
     });
 
     app.post("/verify-email", async (c) => {

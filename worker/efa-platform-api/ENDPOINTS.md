@@ -62,12 +62,30 @@ Request: `{ email: string, password: string, locale?: string }`
 Responses:
 
 - `201 { "userId": "<uuid>" }` — pending user created, code sent.
-- `200 { "ok": true }` — email already pending; code resent unless the 60 s
-  resend cooldown is active (then nothing is sent). The submitted password is
-  ignored: the account keeps the password from the initial signup.
+- `200 { "ok": true }` — email already pending; code resent unless the
+  10-minute resend cooldown is active (then nothing is sent). The submitted
+  password is ignored: the account keeps the password from the initial
+  signup.
 - `409 email_taken` — an active account with this email exists.
 - `429 rate_limited` — 5 signups/hour per IP, or 10 OTP sends/day per
   purpose+address.
+
+### `/signup/resend`
+
+Resends the verification code for a pending account without requiring the
+password (a repeat `/signup` needs one even though it is ignored), for the
+register flow's verification step.
+
+Request: `{ email: string, locale?: string }`
+
+Responses:
+
+- `200 { "ok": true }` — code resent. Also returned for unknown or active
+  addresses without sending anything (enumeration-safe).
+- `429 rate_limited` — the address is pending but inside its 10-minute
+  resend cooldown (`Retry-After` carries the remaining seconds), the
+  per-address daily OTP cap is exhausted, or the per-IP budget (5/hour,
+  shared with `/signup`) is exceeded.
 
 ### `/verify-email`
 
@@ -183,8 +201,9 @@ Exceeded limits return `429 { "error": "rate_limited" }` with `Retry-After`.
 
 | Bucket | Limit |
 | --- | --- |
-| `signup` per IP | 5 / hour |
-| OTP sends per purpose+address | 60 s cooldown + 10 / day |
+| `signup` per IP | 5 / hour (shared with `/signup/resend`) |
+| Verification OTP sends per address | 10 min cooldown + 10 / day |
+| Reset OTP sends per address | 60 s cooldown + 10 / day |
 | OTP verify attempts | 5 per issued code |
 | `login` per account+IP | 5 failures / 30 min |
 | `login` per IP | 30 / 5 min |

@@ -7,6 +7,7 @@ import {
     OTP_MAX_ATTEMPTS,
     OTP_RESEND_COOLDOWN_SEC,
     OTP_TTL_SEC,
+    OTP_VERIFY_RESEND_COOLDOWN_SEC,
     storeOtp,
     verifyOtp,
 } from "../../src/auth/otp.ts";
@@ -109,13 +110,24 @@ describe("otp store/verify", () => {
 });
 
 describe("otp cooldown", () => {
-    it("is set on store and clears after the window", async () => {
+    it("is set on store and clears after the purpose-specific window", async () => {
         const store = kv();
         assert.equal(await hasOtpCooldown(store as never, "verify", EMAIL), false);
         await storeOtp(store as never, SECRET, "verify", EMAIL, generateOtpCode());
         assert.equal(await hasOtpCooldown(store as never, "verify", EMAIL), true);
+        // Verification resends hold a longer cooldown than the generic window.
         store.advance((OTP_RESEND_COOLDOWN_SEC + 1) * 1000);
+        assert.equal(await hasOtpCooldown(store as never, "verify", EMAIL), true);
+        store.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         assert.equal(await hasOtpCooldown(store as never, "verify", EMAIL), false);
+    });
+
+    it("applies the generic short cooldown to reset codes", async () => {
+        const store = kv();
+        await storeOtp(store as never, SECRET, "reset", EMAIL, generateOtpCode());
+        assert.equal(await hasOtpCooldown(store as never, "reset", EMAIL), true);
+        store.advance((OTP_RESEND_COOLDOWN_SEC + 1) * 1000);
+        assert.equal(await hasOtpCooldown(store as never, "reset", EMAIL), false);
     });
 
     it("clearOtp drops both the code and the cooldown", async () => {
