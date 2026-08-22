@@ -91,8 +91,15 @@ class _SignedInView extends ConsumerWidget {
       title: context.l10n.accountLogoutConfirmTitle,
       content: Text(context.l10n.accountLogoutConfirmDescription),
     );
-    if (!confirmed) return;
-    await ref.read(accountControllerProvider.notifier).logout();
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ref.read(accountControllerProvider.notifier).logout();
+    } on Object catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(accountErrorMessage(context, e))));
+    }
   }
 
   Future<void> _deregister(BuildContext context, WidgetRef ref) async {
