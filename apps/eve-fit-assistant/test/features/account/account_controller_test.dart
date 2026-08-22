@@ -103,6 +103,7 @@ void main() {
   late _FakeAccountTokenStore store;
   late _FakeAccountApiClient api;
   late ProviderContainer container;
+  String? capturedOrigin;
 
   AccountController controller() => container.read(accountControllerProvider.notifier);
 
@@ -113,13 +114,15 @@ void main() {
     api = _FakeAccountApiClient();
     // Default rotation result for the startup refresh in build().
     api.refreshResult = _pair("boot");
+    capturedOrigin = null;
     container = ProviderContainer(
       overrides: [
         appSettingServiceProvider.overrideWith(() => _TestAppSettingService(_setting())),
         accountTokenStoreProvider.overrideWithValue(store),
-        accountApiClientFactoryProvider.overrideWithValue(
-          ({required origin, cfAccessToken}) => api,
-        ),
+        accountApiClientFactoryProvider.overrideWithValue(({required origin, cfAccessToken}) {
+          capturedOrigin = origin;
+          return api;
+        }),
       ],
     );
   });
@@ -207,6 +210,41 @@ void main() {
     );
     expect(await state(), isA<AccountSignedOut>());
     expect(store.session, isNull);
+  });
+
+  test("ignores the stored custom origin when developer mode is off", () async {
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) =>
+              s.copyWith(account: s.account.copyWith(customOrigin: "https://preview.example.com")),
+        );
+    api.loginResult = _pair("1");
+
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    expect(capturedOrigin, accountApiProductionOrigin);
+    // The stored override is retained for when developer mode is re-enabled.
+    expect(
+      container.read(appSettingServiceProvider).account.customOrigin,
+      "https://preview.example.com",
+    );
+  });
+
+  test("uses the trimmed custom origin when developer mode is on", () async {
+    container
+        .read(appSettingServiceProvider.notifier)
+        .update(
+          (s) => s.copyWith(
+            developerMode: true,
+            account: s.account.copyWith(customOrigin: " https://preview.example.com "),
+          ),
+        );
+    api.loginResult = _pair("1");
+
+    await controller().login("capsuleer@example.com", "secret-pw");
+
+    expect(capturedOrigin, "https://preview.example.com");
   });
 
   test("logout revokes the stored refresh token and clears the profile", () async {

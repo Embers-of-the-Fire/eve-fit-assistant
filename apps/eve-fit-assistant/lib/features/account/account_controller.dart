@@ -81,8 +81,11 @@ class AccountController extends _$AccountController {
   }
 
   Future<AccountApiClient> _client() async {
-    final custom = ref.read(appSettingServiceProvider).account.customOrigin.trim();
-    final origin = custom.isEmpty ? accountApiProductionOrigin : custom;
+    final setting = ref.read(appSettingServiceProvider);
+    final custom = setting.account.customOrigin.trim();
+    // The custom origin is a developer-only override: use it only while
+    // developer mode is on, and never clear the stored value.
+    final origin = setting.developerMode && custom.isNotEmpty ? custom : accountApiProductionOrigin;
     final cfAccessToken = await ref.read(accountTokenStoreProvider).readCfAccessToken();
     return ref.read(accountApiClientFactoryProvider)(
       origin: origin,
