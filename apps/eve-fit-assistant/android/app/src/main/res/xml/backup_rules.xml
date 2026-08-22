@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules for devices running Android 11 (API 30) or lower, and for
+  Android 12+ devices when the app targets API 30 or lower.
+  https://developer.android.com/identity/data/autobackup#IncludingFiles
+
+  flutter_secure_storage keeps its payloads and Keystore-wrapped keys in the
+  SharedPreferences files excluded below. Restoring them through Auto Backup
+  without the matching Android Keystore keys makes the stored session
+  unreadable (decryption fails), so they must never leave the device.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+</full-backup-content>
