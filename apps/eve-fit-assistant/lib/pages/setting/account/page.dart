@@ -143,8 +143,12 @@ class _SignedInView extends ConsumerWidget {
         ],
       ),
     );
-    if (saved != true) return null;
+    if (saved != true) {
+      controller.dispose();
+      return null;
+    }
     final password = controller.text;
+    controller.dispose();
     return password.isEmpty ? null : password;
   }
 }
