@@ -25,59 +25,63 @@ class AccountApiEndpointTile extends ConsumerWidget {
     final controller = TextEditingController(
       text: ref.read(appSettingServiceProvider).account.customOrigin,
     );
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Account API endpoint"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: controller,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: const InputDecoration(
-                hintText: "https://efa-platform-api-preview.<subdomain>.workers.dev",
-                helperText: "Leave empty for production ($accountApiProductionOrigin)",
-                border: OutlineInputBorder(),
+    try {
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Account API endpoint"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  hintText: "https://efa-platform-api-preview.<subdomain>.workers.dev",
+                  helperText: "Leave empty for production ($accountApiProductionOrigin)",
+                  border: OutlineInputBorder(),
+                ),
               ),
+              const SizedBox(height: 12),
+              const Text(
+                "The preview environment is protected by Cloudflare Access: "
+                "requests without a valid cf-access-token (below) get "
+                "the Access login page instead of the API. Changing the "
+                "endpoint signs out the current account session.",
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                controller.text = "";
+                Navigator.of(context).pop(true);
+              },
+              child: const Text("Use production"),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              "The preview environment is protected by Cloudflare Access: "
-              "requests without a valid cf-access-token (below) get "
-              "the Access login page instead of the API. Changing the "
-              "endpoint signs out the current account session.",
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.l10n.save),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              controller.text = "";
-              Navigator.of(context).pop(true);
-            },
-            child: const Text("Use production"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.l10n.save),
-          ),
-        ],
-      ),
-    );
-    if (saved != true || !context.mounted) return;
-    final origin = controller.text.trim();
-    ref
-        .read(appSettingServiceProvider.notifier)
-        .update((s) => s.copyWith(account: s.account.copyWith(customOrigin: origin)));
-    // Sessions are scoped to their origin; never carry one across endpoints.
-    await ref.read(accountControllerProvider.notifier).signOutLocal();
+      );
+      if (saved != true || !context.mounted) return;
+      final origin = controller.text.trim();
+      ref
+          .read(appSettingServiceProvider.notifier)
+          .update((s) => s.copyWith(account: s.account.copyWith(customOrigin: origin)));
+      // Sessions are scoped to their origin; never carry one across endpoints.
+      await ref.read(accountControllerProvider.notifier).signOutLocal();
+    } finally {
+      controller.dispose();
+    }
   }
 }
 
@@ -98,54 +102,58 @@ class CloudflareAccessTokenTile extends ConsumerWidget {
   Future<void> _editToken(BuildContext context, WidgetRef ref) async {
     final store = ref.read(accountTokenStoreProvider);
     final controller = TextEditingController(text: await store.readCfAccessToken());
-    if (!context.mounted) return;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Cloudflare Access token"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: controller,
-              obscureText: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: const InputDecoration(
-                labelText: "cf-access-token",
-                hintText: "cloudflared access token -app=<origin>",
-                border: OutlineInputBorder(),
+    try {
+      if (!context.mounted) return;
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Cloudflare Access token"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: "cf-access-token",
+                  hintText: "cloudflared access token -app=<origin>",
+                  border: OutlineInputBorder(),
+                ),
               ),
+              const SizedBox(height: 12),
+              const Text(
+                "Obtain with: cloudflared access token -app=\n"
+                "https://efa-platform-api-preview.<subdomain>.workers.dev "
+                "(re-run after the Access session expires).",
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                controller.text = "";
+                Navigator.of(context).pop(true);
+              },
+              child: const Text("Clear"),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              "Obtain with: cloudflared access token -app=\n"
-              "https://efa-platform-api-preview.<subdomain>.workers.dev "
-              "(re-run after the Access session expires).",
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(context.l10n.save),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              controller.text = "";
-              Navigator.of(context).pop(true);
-            },
-            child: const Text("Clear"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.l10n.save),
-          ),
-        ],
-      ),
-    );
-    if (saved != true) return;
-    await store.writeCfAccessToken(controller.text);
+      );
+      if (saved != true) return;
+      await store.writeCfAccessToken(controller.text);
+    } finally {
+      controller.dispose();
+    }
   }
 }
