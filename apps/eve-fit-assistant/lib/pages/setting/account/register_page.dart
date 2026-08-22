@@ -107,6 +107,10 @@ class _AccountRegisterPageState extends ConsumerState<AccountRegisterPage> {
   Future<void> _verify() async {
     final email = _emailController.text.trim();
     final code = _codeController.text.trim();
+    if (!isValidAccountCode(code)) {
+      setState(() => _error = context.l10n.accountInvalidCode);
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;

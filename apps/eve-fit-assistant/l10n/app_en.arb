@@ -454,6 +454,7 @@
   "accountErrorGeneric": "Something went wrong; please try again later",
   "accountInvalidEmail": "Enter a valid email address",
   "accountPasswordTooShort": "Password must be at least 10 characters",
+  "accountInvalidCode": "Enter the 6-digit code",
   "fitLinkInvalidDialogTitle": "Invalid fit link",
   "fitLinkInvalidDialogDescription": "This link is invalid or corrupted. Nothing was imported.",
   "fitListActionExport": "Export",
