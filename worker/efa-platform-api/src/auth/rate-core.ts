@@ -13,6 +13,10 @@ export interface RateLimitOutcome {
 interface RateWindow {
     windowIndex: number;
     count: number;
+    // Wall-clock end of the window; lets the alarm handler decide expiry
+    // without knowing windowSec. Rows written before this field existed
+    // (windowEndMs undefined) always compare as expired and are swept.
+    windowEndMs?: number;
 }
 
 const WINDOW_KEY = "window";
@@ -25,6 +29,18 @@ export interface RateTxn {
     put(key: string, value: unknown): Promise<unknown>;
 }
 
+// Sweep surface for the alarm handler: RateTxn plus row deletion.
+export interface RateSweepTxn extends RateTxn {
+    delete(key: string): Promise<unknown>;
+}
+
+// Wall-clock boundary (ms) of the window containing nowMs — the moment the
+// stored row becomes stale and the cleanup alarm should fire.
+export function rateWindowBoundaryMs(windowSec: number, nowMs: number): number {
+    const windowIndex = Math.floor(Math.floor(nowMs / 1000) / windowSec);
+    return (windowIndex + 1) * windowSec * 1000;
+}
+
 export async function rateWindowHit(
     tx: RateTxn,
     limit: number,
@@ -35,13 +51,14 @@ export async function rateWindowHit(
     const windowIndex = Math.floor(nowSec / windowSec);
     const elapsedSec = nowSec - windowIndex * windowSec;
     const remainingSec = windowSec - elapsedSec;
+    const windowEndMs = (windowIndex + 1) * windowSec * 1000;
 
     const stored = await tx.get<RateWindow>(WINDOW_KEY);
     const count = stored?.windowIndex === windowIndex ? stored.count : 0;
     if (count >= limit) {
         return { allowed: false, retryAfterSec: remainingSec };
     }
-    await tx.put(WINDOW_KEY, { windowIndex, count: count + 1 });
+    await tx.put(WINDOW_KEY, { windowIndex, count: count + 1, windowEndMs });
     return { allowed: true, retryAfterSec: 0 };
 }
 
@@ -59,6 +76,23 @@ export async function rateWindowRefund(
 
     const stored = await tx.get<RateWindow>(WINDOW_KEY);
     if (stored?.windowIndex === windowIndex && stored.count > 0) {
-        await tx.put(WINDOW_KEY, { windowIndex, count: stored.count - 1 });
+        await tx.put(WINDOW_KEY, { ...stored, count: stored.count - 1 });
     }
+}
+
+// Alarm cleanup for the Durable Object. Deletes the window row only if its
+// window has actually passed (a hit in a later window re-arms the alarm, so
+// the row can still be current when an older alarm fires). Returns the
+// boundary to re-arm the alarm at when the row is still current, or null
+// when the row was deleted (or absent) and the instance can be torn down.
+export async function rateWindowSweep(tx: RateSweepTxn, nowMs: number): Promise<number | null> {
+    const stored = await tx.get<RateWindow>(WINDOW_KEY);
+    if (stored === undefined) {
+        return null;
+    }
+    if (stored.windowEndMs !== undefined && nowMs < stored.windowEndMs) {
+        return stored.windowEndMs;
+    }
+    await tx.delete(WINDOW_KEY);
+    return null;
 }
