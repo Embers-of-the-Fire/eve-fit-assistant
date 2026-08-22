@@ -80,9 +80,28 @@ class _AccountRegisterPageState extends ConsumerState<AccountRegisterPage> {
   }
 
   Future<void> _resend() async {
-    // Repeating a signup for a pending address resends the code; the
-    // submitted password is ignored server-side in that case.
-    await _signup();
+    final email = _emailController.text.trim();
+    if (!isValidAccountEmail(email)) {
+      setState(() => _error = context.l10n.accountInvalidEmail);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      // Dedicated resend endpoint: the verification step may have been
+      // reached from the login redirect, where no password was collected.
+      await ref.read(accountControllerProvider.notifier).resendSignupCode(email);
+      if (!mounted) return;
+      setState(() => _busy = false);
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = accountErrorMessage(context, e);
+      });
+    }
   }
 
   Future<void> _verify() async {

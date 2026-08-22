@@ -90,6 +90,13 @@ class AccountApiClient {
   Future<void> signup({required String email, required String password, String? locale}) =>
       _post("/signup", {"email": email, "password": password, "locale": ?locale});
 
+  /// `POST /signup/resend`: resends the verification OTP for a pending
+  /// address without requiring the password. Always 200 for unknown or
+  /// active addresses (enumeration-safe); `429 rate_limited` while the
+  /// 10-minute per-address resend cooldown is active.
+  Future<void> signupResend({required String email, String? locale}) =>
+      _post("/signup/resend", {"email": email, "locale": ?locale});
+
   /// `POST /verify-email`: activates a pending user and issues a token pair.
   Future<AuthTokenPair> verifyEmail({required String email, required String code}) async =>
       AuthTokenPair.fromJson(await _postJson("/verify-email", {"email": email, "code": code}));

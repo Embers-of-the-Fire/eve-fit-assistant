@@ -90,6 +90,20 @@ void main() {
       expect(captured?.data, {"email": "a@b.c", "password": "secret-pw"});
     });
 
+    test("signupResend posts to /platform/auth/signup/resend with the locale", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({"ok": true});
+      });
+
+      await client.signupResend(email: "a@b.c", locale: "zh");
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/auth/signup/resend");
+      expect(captured?.method, "POST");
+      expect(captured?.data, {"email": "a@b.c", "locale": "zh"});
+    });
+
     test("verifyEmail decodes the token pair", () async {
       final client = _clientWith((options) async => _json(_pair));
       final pair = await client.verifyEmail(email: "a@b.c", code: "123456");

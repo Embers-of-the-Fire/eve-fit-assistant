@@ -106,6 +106,12 @@ class AccountController extends _$AccountController {
   Future<void> signup(String email, String password) async =>
       (await _client()).signup(email: email, password: password, locale: _emailLocale);
 
+  /// `POST /signup/resend`: resends the verification code for a pending
+  /// account without a password (the verification step may be reached from
+  /// the login redirect, where the password was never collected).
+  Future<void> resendSignupCode(String email) async =>
+      (await _client()).signupResend(email: email, locale: _emailLocale);
+
   /// `POST /verify-email`: activates the pending account and signs in.
   Future<void> verifyEmail(String email, String code) async {
     final pair = await (await _client()).verifyEmail(email: email, code: code);
