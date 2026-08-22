@@ -28,8 +28,8 @@ by the optional `locale` field).
 | `/platform/auth/signup` | `{email, password, locale?}` — password 10–128 chars. `201 {userId}` for a new pending user + verification OTP; `200` (cooldown-respecting resend) for an existing pending one; `409 email_taken` when active. 5/h per IP, plus the shared OTP send limits: 60 s resend cooldown per purpose+address (silent) and 10 sends/day per purpose+address (`429`) |
 | `/platform/auth/verify-email` | `{email, code}` — activates the pending user and issues a token pair (`200`); `401 otp_invalid`/`otp_expired`; `409 already_verified` |
 | `/platform/auth/login` | `{email, password}` — `200` token pair; `403 email_unverified` (+ best-effort OTP resend, cooldown applies) when pending; uniform `401 invalid_credentials` otherwise. 5 failed attempts/30min per account+IP (successes are refunded), 30/5min per IP (loose on purpose: CGNAT) |
-| `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`) |
-| `/platform/auth/logout` | `{refreshToken}` — revokes that session; always `200 {ok:true}` |
+| `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`). 30 requests/5 min per IP (`429`, shared with `/logout`) |
+| `/platform/auth/logout` | `{refreshToken}` — revokes that session; `200 {ok:true}` for any well-formed body, including unknown tokens (idempotent). Shares the `/refresh` IP limit: 30 requests/5 min per IP (`429`) |
 | `/platform/auth/deregister` | Bearer access token + `{password}` (re-authentication: irreversible) — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions and clears their retained PII (`user_agent`, `ip`) in one atomic batch; `200 {ok:true}`; `401 invalid_credentials` on a wrong password; the address is free for re-signup. 5 failed attempts/30min per account+IP (successes are refunded) |
 | `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email, plus the shared OTP 60 s cooldown and 10/day cap, all enforced silently) |
 | `/platform/auth/reset-password/confirm` | `{email, code, newPassword}` — updates the hash, bumps `token_version`, revokes all sessions, issues a fresh pair (`200`); `401` on invalid/expired OTP |
@@ -113,10 +113,10 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 `preview` environment of `efa-platform-fit-storage`.
 
 > [!NOTE]
-> Both the preview environment (`efa-platform-api-preview.*.workers.dev`) and
-> the per-deploy preview URLs (`preview_urls = true`, aliased per branch as
-> `<branch-or-version>-efa-platform-api[-preview].*.workers.dev`) are protected
-> by Cloudflare Access. A bare `curl` gets the Access login page, not the API.
+> The named preview environment (`efa-platform-api-preview.*.workers.dev`) is
+> protected by Cloudflare Access. (Cloudflare does not generate per-deploy
+> preview URLs or preview aliases for Workers that implement Durable Objects.)
+> A bare `curl` gets the Access login page, not the API.
 > Authenticate from the CLI with `cloudflared`, then call through it:
 >
 > ```sh
@@ -135,7 +135,8 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 ## Deployment (one-time setup)
 
 1. Apply migrations: `wrangler d1 migrations apply efa-platform --remote`
-   (and `--env preview` for `efa-platform-test`).
+   for the default environment and `wrangler d1 migrations apply efa-platform-test
+   --remote --env preview` for the preview environment.
 2. Create the auth KV namespaces (rotation stash only): `wrangler kv namespace create
    efa-platform-auth` for the default environment and `wrangler kv namespace create
    efa-platform-auth --env preview` for the preview environment, then paste the

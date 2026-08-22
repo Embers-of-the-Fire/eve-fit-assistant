@@ -66,7 +66,8 @@ Responses:
   resend cooldown is active (then nothing is sent). The submitted password is
   ignored: the account keeps the password from the initial signup.
 - `409 email_taken` — an active account with this email exists.
-- `429 rate_limited` — 5 signups/hour per IP, or 10 OTP sends/day per address.
+- `429 rate_limited` — 5 signups/hour per IP, or 10 OTP sends/day per
+  purpose+address.
 
 ### `/verify-email`
 
@@ -107,6 +108,7 @@ Responses:
 
 - `200` token pair — the presented token is invalidated and replaced.
 - `401 invalid_token` — unknown, expired, or revoked token.
+- `429 rate_limited` — 30 requests/5 min per IP (shared with `/logout`).
 
 Rotation semantics:
 
@@ -125,8 +127,10 @@ Request: `{ refreshToken: string }`
 
 Responses:
 
-- `200 { "ok": true }` — always, including for unknown tokens (idempotent).
+- `200 { "ok": true }` — for any well-formed body within the rate limit,
+  including unknown tokens (idempotent).
 - `400 bad_request` — malformed body.
+- `429 rate_limited` — 30 requests/5 min per IP (shared with `/refresh`).
 
 ### `/deregister`
 
@@ -184,5 +188,6 @@ Exceeded limits return `429 { "error": "rate_limited" }` with `Retry-After`.
 | OTP verify attempts | 5 per issued code |
 | `login` per account+IP | 5 failures / 30 min |
 | `login` per IP | 30 / 5 min |
+| `refresh`/`logout` per IP | 30 / 5 min |
 | `deregister` per account+IP | 5 failures / 30 min |
 | `reset-password` per address | 3 / hour |
