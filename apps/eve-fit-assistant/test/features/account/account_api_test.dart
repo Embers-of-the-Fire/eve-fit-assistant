@@ -241,6 +241,12 @@ void main() {
       expect(decodeJwtSubject(jwt({"sub": "user-1", "tv": 0})), "user-1");
     });
 
+    test("extracts the sub claim from unpadded base64url segments", () {
+      final unpadded = jwt({"sub": "user-1", "tv": 0}).replaceAll("=", "");
+      expect(unpadded.contains("="), isFalse);
+      expect(decodeJwtSubject(unpadded), "user-1");
+    });
+
     test("returns null for malformed tokens", () {
       expect(decodeJwtSubject("not-a-jwt"), isNull);
       expect(decodeJwtSubject(jwt({"tv": 0})), isNull);
