@@ -35,13 +35,17 @@ class ResetStorageService {
   /// base directories themselves). On web it clears the OPFS repo tree and the
   /// IndexedDB-backed user document stores.
   Future<void> resetAll() async {
-    if (kIsWeb) {
-      await _resetWeb();
-    } else {
-      await _resetNative();
+    try {
+      if (kIsWeb) {
+        await _resetWeb();
+      } else {
+        await _resetNative();
+      }
+      await RemoteCache.clear();
+    } finally {
+      // Always drop credentials, even if the storage wipes above failed.
+      await _clearAccountCredentials();
     }
-    await RemoteCache.clear();
-    await _clearAccountCredentials();
   }
 
   Future<void> _resetNative() async {
