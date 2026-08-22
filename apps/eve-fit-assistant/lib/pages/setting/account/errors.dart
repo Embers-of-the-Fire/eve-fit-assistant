@@ -28,5 +28,9 @@ bool isValidAccountEmail(String email) => _emailPattern.hasMatch(email.trim());
 /// Mirrors the server-side password policy (`min(10).max(128)`).
 bool isValidAccountPassword(String password) => password.length >= 10 && password.length <= 128;
 
-/// Verification codes are 6 digits (the input field already restricts input accordingly).
-bool isValidAccountCode(String code) => code.length == 6 && int.tryParse(code) != null;
+final _codePattern = RegExp(r"^[0-9]{6}$");
+
+/// Verification codes are exactly 6 ASCII digits (the input field already restricts input
+/// accordingly). `int.tryParse` would also accept signed and hexadecimal literals, so a regex
+/// is used instead.
+bool isValidAccountCode(String code) => _codePattern.hasMatch(code);
