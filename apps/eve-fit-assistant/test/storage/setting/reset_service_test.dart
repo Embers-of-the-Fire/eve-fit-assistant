@@ -11,8 +11,15 @@ import "package:path/path.dart" as p;
 
 void main() {
   late Directory tempRoot;
+  late bool accountCredentialsCleared;
+
+  // Secure storage needs the platform binding; the account wipe is injected
+  // as a recorder instead.
+  ResetStorageService service() =>
+      ResetStorageService(clearAccountCredentials: () async => accountCredentialsCleared = true);
 
   setUp(() async {
+    accountCredentialsCleared = false;
     tempRoot = await Directory.systemTemp.createTemp("efa_reset_test_");
     PathProvider.documentsPath = p.join(tempRoot.path, "documents");
     PathProvider.tempPath = p.join(tempRoot.path, "temp");
@@ -52,21 +59,22 @@ void main() {
       await file.writeAsString("test");
     }
 
-    await const ResetStorageService().resetAll();
+    await service().resetAll();
 
     for (final filePath in files) {
       expect(File(filePath).existsSync(), isFalse, reason: "$filePath should be deleted");
     }
+    expect(accountCredentialsCleared, isTrue);
   });
 
   test("resetAll clears the HTTP cache", () async {
     // The cache store is opaque; we verify resetAll completes without throwing.
-    await const ResetStorageService().resetAll();
+    await service().resetAll();
   });
 
   test("resetAll is idempotent on empty directories", () async {
-    await const ResetStorageService().resetAll();
-    await const ResetStorageService().resetAll();
+    await service().resetAll();
+    await service().resetAll();
     expect(tempRoot.existsSync(), isTrue);
   });
 }

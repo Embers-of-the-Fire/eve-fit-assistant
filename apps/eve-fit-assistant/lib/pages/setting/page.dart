@@ -23,6 +23,11 @@ class SettingPage extends ConsumerWidget {
       children: [
         const ConfigListTile.space(20),
         ConfigListTile.item(
+          icon: const Icon(Icons.person_outline),
+          title: context.l10n.settingTileAccountTitle,
+          onTap: () => unawaited(context.router.push(const AccountRoute())),
+        ),
+        ConfigListTile.item(
           icon: const Icon(Icons.settings),
           title: context.l10n.settingTileAppSettingsTitle,
           onTap: () => unawaited(context.router.push(const AppSettingsRoute())),

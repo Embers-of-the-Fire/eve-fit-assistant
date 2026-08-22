@@ -43,7 +43,8 @@ Throughout this document, app paths written as `lib/...`, `test/...`, `rust/...`
 | Agent Resource DB | `lib/storage/repo/agent_resource_db.dart` | `AgentResourceDbService` — `agent_resource.db` (FORCE resource) backing AI chat tools; `type_names(locale, id, value, group_id, category_id, slot_index, slot_kind)` (schema v2) holds localized names keyed by real type id plus group/category and implant/booster slot metadata for `search_items`. Hard dependency: open/provider throw when absent or schema-mismatched. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` — `MigrateService` (orchestrator: fits→characters→finalize), `MigrateFits` (v2→v3 upgrade with `CheckoutRef`), `MigrateCharacters` (v2→v3 upgrade with `CheckoutRef`), `MigrateProgress` (freezed checkpoint state machine + `MigrateProgressStore`, persisted to `.migration_progress.json`), `MigrateFitsResult`/`MigrateCharactersResult` (migration result types). |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit/character storage schemas; fit supports storageVersion 3 with CheckoutRef |
-| Settings | `lib/storage/setting/` | User settings including remote content configuration |
+| Settings | `lib/storage/setting/` | User settings including remote content and platform account configuration |
+| Account/Auth | `lib/features/account/` | Platform auth client (`{origin}/platform/auth/*`: signup/verify/login/refresh/logout/deregister/reset), secure-storage session store (`AccountTokenStore`, also holds the developer Cloudflare Access `cf-access-token`), and the Riverpod `AccountController`; UI under `lib/pages/setting/account/` (entry tile on the settings tab) |
 | Storage FS | `lib/storage/fs/` | Platform storage abstraction: `DocStore`/`BlobStore` interfaces with File (native) and Hive/OPFS (web) backends; `createUserDocStore`/`createRepoBlobStore` factories route settings, fits, characters, announcements, feedback, and version state to the right backend. |
 
 All writes to `checkouts.json` are mutex-guarded; reads are lock-free. The checkout registry provides a reactive stream for live UI updates.
@@ -164,7 +165,7 @@ The `AppSetting` model (`lib/storage/setting/setting.dart`) includes a `develope
 
 **Entry points after enabled:**
 
-- Version page → Developer Settings (`/setting/developer-settings`): debug log toggle, remote-content settings visibility, open remote content settings, collect logs, clear cache, and a shortcut to Developer Tools.
+- Version page → Developer Settings (`/setting/developer-settings`): debug log toggle, remote-content settings visibility, account API endpoint override (production vs. the Cloudflare-Access-protected preview origin, with a `cf-access-token` entry), open remote content settings, collect logs, clear cache, and a shortcut to Developer Tools.
 - Developer Settings → Developer Tools (`/setting/developer-tools`): channel overview, restart init, trigger feedback, reset all storage.
 
 **Providers:**
