@@ -90,6 +90,30 @@ export async function storeOtp(
     );
 }
 
+// Atomic send reservation: returns 0 after storing the code and arming the
+// resend cooldown, or the remaining cooldown milliseconds without touching
+// any state. Unlike a separate cooldown check plus storeOtp, parallel
+// senders cannot all pass the check — exactly one reserves and the rest
+// observe the cooldown it armed (see otpStateReserve in otp-core.ts).
+export async function reserveOtp(
+    ns: DurableObjectNamespace<OtpState>,
+    secret: string,
+    purpose: OtpPurpose,
+    email: string,
+    code: string,
+    nowMs: number = Date.now(),
+): Promise<number> {
+    return otpStub(ns, purpose, email).reserve(
+        {
+            codeHmac: await codeHmac(secret, purpose, email, code),
+            attempts: 0,
+            expiresAtMs: nowMs + OTP_TTL_SEC * 1000,
+        },
+        nowMs + resendCooldownSec(purpose) * 1000,
+        nowMs,
+    );
+}
+
 export async function hasOtpCooldown(
     ns: DurableObjectNamespace<OtpState>,
     purpose: OtpPurpose,

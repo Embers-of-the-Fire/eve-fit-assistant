@@ -43,6 +43,26 @@ export async function otpStateStore(
     await tx.put(COOLDOWN_KEY, cooldownUntilMs);
 }
 
+// Atomic check-and-store for the send path: returns the remaining cooldown
+// without writing when one is active, otherwise installs the code and arms
+// the cooldown, all inside the caller's transaction. Parallel senders
+// therefore cannot all observe zero cooldown and overwrite each other's
+// codes — exactly one reservation wins and the rest see the cooldown it
+// armed.
+export async function otpStateReserve(
+    tx: OtpTxn,
+    entry: OtpEntry,
+    cooldownUntilMs: number,
+    nowMs: number,
+): Promise<number> {
+    const remainingMs = await otpStateCooldownRemainingMs(tx, nowMs);
+    if (remainingMs > 0) {
+        return remainingMs;
+    }
+    await otpStateStore(tx, entry, cooldownUntilMs);
+    return 0;
+}
+
 export async function otpStateVerify(
     tx: OtpTxn,
     candidateHmac: string,

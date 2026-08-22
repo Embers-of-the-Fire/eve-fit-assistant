@@ -10,12 +10,11 @@ import { type OtpEmailEnv, type OtpEmailInput, sendOtpEmail } from "./email.ts";
 import {
     clearOtp,
     generateOtpCode,
-    hasOtpCooldown,
     OTP_DAILY_SEND_LIMIT,
     OTP_DAILY_SEND_WINDOW_SEC,
     type OtpPurpose,
     otpCooldownRemainingMs,
-    storeOtp,
+    reserveOtp,
     verifyOtp,
 } from "./otp.ts";
 import type { OtpState } from "./otp-state.ts";
@@ -195,8 +194,10 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
 
     type OtpSendOutcome = "sent" | "cooldown" | "limited" | "failed";
 
-    // Cooldown is silent (callers still answer 200); the daily send cap and
-    // send failures are reported so the caller can decide.
+    // Cooldown now carries a Retry-After so callers can choose to surface it
+    // as 429 (see resendSignupOtp) or keep answering 200 silently; the daily
+    // send cap and send failures are always reported so the caller can
+    // decide.
     async function sendOtp(
         c: { env: AuthEnv },
         secret: string,
@@ -204,8 +205,13 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         email: string,
         locale: string,
     ): Promise<{ outcome: OtpSendOutcome; retryAfterSec: number }> {
-        if (await hasOtpCooldown(c.env.AUTH_OTP, purpose, email)) {
-            return { outcome: "cooldown", retryAfterSec: 0 };
+        // Fast path only: skip the daily-quota hit when the cooldown is
+        // clearly active. Correctness does not rely on this check — a
+        // request racing past it is still rejected by the atomic reserve
+        // below (and the daily slot it consumed is refunded).
+        const fastPathMs = await otpCooldownRemainingMs(c.env.AUTH_OTP, purpose, email);
+        if (fastPathMs > 0) {
+            return { outcome: "cooldown", retryAfterSec: Math.ceil(fastPathMs / 1000) };
         }
         const daily = await fixedWindowLimit(
             c.env.AUTH_RATE_LIMIT,
@@ -218,7 +224,21 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             return { outcome: "limited", retryAfterSec: daily.retryAfterSec };
         }
         const code = generateOtpCode();
-        await storeOtp(c.env.AUTH_OTP, secret, purpose, email, code);
+        // Atomic cooldown-check + store: exactly one of any set of parallel
+        // senders reserves; the others observe the armed cooldown here even
+        // if they all passed the fast-path check above.
+        const cooldownMs = await reserveOtp(c.env.AUTH_OTP, secret, purpose, email, code);
+        if (cooldownMs > 0) {
+            // Lost the race: this code is discarded and the daily slot it
+            // consumed is refunded, since no email goes out.
+            await fixedWindowRefund(
+                c.env.AUTH_RATE_LIMIT,
+                "otp-send",
+                `${purpose}:${email}`,
+                OTP_DAILY_SEND_WINDOW_SEC,
+            );
+            return { outcome: "cooldown", retryAfterSec: Math.ceil(cooldownMs / 1000) };
+        }
         const sent = await sendEmail(c.env, { to: email, code, purpose, locale });
         if (!sent) {
             // Leave no state behind so an immediate retry can resend: clear
@@ -238,18 +258,22 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
 
     // Shared resend path for a signup that finds the address already pending:
     // the submitted password is ignored and the password hash from the
-    // initial signup is kept; only a fresh verification code goes out.
+    // initial signup is kept; only a fresh verification code goes out. With
+    // cooldownAs429 the resend cooldown surfaces as 429 + Retry-After (the
+    // /signup/resend contract) instead of the silent 200 the other callers
+    // use.
     async function resendSignupOtp(
         c: { env: AuthEnv },
         secret: string,
         email: string,
         locale: string | undefined,
+        cooldownAs429: boolean = false,
     ): Promise<Response> {
         const send = await sendOtp(c, secret, "verify", email, locale ?? "en");
         if (send.outcome === "failed") {
             return errorJson(500, "internal", "internal server error");
         }
-        if (send.outcome === "limited") {
+        if (send.outcome === "limited" || (cooldownAs429 && send.outcome === "cooldown")) {
             return errorJson(429, "rate_limited", "too many requests", {
                 "Retry-After": String(send.retryAfterSec),
             });
@@ -418,13 +442,11 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         if (user?.status !== "pending") {
             return c.json({ ok: true }, 200);
         }
-        const cooldownMs = await otpCooldownRemainingMs(c.env.AUTH_OTP, "verify", email);
-        if (cooldownMs > 0) {
-            return errorJson(429, "rate_limited", "too many requests", {
-                "Retry-After": String(Math.ceil(cooldownMs / 1000)),
-            });
-        }
-        return resendSignupOtp(c, secret, email, locale);
+        // The cooldown check and the OTP reservation happen atomically
+        // inside sendOtp (one Durable Object storage transaction), so
+        // parallel resends cannot all pass: exactly one sends and the rest
+        // get 429 with Retry-After.
+        return resendSignupOtp(c, secret, email, locale, true);
     });
 
     app.post("/verify-email", async (c) => {

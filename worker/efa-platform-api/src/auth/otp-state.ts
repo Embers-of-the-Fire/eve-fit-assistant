@@ -22,6 +22,7 @@ import {
     otpStateClear,
     otpStateCooldownRemainingMs,
     otpStateHasCooldown,
+    otpStateReserve,
     otpStateStore,
     otpStateVerify,
 } from "./otp-core.ts";
@@ -36,6 +37,20 @@ export class OtpState extends DurableObject {
             // storage folds ctx.storage calls into the running transaction, so
             // the alarm commits atomically with the state it reclaims.
             await this.ctx.storage.setAlarm(Math.max(entry.expiresAtMs, cooldownUntilMs));
+        });
+    }
+
+    // Atomic cooldown-check + store for the send path (see otpStateReserve).
+    // Returns 0 on a successful reservation or the remaining cooldown ms.
+    reserve(entry: OtpEntry, cooldownUntilMs: number, nowMs: number): Promise<number> {
+        return this.ctx.storage.transaction(async (tx) => {
+            const remainingMs = await otpStateReserve(tx, entry, cooldownUntilMs, nowMs);
+            if (remainingMs === 0) {
+                // Same reclamation discipline as store(): the alarm commits
+                // atomically with the state it reclaims.
+                await this.ctx.storage.setAlarm(Math.max(entry.expiresAtMs, cooldownUntilMs));
+            }
+            return remainingMs;
         });
     }
 

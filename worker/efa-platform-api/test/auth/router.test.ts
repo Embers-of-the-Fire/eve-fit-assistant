@@ -386,6 +386,24 @@ describe("signup resend", () => {
         assert.equal((await ctx.post("/signup/resend", { email })).status, 429);
     });
 
+    it("serializes parallel resends: exactly one sends, the rest get 429", async () => {
+        const ctx = setup();
+        const email = "user@example.com";
+        assert.equal((await ctx.signup(email)).status, 201);
+        // Move past the cooldown armed by the initial signup so every
+        // parallel request races on the reservation.
+        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+
+        const responses = await Promise.all(
+            Array.from({ length: 3 }, () => ctx.post("/signup/resend", { email })),
+        );
+        assert.deepEqual(responses.map((r) => r.status).sort(), [200, 429, 429]);
+        // Exactly one new email went out, and the code in it is the one that
+        // was stored — no losing request overwrote the winner's code.
+        assert.equal(ctx.emails.length, 2);
+        assert.equal((await ctx.verify(email)).status, 200);
+    });
+
     it("is enumeration-safe for unknown and active addresses", async () => {
         const ctx = setup();
         const email = "user@example.com";

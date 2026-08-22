@@ -10,6 +10,7 @@ import {
     otpStateClear,
     otpStateCooldownRemainingMs,
     otpStateHasCooldown,
+    otpStateReserve,
     otpStateStore,
     otpStateVerify,
 } from "../../src/auth/otp-core.ts";
@@ -190,6 +191,15 @@ export class TestOtpStateNamespace {
                         tx,
                         { ...entry, expiresAtMs: entry.expiresAtMs + this.offsetMs },
                         cooldownUntilMs + this.offsetMs,
+                    ),
+                ),
+            reserve: (entry: OtpEntry, cooldownUntilMs: number, nowMs: number): Promise<number> =>
+                storage.transaction((tx) =>
+                    otpStateReserve(
+                        tx,
+                        { ...entry, expiresAtMs: entry.expiresAtMs + this.offsetMs },
+                        cooldownUntilMs + this.offsetMs,
+                        nowMs + this.offsetMs,
                     ),
                 ),
             verify: (candidateHmac: string, nowMs: number): Promise<OtpVerifyResult> =>
