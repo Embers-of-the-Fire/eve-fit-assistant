@@ -107,6 +107,15 @@ AuthTokenPair _pair(String suffix) => AuthTokenPair(
   expiresIn: 900,
 );
 
+/// A rotation result for the seeded account: the server rotates the tokens
+/// but the access-token subject stays the account's user id (`user-old`,
+/// matching the identity cached by [seedSignedIn]).
+AuthTokenPair _rotatedPair(String refreshSuffix) => AuthTokenPair(
+  accessToken: _jwt("user-old"),
+  refreshToken: "refresh-$refreshSuffix",
+  expiresIn: 900,
+);
+
 void main() {
   late _FakeAccountTokenStore store;
   late _FakeAccountApiClient api;
@@ -121,7 +130,7 @@ void main() {
     store = _FakeAccountTokenStore();
     api = _FakeAccountApiClient();
     // Default rotation result for the startup refresh in build().
-    api.refreshResult = _pair("boot");
+    api.refreshResult = _rotatedPair("boot");
     capturedOrigin = null;
     container = ProviderContainer(
       overrides: [
@@ -257,6 +266,91 @@ void main() {
     expect(account.userId, isNull);
   });
 
+  test("startup refresh keeps the stored session when the rotated pair has no subject", () async {
+    seedSignedIn();
+    api.refreshResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    final result = await state();
+
+    // The malformed pair is never persisted: the stored session stays intact
+    // and the state keeps identifying the prior account.
+    expect(result, isA<AccountSignedIn>());
+    expect(api.refreshCalls, 1);
+    expect(store.session?.refreshToken, "refresh-old");
+    final account = container.read(appSettingServiceProvider).account;
+    expect(account.userId, "user-old");
+  });
+
+  test(
+    "startup refresh keeps the stored session when the rotated pair subject mismatches",
+    () async {
+      seedSignedIn();
+      api.refreshResult = _pair("other");
+
+      final result = await state();
+
+      // A pair identifying another account must not replace the stored access
+      // token while the state still identifies the prior account.
+      expect(result, isA<AccountSignedIn>());
+      expect((result as AccountSignedIn).userId, "user-old");
+      expect(api.refreshCalls, 1);
+      expect(store.session?.refreshToken, "refresh-old");
+    },
+  );
+
+  test("expiry refresh rejects a rotated pair without a usable JWT subject", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = const AuthTokenPair(
+      accessToken: "not-a-jwt",
+      refreshToken: "refresh-bad",
+      expiresIn: 900,
+    );
+
+    await expectLater(
+      () => controller().deregister("secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // The malformed pair is neither stored nor returned, and the doomed
+    // session (its refresh token was rotated server-side) is cleared.
+    expect(api.refreshCalls, 1);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
+  test("expiry refresh rejects a rotated pair with a mismatched JWT subject", () async {
+    seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
+    api.refreshResult = _pair("other");
+
+    await expectLater(
+      () => controller().deregister("secret-pw"),
+      throwsA(isA<AccountApiException>()),
+    );
+
+    // A pair identifying another account is neither stored nor returned, and
+    // the doomed session is cleared like a rejected refresh.
+    expect(api.refreshCalls, 1);
+    expect(api.deregisterBearer, isNull);
+    expect(store.session, isNull);
+    expect(await state(), isA<AccountSignedOut>());
+  });
+
   test("ignores the stored custom origin when developer mode is off", () async {
     container
         .read(appSettingServiceProvider.notifier)
@@ -326,14 +420,14 @@ void main() {
     await state();
     api.refreshCalls = 0;
     store.session = storedSession(expired: true);
-    api.refreshResult = _pair("new");
+    api.refreshResult = _rotatedPair("new");
 
     await controller().deregister("secret-pw");
 
     // The deregister path rotates exactly once; a duplicate refresh would
     // rotate the refresh token twice and could invalidate the stored pair.
     expect(api.refreshCalls, 1);
-    expect(api.deregisterBearer, _jwt("user-new"));
+    expect(api.deregisterBearer, _jwt("user-old"));
     // A successful deregistration clears the rotated pair again.
     expect(store.session, isNull);
   });
@@ -346,7 +440,7 @@ void main() {
     await state();
     api.refreshCalls = 0;
     store.session = storedSession(expired: true);
-    api.refreshResult = _pair("new");
+    api.refreshResult = _rotatedPair("new");
 
     // Both calls enter the refresh path while the stored pair is expired.
     // The second one must observe the rotated pair on its re-read inside the

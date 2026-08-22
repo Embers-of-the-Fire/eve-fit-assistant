@@ -96,6 +96,21 @@ class AccountController extends _$AccountController {
         }
         try {
           final pair = await (await _client()).refresh(refreshToken: current.refreshToken);
+          // Validate the rotated pair against the cached identity before
+          // persistence: a refresh result with no subject, or with a subject
+          // different from the cached user id, must not replace the stored
+          // access token while the state still identifies the prior account.
+          // Keep the stored session as-is; the server already rotated the
+          // refresh token, so a later expiry-triggered refresh will be
+          // rejected and force a re-login.
+          final subject = decodeJwtSubject(pair.accessToken);
+          if (subject == null || subject.isEmpty || subject != userId) {
+            warning(
+              "Account startup refresh: rotated pair has a missing or mismatched subject; "
+              "keeping the stored session",
+            );
+            return AccountSignedIn(email: email, userId: userId);
+          }
           try {
             await store.writeSession(_sessionFromPair(pair));
           } on Object catch (error, stackTrace) {
@@ -221,6 +236,22 @@ class AccountController extends _$AccountController {
     }
     try {
       final pair = await (await _client()).refresh(refreshToken: session.refreshToken);
+      // Validate the rotated pair against the cached identity before storing
+      // and returning it: a refresh result with no subject, or with a subject
+      // different from the cached user id, must not replace the access token
+      // while the state still identifies the prior account. The stored
+      // refresh token was already rotated server-side, so the session can
+      // never produce a usable token again; treat it like a rejected refresh
+      // (the catch below clears the session on invalid_token).
+      final userId = ref.read(appSettingServiceProvider).account.userId;
+      final subject = decodeJwtSubject(pair.accessToken);
+      if (subject == null || subject.isEmpty || subject != userId) {
+        throw const AccountApiException(
+          null,
+          "invalid_token",
+          "refreshed access token identifies a different account",
+        );
+      }
       final rotated = _sessionFromPair(pair);
       await store.writeSession(rotated);
       return rotated.accessToken;
