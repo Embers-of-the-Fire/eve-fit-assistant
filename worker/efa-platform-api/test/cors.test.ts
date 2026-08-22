@@ -1,11 +1,10 @@
 // CORS wiring tests: the public mount stays open to every origin while the
 // auth mount answers only the platform's own web origins. The root
 // composition is exercised through createRootApp with dummy sub-apps so no
-// cloudflare:workers runtime module is needed.
+// bindings are needed.
 
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
 import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
 import { AUTH_MOUNT_PATH, createRootApp, MOUNT_PATH } from "../src/root.ts";
 
 const ORIGIN = "https://api.efa-tech.dev";
@@ -40,9 +39,9 @@ describe("auth mount CORS", () => {
                 body: "{}",
             }),
         );
-        assert.equal(res.status, 200);
-        assert.equal(res.headers.get("Access-Control-Allow-Origin"), TRUSTED_ORIGIN);
-        assert.ok(res.headers.get("Vary")?.includes("Origin"));
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe(TRUSTED_ORIGIN);
+        expect(res.headers.get("Vary")).toContain("Origin");
     });
 
     it("omits Allow-Origin for untrusted origins on actual requests", async () => {
@@ -53,23 +52,23 @@ describe("auth mount CORS", () => {
                 body: "{}",
             }),
         );
-        assert.equal(res.status, 200);
-        assert.equal(res.headers.get("Access-Control-Allow-Origin"), null);
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe(null);
     });
 
     it("answers preflights only for trusted origins", async () => {
         const trusted = await makeRoot().fetch(
             preflight(`${AUTH_MOUNT_PATH}/login`, TRUSTED_ORIGIN),
         );
-        assert.equal(trusted.status, 204);
-        assert.equal(trusted.headers.get("Access-Control-Allow-Origin"), TRUSTED_ORIGIN);
-        assert.ok(trusted.headers.get("Access-Control-Allow-Methods")?.includes("POST"));
+        expect(trusted.status).toBe(204);
+        expect(trusted.headers.get("Access-Control-Allow-Origin")).toBe(TRUSTED_ORIGIN);
+        expect(trusted.headers.get("Access-Control-Allow-Methods")).toContain("POST");
 
         const untrusted = await makeRoot().fetch(
             preflight(`${AUTH_MOUNT_PATH}/login`, UNTRUSTED_ORIGIN),
         );
-        assert.equal(untrusted.status, 204);
-        assert.equal(untrusted.headers.get("Access-Control-Allow-Origin"), null);
+        expect(untrusted.status).toBe(204);
+        expect(untrusted.headers.get("Access-Control-Allow-Origin")).toBe(null);
     });
 
     it("does not let the public wildcard leak onto the auth mount", async () => {
@@ -80,7 +79,7 @@ describe("auth mount CORS", () => {
                 body: "{}",
             }),
         );
-        assert.notEqual(res.headers.get("Access-Control-Allow-Origin"), "*");
+        expect(res.headers.get("Access-Control-Allow-Origin")).not.toBe("*");
     });
 });
 
@@ -91,13 +90,13 @@ describe("public mount CORS", () => {
                 headers: { Origin: UNTRUSTED_ORIGIN },
             }),
         );
-        assert.equal(res.status, 200);
-        assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     });
 
     it("stays open to every origin on preflights", async () => {
         const res = await makeRoot().fetch(preflight(`${MOUNT_PATH}/posts`, UNTRUSTED_ORIGIN));
-        assert.equal(res.status, 204);
-        assert.equal(res.headers.get("Access-Control-Allow-Origin"), "*");
+        expect(res.status).toBe(204);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     });
 });

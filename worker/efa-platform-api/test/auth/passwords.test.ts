@@ -1,26 +1,25 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword } from "../../src/auth/passwords.ts";
 
 describe("passwords", () => {
     it("hashes in the pbkdf2$<iter>$<salt>$<hash> format and verifies", async () => {
         const stored = await hashPassword("correct horse battery");
         const parts = stored.split("$");
-        assert.equal(parts.length, 4);
-        assert.equal(parts[0], "pbkdf2");
-        assert.equal(parts[1], "50000");
-        assert.ok(await verifyPassword("correct horse battery", stored));
+        expect(parts.length).toBe(4);
+        expect(parts[0]).toBe("pbkdf2");
+        expect(parts[1]).toBe("50000");
+        expect(await verifyPassword("correct horse battery", stored)).toBe(true);
     });
 
     it("uses a fresh salt per hash", async () => {
         const a = await hashPassword("same-password");
         const b = await hashPassword("same-password");
-        assert.notEqual(a, b);
+        expect(a).not.toBe(b);
     });
 
     it("rejects a wrong password", async () => {
         const stored = await hashPassword("right-password");
-        assert.equal(await verifyPassword("wrong-password", stored), false);
+        expect(await verifyPassword("wrong-password", stored)).toBe(false);
     });
 
     it("rejects malformed stored hashes without throwing", async () => {
@@ -35,7 +34,7 @@ describe("passwords", () => {
             "pbkdf2$210000$AAAA",
             "pbkdf2$210000$AAAA$BBBB$EXTRA",
         ]) {
-            assert.equal(await verifyPassword(stored, malformed), false, malformed);
+            expect(await verifyPassword(stored, malformed)).toBe(false);
         }
     });
 
@@ -43,10 +42,10 @@ describe("passwords", () => {
         const parts = (await hashPassword("some-password")).split("$");
         // Just above workerd's 100,000 cap.
         parts[1] = "100001";
-        assert.equal(await verifyPassword("some-password", parts.join("$")), false);
+        expect(await verifyPassword("some-password", parts.join("$"))).toBe(false);
         // Above Web Crypto's unsigned long range (2^32 - 1), which would make
         // deriveBits reject; verification must return false instead.
         parts[1] = "4294967296";
-        assert.equal(await verifyPassword("some-password", parts.join("$")), false);
+        expect(await verifyPassword("some-password", parts.join("$"))).toBe(false);
     });
 });

@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import {
     ACCESS_TOKEN_TTL_SEC,
     generateRefreshToken,
@@ -15,11 +14,11 @@ describe("access tokens", () => {
         const now = Date.now();
         const token = await signAccessToken(SECRET, "user-1", 3, now);
         const claims = await verifyAccessToken(SECRET, token, now);
-        assert.ok(claims);
-        assert.equal(claims.sub, "user-1");
-        assert.equal(claims.tv, 3);
-        assert.equal(claims.exp - claims.iat, ACCESS_TOKEN_TTL_SEC);
-        assert.ok(claims.jti.length > 0);
+        expect(claims).not.toBe(null);
+        expect(claims?.sub).toBe("user-1");
+        expect(claims?.tv).toBe(3);
+        expect(claims && claims.exp - claims.iat).toBe(ACCESS_TOKEN_TTL_SEC);
+        expect(claims?.jti.length).toBeGreaterThan(0);
     });
 
     it("rejects a tampered payload", async () => {
@@ -27,17 +26,17 @@ describe("access tokens", () => {
         const [header, payload, signature] = token.split(".");
         const replacement = payload.startsWith("A") ? "B" : "A";
         const tampered = `${header}.${replacement}${payload.slice(1)}.${signature}`;
-        assert.equal(await verifyAccessToken(SECRET, tampered), null);
+        expect(await verifyAccessToken(SECRET, tampered)).toBe(null);
     });
 
     it("rejects a wrong secret", async () => {
         const token = await signAccessToken(SECRET, "user-1", 0);
-        assert.equal(await verifyAccessToken("other-secret", token), null);
+        expect(await verifyAccessToken("other-secret", token)).toBe(null);
     });
 
     it("rejects malformed tokens", async () => {
         for (const malformed of ["", "a", "a.b", "a.b.c.d", "a.b.!!!"]) {
-            assert.equal(await verifyAccessToken(SECRET, malformed), null, malformed);
+            expect(await verifyAccessToken(SECRET, malformed)).toBe(null);
         }
     });
 
@@ -45,30 +44,30 @@ describe("access tokens", () => {
         const now = Date.now();
         const token = await signAccessToken(SECRET, "user-1", 0, now);
         const expiredAt = now + ACCESS_TOKEN_TTL_SEC * 1000;
-        assert.ok(await verifyAccessToken(SECRET, token, expiredAt + 20 * 1000));
-        assert.equal(await verifyAccessToken(SECRET, token, expiredAt + 31 * 1000), null);
+        expect(await verifyAccessToken(SECRET, token, expiredAt + 20 * 1000)).not.toBe(null);
+        expect(await verifyAccessToken(SECRET, token, expiredAt + 31 * 1000)).toBe(null);
     });
 
     it("rejects tokens issued too far in the future", async () => {
         const now = Date.now();
         const token = await signAccessToken(SECRET, "user-1", 0, now + 60 * 1000);
-        assert.equal(await verifyAccessToken(SECRET, token, now), null);
-        assert.ok(await verifyAccessToken(SECRET, token, now + 31 * 1000));
+        expect(await verifyAccessToken(SECRET, token, now)).toBe(null);
+        expect(await verifyAccessToken(SECRET, token, now + 31 * 1000)).not.toBe(null);
     });
 });
 
 describe("refresh tokens", () => {
     it("generates 43-char base64url tokens", () => {
         const token = generateRefreshToken();
-        assert.match(token, /^[A-Za-z0-9_-]{43}$/);
-        assert.notEqual(generateRefreshToken(), generateRefreshToken());
+        expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+        expect(generateRefreshToken()).not.toBe(generateRefreshToken());
     });
 
     it("hashes to a deterministic 64-char hex digest", async () => {
         const token = generateRefreshToken();
         const hash = await hashRefreshToken(token);
-        assert.match(hash, /^[0-9a-f]{64}$/);
-        assert.equal(await hashRefreshToken(token), hash);
-        assert.notEqual(await hashRefreshToken(generateRefreshToken()), hash);
+        expect(hash).toMatch(/^[0-9a-f]{64}$/);
+        expect(await hashRefreshToken(token)).toBe(hash);
+        expect(await hashRefreshToken(generateRefreshToken())).not.toBe(hash);
     });
 });

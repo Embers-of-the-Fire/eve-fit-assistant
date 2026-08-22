@@ -122,7 +122,9 @@ const LOGIN_ACCOUNT_WINDOW_SEC = 30 * 60;
 const LOGIN_IP_LIMIT = 30;
 const LOGIN_IP_WINDOW_SEC = 5 * 60;
 const RESET_EMAIL_LIMIT = 3;
-const RESET_EMAIL_WINDOW_SEC = 60 * 60;
+// Exported for tests, which pin the fake clock inside a window so the
+// window cannot roll over mid-test.
+export const RESET_EMAIL_WINDOW_SEC = 60 * 60;
 // Loose per-IP cap on the unauthenticated token routes (/refresh, /logout):
 // they accept any body and would otherwise give callers free D1 reads with
 // random tokens. Kept as loose as login-ip for the same CGNAT reason.

@@ -133,12 +133,21 @@ def register_test_commands(cli_group: click.Group) -> None:
             "app:test", "FLUTTER WEB TEST OUTPUT", args=["--platform", "chrome", *suites]
         )
 
+    @test.command("js")
+    def test_js():
+        """Run JS/TS tests (Vitest, incl. the Cloudflare Workers suites)."""
+        pnpm = get_command("pnpm")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm test:js")
+        runtime.execute([pnpm, "test:js"], "VITEST OUTPUT")
+
     @test.command("all")
     def test_all():
-        """Run all test suites (Python + Dart + Web)."""
+        """Run all test suites (Python + Dart + Web + JS)."""
         ctx = click.get_current_context()
         ctx.invoke(test_python)
         click.echo()
         ctx.invoke(test_dart)
         click.echo()
         ctx.invoke(test_web)
+        click.echo()
+        ctx.invoke(test_js)

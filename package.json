@@ -4,7 +4,7 @@
   "scripts": {
     "dev:site": "pnpm --filter efa-tech dev",
     "build:site": "pnpm --filter efa-tech build",
-        "check:site": "pnpm --filter efa-tech check",
+    "check:site": "pnpm --filter efa-tech check",
     "dev:manual": "pnpm --filter manual dev",
     "build:manual": "pnpm --filter manual build",
     "dev:platform": "pnpm --filter efa-platform dev",
@@ -14,7 +14,8 @@
     "check:redirect": "pnpm --filter issue-redirect check",
     "dev:email-filter": "pnpm --filter email-filter dev",
     "check:email-filter": "pnpm --filter email-filter check",
-    "check:snapshot-ts": "pnpm --filter efa-fit-snapshot-ts check"
+    "check:snapshot-ts": "pnpm --filter efa-fit-snapshot-ts check",
+    "test:js": "pnpm --filter efa-platform-api --filter efa-platform-data-sync test"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7"
