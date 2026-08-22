@@ -71,7 +71,7 @@ class AccountApiEndpointTile extends ConsumerWidget {
         ],
       ),
     );
-    if (saved != true) return;
+    if (saved != true || !context.mounted) return;
     final origin = controller.text.trim();
     ref
         .read(appSettingServiceProvider.notifier)
