@@ -112,6 +112,26 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 `efa-platform-test` database and the `FIT_STORAGE` binding targets the
 `preview` environment of `efa-platform-fit-storage`.
 
+> [!NOTE]
+> Both the preview environment (`efa-platform-api-preview.*.workers.dev`) and
+> the per-deploy preview URLs (`preview_urls = true`, aliased per branch as
+> `<branch-or-version>-efa-platform-api[-preview].*.workers.dev`) are protected
+> by Cloudflare Access. A bare `curl` gets the Access login page, not the API.
+> Authenticate from the CLI with `cloudflared`, then call through it:
+>
+> ```sh
+> cloudflared access login https://efa-platform-api-preview.<subdomain>.workers.dev
+> # wrapper that injects the token automatically:
+> cloudflared access curl https://efa-platform-api-preview.<subdomain>.workers.dev/platform/internal/health
+> # or export the token for plain curl:
+> export TOKEN=$(cloudflared access token -app=https://efa-platform-api-preview.<subdomain>.workers.dev)
+> curl -H "cf-access-token: $TOKEN" https://efa-platform-api-preview.<subdomain>.workers.dev/platform/internal/health
+> ```
+>
+> The token is valid for the session duration configured on the Access
+> application; re-run `access login` after it expires. See the official guide:
+> <https://developers.cloudflare.com/cloudflare-one/tutorials/cli/>.
+
 ## Deployment (one-time setup)
 
 1. Apply migrations: `wrangler d1 migrations apply efa-platform --remote`
