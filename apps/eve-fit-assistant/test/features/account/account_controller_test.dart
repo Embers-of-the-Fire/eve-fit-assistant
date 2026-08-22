@@ -237,13 +237,19 @@ void main() {
 
   test("deregister refreshes an expired access token and stores the rotated pair", () async {
     seedSignedIn(expired: true);
+
+    // Drain the startup refresh, then re-seed an expired pair so the counter
+    // only measures the deregister path.
+    await state();
+    api.refreshCalls = 0;
+    store.session = storedSession(expired: true);
     api.refreshResult = _pair("new");
 
     await controller().deregister("secret-pw");
 
-    // One rotation comes from the startup refresh; the deregister path adds
-    // at most one more depending on the interleaving.
-    expect(api.refreshCalls, greaterThanOrEqualTo(1));
+    // The deregister path rotates exactly once; a duplicate refresh would
+    // rotate the refresh token twice and could invalidate the stored pair.
+    expect(api.refreshCalls, 1);
     expect(api.deregisterBearer, _jwt("user-new"));
     // A successful deregistration clears the rotated pair again.
     expect(store.session, isNull);
