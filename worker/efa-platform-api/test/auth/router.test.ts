@@ -90,7 +90,9 @@ function setup(wrapDb?: (db: D1Database) => D1Database) {
 // a signup that passes the existence check but then loses the insert race
 // against a concurrent request for the same address. Every operation
 // delegates to the real binding; only the first matching SELECT is
-// redirected.
+// redirected. The decoy predicate lives in the SQL itself: bind() returns a
+// new statement carrying the caller's parameters, so pre-binding a decoy
+// email here would let getUserByEmail's .bind(email) restore the real lookup.
 function hideFirstEmailLookup(db: D1Database): D1Database {
     let hidden = false;
     return new Proxy(db, {
@@ -101,9 +103,9 @@ function hideFirstEmailLookup(db: D1Database): D1Database {
             return (sql: string): D1PreparedStatement => {
                 if (!hidden && sql.startsWith("SELECT * FROM users WHERE email")) {
                     hidden = true;
-                    return target
-                        .prepare("SELECT * FROM users WHERE email = ?")
-                        .bind("missing@example.com");
+                    return target.prepare(
+                        "SELECT * FROM users WHERE email = ? AND email = 'missing@example.com'",
+                    );
                 }
                 return target.prepare(sql);
             };
