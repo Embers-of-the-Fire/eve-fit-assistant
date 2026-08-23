@@ -2,6 +2,8 @@ import "dart:convert";
 
 import "package:dio/dio.dart";
 
+import "package:efa_platform_client/src/dio_options.dart";
+
 const String _authBasePath = "/platform/auth";
 
 /// A token pair issued by the auth API (`login`, `verify-email`, `refresh`,
@@ -56,7 +58,8 @@ class AccountApiException implements Exception {
 /// is provided it is sent as the `cf-access-token` header so the request can
 /// pass the Access gate protecting the preview environment.
 class AccountApiClient {
-  AccountApiClient({required this.origin, String? cfAccessToken, Dio? dio}) : _dio = dio ?? Dio() {
+  AccountApiClient({required this.origin, String? cfAccessToken, Dio? dio})
+    : _dio = dio ?? Dio(defaultBaseOptions()) {
     if (cfAccessToken != null && cfAccessToken.isNotEmpty) {
       // An interceptor (not BaseOptions) so injected test transports get the
       // header too.

@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_platform_client/src/dio_options.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 
@@ -117,7 +118,7 @@ class PlatformApiException implements Exception {
 /// All endpoints here are public reads; post creation goes through the
 /// fit-snapshot upload API.
 class PlatformApiClient {
-  PlatformApiClient({required this.origin, Dio? dio}) : _dio = dio ?? Dio();
+  PlatformApiClient({required this.origin, Dio? dio}) : _dio = dio ?? Dio(defaultBaseOptions());
 
   final String origin;
   final Dio _dio;
