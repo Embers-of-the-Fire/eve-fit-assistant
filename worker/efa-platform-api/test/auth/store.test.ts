@@ -30,15 +30,19 @@ async function seedUser(): Promise<string> {
     return userId;
 }
 
-async function seedSession(userId: string, refreshHash: string): Promise<string> {
+async function seedSession(
+    userId: string,
+    refreshHash: string,
+    metadata: { userAgent: string | null; ip: string | null } = { userAgent: null, ip: null },
+): Promise<string> {
     const sessionId = crypto.randomUUID();
     await insertSession(db, {
         sessionId,
         userId,
         refreshHash,
         expiresAt: EXPIRES_AT,
-        userAgent: null,
-        ip: null,
+        userAgent: metadata.userAgent,
+        ip: metadata.ip,
     });
     return sessionId;
 }
@@ -145,7 +149,7 @@ describe("rotateSession", () => {
 describe("deregisterUser", () => {
     it("anonymizes the account and revokes sessions when the token version matches", async () => {
         const userId = await seedUser();
-        await seedSession(userId, "hash-a");
+        await seedSession(userId, "hash-a", { userAgent: "TestAgent/1.0", ip: "192.0.2.1" });
         const before = await getUserById(db, userId);
 
         expect(await deregisterUser(db, userId, before?.token_version ?? -1)).toBe(true);
