@@ -37,14 +37,12 @@ export class LocalStorageSessionStore implements PlatformSessionStore {
         return Promise.resolve(raw === null ? null : parseStoredSession(raw));
     }
 
-    write(session: StoredPlatformSession): Promise<void> {
+    async write(session: StoredPlatformSession): Promise<void> {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-        return Promise.resolve();
     }
 
-    clear(): Promise<void> {
+    async clear(): Promise<void> {
         localStorage.removeItem(STORAGE_KEY);
-        return Promise.resolve();
     }
 }
 
