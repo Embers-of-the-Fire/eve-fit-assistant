@@ -80,10 +80,23 @@ class AccountApiEndpointTile extends ConsumerWidget {
         return trimmed.isEmpty ? platformApiProductionOrigin : trimmed;
       }
 
-      final previous = normalize(ref.read(appSettingServiceProvider).account.customOrigin);
+      final stored = ref.read(appSettingServiceProvider).account.customOrigin;
+      final previous = normalize(stored);
       final next = normalize(controller.text);
       // Only an actual endpoint switch updates settings and signs out.
-      if (previous == next) return;
+      if (previous == next) {
+        // The resolved origin is unchanged, but the user asked for
+        // production: drop an explicit production URL so the tile shows
+        // "Production" and the setting isn't pinned to a stale value if
+        // the production origin changes in a later release. The origin is
+        // the same, so the session stays valid and is not revoked.
+        if (controller.text.trim().isEmpty && stored.trim().isNotEmpty) {
+          ref
+              .read(appSettingServiceProvider.notifier)
+              .update((s) => s.copyWith(account: s.account.copyWith(customOrigin: "")));
+        }
+        return;
+      }
       // Sessions and the Cloudflare Access token are scoped to their origin;
       // never carry either across endpoints. Revoke the current session
       // BEFORE the settings update: the update rebuilds
