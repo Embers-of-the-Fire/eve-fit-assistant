@@ -83,16 +83,18 @@ class AccountApiEndpointTile extends ConsumerWidget {
       final next = normalize(controller.text);
       // Only an actual endpoint switch updates settings and signs out.
       if (previous == next) return;
+      // Sessions are scoped to their origin; never carry one across
+      // endpoints. Revoke the current session BEFORE the settings update:
+      // the update rebuilds platformSessionProvider against the new origin,
+      // so logging out afterwards would send the revoke there and leave the
+      // previous-origin session active server-side. The logout is a
+      // best-effort server revoke plus a local clear.
+      await (await ref.read(platformSessionProvider.future)).logout();
       ref
           .read(appSettingServiceProvider.notifier)
           .update(
             (s) => s.copyWith(account: s.account.copyWith(customOrigin: controller.text.trim())),
           );
-      // Sessions are scoped to their origin; never carry one across
-      // endpoints. The settings update above rebuilds the session against
-      // the new origin; its logout is a best-effort server revoke plus a
-      // local clear.
-      await (await ref.read(platformSessionProvider.future)).logout();
     } finally {
       controller.dispose();
     }
