@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { type OtpEmailEnv, type OtpEmailInput, sendOtpEmail } from "./email.ts";
-import { requireAccessToken } from "./middleware.ts";
+import { getAuthClaims, requireAccessToken } from "./middleware.ts";
 import {
     clearOtp,
     generateOtpCode,
@@ -45,15 +45,6 @@ import {
     ROTATION_GRACE_MS,
     signAccessToken,
 } from "./tokens.ts";
-
-declare module "hono" {
-    interface ContextVariableMap {
-        // User row loaded by a route's validateClaims hook (see
-        // /deregister); published so the handler reuses the same row
-        // instead of issuing a second D1 read for the same primary key.
-        authUser?: UserRow;
-    }
-}
 
 export interface AuthEnv extends OtpEmailEnv {
     FIT_DB: D1Database;
@@ -664,25 +655,17 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
                 if (user?.status !== "active" || user.token_version !== claims.tv) {
                     return errorJson(401, "invalid_token", "missing or invalid access token");
                 }
-                // Publish the validated row so the handler reuses it instead
-                // of re-reading the same primary key from D1.
-                c.set("authUser", user);
             },
         }),
         async (c) => {
-            // The middleware already validated the account and published its
-            // row; use it directly for the password check below.
-            const user = c.get("authUser");
-            if (!user) {
-                return errorJson(401, "invalid_token", "missing or invalid access token");
-            }
             const parsed = DeregisterSchema.safeParse(await c.req.json().catch(() => null));
             if (!parsed.success) {
                 return errorJson(400, "bad_request", "invalid request body");
             }
+            const claims = getAuthClaims(c);
             // Keyed on account+IP like /login: one source can only exhaust its
             // own pair's budget and cannot lock the account out from elsewhere.
-            const accountKey = `${user.user_id}:${clientIp(c)}`;
+            const accountKey = `${claims.sub}:${clientIp(c)}`;
             const limited = await rateLimited(
                 c,
                 "deregister-account",
@@ -692,6 +675,14 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
             );
             if (limited) {
                 return limited;
+            }
+            // Re-read the row: the middleware validated it before this handler
+            // ran, and a /reset-password/confirm landing in between would have
+            // changed password_hash and token_version. Verifying against the
+            // stale row could accept the old password.
+            const user = await getUserById(c.env.FIT_DB, claims.sub);
+            if (user?.status !== "active" || user.token_version !== claims.tv) {
+                return errorJson(401, "invalid_token", "missing or invalid access token");
             }
             if (!(await verifyPassword(parsed.data.password, user.password_hash))) {
                 return errorJson(401, "invalid_credentials", "incorrect password");
@@ -704,7 +695,14 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
                 accountKey,
                 DEREGISTER_ACCOUNT_WINDOW_SEC,
             );
-            await deregisterUser(c.env.FIT_DB, user.user_id);
+            // Conditional on the token_version the password was verified
+            // against: a concurrent password reset or token invalidation that
+            // bumped the version after the re-read wins, and this request
+            // aborts instead of destroying the account with a stale credential.
+            const applied = await deregisterUser(c.env.FIT_DB, user.user_id, user.token_version);
+            if (!applied) {
+                return errorJson(401, "invalid_token", "missing or invalid access token");
+            }
             return c.json({ ok: true }, 200);
         },
     );
