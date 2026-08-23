@@ -13,6 +13,7 @@ dependencies:
     path: ../efa_proto
 
 dev_dependencies:
+  fixnum: ^1.1.1
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter

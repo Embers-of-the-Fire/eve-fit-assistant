@@ -84,7 +84,9 @@ void main() {
     });
 
     test("decodes the last page with a null cursor", () async {
-      final client = _clientWith((options) async => _json({"posts": [], "nextCursor": null}));
+      final client = _clientWith(
+        (options) async => _json({"posts": <Object?>[], "nextCursor": null}),
+      );
       final page = await client.listPosts();
       expect(page.posts, isEmpty);
       expect(page.nextCursor, isNull);
@@ -186,7 +188,7 @@ void main() {
 
   group("getThreads", () {
     test("decodes the stub response", () async {
-      final client = _clientWith((options) async => _json({"threads": []}));
+      final client = _clientWith((options) async => _json({"threads": <Object?>[]}));
       expect(await client.getThreads("p"), isEmpty);
     });
   });

@@ -28,7 +28,7 @@ class _FakeAdapter implements HttpClientAdapter {
 /// failure that leaves the stored session untouched (atomic single write).
 class _MemoryStore implements PlatformSessionStore {
   StoredPlatformSession? session;
-  Object? writeError;
+  Exception? writeError;
 
   @override
   Future<StoredPlatformSession?> read() async => session;
@@ -76,7 +76,7 @@ const _invalidToken = {"error": "invalid_token", "message": "missing or invalid 
 /// (see [authedHandler]).
 class _Server {
   int refreshCalls = 0;
-  Object? refreshThrow;
+  Exception? refreshThrow;
   ResponseBody Function()? refreshResponse;
   ResponseBody Function()? loginResponse;
   String? loggedOutRefreshToken;
@@ -140,8 +140,7 @@ void main() {
 
   setUp(() {
     store = _MemoryStore();
-    server = _Server();
-    server.refreshResponse = () => _json(_rotatedPair("boot"));
+    server = _Server()..refreshResponse = () => _json(_rotatedPair("boot"));
     authRequiredCalls = 0;
   });
 
@@ -214,11 +213,8 @@ void main() {
 
     test("startup refresh keeps the stored session when the rotated pair has no subject", () async {
       seedSignedIn();
-      server.refreshResponse = () => _json({
-        "accessToken": "not-a-jwt",
-        "refreshToken": "refresh-bad",
-        "expiresIn": 900,
-      });
+      server.refreshResponse = () =>
+          _json({"accessToken": "not-a-jwt", "refreshToken": "refresh-bad", "expiresIn": 900});
       final s = session();
       await s.ready;
 
@@ -283,11 +279,8 @@ void main() {
 
     test("login rejects a token pair without a usable JWT subject", () async {
       seedSignedIn();
-      server.loginResponse = () => _json({
-        "accessToken": "not-a-jwt",
-        "refreshToken": "refresh-bad",
-        "expiresIn": 900,
-      });
+      server.loginResponse = () =>
+          _json({"accessToken": "not-a-jwt", "refreshToken": "refresh-bad", "expiresIn": 900});
       final s = session();
       await s.ready;
 
@@ -385,11 +378,8 @@ void main() {
 
     test("expiry refresh rejects a rotated pair without a usable JWT subject", () async {
       final s = await sessionWithExpiredPair();
-      server.refreshResponse = () => _json({
-        "accessToken": "not-a-jwt",
-        "refreshToken": "refresh-bad",
-        "expiresIn": 900,
-      });
+      server.refreshResponse = () =>
+          _json({"accessToken": "not-a-jwt", "refreshToken": "refresh-bad", "expiresIn": 900});
 
       await expectLater(
         () => s.deregister(password: "secret-pw"),
@@ -466,12 +456,13 @@ void main() {
     test("a 401 forces one rotation and retries the request once", () async {
       seedSignedIn();
       final seen = <String?>[];
-      server.authedHandler = (options) async {
-        seen.add(options.headers["Authorization"] as String?);
-        // Reject the pre-rotation token, accept the rotated one.
-        return seen.length == 1 ? _json(_invalidToken, 401) : _json({"ok": true});
-      };
-      server.refreshResponse = () => _json(_rotatedPair("new"));
+      server
+        ..authedHandler = (options) async {
+          seen.add(options.headers["Authorization"] as String?);
+          // Reject the pre-rotation token, accept the rotated one.
+          return seen.length == 1 ? _json(_invalidToken, 401) : _json({"ok": true});
+        }
+        ..refreshResponse = () => _json(_rotatedPair("new"));
       final s = session();
       await s.ready;
       // Discount the cold-start rotation.
@@ -489,8 +480,9 @@ void main() {
 
     test("a 401 with a rejected refresh clears the session and throws", () async {
       seedSignedIn();
-      server.authedHandler = (options) async => _json(_invalidToken, 401);
-      server.refreshResponse = () => _json(_invalidToken, 401);
+      server
+        ..authedHandler = ((options) async => _json(_invalidToken, 401))
+        ..refreshResponse = () => _json(_invalidToken, 401);
       final s = session();
       await s.ready;
 
@@ -522,8 +514,9 @@ void main() {
 
     test("onAuthRequired is throttled per signed-out stretch and reset by login", () async {
       seedSignedIn();
-      server.authedHandler = (options) async => _json(_invalidToken, 401);
-      server.refreshResponse = () => _json(_invalidToken, 401);
+      server
+        ..authedHandler = ((options) async => _json(_invalidToken, 401))
+        ..refreshResponse = () => _json(_invalidToken, 401);
       final s = session();
       await s.ready;
 
@@ -556,7 +549,7 @@ void main() {
         authorization = options.headers["Authorization"] as String?;
         return _json({"postId": "p", "fitHash": "abc", "createdAt": "2026-08-19T00:00:00.000Z"});
       };
-      final s = session(trackAuthRequired: true);
+      final s = session();
       await s.ready;
 
       final record = await s.getPost("p");
