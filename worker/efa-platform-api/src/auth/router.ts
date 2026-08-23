@@ -7,7 +7,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { type OtpEmailEnv, type OtpEmailInput, sendOtpEmail } from "./email.ts";
-import { getAuthClaims, requireAccessToken } from "./middleware.ts";
+import { requireAccessToken } from "./middleware.ts";
 import {
     clearOtp,
     generateOtpCode,
@@ -45,6 +45,15 @@ import {
     ROTATION_GRACE_MS,
     signAccessToken,
 } from "./tokens.ts";
+
+declare module "hono" {
+    interface ContextVariableMap {
+        // User row loaded by a route's validateClaims hook (see
+        // /deregister); published so the handler reuses the same row
+        // instead of issuing a second D1 read for the same primary key.
+        authUser?: UserRow;
+    }
+}
 
 export interface AuthEnv extends OtpEmailEnv {
     FIT_DB: D1Database;
@@ -655,14 +664,16 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
                 if (user?.status !== "active" || user.token_version !== claims.tv) {
                     return errorJson(401, "invalid_token", "missing or invalid access token");
                 }
+                // Publish the validated row so the handler reuses it instead
+                // of re-reading the same primary key from D1.
+                c.set("authUser", user);
             },
         }),
         async (c) => {
-            const claims = getAuthClaims(c);
-            // The middleware already validated the account; re-read by primary
-            // key for the password check below.
-            const user = await getUserById(c.env.FIT_DB, claims.sub);
-            if (user?.status !== "active") {
+            // The middleware already validated the account and published its
+            // row; use it directly for the password check below.
+            const user = c.get("authUser");
+            if (!user) {
                 return errorJson(401, "invalid_token", "missing or invalid access token");
             }
             const parsed = DeregisterSchema.safeParse(await c.req.json().catch(() => null));
