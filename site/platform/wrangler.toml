@@ -24,8 +24,10 @@ custom_domain = true
 # Preview chain: the platform API binding targets the preview environment
 # (disposable efa-platform-test data).
 [env.preview]
+routes = [] 
+workers_dev = true
+preview_urls = true
 
 [[env.preview.services]]
 binding = "PLATFORM_API"
-service = "efa-platform-api"
-environment = "preview"
+service = "efa-platform-api-preview" # env=preview for efa-platform-api

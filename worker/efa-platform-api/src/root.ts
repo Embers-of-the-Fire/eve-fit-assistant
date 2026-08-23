@@ -16,6 +16,16 @@ const AUTH_TRUSTED_ORIGINS = new Set([
     "https://platform.efa-tech.dev",
     "https://app.efa-tech.dev",
     "https://app-preview.efa-tech.dev",
+    // The preview deployment of the discussion site calls the preview API
+    // directly from the browser (build-time origin, see site/platform).
+    "https://efa-platform-preview.stellarishs.workers.dev",
+    // Local development: the `./x dev platform` multi-worker session serves
+    // the site on :8787, a standalone `astro dev` uses :4321. Loopback
+    // origins are not a production attack surface.
+    "http://localhost:8787",
+    "http://127.0.0.1:8787",
+    "http://localhost:4321",
+    "http://127.0.0.1:4321",
 ]);
 
 // The sub-apps carry incompatible Bindings (the public app extends the auth

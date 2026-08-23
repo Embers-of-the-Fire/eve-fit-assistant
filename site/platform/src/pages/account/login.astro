@@ -1,0 +1,8 @@
+---
+import LoginForm from "../../components/auth/LoginForm.svelte";
+import Base from "../../layouts/Base.astro";
+---
+
+<Base titleKey="account.signInTitle">
+    <LoginForm client:load />
+</Base>

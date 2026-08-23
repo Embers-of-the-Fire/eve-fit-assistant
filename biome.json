@@ -6,7 +6,12 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["site/**/*", "worker/**/*", "packages/efa_fit_snapshot_ts/**/*"],
+        "includes": [
+            "site/**/*",
+            "worker/**/*",
+            "packages/efa_fit_snapshot_ts/**/*",
+            "packages/efa_platform_client_ts/**/*"
+        ],
         "ignoreUnknown": false
     },
     "formatter": {

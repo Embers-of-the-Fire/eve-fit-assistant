@@ -41,6 +41,7 @@ the app's `pubspec.yaml`; it is not the main Rust source tree.
 | `packages/efa_component/` | Shared Dart components. |
 | `packages/efa_fit_snapshot/` | Fit snapshot Dart support. |
 | `packages/efa_fit_snapshot_ts/` | TypeScript fit snapshot support. |
+| `packages/efa_platform_client_ts/` | TypeScript platform account client: `PlatformSession` (auth flows, token lifecycle) for browser consumers such as `site/platform`. |
 | `packages/efa_proto_ts/` | protobuf-es TypeScript bindings for platform-facing fit schemas; generated into gitignored `src/gen/` by `buf`. |
 | `packages/eve-fit-os/` | Fitting-engine Git submodule with independent versioning. Initialize with `git submodule update --init` after cloning. |
 

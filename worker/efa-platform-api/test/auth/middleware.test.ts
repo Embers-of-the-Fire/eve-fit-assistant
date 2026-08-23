@@ -1,8 +1,8 @@
 // Middleware tests for requireAccessToken/getAuthClaims against a minimal
 // Hono app; the token codec itself is covered by tokens.test.ts.
 
-import { Hono } from "hono";
 import type { Context } from "hono";
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { getAuthClaims, requireAccessToken } from "../../src/auth/middleware.ts";
 import { type AccessTokenClaims, signAccessToken } from "../../src/auth/tokens.ts";
@@ -14,7 +14,10 @@ interface TestEnv {
 }
 
 function setup(options?: {
-    validateClaims?: (c: Context<TestEnv>, claims: AccessTokenClaims) => Promise<Response | undefined>;
+    validateClaims?: (
+        c: Context<TestEnv>,
+        claims: AccessTokenClaims,
+    ) => Promise<Response | undefined>;
     secret?: string | undefined;
 }) {
     const app = new Hono<TestEnv>();
