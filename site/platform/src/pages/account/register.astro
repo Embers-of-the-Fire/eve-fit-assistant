@@ -4,11 +4,12 @@ import Base from "../../layouts/Base.astro";
 
 // The login page redirects here with `verify=1` when the server answers
 // `email_unverified` (and has re-sent the code), so the form starts on the
-// verification step with the address prefilled.
-const email = Astro.url.searchParams.get("email") ?? "";
+// verification step. The address itself is handed over via sessionStorage
+// (lib/pending-verification.ts) and read client-side by the form, keeping it
+// out of the URL.
 const startAtVerification = Astro.url.searchParams.get("verify") === "1";
 ---
 
 <Base titleKey="account.registerTitle">
-    <RegisterForm client:load initialEmail={email} startAtVerification={startAtVerification} />
+    <RegisterForm client:load startAtVerification={startAtVerification} />
 </Base>

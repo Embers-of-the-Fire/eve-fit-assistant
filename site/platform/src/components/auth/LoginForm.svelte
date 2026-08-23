@@ -7,6 +7,7 @@ import {
     isValidAccountPassword,
 } from "../../lib/auth-errors";
 import { t } from "../../lib/i18n.svelte";
+import { stashPendingVerificationEmail } from "../../lib/pending-verification";
 
 const session = getSession();
 
@@ -32,9 +33,10 @@ async function submit() {
     } catch (err) {
         if (err instanceof AccountApiError && err.isEmailUnverified) {
             // The server re-sent the code; continue on the verification step.
-            window.location.assign(
-                `/account/register?email=${encodeURIComponent(email.trim())}&verify=1`,
-            );
+            // The address travels via sessionStorage so it stays out of the
+            // URL (browser history, Referer headers, client analytics).
+            stashPendingVerificationEmail(email.trim());
+            window.location.assign("/account/register?verify=1");
             return;
         }
         error = accountErrorMessage(err);

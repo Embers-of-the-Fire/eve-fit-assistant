@@ -8,19 +8,24 @@ import {
     isValidAccountPassword,
 } from "../../lib/auth-errors";
 import { t } from "../../lib/i18n.svelte";
+import {
+    clearPendingVerificationEmail,
+    readPendingVerificationEmail,
+} from "../../lib/pending-verification";
 
 interface Props {
-    initialEmail?: string;
     startAtVerification?: boolean;
 }
 
-const { initialEmail = "", startAtVerification = false }: Props = $props();
+const { startAtVerification = false }: Props = $props();
 
 const session = getSession();
 
-// Props are static per page load; they only seed the initial state.
+// Props are static per page load; they only seed the initial state. When
+// arriving from the login redirect, the address comes from sessionStorage
+// (kept out of the URL; reads empty under SSR).
 let step = $state<"form" | "verify">(untrack(() => (startAtVerification ? "verify" : "form")));
-let email = $state(untrack(() => initialEmail));
+let email = $state(untrack(() => (startAtVerification ? readPendingVerificationEmail() : "")));
 let password = $state("");
 let code = $state("");
 let busy = $state(false);
@@ -58,6 +63,7 @@ async function submitVerify() {
     busy = true;
     try {
         await session.verifyEmail(email.trim(), code);
+        clearPendingVerificationEmail();
         window.location.assign("/account");
     } catch (err) {
         error = accountErrorMessage(err);
