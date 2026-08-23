@@ -1,28 +1,32 @@
-import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
-import { describe, it } from "node:test";
-import { OTP_DAILY_SEND_LIMIT, OTP_VERIFY_RESEND_COOLDOWN_SEC } from "../../src/auth/otp.ts";
-import { createAuthApp } from "../../src/auth/router.ts";
-import {
-    loadAuthDatabase,
-    TestD1Database,
-    TestKV,
-    TestOtpStateNamespace,
-    TestRateLimitNamespace,
-    type TestStatement,
-} from "./helpers.ts";
+// Auth router tests against the real local bindings (D1, KV, Durable
+// Objects) provided by the Workers Vitest integration; only the outbound
+// email sender is substituted (the production sender hits the Resend API).
+// Endpoints read the wall clock via Date.now(), so tests that need to move
+// past OTP cooldowns run under vitest's fake timers restricted to Date.
 
-const SECRET = "test-secret";
+import { env } from "cloudflare:workers";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { OTP_DAILY_SEND_LIMIT, OTP_VERIFY_RESEND_COOLDOWN_SEC } from "../../src/auth/otp.ts";
+import { RESET_EMAIL_WINDOW_SEC } from "../../src/auth/router.ts";
+import { type CapturedEmail, clearAuthState, setupAuthApp, type TestEnv } from "./helpers.ts";
+
 const PASSWORD = "password-1234";
 const NEW_PASSWORD = "new-password-5678";
 const DEFAULT_IP = "203.0.113.10";
 
-interface CapturedEmail {
-    to: string;
-    code: string;
-    purpose: string;
-    locale: string;
-}
+// Moves the wall clock seen by the router and its Durable Objects forward.
+const advance = (ms: number): void => {
+    vi.advanceTimersByTime(ms);
+};
+
+beforeEach(async () => {
+    await clearAuthState();
+    vi.useFakeTimers({ toFake: ["Date"] });
+});
+
+afterEach(() => {
+    vi.useRealTimers();
+});
 
 interface TokenPair {
     accessToken: string;
@@ -35,27 +39,8 @@ interface PostOptions {
     headers?: Record<string, string>;
 }
 
-function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
-    const db = loadAuthDatabase();
-    const kv = new TestKV();
-    const otp = new TestOtpStateNamespace();
-    const rl = new TestRateLimitNamespace();
-    const emails: CapturedEmail[] = [];
-    const app = createAuthApp({
-        sendEmail: (_env, input) => {
-            emails.push({ ...input });
-            return Promise.resolve(true);
-        },
-    });
-    const d1 = new TestD1Database(db);
-    const env = {
-        FIT_DB: wrapDb ? wrapDb(d1) : d1,
-        AUTH_KV: kv,
-        AUTH_OTP: otp,
-        AUTH_RATE_LIMIT: rl,
-        AUTH_TOKEN_SECRET: SECRET,
-    };
-    const post = (path: string, body: unknown, options?: PostOptions): Promise<Response> =>
+function makePost(testEnv: TestEnv, app: ReturnType<typeof setupAuthApp>["app"]) {
+    return (path: string, body: unknown, options?: PostOptions): Promise<Response> =>
         Promise.resolve(
             app.fetch(
                 new Request(`https://example.com${path}`, {
@@ -67,12 +52,20 @@ function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
                     },
                     body: JSON.stringify(body),
                 }),
-                env as never,
+                testEnv,
             ),
         );
+}
+
+function setup(wrapDb?: (db: D1Database) => D1Database) {
+    const { app, testEnv, emails } = setupAuthApp();
+    const finalEnv = wrapDb ? { ...testEnv, FIT_DB: wrapDb(testEnv.FIT_DB) } : testEnv;
+    const post = makePost(finalEnv, app);
     const lastEmail = (to: string, purpose: string): CapturedEmail => {
         const mail = emails.findLast((m) => m.to === to && m.purpose === purpose);
-        assert.ok(mail, `expected a ${purpose} email to ${to}`);
+        if (!mail) {
+            throw new Error(`expected a ${purpose} email to ${to}`);
+        }
         return mail;
     };
     const wrongCode = (code: string): string => (code === "000000" ? "000001" : "000000");
@@ -85,67 +78,49 @@ function setup(wrapDb?: (db: TestD1Database) => TestD1Database) {
     const refresh = (refreshToken: string): Promise<Response> => post("/refresh", { refreshToken });
     /** Signup + verify; resolves to the issued token pair. */
     const register = async (email: string, options?: PostOptions): Promise<TokenPair> => {
-        assert.equal((await signup(email, options)).status, 201);
+        expect((await signup(email, options)).status).toBe(201);
         const res = await verify(email);
-        assert.equal(res.status, 200);
+        expect(res.status).toBe(200);
         return (await res.json()) as TokenPair;
     };
-    return {
-        db,
-        kv,
-        otp,
-        rl,
-        emails,
-        post,
-        lastEmail,
-        wrongCode,
-        signup,
-        verify,
-        login,
-        refresh,
-        register,
-    };
+    return { emails, post, lastEmail, wrongCode, signup, verify, login, refresh, register };
 }
 
-// D1 shim that hides the users row from the first email lookup, simulating a
-// signup that passes the existence check but then loses the insert race
-// against a concurrent request for the same address.
-function hideFirstEmailLookup(db: TestD1Database): TestD1Database {
+// D1 wrapper that hides the users row from the first email lookup, simulating
+// a signup that passes the existence check but then loses the insert race
+// against a concurrent request for the same address. Every operation
+// delegates to the real binding; only the first matching SELECT is
+// redirected. The decoy predicate lives in the SQL itself: bind() returns a
+// new statement carrying the caller's parameters, so pre-binding a decoy
+// email here would let getUserByEmail's .bind(email) restore the real lookup.
+function hideFirstEmailLookup(db: D1Database): D1Database {
     let hidden = false;
-    return {
-        prepare: (sql: string): TestStatement => {
-            if (!hidden && sql.startsWith("SELECT * FROM users WHERE email")) {
-                hidden = true;
-                return db
-                    .prepare("SELECT * FROM users WHERE email = ?")
-                    .bind("missing@example.com");
+    return new Proxy(db, {
+        get(target, prop, receiver) {
+            if (prop !== "prepare") {
+                return Reflect.get(target, prop, receiver);
             }
-            return db.prepare(sql);
+            return (sql: string): D1PreparedStatement => {
+                if (!hidden && sql.startsWith("SELECT * FROM users WHERE email")) {
+                    hidden = true;
+                    return target.prepare(
+                        "SELECT * FROM users WHERE email = ? AND email = 'missing@example.com'",
+                    );
+                }
+                return target.prepare(sql);
+            };
         },
-    } as TestD1Database;
+    });
 }
 
 describe("error handling", () => {
     it("wraps unexpected failures in the platform error envelope", async () => {
-        const emails: CapturedEmail[] = [];
-        const app = createAuthApp({
-            sendEmail: (_env, input) => {
-                emails.push({ ...input });
-                return Promise.resolve(true);
-            },
-        });
         const brokenDb = {
             prepare: () => {
                 throw new Error("d1 is down");
             },
-        };
-        const env = {
-            FIT_DB: brokenDb,
-            AUTH_KV: new TestKV(),
-            AUTH_OTP: new TestOtpStateNamespace(),
-            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
-            AUTH_TOKEN_SECRET: SECRET,
-        };
+        } as unknown as D1Database;
+        const { app, testEnv } = setupAuthApp({ env: { FIT_DB: brokenDb } });
         const res = await Promise.resolve(
             app.fetch(
                 new Request("https://example.com/signup", {
@@ -153,23 +128,15 @@ describe("error handling", () => {
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({ email: "user@example.com", password: PASSWORD }),
                 }),
-                env as never,
+                testEnv,
             ),
         );
-        assert.equal(res.status, 500);
-        assert.deepEqual(await res.json(), { error: "internal", message: "internal server error" });
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({ error: "internal", message: "internal server error" });
     });
 
     it("answers 500 when AUTH_TOKEN_SECRET is not set", async () => {
-        const app = createAuthApp({
-            sendEmail: () => Promise.resolve(true),
-        });
-        const env = {
-            FIT_DB: new TestD1Database(loadAuthDatabase()),
-            AUTH_KV: new TestKV(),
-            AUTH_OTP: new TestOtpStateNamespace(),
-            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
-        };
+        const { app, testEnv } = setupAuthApp({ env: { AUTH_TOKEN_SECRET: undefined } });
         const res = await Promise.resolve(
             app.fetch(
                 new Request("https://example.com/login", {
@@ -177,11 +144,11 @@ describe("error handling", () => {
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({ email: "user@example.com", password: PASSWORD }),
                 }),
-                env as never,
+                testEnv,
             ),
         );
-        assert.equal(res.status, 500);
-        assert.deepEqual(await res.json(), { error: "internal", message: "internal server error" });
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({ error: "internal", message: "internal server error" });
     });
 });
 
@@ -191,37 +158,36 @@ describe("signup and verify-email", () => {
         const email = "user@example.com";
 
         const res = await ctx.signup(email);
-        assert.equal(res.status, 201);
+        expect(res.status).toBe(201);
         const { userId } = (await res.json()) as { userId: string };
-        assert.match(userId, /^[0-9a-f-]{36}$/);
-        assert.equal(ctx.emails.length, 1);
-        assert.equal(ctx.lastEmail(email, "verify").purpose, "verify");
-        assert.match(ctx.lastEmail(email, "verify").code, /^\d{6}$/);
+        expect(userId).toMatch(/^[0-9a-f-]{36}$/);
+        expect(ctx.emails.length).toBe(1);
+        expect(ctx.lastEmail(email, "verify").purpose).toBe("verify");
+        expect(ctx.lastEmail(email, "verify").code).toMatch(/^\d{6}$/);
 
         // Pending + cooldown: 200 without a new email; normalization applies.
-        assert.equal((await ctx.signup("  User@Example.COM ")).status, 200);
-        assert.equal(ctx.emails.length, 1);
+        expect((await ctx.signup("  User@Example.COM ")).status).toBe(200);
+        expect(ctx.emails.length).toBe(1);
 
         // Pending after the verification resend cooldown: resends.
-        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
-        assert.equal((await ctx.signup(email)).status, 200);
-        assert.equal(ctx.emails.length, 2);
+        advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        expect((await ctx.signup(email)).status).toBe(200);
+        expect(ctx.emails.length).toBe(2);
 
         const code = ctx.lastEmail(email, "verify").code;
         const wrong = await ctx.post("/verify-email", { email, code: ctx.wrongCode(code) });
-        assert.equal(wrong.status, 401);
-        assert.equal(((await wrong.json()) as { error: string }).error, "otp_invalid");
+        expect(wrong.status).toBe(401);
+        expect(((await wrong.json()) as { error: string }).error).toBe("otp_invalid");
 
         const verified = await ctx.verify(email);
-        assert.equal(verified.status, 200);
+        expect(verified.status).toBe(200);
         const pair = (await verified.json()) as TokenPair;
-        assert.ok(pair.accessToken.length > 0);
-        assert.ok(pair.refreshToken.length > 0);
-        assert.equal(pair.expiresIn, 900);
+        expect(pair.accessToken.length).toBeGreaterThan(0);
+        expect(pair.refreshToken.length).toBeGreaterThan(0);
+        expect(pair.expiresIn).toBe(900);
 
-        assert.equal((await ctx.verify(email)).status, 409);
-        assert.equal(
-            ((await (await ctx.signup(email)).json()) as { error: string }).error,
+        expect((await ctx.verify(email)).status).toBe(409);
+        expect(((await (await ctx.signup(email)).json()) as { error: string }).error).toBe(
             "email_taken",
         );
     });
@@ -230,15 +196,15 @@ describe("signup and verify-email", () => {
         const ctx = setup();
         const email = "user@example.com";
 
-        assert.equal((await ctx.signup(email)).status, 201);
-        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        expect((await ctx.signup(email)).status).toBe(201);
+        advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         // Repeat signup with a different password: accepted as a resend, but
         // the submitted password is ignored.
-        assert.equal((await ctx.post("/signup", { email, password: NEW_PASSWORD })).status, 200);
+        expect((await ctx.post("/signup", { email, password: NEW_PASSWORD })).status).toBe(200);
 
-        assert.equal((await ctx.verify(email)).status, 200);
-        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
-        assert.equal((await ctx.login(email, NEW_PASSWORD)).status, 401);
+        expect((await ctx.verify(email)).status).toBe(200);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(200);
+        expect((await ctx.login(email, NEW_PASSWORD)).status).toBe(401);
     });
 
     it("treats a lost insert race against a pending row as a resend", async () => {
@@ -246,92 +212,83 @@ describe("signup and verify-email", () => {
         const email = "user@example.com";
         // The concurrent winner's row lands between the existence check and
         // the insert, which then fails on UNIQUE(email).
-        ctx.db
-            .prepare(
-                "INSERT INTO users (user_id, email, password_hash, status) " +
-                    "VALUES (?, ?, ?, 'pending')",
-            )
-            .run(randomUUID(), email, "hash-from-concurrent-winner");
+        await env.FIT_DB.prepare(
+            "INSERT INTO users (user_id, email, password_hash, status) " +
+                "VALUES (?, ?, ?, 'pending')",
+        )
+            .bind(crypto.randomUUID(), email, "hash-from-concurrent-winner")
+            .run();
 
         const res = await ctx.signup(email);
-        assert.equal(res.status, 200);
-        assert.deepEqual(await res.json(), { ok: true });
-        assert.equal(ctx.emails.length, 1);
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ ok: true });
+        expect(ctx.emails.length).toBe(1);
     });
 
     it("treats a lost insert race against an active row as email_taken", async () => {
         const ctx = setup(hideFirstEmailLookup);
         const email = "user@example.com";
-        ctx.db
-            .prepare(
-                "INSERT INTO users (user_id, email, password_hash, status) " +
-                    "VALUES (?, ?, ?, 'active')",
-            )
-            .run(randomUUID(), email, "hash-from-concurrent-winner");
+        await env.FIT_DB.prepare(
+            "INSERT INTO users (user_id, email, password_hash, status) " +
+                "VALUES (?, ?, ?, 'active')",
+        )
+            .bind(crypto.randomUUID(), email, "hash-from-concurrent-winner")
+            .run();
 
         const res = await ctx.signup(email);
-        assert.equal(res.status, 409);
-        assert.equal(((await res.json()) as { error: string }).error, "email_taken");
-        assert.equal(ctx.emails.length, 0);
+        expect(res.status).toBe(409);
+        expect(((await res.json()) as { error: string }).error).toBe("email_taken");
+        expect(ctx.emails.length).toBe(0);
     });
 
     it("rejects malformed bodies", async () => {
         const ctx = setup();
-        assert.equal(
-            (await ctx.post("/signup", { email: "a@b.c", password: "short" })).status,
-            400,
-        );
-        assert.equal(
+        expect((await ctx.post("/signup", { email: "a@b.c", password: "short" })).status).toBe(400);
+        expect(
             (await ctx.post("/signup", { email: "not-an-email", password: PASSWORD })).status,
-            400,
-        );
-        assert.equal((await ctx.post("/signup", { password: PASSWORD })).status, 400);
-        assert.equal((await ctx.post("/signup", "junk")).status, 400);
-        assert.equal(
-            (await ctx.post("/verify-email", { email: "a@b.c", code: "12345" })).status,
+        ).toBe(400);
+        expect((await ctx.post("/signup", { password: PASSWORD })).status).toBe(400);
+        expect((await ctx.post("/signup", "junk")).status).toBe(400);
+        expect((await ctx.post("/verify-email", { email: "a@b.c", code: "12345" })).status).toBe(
             400,
         );
     });
 
     it("answers otp_expired for unknown emails", async () => {
         const ctx = setup();
-        const res = await ctx.post("/verify-email", { email: "ghost@example.com", code: "123456" });
-        assert.equal(res.status, 401);
-        assert.equal(((await res.json()) as { error: string }).error, "otp_expired");
+        const res = await ctx.post("/verify-email", {
+            email: "ghost@example.com",
+            code: "123456",
+        });
+        expect(res.status).toBe(401);
+        expect(((await res.json()) as { error: string }).error).toBe("otp_expired");
     });
 
     it("rate limits signups per IP", async () => {
         const ctx = setup();
         for (let i = 0; i < 5; i++) {
-            assert.equal((await ctx.signup(`user${i}@example.com`)).status, 201);
+            expect((await ctx.signup(`user${i}@example.com`)).status).toBe(201);
         }
         const denied = await ctx.signup("user6@example.com");
-        assert.equal(denied.status, 429);
-        assert.equal(((await denied.json()) as { error: string }).error, "rate_limited");
-        assert.ok(Number(denied.headers.get("retry-after")) > 0);
+        expect(denied.status).toBe(429);
+        expect(((await denied.json()) as { error: string }).error).toBe("rate_limited");
+        expect(Number(denied.headers.get("retry-after"))).toBeGreaterThan(0);
         // A different IP is unaffected.
-        assert.equal((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status, 201);
+        expect((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status).toBe(201);
     });
 
     it("does not burn the daily send quota when the email send fails", async () => {
         let deliver = false;
-        const emails: CapturedEmail[] = [];
-        const app = createAuthApp({
+        const sent: CapturedEmail[] = [];
+        const { app, testEnv } = setupAuthApp({
             sendEmail: (_env, input) => {
                 if (!deliver) {
                     return Promise.resolve(false);
                 }
-                emails.push({ ...input });
+                sent.push({ ...input });
                 return Promise.resolve(true);
             },
         });
-        const env = {
-            FIT_DB: new TestD1Database(loadAuthDatabase()),
-            AUTH_KV: new TestKV(),
-            AUTH_OTP: new TestOtpStateNamespace(),
-            AUTH_RATE_LIMIT: new TestRateLimitNamespace(),
-            AUTH_TOKEN_SECRET: SECRET,
-        };
         const email = "user@example.com";
         // Each attempt uses a fresh IP so the per-IP signup cap does not mask
         // the per-address daily send quota under test.
@@ -343,21 +300,21 @@ describe("signup and verify-email", () => {
                         headers: { "content-type": "application/json", "CF-Connecting-IP": ip },
                         body: JSON.stringify({ email, password: PASSWORD }),
                     }),
-                    env as never,
+                    testEnv,
                 ),
             );
 
         // A provider outage: every attempt fails, so the address stays
         // pending and each retry follows the resend path.
         for (let i = 0; i < OTP_DAILY_SEND_LIMIT; i++) {
-            assert.equal((await signup(`203.0.113.${i}`)).status, 500);
+            expect((await signup(`203.0.113.${i}`)).status).toBe(500);
         }
-        assert.equal(emails.length, 0);
+        expect(sent.length).toBe(0);
 
         // The provider recovers: no slot was consumed, so the resend goes out.
         deliver = true;
-        assert.equal((await signup(DEFAULT_IP)).status, 200);
-        assert.equal(emails.length, 1);
+        expect((await signup(DEFAULT_IP)).status).toBe(200);
+        expect(sent.length).toBe(1);
     });
 });
 
@@ -365,43 +322,44 @@ describe("signup resend", () => {
     it("resends for a pending address and reports the cooldown as 429", async () => {
         const ctx = setup();
         const email = "user@example.com";
-        assert.equal((await ctx.signup(email)).status, 201);
+        expect((await ctx.signup(email)).status).toBe(201);
 
         // Inside the resend cooldown armed by the initial signup: 429 with
         // Retry-After instead of a silent 200, and no second email.
         const denied = await ctx.post("/signup/resend", { email });
-        assert.equal(denied.status, 429);
-        assert.equal(((await denied.json()) as { error: string }).error, "rate_limited");
+        expect(denied.status).toBe(429);
+        expect(((await denied.json()) as { error: string }).error).toBe("rate_limited");
         const retryAfter = Number(denied.headers.get("retry-after"));
-        assert.ok(retryAfter > 0 && retryAfter <= OTP_VERIFY_RESEND_COOLDOWN_SEC);
-        assert.equal(ctx.emails.length, 1);
+        expect(retryAfter).toBeGreaterThan(0);
+        expect(retryAfter).toBeLessThanOrEqual(OTP_VERIFY_RESEND_COOLDOWN_SEC);
+        expect(ctx.emails.length).toBe(1);
 
         // After the cooldown the resend goes out and rearms it.
-        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
         const res = await ctx.post("/signup/resend", { email });
-        assert.equal(res.status, 200);
-        assert.deepEqual(await res.json(), { ok: true });
-        assert.equal(ctx.emails.length, 2);
-        assert.equal(ctx.lastEmail(email, "verify").purpose, "verify");
-        assert.equal((await ctx.post("/signup/resend", { email })).status, 429);
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ ok: true });
+        expect(ctx.emails.length).toBe(2);
+        expect(ctx.lastEmail(email, "verify").purpose).toBe("verify");
+        expect((await ctx.post("/signup/resend", { email })).status).toBe(429);
     });
 
     it("serializes parallel resends: exactly one sends, the rest get 429", async () => {
         const ctx = setup();
         const email = "user@example.com";
-        assert.equal((await ctx.signup(email)).status, 201);
+        expect((await ctx.signup(email)).status).toBe(201);
         // Move past the cooldown armed by the initial signup so every
         // parallel request races on the reservation.
-        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
 
         const responses = await Promise.all(
             Array.from({ length: 3 }, () => ctx.post("/signup/resend", { email })),
         );
-        assert.deepEqual(responses.map((r) => r.status).sort(), [200, 429, 429]);
+        expect(responses.map((r) => r.status).sort()).toEqual([200, 429, 429]);
         // Exactly one new email went out, and the code in it is the one that
         // was stored — no losing request overwrote the winner's code.
-        assert.equal(ctx.emails.length, 2);
-        assert.equal((await ctx.verify(email)).status, 200);
+        expect(ctx.emails.length).toBe(2);
+        expect((await ctx.verify(email)).status).toBe(200);
     });
 
     it("is enumeration-safe for unknown and active addresses", async () => {
@@ -409,39 +367,38 @@ describe("signup resend", () => {
         const email = "user@example.com";
 
         const unknown = await ctx.post("/signup/resend", { email: "ghost@example.com" });
-        assert.equal(unknown.status, 200);
-        assert.deepEqual(await unknown.json(), { ok: true });
+        expect(unknown.status).toBe(200);
+        expect(await unknown.json()).toEqual({ ok: true });
 
         await ctx.register(email);
         const active = await ctx.post("/signup/resend", { email });
-        assert.equal(active.status, 200);
-        assert.deepEqual(await active.json(), { ok: true });
+        expect(active.status).toBe(200);
+        expect(await active.json()).toEqual({ ok: true });
         // Only the initial signup's verification email went out.
-        assert.equal(ctx.emails.filter((m) => m.purpose === "verify").length, 1);
+        expect(ctx.emails.filter((m) => m.purpose === "verify").length).toBe(1);
     });
 
     it("rejects malformed bodies", async () => {
         const ctx = setup();
-        assert.equal((await ctx.post("/signup/resend", { email: "not-an-email" })).status, 400);
-        assert.equal((await ctx.post("/signup/resend", {})).status, 400);
-        assert.equal((await ctx.post("/signup/resend", "junk")).status, 400);
+        expect((await ctx.post("/signup/resend", { email: "not-an-email" })).status).toBe(400);
+        expect((await ctx.post("/signup/resend", {})).status).toBe(400);
+        expect((await ctx.post("/signup/resend", "junk")).status).toBe(400);
     });
 
     it("shares the per-IP signup budget", async () => {
         const ctx = setup();
         for (let i = 0; i < 5; i++) {
-            assert.equal(
+            expect(
                 (await ctx.post("/signup/resend", { email: `user${i}@example.com` })).status,
-                200,
-            );
+            ).toBe(200);
         }
         const denied = await ctx.post("/signup/resend", { email: "user6@example.com" });
-        assert.equal(denied.status, 429);
-        assert.equal(((await denied.json()) as { error: string }).error, "rate_limited");
+        expect(denied.status).toBe(429);
+        expect(((await denied.json()) as { error: string }).error).toBe("rate_limited");
         // The budget is shared with /signup itself.
-        assert.equal((await ctx.signup("user6@example.com")).status, 429);
+        expect((await ctx.signup("user6@example.com")).status).toBe(429);
         // A different IP is unaffected.
-        assert.equal((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status, 201);
+        expect((await ctx.signup("user6@example.com", { ip: "198.51.100.7" })).status).toBe(201);
     });
 });
 
@@ -453,28 +410,28 @@ describe("login", () => {
 
         // Pending: 403, cooldown suppresses the resend.
         const pending = await ctx.login(email, PASSWORD);
-        assert.equal(pending.status, 403);
-        assert.equal(((await pending.json()) as { error: string }).error, "email_unverified");
-        assert.equal(ctx.emails.length, 1);
+        expect(pending.status).toBe(403);
+        expect(((await pending.json()) as { error: string }).error).toBe("email_unverified");
+        expect(ctx.emails.length).toBe(1);
         // After the cooldown the nudge resends.
-        ctx.otp.advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
-        assert.equal((await ctx.login(email, PASSWORD)).status, 403);
-        assert.equal(ctx.emails.length, 2);
+        advance((OTP_VERIFY_RESEND_COOLDOWN_SEC + 1) * 1000);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(403);
+        expect(ctx.emails.length).toBe(2);
 
         await ctx.verify(email);
 
         const wrong = await ctx.login(email, "wrong-password");
-        assert.equal(wrong.status, 401);
-        assert.equal(((await wrong.json()) as { error: string }).error, "invalid_credentials");
+        expect(wrong.status).toBe(401);
+        expect(((await wrong.json()) as { error: string }).error).toBe("invalid_credentials");
 
         const unknown = await ctx.login("ghost@example.com", PASSWORD);
-        assert.equal(unknown.status, 401);
-        assert.equal(((await unknown.json()) as { error: string }).error, "invalid_credentials");
+        expect(unknown.status).toBe(401);
+        expect(((await unknown.json()) as { error: string }).error).toBe("invalid_credentials");
 
         const ok = await ctx.login(email, PASSWORD);
-        assert.equal(ok.status, 200);
+        expect(ok.status).toBe(200);
         const pair = (await ok.json()) as TokenPair;
-        assert.ok(pair.refreshToken.length > 0);
+        expect(pair.refreshToken.length).toBeGreaterThan(0);
     });
 
     it("rate limits failed login attempts per account and IP", async () => {
@@ -483,17 +440,17 @@ describe("login", () => {
         await ctx.register(email);
 
         for (let i = 0; i < 5; i++) {
-            assert.equal((await ctx.login(email, "wrong-password")).status, 401);
+            expect((await ctx.login(email, "wrong-password")).status).toBe(401);
         }
         // The sixth attempt from the same IP is blocked, even with the right
         // password.
         const denied = await ctx.login(email, PASSWORD);
-        assert.equal(denied.status, 429);
-        assert.ok(Number(denied.headers.get("retry-after")) > 0);
+        expect(denied.status).toBe(429);
+        expect(Number(denied.headers.get("retry-after"))).toBeGreaterThan(0);
 
         // The block is scoped to the source IP: the account still logs in
         // from anywhere else.
-        assert.equal((await ctx.login(email, PASSWORD, { ip: "203.0.113.99" })).status, 200);
+        expect((await ctx.login(email, PASSWORD, { ip: "203.0.113.99" })).status).toBe(200);
     });
 
     it("does not count successful logins against the failure limit", async () => {
@@ -503,16 +460,16 @@ describe("login", () => {
 
         // Repeated successful logins never exhaust the budget.
         for (let i = 0; i < 10; i++) {
-            assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+            expect((await ctx.login(email, PASSWORD)).status).toBe(200);
         }
         // A success just below saturation still goes through and frees its
         // slot, so it cannot tip the counter over the limit.
         for (let i = 0; i < 4; i++) {
-            assert.equal((await ctx.login(email, "wrong-password")).status, 401);
+            expect((await ctx.login(email, "wrong-password")).status).toBe(401);
         }
-        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
-        assert.equal((await ctx.login(email, "wrong-password")).status, 401);
-        assert.equal((await ctx.login(email, PASSWORD)).status, 429);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(200);
+        expect((await ctx.login(email, "wrong-password")).status).toBe(401);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(429);
     });
 });
 
@@ -522,20 +479,20 @@ describe("refresh", () => {
         const pair1 = await ctx.register("user@example.com");
 
         const rotated = await ctx.refresh(pair1.refreshToken);
-        assert.equal(rotated.status, 200);
+        expect(rotated.status).toBe(200);
         const pair2 = (await rotated.json()) as TokenPair;
-        assert.notEqual(pair2.refreshToken, pair1.refreshToken);
+        expect(pair2.refreshToken).not.toBe(pair1.refreshToken);
 
         // Idempotent replay of the rotated-out token returns the same pair.
         const replay = await ctx.refresh(pair1.refreshToken);
-        assert.equal(replay.status, 200);
-        assert.deepEqual((await replay.json()) as TokenPair, pair2);
+        expect(replay.status).toBe(200);
+        expect((await replay.json()) as TokenPair).toEqual(pair2);
 
         // The successor rotates normally.
         const next = await ctx.refresh(pair2.refreshToken);
-        assert.equal(next.status, 200);
+        expect(next.status).toBe(200);
         const pair3 = (await next.json()) as TokenPair;
-        assert.notEqual(pair3.refreshToken, pair2.refreshToken);
+        expect(pair3.refreshToken).not.toBe(pair2.refreshToken);
     });
 
     it("revokes the whole chain when an old token is reused past the grace window", async () => {
@@ -544,13 +501,15 @@ describe("refresh", () => {
         const pair2 = (await (await ctx.refresh(pair1.refreshToken)).json()) as TokenPair;
 
         // Let the grace window lapse.
-        ctx.db.exec("UPDATE auth_sessions SET rotation_grace_until = '2000-01-01T00:00:00.000Z'");
+        await env.FIT_DB.prepare(
+            "UPDATE auth_sessions SET rotation_grace_until = '2000-01-01T00:00:00.000Z'",
+        ).run();
 
-        assert.equal((await ctx.refresh(pair1.refreshToken)).status, 401);
+        expect((await ctx.refresh(pair1.refreshToken)).status).toBe(401);
         // The reuse signal killed the whole chain, including the successor.
-        assert.equal((await ctx.refresh(pair2.refreshToken)).status, 401);
+        expect((await ctx.refresh(pair2.refreshToken)).status).toBe(401);
         // Access tokens issued before the detection fail their version check.
-        assert.equal(
+        expect(
             (
                 await ctx.post(
                     "/deregister",
@@ -558,9 +517,8 @@ describe("refresh", () => {
                     { headers: { authorization: `Bearer ${pair1.accessToken}` } },
                 )
             ).status,
-            401,
-        );
-        assert.equal(
+        ).toBe(401);
+        expect(
             (
                 await ctx.post(
                     "/deregister",
@@ -568,25 +526,26 @@ describe("refresh", () => {
                     { headers: { authorization: `Bearer ${pair2.accessToken}` } },
                 )
             ).status,
-            401,
-        );
+        ).toBe(401);
     });
 
     it("rejects unknown, expired, and revoked tokens", async () => {
         const ctx = setup();
         const pair = await ctx.register("user@example.com");
 
-        assert.equal((await ctx.refresh("not-a-real-token")).status, 401);
+        expect((await ctx.refresh("not-a-real-token")).status).toBe(401);
 
-        assert.equal((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status, 200);
-        assert.equal((await ctx.refresh(pair.refreshToken)).status, 401);
+        expect((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status).toBe(200);
+        expect((await ctx.refresh(pair.refreshToken)).status).toBe(401);
 
         const pair2 = await ctx.login("user@example.com", PASSWORD).then(async (res) => {
-            assert.equal(res.status, 200);
+            expect(res.status).toBe(200);
             return (await res.json()) as TokenPair;
         });
-        ctx.db.exec("UPDATE auth_sessions SET expires_at = '2000-01-01T00:00:00.000Z'");
-        assert.equal((await ctx.refresh(pair2.refreshToken)).status, 401);
+        await env.FIT_DB.prepare(
+            "UPDATE auth_sessions SET expires_at = '2000-01-01T00:00:00.000Z'",
+        ).run();
+        expect((await ctx.refresh(pair2.refreshToken)).status).toBe(401);
     });
 });
 
@@ -595,10 +554,10 @@ describe("logout", () => {
         const ctx = setup();
         const pair = await ctx.register("user@example.com");
 
-        assert.equal((await ctx.post("/logout", { refreshToken: "unknown-token" })).status, 200);
-        assert.equal((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status, 200);
-        assert.equal((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status, 200);
-        assert.equal((await ctx.refresh(pair.refreshToken)).status, 401);
+        expect((await ctx.post("/logout", { refreshToken: "unknown-token" })).status).toBe(200);
+        expect((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status).toBe(200);
+        expect((await ctx.post("/logout", { refreshToken: pair.refreshToken })).status).toBe(200);
+        expect((await ctx.refresh(pair.refreshToken)).status).toBe(401);
     });
 });
 
@@ -608,43 +567,45 @@ describe("deregister", () => {
         const email = "user@example.com";
         const pair = await ctx.register(email);
 
-        assert.equal((await ctx.post("/deregister", {})).status, 401);
+        expect((await ctx.post("/deregister", {})).status).toBe(401);
         const garbage = await ctx.post(
             "/deregister",
             {},
             { headers: { authorization: "Bearer garbage" } },
         );
-        assert.equal(garbage.status, 401);
+        expect(garbage.status).toBe(401);
 
         const res = await ctx.post(
             "/deregister",
             { password: PASSWORD },
             { headers: { authorization: `Bearer ${pair.accessToken}` } },
         );
-        assert.equal(res.status, 200);
+        expect(res.status).toBe(200);
 
-        const user = ctx.db.prepare("SELECT email, password_hash, status FROM users").get() as {
-            email: string;
-            password_hash: string;
-            status: string;
-        };
-        assert.equal(user.status, "deregistered");
-        assert.equal(user.password_hash, "");
-        assert.match(user.email, /^deleted-[0-9a-f-]{36}@deregistered\.invalid$/);
+        const user = await env.FIT_DB.prepare(
+            "SELECT email, password_hash, status FROM users",
+        ).first<{ email: string; password_hash: string; status: string }>();
+        expect(user?.status).toBe("deregistered");
+        expect(user?.password_hash).toBe("");
+        expect(user?.email).toMatch(/^deleted-[0-9a-f-]{36}@deregistered\.invalid$/);
 
         // Sessions are revoked and their retained PII is cleared.
-        const sessions = ctx.db
-            .prepare("SELECT revoked_at, user_agent, ip FROM auth_sessions")
-            .all() as { revoked_at: string | null; user_agent: string | null; ip: string | null }[];
-        assert.ok(sessions.length > 0);
+        const sessions = (
+            await env.FIT_DB.prepare("SELECT revoked_at, user_agent, ip FROM auth_sessions").all<{
+                revoked_at: string | null;
+                user_agent: string | null;
+                ip: string | null;
+            }>()
+        ).results;
+        expect(sessions.length).toBeGreaterThan(0);
         for (const session of sessions) {
-            assert.ok(session.revoked_at !== null);
-            assert.equal(session.user_agent, null);
-            assert.equal(session.ip, null);
+            expect(session.revoked_at).not.toBe(null);
+            expect(session.user_agent).toBe(null);
+            expect(session.ip).toBe(null);
         }
 
         // The old access token fails its token-version check; the session is gone.
-        assert.equal(
+        expect(
             (
                 await ctx.post(
                     "/deregister",
@@ -652,13 +613,12 @@ describe("deregister", () => {
                     { headers: { authorization: `Bearer ${pair.accessToken}` } },
                 )
             ).status,
-            401,
-        );
-        assert.equal((await ctx.refresh(pair.refreshToken)).status, 401);
-        assert.equal((await ctx.login(email, PASSWORD)).status, 401);
+        ).toBe(401);
+        expect((await ctx.refresh(pair.refreshToken)).status).toBe(401);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(401);
 
         // The address is free for re-signup.
-        assert.equal((await ctx.signup(email)).status, 201);
+        expect((await ctx.signup(email)).status).toBe(201);
     });
 
     it("requires the current password in addition to the access token", async () => {
@@ -669,20 +629,19 @@ describe("deregister", () => {
 
         // A valid access token alone is not enough.
         const noPassword = await ctx.post("/deregister", {}, { headers });
-        assert.equal(noPassword.status, 400);
+        expect(noPassword.status).toBe(400);
 
         const wrong = await ctx.post("/deregister", { password: "wrong-password" }, { headers });
-        assert.equal(wrong.status, 401);
-        assert.equal(((await wrong.json()) as { error: string }).error, "invalid_credentials");
+        expect(wrong.status).toBe(401);
+        expect(((await wrong.json()) as { error: string }).error).toBe("invalid_credentials");
 
         // The account is untouched and still usable.
-        assert.equal((await ctx.login(email, PASSWORD)).status, 200);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(200);
 
-        assert.equal(
-            (await ctx.post("/deregister", { password: PASSWORD }, { headers })).status,
+        expect((await ctx.post("/deregister", { password: PASSWORD }, { headers })).status).toBe(
             200,
         );
-        assert.equal((await ctx.login(email, PASSWORD)).status, 401);
+        expect((await ctx.login(email, PASSWORD)).status).toBe(401);
     });
 
     it("rate limits failed deregister attempts per account and IP", async () => {
@@ -694,17 +653,17 @@ describe("deregister", () => {
             ctx.post("/deregister", { password }, { ...options, headers });
 
         for (let i = 0; i < 5; i++) {
-            assert.equal((await deregister("wrong-password")).status, 401);
+            expect((await deregister("wrong-password")).status).toBe(401);
         }
         // The sixth attempt from the same IP is blocked, even with the right
         // password.
         const denied = await deregister(PASSWORD);
-        assert.equal(denied.status, 429);
-        assert.ok(Number(denied.headers.get("retry-after")) > 0);
+        expect(denied.status).toBe(429);
+        expect(Number(denied.headers.get("retry-after"))).toBeGreaterThan(0);
 
         // The block is scoped to the source IP: the correct password still
         // deregisters from anywhere else.
-        assert.equal((await deregister(PASSWORD, { ip: "203.0.113.99" })).status, 200);
+        expect((await deregister(PASSWORD, { ip: "203.0.113.99" })).status).toBe(200);
     });
 });
 
@@ -712,9 +671,9 @@ describe("reset-password", () => {
     it("is enumeration-safe on the request endpoint", async () => {
         const ctx = setup();
         const res = await ctx.post("/reset-password", { email: "ghost@example.com" });
-        assert.equal(res.status, 200);
-        assert.deepEqual(await res.json(), { ok: true });
-        assert.equal(ctx.emails.length, 0);
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ ok: true });
+        expect(ctx.emails.length).toBe(0);
     });
 
     it("resets the password and invalidates prior credentials", async () => {
@@ -722,7 +681,7 @@ describe("reset-password", () => {
         const email = "user@example.com";
         const pair = await ctx.register(email);
 
-        assert.equal((await ctx.post("/reset-password", { email })).status, 200);
+        expect((await ctx.post("/reset-password", { email })).status).toBe(200);
         const mail = ctx.lastEmail(email, "reset");
 
         const wrong = await ctx.post("/reset-password/confirm", {
@@ -730,22 +689,22 @@ describe("reset-password", () => {
             code: ctx.wrongCode(mail.code),
             newPassword: NEW_PASSWORD,
         });
-        assert.equal(wrong.status, 401);
-        assert.equal(((await wrong.json()) as { error: string }).error, "otp_invalid");
+        expect(wrong.status).toBe(401);
+        expect(((await wrong.json()) as { error: string }).error).toBe("otp_invalid");
 
         const confirmed = await ctx.post("/reset-password/confirm", {
             email,
             code: mail.code,
             newPassword: NEW_PASSWORD,
         });
-        assert.equal(confirmed.status, 200);
+        expect(confirmed.status).toBe(200);
         const fresh = (await confirmed.json()) as TokenPair;
-        assert.ok(fresh.refreshToken.length > 0);
+        expect(fresh.refreshToken.length).toBeGreaterThan(0);
 
-        assert.equal((await ctx.login(email, PASSWORD)).status, 401);
-        assert.equal((await ctx.login(email, NEW_PASSWORD)).status, 200);
-        assert.equal((await ctx.refresh(pair.refreshToken)).status, 401);
-        assert.equal(
+        expect((await ctx.login(email, PASSWORD)).status).toBe(401);
+        expect((await ctx.login(email, NEW_PASSWORD)).status).toBe(200);
+        expect((await ctx.refresh(pair.refreshToken)).status).toBe(401);
+        expect(
             (
                 await ctx.post(
                     "/deregister",
@@ -753,8 +712,7 @@ describe("reset-password", () => {
                     { headers: { authorization: `Bearer ${pair.accessToken}` } },
                 )
             ).status,
-            401,
-        );
+        ).toBe(401);
     });
 
     it("caps reset emails per address while staying enumeration-safe", async () => {
@@ -762,15 +720,21 @@ describe("reset-password", () => {
         const email = "user@example.com";
         await ctx.register(email);
 
-        for (let i = 0; i < 3; i++) {
-            ctx.otp.advance(61 * 1000);
-            assert.equal((await ctx.post("/reset-password", { email })).status, 200);
-        }
-        assert.equal(ctx.emails.filter((m) => m.purpose === "reset").length, 3);
+        // Pin the clock just inside the current reset-email rate-limit
+        // window so the 61 s advances below cannot roll over into a fresh
+        // window (which would reset the cap) mid-test.
+        const windowMs = RESET_EMAIL_WINDOW_SEC * 1000;
+        vi.setSystemTime(Math.floor(Date.now() / windowMs) * windowMs + 1000);
 
-        ctx.otp.advance(61 * 1000);
-        assert.equal((await ctx.post("/reset-password", { email })).status, 200);
-        assert.equal(ctx.emails.filter((m) => m.purpose === "reset").length, 3);
+        for (let i = 0; i < 3; i++) {
+            advance(61 * 1000);
+            expect((await ctx.post("/reset-password", { email })).status).toBe(200);
+        }
+        expect(ctx.emails.filter((m) => m.purpose === "reset").length).toBe(3);
+
+        advance(61 * 1000);
+        expect((await ctx.post("/reset-password", { email })).status).toBe(200);
+        expect(ctx.emails.filter((m) => m.purpose === "reset").length).toBe(3);
     });
 
     it("validates the new password policy", async () => {
@@ -779,7 +743,7 @@ describe("reset-password", () => {
         await ctx.register(email);
         await ctx.post("/reset-password", { email });
         const mail = ctx.lastEmail(email, "reset");
-        assert.equal(
+        expect(
             (
                 await ctx.post("/reset-password/confirm", {
                     email,
@@ -787,8 +751,7 @@ describe("reset-password", () => {
                     newPassword: "short",
                 })
             ).status,
-            400,
-        );
+        ).toBe(400);
     });
 
     it("consumes the code on success so it cannot be replayed", async () => {
@@ -797,13 +760,13 @@ describe("reset-password", () => {
 
         // /verify-email: a second attempt with the consumed code never
         // reaches verification again (the account is already active).
-        assert.equal((await ctx.signup(email)).status, 201);
+        expect((await ctx.signup(email)).status).toBe(201);
         const verifyCode = ctx.lastEmail(email, "verify").code;
-        assert.equal((await ctx.post("/verify-email", { email, code: verifyCode })).status, 200);
-        assert.equal((await ctx.post("/verify-email", { email, code: verifyCode })).status, 409);
+        expect((await ctx.post("/verify-email", { email, code: verifyCode })).status).toBe(200);
+        expect((await ctx.post("/verify-email", { email, code: verifyCode })).status).toBe(409);
 
         // /reset-password/confirm: replaying the consumed code fails as expired.
-        assert.equal((await ctx.post("/reset-password", { email })).status, 200);
+        expect((await ctx.post("/reset-password", { email })).status).toBe(200);
         const resetCode = ctx.lastEmail(email, "reset").code;
         const confirm = (): Promise<Response> =>
             ctx.post("/reset-password/confirm", {
@@ -811,9 +774,9 @@ describe("reset-password", () => {
                 code: resetCode,
                 newPassword: NEW_PASSWORD,
             });
-        assert.equal((await confirm()).status, 200);
+        expect((await confirm()).status).toBe(200);
         const replayed = await confirm();
-        assert.equal(replayed.status, 401);
-        assert.equal(((await replayed.json()) as { error: string }).error, "otp_expired");
+        expect(replayed.status).toBe(401);
+        expect(((await replayed.json()) as { error: string }).error).toBe("otp_expired");
     });
 });

@@ -23,6 +23,11 @@ Scope: repository-managed Cloudflare Workers under `worker/`.
   operation.
 - TypeScript workers use the repository Biome style; run the worker's `check` and `lint`
   scripts where present.
+- Worker tests use Vitest with `@cloudflare/vitest-plugin`: tests run in `workerd` against
+  the real local D1/KV/Durable Object bindings declared in `wrangler.toml` plus test-only
+  bindings in `vitest.config.ts`; do not re-introduce `node:test` or hand-written binding
+  mocks (node:sqlite D1 shims, in-memory KV/DO doubles). See the "JS/TS Test Pipeline"
+  section of @docs/agents/build-and-test.
 
 Common validation pattern:
 

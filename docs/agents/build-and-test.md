@@ -127,6 +127,22 @@ powersync-ja/sqlite_async.dart releases matching `sqlite_async`. Both are copied
 | Chat crate | `cargo test -p efa-chat` |
 | Single Rust integration file | `cargo test -p eve-fit-os --test test_basic_fit -- --nocapture` |
 | Single Rust integration test | `cargo test -p eve-fit-os test_basic_fit -- --exact --nocapture` |
+| JS/TS (workers) | `./x test js`, `pnpm test:js`, or `pnpm --filter <worker-package> test` |
+
+### JS/TS Test Pipeline
+
+JS/TS tests use [Vitest](https://vitest.dev/) everywhere; `node:test` is not used. The
+Cloudflare Workers under `worker/` run their suites inside
+[`@cloudflare/vitest-plugin`](https://developers.cloudflare.com/workers/testing/vitest-integration/),
+which executes tests in the real `workerd` runtime with genuine local bindings (D1, KV,
+Durable Objects) instead of hand-written mocks. Each worker's `vitest.config.ts` loads its
+`wrangler.toml`, reads `migrations/` via `readD1Migrations`, and a `test/apply-migrations.ts`
+setup file applies them with `applyD1Migrations`; test-only secrets (e.g. `SYNC_TOKEN`,
+`AUTH_TOKEN_SECRET`) are declared as plain Miniflare bindings there, not in `.dev.vars`.
+Storage isolation is per test file; `reset()` from `cloudflare:test` wipes the whole isolated
+storage (including the D1 schema), so per-test cleanup re-applies the migrations afterwards.
+Time-dependent tests use `vi.useFakeTimers({ toFake: ["Date"] })` at the endpoint level or
+explicit `nowMs` parameters at the helper level.
 
 ### Web Test Pipeline
 

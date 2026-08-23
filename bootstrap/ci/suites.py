@@ -77,6 +77,24 @@ SUITE_DEFINITIONS = [
         ],
     },
     {
+        "suite": "worker",
+        "shell": "js",
+        "lint_command": "true",
+        "command": "pnpm test:js",
+        # The platform API worker's entrypoint imports the generated TS
+        # protobuf bindings, and the Vitest plugin loads that entrypoint.
+        "codegen_command": "uv run x.py ci codegen --lang snapshot-ts",
+        "patterns": [
+            "worker/**",
+            "packages/efa_proto_ts/**",
+            "data/schema/**",
+            "pnpm-workspace.yaml",
+            "pnpm-lock.yaml",
+            "biome.json",
+            "package.json",
+        ],
+    },
+    {
         "suite": "workflows",
         "shell": "ci",
         "lint_command": "true",

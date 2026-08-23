@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import {
     decodeCursor,
     decodeShipCursor,
@@ -19,47 +18,47 @@ describe("normalizeBlob", () => {
 
     it("accepts ArrayBuffer and ArrayBufferView shapes", () => {
         const view = new Uint8Array(bytes);
-        assert.deepEqual([...normalizeBlob(view.buffer)!], bytes);
-        assert.deepEqual([...normalizeBlob(view)!], bytes);
-        assert.deepEqual([...normalizeBlob(new DataView(view.buffer))!], bytes);
+        expect(normalizeBlob(view.buffer)).toEqual(new Uint8Array(bytes));
+        expect(normalizeBlob(view)).toEqual(new Uint8Array(bytes));
+        expect(normalizeBlob(new DataView(view.buffer))).toEqual(new Uint8Array(bytes));
         const slice = new Uint8Array([0, ...bytes, 0]).subarray(1, 4);
-        assert.deepEqual([...normalizeBlob(slice)!], bytes);
+        expect(normalizeBlob(slice)).toEqual(new Uint8Array(bytes));
     });
 
     it("converts D1's plain number arrays", () => {
-        assert.deepEqual([...normalizeBlob(bytes)!], bytes);
-        assert.equal(normalizeBlob([])!.length, 0);
+        expect(normalizeBlob(bytes)).toEqual(new Uint8Array(bytes));
+        expect(normalizeBlob([])).toEqual(new Uint8Array([]));
     });
 
     it("rejects non-blob shapes", () => {
-        assert.equal(normalizeBlob(null), null);
-        assert.equal(normalizeBlob(undefined), null);
-        assert.equal(normalizeBlob("8,1,255"), null);
-        assert.equal(normalizeBlob(42), null);
-        assert.equal(normalizeBlob({}), null);
+        expect(normalizeBlob(null)).toBe(null);
+        expect(normalizeBlob(undefined)).toBe(null);
+        expect(normalizeBlob("8,1,255")).toBe(null);
+        expect(normalizeBlob(42)).toBe(null);
+        expect(normalizeBlob({})).toBe(null);
     });
 });
 
 describe("timingSafeEqual", () => {
     it("compares without early exit on length or content mismatch", () => {
-        assert.ok(timingSafeEqual("Bearer abc", "Bearer abc"));
-        assert.ok(!timingSafeEqual("Bearer abc", "Bearer abd"));
-        assert.ok(!timingSafeEqual("Bearer abc", "Bearer abcd"));
-        assert.ok(timingSafeEqual("", ""));
-        assert.ok(!timingSafeEqual("", "x"));
+        expect(timingSafeEqual("Bearer abc", "Bearer abc")).toBe(true);
+        expect(timingSafeEqual("Bearer abc", "Bearer abd")).toBe(false);
+        expect(timingSafeEqual("Bearer abc", "Bearer abcd")).toBe(false);
+        expect(timingSafeEqual("", "")).toBe(true);
+        expect(timingSafeEqual("", "x")).toBe(false);
     });
 });
 
 describe("truncateCodePoints", () => {
     it("counts Unicode code points, not UTF-16 units", () => {
         const emoji = "🚀".repeat(300);
-        assert.equal(truncateCodePoints(emoji, 280).length, 560); // 280 surrogate pairs
-        assert.equal([...truncateCodePoints(emoji, 280)].length, 280);
+        expect(truncateCodePoints(emoji, 280).length).toBe(560); // 280 surrogate pairs
+        expect([...truncateCodePoints(emoji, 280)].length).toBe(280);
     });
 
     it("leaves short text unchanged", () => {
-        assert.equal(truncateCodePoints("hello", 280), "hello");
-        assert.equal(truncateCodePoints("", 280), "");
+        expect(truncateCodePoints("hello", 280)).toBe("hello");
+        expect(truncateCodePoints("", 280)).toBe("");
     });
 });
 
@@ -69,21 +68,21 @@ describe("cursor tokens", () => {
 
     it("round-trips", () => {
         const token = encodeCursor(createdAt, postId);
-        assert.deepEqual(decodeCursor(token), { createdAt, postId });
+        expect(decodeCursor(token)).toEqual({ createdAt, postId });
     });
 
     it("produces unpadded base64url", () => {
         const token = encodeCursor(createdAt, postId);
-        assert.match(token, /^[A-Za-z0-9_-]+$/);
+        expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
     });
 
     it("rejects malformed tokens", () => {
-        assert.equal(decodeCursor(""), null);
-        assert.equal(decodeCursor("!!!not-base64!!!"), null);
-        assert.equal(decodeCursor(btoa("no-separator")), null);
-        assert.equal(decodeCursor(btoa("|post")), null);
-        assert.equal(decodeCursor(btoa(`${createdAt}|not-a-uuid`)), null);
-        assert.equal(decodeCursor(btoa(`${createdAt}|${postId}|extra`)), null);
+        expect(decodeCursor("")).toBe(null);
+        expect(decodeCursor("!!!not-base64!!!")).toBe(null);
+        expect(decodeCursor(btoa("no-separator"))).toBe(null);
+        expect(decodeCursor(btoa("|post"))).toBe(null);
+        expect(decodeCursor(btoa(`${createdAt}|not-a-uuid`))).toBe(null);
+        expect(decodeCursor(btoa(`${createdAt}|${postId}|extra`))).toBe(null);
     });
 });
 
@@ -91,98 +90,98 @@ describe("resolveShipName", () => {
     const names = JSON.stringify({ en: "Heron", zh: "苍鹭" });
 
     it("prefers the requested locale, then en, then any", () => {
-        assert.equal(resolveShipName(names, "zh"), "苍鹭");
-        assert.equal(resolveShipName(names, "en"), "Heron");
-        assert.equal(resolveShipName(names, "fr"), "Heron");
-        assert.equal(resolveShipName(JSON.stringify({ zh: "苍鹭" }), "en"), "苍鹭");
+        expect(resolveShipName(names, "zh")).toBe("苍鹭");
+        expect(resolveShipName(names, "en")).toBe("Heron");
+        expect(resolveShipName(names, "fr")).toBe("Heron");
+        expect(resolveShipName(JSON.stringify({ zh: "苍鹭" }), "en")).toBe("苍鹭");
     });
 
     it("degrades to empty on malformed JSON", () => {
-        assert.equal(resolveShipName("not json", "en"), "");
-        assert.equal(resolveShipName("{}", "en"), "");
+        expect(resolveShipName("not json", "en")).toBe("");
+        expect(resolveShipName("{}", "en")).toBe("");
     });
 });
 
 describe("parseTimeWindow", () => {
     it("maps preset tokens to SQLite datetime modifiers", () => {
-        assert.equal(parseTimeWindow("24h"), "-1 day");
-        assert.equal(parseTimeWindow("7d"), "-7 days");
-        assert.equal(parseTimeWindow("30d"), "-30 days");
+        expect(parseTimeWindow("24h")).toBe("-1 day");
+        expect(parseTimeWindow("7d")).toBe("-7 days");
+        expect(parseTimeWindow("30d")).toBe("-30 days");
     });
 
     it("treats an absent parameter and 'all' as no condition", () => {
-        assert.equal(parseTimeWindow(undefined), null);
-        assert.equal(parseTimeWindow("all"), null);
+        expect(parseTimeWindow(undefined)).toBe(null);
+        expect(parseTimeWindow("all")).toBe(null);
     });
 
     it("rejects unknown tokens", () => {
-        assert.equal(parseTimeWindow("1h"), "invalid");
-        assert.equal(parseTimeWindow(""), "invalid");
-        assert.equal(parseTimeWindow("-7 days"), "invalid");
+        expect(parseTimeWindow("1h")).toBe("invalid");
+        expect(parseTimeWindow("")).toBe("invalid");
+        expect(parseTimeWindow("-7 days")).toBe("invalid");
     });
 
     it("rejects inherited Object.prototype property names", () => {
-        assert.equal(parseTimeWindow("__proto__"), "invalid");
-        assert.equal(parseTimeWindow("constructor"), "invalid");
-        assert.equal(parseTimeWindow("toString"), "invalid");
-        assert.equal(parseTimeWindow("hasOwnProperty"), "invalid");
-        assert.equal(parseTimeWindow("valueOf"), "invalid");
+        expect(parseTimeWindow("__proto__")).toBe("invalid");
+        expect(parseTimeWindow("constructor")).toBe("invalid");
+        expect(parseTimeWindow("toString")).toBe("invalid");
+        expect(parseTimeWindow("hasOwnProperty")).toBe("invalid");
+        expect(parseTimeWindow("valueOf")).toBe("invalid");
     });
 });
 
 describe("ship cursor tokens", () => {
     it("round-trips", () => {
         const token = encodeShipCursor(42, 24692);
-        assert.deepEqual(decodeShipCursor(token), { postCount: 42, shipTypeId: 24692 });
+        expect(decodeShipCursor(token)).toEqual({ postCount: 42, shipTypeId: 24692 });
     });
 
     it("produces unpadded base64url", () => {
-        assert.match(encodeShipCursor(42, 24692), /^[A-Za-z0-9_-]+$/);
+        expect(encodeShipCursor(42, 24692)).toMatch(/^[A-Za-z0-9_-]+$/);
     });
 
     it("rejects malformed tokens", () => {
-        assert.equal(decodeShipCursor(""), null);
-        assert.equal(decodeShipCursor("!!!not-base64!!!"), null);
-        assert.equal(decodeShipCursor(btoa("no-separator")), null);
-        assert.equal(decodeShipCursor(btoa("|24692")), null);
-        assert.equal(decodeShipCursor(btoa("not-a-number|24692")), null);
-        assert.equal(decodeShipCursor(btoa("42|0")), null);
-        assert.equal(decodeShipCursor(btoa("42|-1")), null);
-        assert.equal(decodeShipCursor(btoa("-1|24692")), null);
-        assert.equal(decodeShipCursor(btoa("42|24692|extra")), null);
+        expect(decodeShipCursor("")).toBe(null);
+        expect(decodeShipCursor("!!!not-base64!!!")).toBe(null);
+        expect(decodeShipCursor(btoa("no-separator"))).toBe(null);
+        expect(decodeShipCursor(btoa("|24692"))).toBe(null);
+        expect(decodeShipCursor(btoa("not-a-number|24692"))).toBe(null);
+        expect(decodeShipCursor(btoa("42|0"))).toBe(null);
+        expect(decodeShipCursor(btoa("42|-1"))).toBe(null);
+        expect(decodeShipCursor(btoa("-1|24692"))).toBe(null);
+        expect(decodeShipCursor(btoa("42|24692|extra"))).toBe(null);
     });
 });
 
 describe("parseLimit", () => {
     it("accepts plain decimal integers", () => {
-        assert.equal(parseLimit("1", 50), 1);
-        assert.equal(parseLimit("20", 50), 20);
-        assert.equal(parseLimit("007", 50), 7);
+        expect(parseLimit("1", 50)).toBe(1);
+        expect(parseLimit("20", 50)).toBe(20);
+        expect(parseLimit("007", 50)).toBe(7);
     });
 
     it("clamps to [1, maxLimit]", () => {
-        assert.equal(parseLimit("0", 50), 1);
-        assert.equal(parseLimit("999", 50), 50);
+        expect(parseLimit("0", 50)).toBe(1);
+        expect(parseLimit("999", 50)).toBe(50);
     });
 
     it("rejects numeric prefixes and non-decimal values", () => {
-        assert.equal(parseLimit("20junk", 50), null);
-        assert.equal(parseLimit("20.5", 50), null);
-        assert.equal(parseLimit("-1", 50), null);
-        assert.equal(parseLimit("+1", 50), null);
-        assert.equal(parseLimit(" 20", 50), null);
-        assert.equal(parseLimit("20 ", 50), null);
-        assert.equal(parseLimit("0x20", 50), null);
-        assert.equal(parseLimit("", 50), null);
-        assert.equal(parseLimit("junk", 50), null);
+        expect(parseLimit("20junk", 50)).toBe(null);
+        expect(parseLimit("20.5", 50)).toBe(null);
+        expect(parseLimit("-1", 50)).toBe(null);
+        expect(parseLimit("+1", 50)).toBe(null);
+        expect(parseLimit(" 20", 50)).toBe(null);
+        expect(parseLimit("20 ", 50)).toBe(null);
+        expect(parseLimit("0x20", 50)).toBe(null);
+        expect(parseLimit("", 50)).toBe(null);
+        expect(parseLimit("junk", 50)).toBe(null);
     });
 });
 
 describe("escapeLikePattern", () => {
     it("escapes LIKE wildcards and the escape character itself", () => {
-        assert.equal(escapeLikePattern("Heron"), "Heron");
-        assert.equal(escapeLikePattern("100%"), "100\\%");
-        assert.equal(escapeLikePattern("a_b"), "a\\_b");
-        assert.equal(escapeLikePattern("a\\b"), "a\\\\b");
+        expect(escapeLikePattern("Heron")).toBe("Heron");
+        expect(escapeLikePattern("100%")).toBe("100\\%");
+        expect(escapeLikePattern("a_b")).toBe("a\\_b");
+        expect(escapeLikePattern("a\\b")).toBe("a\\\\b");
     });
 });

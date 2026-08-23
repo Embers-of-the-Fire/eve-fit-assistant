@@ -48,6 +48,11 @@ def test_package_changes_trigger_dart_suites():
     assert "l10n" in names
 
 
+def test_worker_changes_trigger_worker_suite():
+    names = _suite_names(["worker/efa-platform-api/src/index.ts"])
+    assert names == {"worker"}
+
+
 def test_web_preview_patterns_cover_core_build_inputs():
     for path in [
         "flake.nix",
