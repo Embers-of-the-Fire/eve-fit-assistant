@@ -50,9 +50,7 @@ def test_package_changes_trigger_dart_suites():
 
 def test_worker_changes_trigger_worker_suite():
     names = _suite_names(["worker/efa-platform-api/src/index.ts"])
-    assert "worker" in names
-    assert "site" not in names
-    assert "snapshot-ts" not in names
+    assert names == {"worker"}
 
 
 def test_web_preview_patterns_cover_core_build_inputs():
