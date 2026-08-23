@@ -49,7 +49,8 @@ class AccountApiEndpointTile extends ConsumerWidget {
                 "The preview environment is protected by Cloudflare Access: "
                 "requests without a valid cf-access-token (below) get "
                 "the Access login page instead of the API. Changing the "
-                "endpoint signs out the current account session.",
+                "endpoint signs out the current account session and clears "
+                "the Cloudflare Access token.",
               ),
             ],
           ),
@@ -83,13 +84,19 @@ class AccountApiEndpointTile extends ConsumerWidget {
       final next = normalize(controller.text);
       // Only an actual endpoint switch updates settings and signs out.
       if (previous == next) return;
-      // Sessions are scoped to their origin; never carry one across
-      // endpoints. Revoke the current session BEFORE the settings update:
-      // the update rebuilds platformSessionProvider against the new origin,
-      // so logging out afterwards would send the revoke there and leave the
-      // previous-origin session active server-side. The logout is a
-      // best-effort server revoke plus a local clear.
+      // Sessions and the Cloudflare Access token are scoped to their origin;
+      // never carry either across endpoints. Revoke the current session
+      // BEFORE the settings update: the update rebuilds
+      // platformSessionProvider against the new origin, so logging out
+      // afterwards would send the revoke there and leave the previous-origin
+      // session active server-side. The logout is a best-effort server
+      // revoke plus a local clear.
       await (await ref.read(platformSessionProvider.future)).logout();
+      // The CF Access token is issued for the old origin's Access gate; left
+      // in place, the rebuilt session would attach it to requests against
+      // the new origin. Clear it before the settings update triggers the
+      // rebuild so the next session starts without it.
+      await ref.read(securePlatformSessionStoreProvider).clearCfAccessToken();
       ref
           .read(appSettingServiceProvider.notifier)
           .update(

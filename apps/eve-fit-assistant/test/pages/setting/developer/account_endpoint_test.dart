@@ -39,6 +39,7 @@ class _FakeAdapter implements HttpClientAdapter {
 /// provider's exposed type, so the fake extends it and replaces persistence.
 class _MemorySessionStore extends SecurePlatformSessionStore {
   StoredPlatformSession? session;
+  String cfAccessToken = "";
 
   @override
   Future<StoredPlatformSession?> read() async => session;
@@ -48,6 +49,15 @@ class _MemorySessionStore extends SecurePlatformSessionStore {
 
   @override
   Future<void> clear() async => session = null;
+
+  @override
+  Future<String> readCfAccessToken() async => cfAccessToken;
+
+  @override
+  Future<void> writeCfAccessToken(String token) async => cfAccessToken = token.trim();
+
+  @override
+  Future<void> clearCfAccessToken() async => cfAccessToken = "";
 }
 
 class _TestAppSettingService extends AppSettingService {
@@ -76,16 +86,20 @@ ResponseBody _json(Object body, [int status = 200]) => ResponseBody.fromString(
 );
 
 /// Scriptable auth API: serves the cold-start rotation and records every
-/// request URI so tests can assert which origin a call targeted.
+/// request URI plus its `cf-access-token` header so tests can assert which
+/// origin a call targeted and which credential it carried.
 class _Server {
-  final List<String> uris = [];
+  final List<({String uri, String? cfAccessToken})> requests = [];
 
   /// Overrides the logout response, e.g. to keep the revoke in flight while
   /// the endpoint dialog finishes closing.
   Future<ResponseBody> Function()? logoutResponder;
 
   Future<ResponseBody> fetch(RequestOptions options) async {
-    uris.add(options.uri.toString());
+    requests.add((
+      uri: options.uri.toString(),
+      cfAccessToken: options.headers["cf-access-token"] as String?,
+    ));
     if (options.path.endsWith("/platform/auth/refresh")) {
       return _json({
         "accessToken": _jwt("user-old"),
@@ -96,6 +110,9 @@ class _Server {
     if (options.path.endsWith("/platform/auth/logout")) {
       final responder = logoutResponder;
       return responder != null ? responder() : _json({"ok": true});
+    }
+    if (options.path.endsWith("/platform/auth/reset-password")) {
+      return _json({"ok": true});
     }
     throw StateError("unexpected request: ${options.uri}");
   }
@@ -137,7 +154,8 @@ void main() {
       ),
       securePlatformSessionStoreProvider.overrideWithValue(store),
       // Mirrors the real provider's origin resolution (including the rebuild
-      // on an endpoint switch) but routes HTTP through the fake server.
+      // on an endpoint switch) and Cloudflare Access token read, but routes
+      // HTTP through the fake server.
       platformSessionProvider.overrideWith((ref) async {
         final (:developerMode, :customOrigin) = ref.watch(
           appSettingServiceProvider.select<({bool developerMode, String customOrigin})>(
@@ -146,10 +164,13 @@ void main() {
         );
         final custom = customOrigin.trim();
         final origin = developerMode && custom.isNotEmpty ? custom : platformApiProductionOrigin;
+        final store = ref.watch(securePlatformSessionStoreProvider);
+        final cfAccessToken = await store.readCfAccessToken();
         return PlatformSession(
           origin: origin,
-          store: ref.watch(securePlatformSessionStoreProvider),
+          store: store,
           dioFactory: () => Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(server.fetch),
+          cfAccessToken: cfAccessToken.isEmpty ? null : cfAccessToken,
         );
       }),
     ],
@@ -180,12 +201,62 @@ void main() {
 
     // The revoke must target the endpoint the session was created against,
     // not the one the settings update just switched to.
-    final logoutRequests = server.uris.where((uri) => uri.endsWith("/platform/auth/logout"));
+    final logoutRequests = server.requests
+        .where((request) => request.uri.endsWith("/platform/auth/logout"))
+        .map((request) => request.uri);
     expect(logoutRequests, ["$_previousOrigin/platform/auth/logout"]);
 
     final context = tester.element(find.byType(AccountApiEndpointTile));
     final container = ProviderScope.containerOf(context);
     expect(container.read(appSettingServiceProvider).account.customOrigin, _nextOrigin);
     expect(await store.read(), isNull);
+  });
+
+  testWidgets("switching the endpoint drops the Cloudflare Access token", (tester) async {
+    // A token issued for the previous origin's Access gate.
+    await store.writeCfAccessToken("cf-token-preview");
+    final logoutCompleter = Completer<ResponseBody>();
+    server.logoutResponder = () => logoutCompleter.future;
+
+    await tester.pumpWidget(buildTile());
+    await tester.pump();
+
+    await tester.tap(find.text("Account API endpoint"));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), _nextOrigin);
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    logoutCompleter.complete(_json({"ok": true}));
+    await tester.pumpAndSettle();
+
+    // Sanity check: while still on the previous origin, the session did
+    // attach the token to its requests (cold-start rotation + revoke).
+    final previousOriginTokens = server.requests
+        .where((request) => request.uri.startsWith(_previousOrigin))
+        .map((request) => request.cfAccessToken);
+    expect(previousOriginTokens, isNotEmpty);
+    expect(previousOriginTokens.every((token) => token == "cf-token-preview"), isTrue);
+
+    // The switch must have cleared the stored token before the settings
+    // update rebuilt the session against the new origin.
+    expect(await store.readCfAccessToken(), isEmpty);
+
+    final context = tester.element(find.byType(AccountApiEndpointTile));
+    final container = ProviderScope.containerOf(context);
+    // Real-async zone: awaiting the rebuilt session and its HTTP call
+    // directly in the fake-async widget-test zone would never complete.
+    await tester.runAsync(() async {
+      final session = await container.read(platformSessionProvider.future);
+      // Force the rebuilt session to talk to the new origin; its requests
+      // must not carry the previous origin's Cloudflare Access credential.
+      await session.requestPasswordReset(email: "capsuleer@example.com");
+    });
+    final nextOriginRequests = server.requests.where(
+      (request) => request.uri.startsWith(_nextOrigin),
+    );
+    expect(nextOriginRequests, isNotEmpty);
+    expect(nextOriginRequests.every((request) => request.cfAccessToken == null), isTrue);
   });
 }
