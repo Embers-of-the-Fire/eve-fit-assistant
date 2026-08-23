@@ -14,8 +14,10 @@ The package provides:
   locally: JWT subject + cached email; no server `/me` endpoint exists yet).
 - `PlatformAuthRequiredError` plus the `onAuthRequired` hook for the "interactive
   login required" signal (throttled to once per signed-out stretch).
-- `AccountApiError` (`statusCode`, `code`, `retryAfterSec`, `isInvalidToken`,
-  `isEmailUnverified`) mirroring the worker's error envelope.
+- `AccountApiError` (`statusCode`, `code`, `retryAfterSec`, `transportFailure`,
+  `isInvalidToken`, `isEmailUnverified`) mirroring the worker's error envelope.
+  `transportFailure` is true only when the request never reached the server;
+  other status-less errors are local response-parsing failures.
 - `LocalStorageSessionStore`, the browser store (single-key JSON document). The
   auth API issues tokens in JSON bodies and sets no cookies by design, so the
   refresh token necessarily lives in script-readable storage.

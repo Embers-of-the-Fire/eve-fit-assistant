@@ -26,7 +26,10 @@ export function accountErrorMessage(error: unknown): string {
     if (error instanceof AccountApiError) {
         const key = ERROR_KEY_BY_CODE[error.code ?? ""];
         if (key !== undefined) return t(key);
-        if (error.statusCode === null) return t("account.error.network");
+        // Only true transport failures (the request never reached the server)
+        // warrant the network message; status-less local parsing failures of a
+        // received response fall through to the generic message.
+        if (error.transportFailure) return t("account.error.network");
     }
     return t("account.error.generic");
 }
@@ -37,5 +40,10 @@ const ERROR_KEY_BY_CODE: Record<string, TranslationKey> = {
     otp_invalid: "account.error.otpInvalid",
     otp_expired: "account.error.otpExpired",
     email_unverified: "account.error.emailUnverified",
+    already_verified: "account.error.alreadyVerified",
+    invalid_token: "account.error.invalidToken",
     rate_limited: "account.error.rateLimited",
+    internal: "account.error.internal",
+    // `bad_request` indicates a client-side bug, not a user-recoverable
+    // condition, so it intentionally falls back to the generic message.
 };

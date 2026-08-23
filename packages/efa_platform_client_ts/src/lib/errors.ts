@@ -7,24 +7,36 @@
  * (`invalid_credentials`, `otp_invalid`, `email_taken`, ...) when present.
  */
 export class AccountApiError extends Error {
-    /** HTTP status, or null when the request never reached the server (network failure). */
+    /**
+     * HTTP status, or null when no error response was decoded: either the
+     * request never reached the server (see {@link transportFailure}) or the
+     * response failed local parsing (empty body, malformed token pair, ...).
+     */
     readonly statusCode: number | null;
     /** The worker's error-envelope code, when present. */
     readonly code: string | null;
     /** Value of the `Retry-After` header on `429 rate_limited` responses. */
     readonly retryAfterSec: number | null;
+    /**
+     * True only when the request never reached the server (network failure).
+     * Other status-less errors are local parsing failures of a received
+     * response and must not be reported as connectivity problems.
+     */
+    readonly transportFailure: boolean;
 
     constructor(
         statusCode: number | null,
         code: string | null,
         message?: string,
         retryAfterSec?: number | null,
+        transportFailure = false,
     ) {
         super(message ?? code ?? "account API error");
         this.name = "AccountApiError";
         this.statusCode = statusCode;
         this.code = code;
         this.retryAfterSec = retryAfterSec ?? null;
+        this.transportFailure = transportFailure;
     }
 
     get isInvalidToken(): boolean {

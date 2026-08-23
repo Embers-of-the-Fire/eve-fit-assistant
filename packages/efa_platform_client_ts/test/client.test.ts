@@ -79,6 +79,7 @@ describe("AccountApiClient", () => {
         expect(apiError.code).toBe("rate_limited");
         expect(apiError.retryAfterSec).toBe(42);
         expect(apiError.isInvalidToken).toBe(false);
+        expect(apiError.transportFailure).toBe(false);
     });
 
     it("flags invalid_token and email_unverified", async () => {
@@ -102,7 +103,7 @@ describe("AccountApiClient", () => {
         expect(unverified.isInvalidToken).toBe(false);
     });
 
-    it("maps network failures to a status-less error", async () => {
+    it("maps network failures to a status-less transport error", async () => {
         const fetchFn = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
         const client = new AccountApiClient(ORIGIN, fetchFn);
         const error = (await client
@@ -111,6 +112,7 @@ describe("AccountApiClient", () => {
         expect(error).toBeInstanceOf(AccountApiError);
         expect(error.statusCode).toBeNull();
         expect(error.code).toBeNull();
+        expect(error.transportFailure).toBe(true);
     });
 
     it("sends the bearer token for deregister", async () => {
@@ -125,11 +127,16 @@ describe("AccountApiClient", () => {
         );
     });
 
-    it("rejects a malformed token pair body", async () => {
+    it("rejects a malformed token pair body as a local parsing failure", async () => {
         const fetchFn = vi
             .fn()
             .mockImplementation(() => Promise.resolve(jsonResponse(200, { accessToken: 1 })));
         const client = new AccountApiClient(ORIGIN, fetchFn);
-        await expect(client.login("a@b.c", "password123")).rejects.toBeInstanceOf(AccountApiError);
+        const error = (await client
+            .login("a@b.c", "password123")
+            .catch((e: unknown) => e)) as AccountApiError;
+        expect(error).toBeInstanceOf(AccountApiError);
+        expect(error.statusCode).toBeNull();
+        expect(error.transportFailure).toBe(false);
     });
 });

@@ -135,7 +135,13 @@ export class AccountApiClient {
                 body: JSON.stringify(jsonBody),
             });
         } catch (err) {
-            throw new AccountApiError(null, null, err instanceof Error ? err.message : String(err));
+            throw new AccountApiError(
+                null,
+                null,
+                err instanceof Error ? err.message : String(err),
+                null,
+                true,
+            );
         }
         if (!response.ok) {
             throw await toAccountApiError(response);
