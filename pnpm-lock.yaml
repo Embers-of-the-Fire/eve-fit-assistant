@@ -31,6 +31,15 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/efa_platform_client_ts:
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+
   packages/efa_proto_ts:
     dependencies:
       '@bufbuild/protobuf':
@@ -97,6 +106,9 @@ importers:
       efa-fit-snapshot-ts:
         specifier: workspace:*
         version: link:../../packages/efa_fit_snapshot_ts
+      efa-platform-client-ts:
+        specifier: workspace:*
+        version: link:../../packages/efa_platform_client_ts
       efa-proto-ts:
         specifier: workspace:*
         version: link:../../packages/efa_proto_ts

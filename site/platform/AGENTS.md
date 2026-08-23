@@ -16,6 +16,18 @@ page.
   `worker/efa-platform-fit-storage`.
 - Platform HTTP API behavior lives in `worker/efa-platform-api/`, not in this Astro app.
 
+## Account Auth
+
+- `/account` (profile, sign-out, deregistration) and `/account/login`, `/account/register`,
+  `/account/reset` are data-free shells over Svelte islands under `src/components/auth/`;
+  they follow the app's account flows and must stay uncached.
+- Browser islands call the auth API (`https://api.efa-tech.dev/platform/auth`) directly via
+  `efa-platform-client-ts` (`packages/efa_platform_client_ts`); `src/lib/auth.svelte.ts`
+  holds the singleton `PlatformSession` and bridges identity into `$state` runes.
+- Tokens live in `localStorage` (`LocalStorageSessionStore`); the auth API sets no cookies
+  by design. Local auth development relies on the loopback entries in the worker's auth
+  CORS allowlist (`worker/efa-platform-api/src/root.ts`).
+
 ## Caching
 
 Route caching uses Astro's Cloudflare CDN cache provider (`cacheCloudflare()` in

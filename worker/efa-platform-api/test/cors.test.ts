@@ -71,6 +71,18 @@ describe("auth mount CORS", () => {
         expect(untrusted.headers.get("Access-Control-Allow-Origin")).toBe(null);
     });
 
+    it("reflects loopback dev origins", async () => {
+        const res = await makeRoot().fetch(
+            new Request(`${ORIGIN}${AUTH_MOUNT_PATH}/login`, {
+                method: "POST",
+                headers: { Origin: "http://localhost:8787", "Content-Type": "application/json" },
+                body: "{}",
+            }),
+        );
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:8787");
+    });
+
     it("does not let the public wildcard leak onto the auth mount", async () => {
         const res = await makeRoot().fetch(
             new Request(`${ORIGIN}${AUTH_MOUNT_PATH}/login`, {
