@@ -56,6 +56,10 @@ async function submitSignup() {
 
 async function submitVerify() {
     error = null;
+    if (!isValidAccountEmail(email)) {
+        error = t("account.invalidEmail");
+        return;
+    }
     if (!isValidAccountCode(code)) {
         error = t("account.invalidCode");
         return;
@@ -75,6 +79,10 @@ async function submitVerify() {
 async function resend() {
     error = null;
     notice = null;
+    if (!isValidAccountEmail(email)) {
+        error = t("account.invalidEmail");
+        return;
+    }
     busy = true;
     try {
         await session.resendSignupCode(email.trim());
