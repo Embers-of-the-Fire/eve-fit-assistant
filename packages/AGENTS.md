@@ -17,6 +17,7 @@ changes inside it while working on the parent repository. Initialize it after cl
 | `efa_fit/` | Fit payload/link/EFT codecs and snapshot construction/encoding. |
 | `efa_fit_snapshot/` | Read-only, localization-aware Flutter display of `FitSnapshot` protobuf data. |
 | `efa_fit_snapshot_ts/` | TypeScript/Svelte fit-snapshot rendering support. |
+| `efa_platform_client/` | Platform API facade: `PlatformSession` (account auth flows, token lifecycle, public platform reads). |
 | `efa_proto/` | Generated Dart protobuf bindings for schemas in `data/schema/`. |
 | `efa_proto_ts/` | Generated protobuf-es TypeScript bindings for platform-facing schemas. |
 | `eve-fit-os/` | Rust fitting-engine submodule. |

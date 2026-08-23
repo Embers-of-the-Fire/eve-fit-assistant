@@ -14,7 +14,7 @@ class AccountApiEndpointTile extends ConsumerWidget {
       title: const Text("Account API endpoint"),
       subtitle: Text(
         customOrigin.trim().isEmpty
-            ? "Production ($accountApiProductionOrigin)"
+            ? "Production ($platformApiProductionOrigin)"
             : "Custom: ${customOrigin.trim()}",
       ),
       onTap: () => unawaited(_editEndpoint(context, ref)),
@@ -40,7 +40,7 @@ class AccountApiEndpointTile extends ConsumerWidget {
                 enableSuggestions: false,
                 decoration: const InputDecoration(
                   hintText: "https://efa-platform-api-preview.<subdomain>.workers.dev",
-                  helperText: "Leave empty for production ($accountApiProductionOrigin)",
+                  helperText: "Leave empty for production ($platformApiProductionOrigin)",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -76,7 +76,7 @@ class AccountApiEndpointTile extends ConsumerWidget {
       // Normalize: an empty field means the production origin.
       String normalize(String value) {
         final trimmed = value.trim();
-        return trimmed.isEmpty ? accountApiProductionOrigin : trimmed;
+        return trimmed.isEmpty ? platformApiProductionOrigin : trimmed;
       }
 
       final previous = normalize(ref.read(appSettingServiceProvider).account.customOrigin);
@@ -88,8 +88,11 @@ class AccountApiEndpointTile extends ConsumerWidget {
           .update(
             (s) => s.copyWith(account: s.account.copyWith(customOrigin: controller.text.trim())),
           );
-      // Sessions are scoped to their origin; never carry one across endpoints.
-      await ref.read(accountControllerProvider.notifier).signOutLocal();
+      // Sessions are scoped to their origin; never carry one across
+      // endpoints. The settings update above rebuilds the session against
+      // the new origin; its logout is a best-effort server revoke plus a
+      // local clear.
+      await (await ref.read(platformSessionProvider.future)).logout();
     } finally {
       controller.dispose();
     }
@@ -111,7 +114,7 @@ class CloudflareAccessTokenTile extends ConsumerWidget {
   );
 
   Future<void> _editToken(BuildContext context, WidgetRef ref) async {
-    final store = ref.read(accountTokenStoreProvider);
+    final store = ref.read(securePlatformSessionStoreProvider);
     final controller = TextEditingController(text: await store.readCfAccessToken());
     try {
       if (!context.mounted) return;
@@ -163,6 +166,9 @@ class CloudflareAccessTokenTile extends ConsumerWidget {
       );
       if (saved != true) return;
       await store.writeCfAccessToken(controller.text);
+      // The token is captured at session construction; rebuild so the next
+      // request carries the new value.
+      ref.invalidate(platformSessionProvider);
     } finally {
       controller.dispose();
     }

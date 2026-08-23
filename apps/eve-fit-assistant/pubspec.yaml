@@ -41,6 +41,8 @@ dependencies:
     path: ../../packages/efa_constant
   efa_fit:
     path: ../../packages/efa_fit
+  efa_platform_client:
+    path: ../../packages/efa_platform_client
   efa_proto:
     path: ../../packages/efa_proto
 

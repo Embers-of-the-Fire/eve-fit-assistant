@@ -7,6 +7,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { type OtpEmailEnv, type OtpEmailInput, sendOtpEmail } from "./email.ts";
+import { getAuthClaims, requireAccessToken } from "./middleware.ts";
 import {
     clearOtp,
     generateOtpCode,
@@ -43,7 +44,6 @@ import {
     REFRESH_TOKEN_TTL_MS,
     ROTATION_GRACE_MS,
     signAccessToken,
-    verifyAccessToken,
 } from "./tokens.ts";
 
 export interface AuthEnv extends OtpEmailEnv {
@@ -646,52 +646,57 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
         return c.json({ ok: true }, 200);
     });
 
-    app.post("/deregister", async (c) => {
-        const secret = requireSecret(c);
-        if (!secret) {
-            return errorJson(500, "internal", "internal server error");
-        }
-        const header = c.req.header("Authorization") ?? "";
-        const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
-        const claims = token === null ? null : await verifyAccessToken(secret, token);
-        if (!claims) {
-            return errorJson(401, "invalid_token", "missing or invalid access token");
-        }
-        const user = await getUserById(c.env.FIT_DB, claims.sub);
-        if (user?.status !== "active" || user.token_version !== claims.tv) {
-            return errorJson(401, "invalid_token", "missing or invalid access token");
-        }
-        const parsed = DeregisterSchema.safeParse(await c.req.json().catch(() => null));
-        if (!parsed.success) {
-            return errorJson(400, "bad_request", "invalid request body");
-        }
-        // Keyed on account+IP like /login: one source can only exhaust its
-        // own pair's budget and cannot lock the account out from elsewhere.
-        const accountKey = `${user.user_id}:${clientIp(c)}`;
-        const limited = await rateLimited(
-            c,
-            "deregister-account",
-            accountKey,
-            DEREGISTER_ACCOUNT_LIMIT,
-            DEREGISTER_ACCOUNT_WINDOW_SEC,
-        );
-        if (limited) {
-            return limited;
-        }
-        if (!(await verifyPassword(parsed.data.password, user.password_hash))) {
-            return errorJson(401, "invalid_credentials", "incorrect password");
-        }
-        // The quota counts failed attempts only; a correct password refunds
-        // its hit so a legitimate deregistration never consumes budget.
-        await fixedWindowRefund(
-            c.env.AUTH_RATE_LIMIT,
-            "deregister-account",
-            accountKey,
-            DEREGISTER_ACCOUNT_WINDOW_SEC,
-        );
-        await deregisterUser(c.env.FIT_DB, user.user_id);
-        return c.json({ ok: true }, 200);
-    });
+    app.post(
+        "/deregister",
+        requireAccessToken<{ Bindings: AuthEnv }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: async (c, claims) => {
+                const user = await getUserById(c.env.FIT_DB, claims.sub);
+                if (user?.status !== "active" || user.token_version !== claims.tv) {
+                    return errorJson(401, "invalid_token", "missing or invalid access token");
+                }
+            },
+        }),
+        async (c) => {
+            const claims = getAuthClaims(c);
+            // The middleware already validated the account; re-read by primary
+            // key for the password check below.
+            const user = await getUserById(c.env.FIT_DB, claims.sub);
+            if (user?.status !== "active") {
+                return errorJson(401, "invalid_token", "missing or invalid access token");
+            }
+            const parsed = DeregisterSchema.safeParse(await c.req.json().catch(() => null));
+            if (!parsed.success) {
+                return errorJson(400, "bad_request", "invalid request body");
+            }
+            // Keyed on account+IP like /login: one source can only exhaust its
+            // own pair's budget and cannot lock the account out from elsewhere.
+            const accountKey = `${user.user_id}:${clientIp(c)}`;
+            const limited = await rateLimited(
+                c,
+                "deregister-account",
+                accountKey,
+                DEREGISTER_ACCOUNT_LIMIT,
+                DEREGISTER_ACCOUNT_WINDOW_SEC,
+            );
+            if (limited) {
+                return limited;
+            }
+            if (!(await verifyPassword(parsed.data.password, user.password_hash))) {
+                return errorJson(401, "invalid_credentials", "incorrect password");
+            }
+            // The quota counts failed attempts only; a correct password refunds
+            // its hit so a legitimate deregistration never consumes budget.
+            await fixedWindowRefund(
+                c.env.AUTH_RATE_LIMIT,
+                "deregister-account",
+                accountKey,
+                DEREGISTER_ACCOUNT_WINDOW_SEC,
+            );
+            await deregisterUser(c.env.FIT_DB, user.user_id);
+            return c.json({ ok: true }, 200);
+        },
+    );
 
     app.post("/reset-password", async (c) => {
         const parsed = ResetRequestSchema.safeParse(await c.req.json().catch(() => null));

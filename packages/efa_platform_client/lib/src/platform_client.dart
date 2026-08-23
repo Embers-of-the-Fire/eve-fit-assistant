@@ -4,15 +4,6 @@ import "dart:typed_data";
 import "package:dio/dio.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
-import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
-import "package:flutter_riverpod/flutter_riverpod.dart";
-
-/// Public origin of the platform API (`worker/efa-platform-api`).
-const platformApiOrigin = "https://api.efa-tech.dev";
-
-/// Injectable seam for the platform API client, so tests can substitute a fake
-/// transport.
-final platformApiClientProvider = Provider<PlatformApiClient>((Ref ref) => PlatformApiClient());
 
 /// A single entry of `GET /platform/internal/posts` (spec §6.3).
 class PostSummary {
@@ -121,14 +112,14 @@ class PlatformApiException implements Exception {
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
-/// `api.efa-tech.dev/platform/internal`).
+/// `{origin}/platform/internal`).
 ///
-/// All endpoints here are public reads; post creation goes through
-/// `FitSnapshotUploadApi.submit`.
+/// All endpoints here are public reads; post creation goes through the
+/// fit-snapshot upload API.
 class PlatformApiClient {
-  PlatformApiClient({Dio? dio})
-    : _dio = dio ?? createRemoteDio(connectTimeout: const Duration(seconds: 10));
+  PlatformApiClient({required this.origin, Dio? dio}) : _dio = dio ?? Dio();
 
+  final String origin;
   final Dio _dio;
 
   /// Cursor-paginated post list (§6.3). [limit] is clamped server-side to
@@ -204,7 +195,7 @@ class PlatformApiClient {
   Future<Map<String, dynamic>> _getJson(String path, Map<String, String> queryParameters) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
-        "$platformApiOrigin$path",
+        "$origin$path",
         queryParameters: queryParameters,
       );
       final data = response.data;
@@ -220,7 +211,7 @@ class PlatformApiClient {
   Future<Uint8List> _getBytes(String path) async {
     try {
       final response = await _dio.get<Uint8List>(
-        "$platformApiOrigin$path",
+        "$origin$path",
         options: Options(responseType: ResponseType.bytes),
       );
       final data = response.data;

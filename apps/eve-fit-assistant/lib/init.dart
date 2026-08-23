@@ -8,7 +8,7 @@ import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
-import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_store.dart";
@@ -196,9 +196,9 @@ void initWithRef(WidgetRef ref) {
   ref
     ..read(fitManagerProvider)
     ..read(nativeFitEngineServiceProvider)
-    // Eagerly instantiate the account controller: its build rotates the
-    // session once per cold start (startup refresh).
-    ..read(accountControllerProvider);
+    // Eagerly instantiate the platform session: its cold-start rotation
+    // rotates the stored session once per app start (startup refresh).
+    ..read(platformSessionProvider);
   unawaited(_initVersionTracking(ref));
 }
 

@@ -1,9 +1,9 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/layout.dart";
-import "package:eve_fit_assistant/features/account/account_api.dart";
-import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -43,7 +43,8 @@ class _AccountLoginPageState extends ConsumerState<AccountLoginPage> {
       _error = null;
     });
     try {
-      await ref.read(accountControllerProvider.notifier).login(email, password);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.login(email: email, password: password);
       if (!mounted) return;
       // Drop the whole auth flow from the stack and land on the account page.
       unawaited(context.router.popToRootAndPush(const AccountRoute()));

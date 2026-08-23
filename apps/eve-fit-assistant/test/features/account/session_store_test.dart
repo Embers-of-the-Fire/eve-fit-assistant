@@ -3,12 +3,14 @@ library;
 
 import "dart:convert";
 
-import "package:eve_fit_assistant/features/account/token_store.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
+import "package:eve_fit_assistant/features/account/session_store.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 
 /// In-memory mock of the flutter_secure_storage method channel, so the real
-/// [AccountTokenStore] (including its on-disk layout) runs in VM tests.
+/// [SecurePlatformSessionStore] (including its on-disk layout) runs in VM
+/// tests.
 class _FakeSecureStorageChannel {
   final Map<String, String> backing = {};
   final List<String> writes = [];
@@ -55,58 +57,84 @@ class _FakeSecureStorageChannel {
   }
 }
 
-AccountSession _session(String suffix) => AccountSession(
-  accessToken: "access-$suffix",
+String _jwt(String subject) {
+  String segment(Object value) => base64Url.encode(utf8.encode(jsonEncode(value)));
+  return "${segment({"alg": "HS256", "typ": "JWT"})}.${segment({"sub": subject, "tv": 0})}.sig";
+}
+
+StoredPlatformSession _session(String suffix) => StoredPlatformSession(
+  accessToken: _jwt("user-$suffix"),
   refreshToken: "refresh-$suffix",
-  accessTokenExpiresAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
+  expiresAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
+  email: "user-$suffix@example.com",
+  userId: "user-$suffix",
 );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _FakeSecureStorageChannel storage;
-  late AccountTokenStore store;
+  late SecurePlatformSessionStore store;
 
   setUp(() {
     storage = _FakeSecureStorageChannel()..install();
-    store = AccountTokenStore();
+    store = SecurePlatformSessionStore();
   });
 
   tearDown(() => storage.uninstall());
 
-  test("writeSession persists the whole session under one key", () async {
-    await store.writeSession(_session("1"));
+  test("write persists the whole session under one key", () async {
+    await store.write(_session("1"));
 
     expect(storage.writes, ["account_session"]);
     final stored = jsonDecode(storage.backing["account_session"]!) as Map<String, dynamic>;
-    expect(stored["accessToken"], "access-1");
     expect(stored["refreshToken"], "refresh-1");
     expect(stored["accessTokenExpiresAtMs"], 1700000000000);
+    expect(stored["email"], "user-1@example.com");
+    expect(stored["userId"], "user-1");
 
-    final read = await store.readSession();
-    expect(read?.accessToken, "access-1");
+    final read = await store.read();
     expect(read?.refreshToken, "refresh-1");
-    expect(read?.accessTokenExpiresAt.millisecondsSinceEpoch, 1700000000000);
+    expect(read?.expiresAt.millisecondsSinceEpoch, 1700000000000);
+    expect(read?.email, "user-1@example.com");
+    expect(read?.userId, "user-1");
   });
 
-  test("readSession falls back to the legacy per-field layout", () async {
-    storage.backing["account_access_token"] = "access-legacy";
+  test("read falls back to the legacy per-field layout, deriving the identity", () async {
+    storage.backing["account_access_token"] = _jwt("user-legacy");
     storage.backing["account_refresh_token"] = "refresh-legacy";
     storage.backing["account_access_token_expiry_ms"] = "1700000000000";
 
-    final read = await store.readSession();
+    final legacyEmailStore = SecurePlatformSessionStore(legacyEmail: () => "legacy@example.com");
+    final read = await legacyEmailStore.read();
 
-    expect(read?.accessToken, "access-legacy");
     expect(read?.refreshToken, "refresh-legacy");
-    expect(read?.accessTokenExpiresAt.millisecondsSinceEpoch, 1700000000000);
+    expect(read?.expiresAt.millisecondsSinceEpoch, 1700000000000);
+    expect(read?.userId, "user-legacy");
+    expect(read?.email, "legacy@example.com");
   });
 
-  test("writeSession migrates and removes the legacy layout", () async {
-    storage.backing["account_access_token"] = "access-legacy";
+  test("read migrates the pre-identity single-key blob", () async {
+    storage.backing["account_session"] = jsonEncode({
+      "accessToken": _jwt("user-1"),
+      "refreshToken": "refresh-1",
+      "accessTokenExpiresAtMs": 1700000000000,
+    });
+
+    final legacyEmailStore = SecurePlatformSessionStore(legacyEmail: () => "legacy@example.com");
+    final read = await legacyEmailStore.read();
+
+    expect(read?.refreshToken, "refresh-1");
+    expect(read?.userId, "user-1");
+    expect(read?.email, "legacy@example.com");
+  });
+
+  test("write migrates and removes the legacy layout", () async {
+    storage.backing["account_access_token"] = _jwt("user-legacy");
     storage.backing["account_refresh_token"] = "refresh-legacy";
     storage.backing["account_access_token_expiry_ms"] = "1700000000000";
 
-    await store.writeSession(_session("1"));
+    await store.write(_session("1"));
 
     expect(storage.backing.containsKey("account_session"), isTrue);
     expect(storage.backing.containsKey("account_access_token"), isFalse);
@@ -116,20 +144,20 @@ void main() {
 
   test("a corrupt session blob reads as no session, not as the legacy fallback", () async {
     storage.backing["account_session"] = "not-json";
-    storage.backing["account_access_token"] = "access-legacy";
+    storage.backing["account_access_token"] = _jwt("user-legacy");
     storage.backing["account_refresh_token"] = "refresh-legacy";
     storage.backing["account_access_token_expiry_ms"] = "1700000000000";
 
-    expect(await store.readSession(), isNull);
+    expect(await store.read(), isNull);
   });
 
-  test("clearSession removes both the current and the legacy layout", () async {
-    await store.writeSession(_session("1"));
-    storage.backing["account_access_token"] = "access-legacy";
+  test("clear removes both the current and the legacy layout", () async {
+    await store.write(_session("1"));
+    storage.backing["account_access_token"] = _jwt("user-legacy");
 
-    await store.clearSession();
+    await store.clear();
 
     expect(storage.backing, isEmpty);
-    expect(await store.readSession(), isNull);
+    expect(await store.read(), isNull);
   });
 }

@@ -36,6 +36,7 @@ the app's `pubspec.yaml`; it is not the main Rust source tree.
 | `packages/efa_proto/` | Dart protobuf bindings generated from `data/schema/` by `./x generate protobuf`; imported as `package:efa_proto/<name>.pb.dart`. Generated files are gitignored. |
 | `packages/efa_constant/` | Dependency-free EVE constants exposed as `package:efa_constant/eve.dart`; `eve_dogma_unit_generated.dart` is tracked and `eve_attr_generated.dart` is generated/gitignored. |
 | `packages/efa_fit/` | Pure-Dart fit formats: EFA(n) payload codecs, EFT import/export, and fit-link URI construction/parsing. |
+| `packages/efa_platform_client/` | Pure-Dart platform API facade: `PlatformSession` owns the account auth flows, the token lifecycle, and the public platform reads. |
 | `packages/efa_compat/` | Shared compatibility helpers, including the web cross-origin-isolation probe. |
 | `packages/efa_component/` | Shared Dart components. |
 | `packages/efa_fit_snapshot/` | Fit snapshot Dart support. |

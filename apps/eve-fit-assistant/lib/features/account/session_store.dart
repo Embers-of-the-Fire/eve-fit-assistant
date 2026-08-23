@@ -1,50 +1,31 @@
 import "dart:convert";
 
+import "package:efa_platform_client/efa_platform_client.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
-part "token_store.g.dart";
+part "session_store.g.dart";
 
-/// A locally held auth session: the token pair from the auth API plus the
-/// access token's expiry instant (refresh tokens are rotated server-side on
-/// every refresh, so the stored pair is always the latest).
-class AccountSession {
-  const AccountSession({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.accessTokenExpiresAt,
-  });
-
-  factory AccountSession.fromJson(Map<String, dynamic> json) => AccountSession(
-    accessToken: json["accessToken"] as String,
-    refreshToken: json["refreshToken"] as String,
-    accessTokenExpiresAt: DateTime.fromMillisecondsSinceEpoch(
-      json["accessTokenExpiresAtMs"] as int,
-    ),
-  );
-
-  final String accessToken;
-  final String refreshToken;
-  final DateTime accessTokenExpiresAt;
-
-  Map<String, dynamic> toJson() => {
-    "accessToken": accessToken,
-    "refreshToken": refreshToken,
-    "accessTokenExpiresAtMs": accessTokenExpiresAt.millisecondsSinceEpoch,
-  };
-}
-
-/// Stores the platform account session and the developer-only Cloudflare
-/// Access token in platform secure storage (Keychain/Keystore-backed on
-/// native, encrypted on web) instead of the plain settings document.
+/// Stores the platform session and the developer-only Cloudflare Access
+/// token in platform secure storage (Keychain/Keystore-backed on native,
+/// encrypted on web) instead of the plain settings document.
 ///
 /// The whole session lives under a single key holding one JSON document, so
 /// persisting a rotated pair is a single atomic write: a failure mid-rotation
 /// can never leave a partially updated (mixed-generation) credential set
-/// behind. The pre-single-key layout (one key per field) is still honored on
-/// read and migrated on the next write.
-class AccountTokenStore {
+/// behind. Two older layouts are still honored on read: the pre-identity
+/// single-key blob (no email/user id; the user id is recovered from the JWT
+/// subject and the email from the legacy settings profile cache) and the
+/// per-field triple (migrated on the next write).
+class SecurePlatformSessionStore implements PlatformSessionStore {
+  SecurePlatformSessionStore({this._legacyEmail});
+
+  /// Reads the email cached in app settings by logins predating the session
+  /// record's email field; only consulted while migrating old blobs.
+  final String? Function()? _legacyEmail;
+
   static const String _sessionKey = "account_session";
 
   // Legacy layout (pre single-key), read-only fallback for existing installs.
@@ -56,11 +37,12 @@ class AccountTokenStore {
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Future<AccountSession?> readSession() async {
+  @override
+  Future<StoredPlatformSession?> read() async {
     final serialized = await _storage.read(key: _sessionKey);
     if (serialized != null) {
       try {
-        return AccountSession.fromJson(jsonDecode(serialized) as Map<String, dynamic>);
+        return _sessionFromJson(jsonDecode(serialized) as Map<String, dynamic>);
       } on Object {
         // Corrupt blob: report no session instead of falling back to the
         // legacy keys, which would resurrect an older, server-side-dead pair.
@@ -70,24 +52,55 @@ class AccountTokenStore {
     return _readLegacySession();
   }
 
-  Future<AccountSession?> _readLegacySession() async {
+  StoredPlatformSession? _sessionFromJson(Map<String, dynamic> json) {
+    final accessToken = json["accessToken"] as String;
+    final refreshToken = json["refreshToken"] as String;
+    final expiresAtMs = json["accessTokenExpiresAtMs"] as int;
+    // Blobs written before email/user id joined the record: recover the user
+    // id from the JWT subject and the email from the legacy settings cache.
+    final userId = json["userId"] as String? ?? decodeJwtSubject(accessToken);
+    if (userId == null || userId.isEmpty) return null;
+    return StoredPlatformSession(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      expiresAt: DateTime.fromMillisecondsSinceEpoch(expiresAtMs),
+      email: json["email"] as String? ?? _legacyEmail?.call() ?? "",
+      userId: userId,
+    );
+  }
+
+  Future<StoredPlatformSession?> _readLegacySession() async {
     final accessToken = await _storage.read(key: _legacyAccessTokenKey);
     final refreshToken = await _storage.read(key: _legacyRefreshTokenKey);
     final expiryMs = int.tryParse(await _storage.read(key: _legacyAccessTokenExpiryKey) ?? "");
     if (accessToken == null || refreshToken == null || expiryMs == null) {
       return null;
     }
-    return AccountSession(
+    final userId = decodeJwtSubject(accessToken);
+    if (userId == null || userId.isEmpty) return null;
+    return StoredPlatformSession(
       accessToken: accessToken,
       refreshToken: refreshToken,
-      accessTokenExpiresAt: DateTime.fromMillisecondsSinceEpoch(expiryMs),
+      expiresAt: DateTime.fromMillisecondsSinceEpoch(expiryMs),
+      email: _legacyEmail?.call() ?? "",
+      userId: userId,
     );
   }
 
   /// Persists [session] as one atomic write, then removes the legacy layout
   /// best-effort (a leftover legacy triple is shadowed by the new key).
-  Future<void> writeSession(AccountSession session) async {
-    await _storage.write(key: _sessionKey, value: jsonEncode(session.toJson()));
+  @override
+  Future<void> write(StoredPlatformSession session) async {
+    await _storage.write(
+      key: _sessionKey,
+      value: jsonEncode({
+        "accessToken": session.accessToken,
+        "refreshToken": session.refreshToken,
+        "accessTokenExpiresAtMs": session.expiresAt.millisecondsSinceEpoch,
+        "email": session.email,
+        "userId": session.userId,
+      }),
+    );
     try {
       await _deleteLegacyKeys();
     } on Object {
@@ -95,7 +108,8 @@ class AccountTokenStore {
     }
   }
 
-  Future<void> clearSession() async {
+  @override
+  Future<void> clear() async {
     await _storage.delete(key: _sessionKey);
     // Must not fail silently: a surviving legacy triple would be resurrected
     // by the read fallback after the new key is gone.
@@ -125,10 +139,12 @@ class AccountTokenStore {
   Future<void> clearCfAccessToken() => _storage.delete(key: _cfAccessTokenKey);
 
   Future<void> clearAll() async {
-    await clearSession();
+    await clear();
     await clearCfAccessToken();
   }
 }
 
 @riverpodSingleton
-AccountTokenStore accountTokenStore(Ref ref) => AccountTokenStore();
+SecurePlatformSessionStore securePlatformSessionStore(Ref ref) => SecurePlatformSessionStore(
+  legacyEmail: () => ref.read(appSettingServiceProvider).account.email,
+);

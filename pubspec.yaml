@@ -11,6 +11,7 @@ workspace:
   - packages/efa_constant
   - packages/efa_fit
   - packages/efa_fit_snapshot
+  - packages/efa_platform_client
   - packages/efa_proto
 
 dev_dependencies:
@@ -66,6 +67,7 @@ melos:
           - efa_constant
           - efa_fit
           - efa_fit_snapshot
+          - efa_platform_client
     app:fix:
       description: Apply automated Dart fixes to the app.
       exec: dart fix --apply
@@ -77,6 +79,7 @@ melos:
           - efa_constant
           - efa_fit
           - efa_fit_snapshot
+          - efa_platform_client
     app:format:
       description: Format the app's Dart sources.
       exec: dart format lib
@@ -88,6 +91,7 @@ melos:
           - efa_constant
           - efa_fit
           - efa_fit_snapshot
+          - efa_platform_client
     app:format:check:
       description: Verify the app's Dart sources are formatted.
       exec: dart format --set-exit-if-changed lib
@@ -99,13 +103,14 @@ melos:
           - efa_constant
           - efa_fit
           - efa_fit_snapshot
+          - efa_platform_client
     app:gen:
       description: Run the app's build_runner code generation.
       exec: flutter pub run build_runner build --delete-conflicting-outputs
       packageFilters:
         scope: eve_fit_assistant
     pkg:test:
-      description: Run the efa_fit package's test suite.
+      description: Run the packages' test suites.
       steps:
         - pkg:l10n
         - pkg:test:exec
@@ -117,6 +122,7 @@ melos:
           - efa_fit
           - efa_component
           - efa_fit_snapshot
+          - efa_platform_client
     pkg:l10n:
       description: Generate the snapshot package's localization files.
       exec: flutter gen-l10n

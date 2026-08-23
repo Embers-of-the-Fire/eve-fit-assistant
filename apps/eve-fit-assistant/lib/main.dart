@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/announcements/announcements.dart";
 import "package:eve_fit_assistant/features/announcements/state/announcement_state_notifier.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
@@ -28,6 +29,11 @@ void main() async {
         announcementStateStoreProvider.overrideWithValue(stores.announcementStateStore),
         appVersionStateStoreProvider.overrideWithValue(stores.appVersionStateStore),
         routeCollectionProvider.overrideWithValue(MyApp.appRouter.routeCollection),
+        // A rejected session drops the whole navigation stack onto the
+        // login page (the account state behind it is gone).
+        platformAuthRequiredHandlerProvider.overrideWithValue(
+          () => unawaited(MyApp.appRouter.popToRootAndPush(const AccountLoginRoute())),
+        ),
       ],
       child: const MyApp(),
     ),

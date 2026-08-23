@@ -8,12 +8,13 @@ import "dart:typed_data";
 import "package:archive/archive.dart";
 import "package:dio/dio.dart";
 import "package:efa_fit/efa_fit.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit.pb.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/fit_link/importer.dart";
-import "package:eve_fit_assistant/features/platform/platform_api.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -87,8 +88,19 @@ FitSnapshot _makeSnapshot() => FitSnapshot(
   ),
 );
 
-PlatformApiClient _fakeApiClient(FitState? state, FitSnapshot? snapshot) {
-  final dio = Dio(BaseOptions())
+class _MemorySessionStore implements PlatformSessionStore {
+  @override
+  Future<StoredPlatformSession?> read() async => null;
+
+  @override
+  Future<void> write(StoredPlatformSession session) async {}
+
+  @override
+  Future<void> clear() async {}
+}
+
+PlatformSession _fakeSession(FitState? state, FitSnapshot? snapshot) {
+  Dio createDio() => Dio(BaseOptions())
     ..httpClientAdapter = _FakeAdapter((options) async {
       if (options.path.endsWith("/state")) {
         if (state == null) {
@@ -113,7 +125,11 @@ PlatformApiClient _fakeApiClient(FitState? state, FitSnapshot? snapshot) {
       }
       return ResponseBody.fromBytes(snapshot.writeToBuffer(), 200);
     });
-  return PlatformApiClient(dio: dio);
+  return PlatformSession(
+    origin: "https://test.invalid",
+    store: _MemorySessionStore(),
+    dioFactory: createDio,
+  );
 }
 
 FitStorage _makeFit() => const FitStorage(
@@ -223,18 +239,18 @@ void main() {
   });
 
   group("registered links", () {
-    void overrideApi(PlatformApiClient client) {
+    void overrideSession(PlatformSession session) {
       container = ProviderContainer.test(
         overrides: [
           fitManagerProvider.overrideWith(() => fitManager),
-          platformApiClientProvider.overrideWithValue(client),
+          platformSessionProvider.overrideWith((ref) async => session),
         ],
       );
       importer = FitLinkImporter(container.read(_refCaptureProvider));
     }
 
     test("imports the state fetched by fit hash, named from the snapshot", () async {
-      overrideApi(_fakeApiClient(_makeFitState(), _makeSnapshot()));
+      overrideSession(_fakeSession(_makeFitState(), _makeSnapshot()));
 
       final result = await importer.import(
         Uri.parse("https://platform.efa-tech.dev/share/fit/registered?hash=$_fitHash"),
@@ -254,7 +270,7 @@ void main() {
     });
 
     test("imports via the efa scheme and boot URI forms", () async {
-      overrideApi(_fakeApiClient(_makeFitState(), null));
+      overrideSession(_fakeSession(_makeFitState(), null));
 
       await importer.import(Uri.parse("efa://fit/registered?hash=$_fitHash"));
       await importer.importBootUri(
@@ -267,7 +283,7 @@ void main() {
     });
 
     test("an unknown fit hash throws FitLinkNotFoundException", () async {
-      overrideApi(_fakeApiClient(null, null));
+      overrideSession(_fakeSession(null, null));
 
       await expectLater(
         importer.import(Uri.parse("efa://fit/registered?hash=$_fitHash")),
@@ -277,7 +293,7 @@ void main() {
     });
 
     test("a malformed hash is rejected by the parser before any request", () async {
-      overrideApi(_fakeApiClient(_makeFitState(), _makeSnapshot()));
+      overrideSession(_fakeSession(_makeFitState(), _makeSnapshot()));
 
       await expectLater(
         importer.import(Uri.parse("efa://fit/registered?hash=abc")),

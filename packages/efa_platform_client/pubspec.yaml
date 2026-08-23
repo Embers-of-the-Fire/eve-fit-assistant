@@ -1,0 +1,18 @@
+name: efa_platform_client
+description: "Platform API session facade: account auth flows, token lifecycle, and public platform reads behind a single PlatformSession."
+publish_to: none
+resolution: workspace
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  dio: ^5.11.0
+  efa_proto:
+    path: ../efa_proto
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
