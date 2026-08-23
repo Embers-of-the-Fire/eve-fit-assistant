@@ -230,13 +230,12 @@ describe("PlatformSession.authedFetch", () => {
         const fetchFn = fetchReturning(() => ok(tokenPairBody()));
         const session = makeSession(store, fetchFn);
         await session.ready;
+        fetchFn.mockClear();
 
-        const pageFetch = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-        vi.stubGlobal("fetch", pageFetch);
-
+        fetchFn.mockImplementation(() => Promise.resolve(new Response("ok", { status: 200 })));
         const response = await session.authedFetch("https://api.example.test/platform/auth/x");
         expect(response.status).toBe(200);
-        const headers = (pageFetch.mock.calls[0] as [string, RequestInit])[1].headers as Headers;
+        const headers = (fetchFn.mock.calls[0] as [string, RequestInit])[1].headers as Headers;
         expect(headers.get("Authorization")).toMatch(/^Bearer /);
     });
 
@@ -252,11 +251,9 @@ describe("PlatformSession.authedFetch", () => {
         await session.ready;
         fetchFn.mockClear();
 
-        const pageFetch = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-        vi.stubGlobal("fetch", pageFetch);
-
         await session.authedFetch("https://api.example.test/x");
-        expect(fetchFn).toHaveBeenCalledTimes(1); // one rotation
+        // One rotation plus the request itself, both through fetchFn.
+        expect(fetchFn).toHaveBeenCalledTimes(2);
         expect(store.value?.refreshToken).toBe("refresh-2");
     });
 
@@ -271,15 +268,13 @@ describe("PlatformSession.authedFetch", () => {
         await session.ready;
         fetchFn.mockClear();
 
-        const pageFetch = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
-        vi.stubGlobal("fetch", pageFetch);
-
         await Promise.all([
             session.authedFetch("https://api.example.test/a"),
             session.authedFetch("https://api.example.test/b"),
         ]);
-        // The second caller reuses the pair rotated by the first.
-        expect(fetchFn).toHaveBeenCalledTimes(1);
+        // The second caller reuses the pair rotated by the first: one
+        // rotation plus the two requests, all through fetchFn.
+        expect(fetchFn).toHaveBeenCalledTimes(3);
     });
 
     it("force-rotates once and retries when the server answers 401", async () => {
@@ -290,16 +285,15 @@ describe("PlatformSession.authedFetch", () => {
         await session.ready;
         fetchFn.mockClear();
 
-        const pageFetch = vi
-            .fn()
-            .mockResolvedValueOnce(new Response("nope", { status: 401 }))
-            .mockResolvedValueOnce(new Response("ok", { status: 200 }));
-        vi.stubGlobal("fetch", pageFetch);
+        fetchFn
+            .mockImplementationOnce(() => Promise.resolve(new Response("nope", { status: 401 })))
+            .mockImplementationOnce(() => Promise.resolve(ok(tokenPairBody())))
+            .mockImplementationOnce(() => Promise.resolve(new Response("ok", { status: 200 })));
 
         const response = await session.authedFetch("https://api.example.test/x");
         expect(response.status).toBe(200);
-        expect(fetchFn).toHaveBeenCalledTimes(1); // forced rotation
-        expect(pageFetch).toHaveBeenCalledTimes(2);
+        // Rejected request, forced rotation, retried request.
+        expect(fetchFn).toHaveBeenCalledTimes(3);
     });
 
     it("clears the session and fires onAuthRequired once when the rotation is rejected", async () => {
@@ -313,8 +307,6 @@ describe("PlatformSession.authedFetch", () => {
         const onAuthRequired = vi.fn();
         const session = makeSession(store, fetchFn, onAuthRequired);
         await session.ready;
-
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("nope", { status: 401 })));
 
         await expect(session.authedFetch("https://api.example.test/a")).rejects.toBeInstanceOf(
             PlatformAuthRequiredError,

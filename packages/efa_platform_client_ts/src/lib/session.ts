@@ -60,6 +60,7 @@ export class PlatformSession {
     private readonly _store: PlatformSessionStore;
     private readonly _onAuthRequired?: () => void;
     private readonly _emailLocale?: () => string | undefined;
+    private readonly _fetch: FetchLike;
     private readonly _authClient: AccountApiClient;
     private readonly _mutex = new Mutex();
     private readonly _ready: Promise<void>;
@@ -78,6 +79,7 @@ export class PlatformSession {
         this._store = options.store;
         this._onAuthRequired = options.onAuthRequired;
         this._emailLocale = options.emailLocale;
+        this._fetch = options.fetchFn ?? ((input, init) => fetch(input, init));
         this._authClient = new AccountApiClient(options.origin, options.fetchFn);
         // Eagerly start the cold-start load/rotation (errors are contained in
         // `_ready`; the session simply reads as signed out).
@@ -231,7 +233,7 @@ export class PlatformSession {
     private _sendWithBearer(url: string, init: RequestInit, token: string): Promise<Response> {
         const headers = new Headers(init.headers);
         headers.set("Authorization", `Bearer ${token}`);
-        return fetch(url, { ...init, headers });
+        return this._fetch(url, { ...init, headers });
     }
 
     // ---- token lifecycle (package-internal) ----
