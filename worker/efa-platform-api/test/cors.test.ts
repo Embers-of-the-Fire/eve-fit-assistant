@@ -71,6 +71,19 @@ describe("auth mount CORS", () => {
         expect(untrusted.headers.get("Access-Control-Allow-Origin")).toBe(null);
     });
 
+    it("reflects the preview site origin", async () => {
+        const previewOrigin = "https://efa-platform-preview.stellarishs.workers.dev";
+        const res = await makeRoot().fetch(
+            new Request(`${ORIGIN}${AUTH_MOUNT_PATH}/login`, {
+                method: "POST",
+                headers: { Origin: previewOrigin, "Content-Type": "application/json" },
+                body: "{}",
+            }),
+        );
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Access-Control-Allow-Origin")).toBe(previewOrigin);
+    });
+
     it("reflects loopback dev origins", async () => {
         const res = await makeRoot().fetch(
             new Request(`${ORIGIN}${AUTH_MOUNT_PATH}/login`, {

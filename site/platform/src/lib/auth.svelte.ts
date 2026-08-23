@@ -2,7 +2,6 @@ import {
     LocalStorageSessionStore,
     type PlatformIdentity,
     PlatformSession,
-    platformApiProductionOrigin,
 } from "efa-platform-client-ts";
 import { locale } from "./i18n.svelte";
 
@@ -17,7 +16,9 @@ let _ready = $state(false);
 export function getSession(): PlatformSession {
     if (_session === null) {
         _session = new PlatformSession({
-            origin: platformApiProductionOrigin,
+            // Build-time constant: preview builds target the preview API
+            // (see astro.config.mjs).
+            origin: __PLATFORM_API_ORIGIN__,
             store: new LocalStorageSessionStore(),
             emailLocale: () => locale.current,
             onAuthRequired: () => {

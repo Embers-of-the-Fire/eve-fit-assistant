@@ -5,3 +5,6 @@ declare namespace Cloudflare {
         PLATFORM_API: Fetcher;
     }
 }
+
+/** Platform API origin baked in at build time (see `astro.config.mjs`). */
+declare const __PLATFORM_API_ORIGIN__: string;

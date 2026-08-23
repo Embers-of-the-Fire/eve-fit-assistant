@@ -16,17 +16,48 @@ page.
   `worker/efa-platform-fit-storage`.
 - Platform HTTP API behavior lives in `worker/efa-platform-api/`, not in this Astro app.
 
+## Deploying
+
+The adapter emits a generated deploy config (`dist/server/wrangler.json`) and a redirect
+(`.wrangler/deploy/config.json`) that every `wrangler deploy`/`dev` in this directory
+follows. The generated config contains no environment sections: the target environment is
+selected **at build time** via `CLOUDFLARE_ENV`, which flattens the matching
+`[env.<name>]` overrides from `wrangler.toml` into the generated config and stamps it with
+`targetEnvironment`.
+
+```sh
+# Production (worker efa-platform, custom domains attached):
+pnpm build
+wrangler deploy --config dist/server/wrangler.json
+
+# Preview (worker efa-platform-preview, routes = [], PLATFORM_API → efa-platform-api-preview):
+CLOUDFLARE_ENV=preview pnpm build
+wrangler deploy --config dist/server/wrangler.json
+```
+
+Never pass `--env` to select the environment at deploy time. On the redirected config the
+flag cannot apply `wrangler.toml` env overrides; if the build was made without
+`CLOUDFLARE_ENV`, `wrangler deploy --env=preview` silently deploys the **production**
+configuration (worker `efa-platform`, both custom domains). Only a matching
+`targetEnvironment` build makes `--env` safe (a mismatch then errors instead).
+
 ## Account Auth
 
 - `/account` (profile, sign-out, deregistration) and `/account/login`, `/account/register`,
   `/account/reset` are data-free shells over Svelte islands under `src/components/auth/`;
   they follow the app's account flows and must stay uncached.
-- Browser islands call the auth API (`https://api.efa-tech.dev/platform/auth`) directly via
-  `efa-platform-client-ts` (`packages/efa_platform_client_ts`); `src/lib/auth.svelte.ts`
-  holds the singleton `PlatformSession` and bridges identity into `$state` runes.
+- Browser islands call the platform API directly (public reads in `src/lib/api.ts`, auth
+  via `efa-platform-client-ts` in `packages/efa_platform_client_ts`);
+  `src/lib/auth.svelte.ts` holds the singleton `PlatformSession` and bridges identity into
+  `$state` runes.
+- The API origin is the build-time constant `__PLATFORM_API_ORIGIN__` (defined in
+  `astro.config.mjs`): production `https://api.efa-tech.dev`, or the preview API when built
+  with `CLOUDFLARE_ENV=preview`. The worker's auth CORS allowlist
+  (`worker/efa-platform-api/src/root.ts`) carries the matching site origins, including the
+  preview site origin and loopback dev origins. Note the preview API itself sits behind
+  Cloudflare Access; browser access to it depends on that Access policy.
 - Tokens live in `localStorage` (`LocalStorageSessionStore`); the auth API sets no cookies
-  by design. Local auth development relies on the loopback entries in the worker's auth
-  CORS allowlist (`worker/efa-platform-api/src/root.ts`).
+  by design.
 
 ## Caching
 
