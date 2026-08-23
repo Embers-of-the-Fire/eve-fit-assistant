@@ -110,10 +110,12 @@ class SecurePlatformSessionStore implements PlatformSessionStore {
 
   @override
   Future<void> clear() async {
-    await _storage.delete(key: _sessionKey);
-    // Must not fail silently: a surviving legacy triple would be resurrected
-    // by the read fallback after the new key is gone.
+    // Delete the legacy layout first: a surviving legacy triple would be
+    // resurrected by the read fallback once the current key is gone. The
+    // current key is only removed after the legacy deletion succeeded, so a
+    // failure here still leaves a readable session (and clear can be retried).
     await _deleteLegacyKeys();
+    await _storage.delete(key: _sessionKey);
   }
 
   Future<void> _deleteLegacyKeys() async {

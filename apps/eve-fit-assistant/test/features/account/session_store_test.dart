@@ -15,6 +15,9 @@ class _FakeSecureStorageChannel {
   final Map<String, String> backing = {};
   final List<String> writes = [];
 
+  /// Keys whose "delete" call throws, to exercise storage failure paths.
+  final Set<String> failDeletesOn = {};
+
   static const MethodChannel channel = MethodChannel(
     "plugins.it_nomads.com/flutter_secure_storage",
   );
@@ -34,6 +37,9 @@ class _FakeSecureStorageChannel {
             backing[writtenKey] = args["value"]! as String;
             return null;
           case "delete":
+            if (failDeletesOn.contains(key)) {
+              throw PlatformException(code: "delete-failed", message: "injected failure");
+            }
             backing.remove(key);
             return null;
           case "deleteAll":
@@ -159,5 +165,17 @@ void main() {
 
     expect(storage.backing, isEmpty);
     expect(await store.read(), isNull);
+  });
+
+  test("clear keeps the current session when the legacy deletion fails", () async {
+    await store.write(_session("1"));
+    storage.failDeletesOn.add("account_access_token");
+
+    await expectLater(store.clear(), throwsA(isA<PlatformException>()));
+
+    // The current session key must survive the failed legacy deletion, so the
+    // read fallback cannot resurrect a surviving legacy pair after a logout.
+    final read = await store.read();
+    expect(read?.userId, "user-1");
   });
 }
