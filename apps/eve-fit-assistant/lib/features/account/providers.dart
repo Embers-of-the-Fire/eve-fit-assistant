@@ -12,7 +12,7 @@ part "providers.g.dart";
 /// authentication is required (the session was rejected server-side).
 /// Overridden in `main.dart` with a router push to the login page; defaults
 /// to a no-op so tests and non-router contexts can use the session directly.
-final platformAuthRequiredHandlerProvider = Provider<void Function()>((Ref ref) => () {});
+final Provider<void Function()> platformAuthRequiredHandlerProvider = Provider((Ref ref) => () {});
 
 /// The single platform API session: all account flows and platform reads go
 /// through it, and token handling never crosses its boundary.
