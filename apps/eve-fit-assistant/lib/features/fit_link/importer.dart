@@ -1,8 +1,9 @@
 import "package:efa_fit/efa_fit.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/fit_link/state_import.dart";
-import "package:eve_fit_assistant/features/platform/platform_api.dart";
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -35,12 +36,12 @@ class FitLinkImporter {
   /// canonical state is retrieved from the platform API and converted back
   /// into a [FitStorage] (see `fitStateToStorage`).
   Future<FitMetadata> _importRegistered(Uri uri, String fitHash) async {
-    final api = ref.read(platformApiClientProvider);
-    final state = await api.getFitState(fitHash);
+    final session = await ref.read(platformSessionProvider.future);
+    final state = await session.getFitState(fitHash);
     if (state == null) {
       throw FitLinkNotFoundException(uri);
     }
-    final header = (await _tryGetSnapshot(api, fitHash))?.header;
+    final header = (await _tryGetSnapshot(session, fitHash))?.header;
     final characterId = await _resolveCharacterId(state);
     final converted = fitStateToStorage(state, characterId: characterId);
     final metadata = FitMetadata(
@@ -66,9 +67,9 @@ class FitLinkImporter {
 
   /// The snapshot carries the display metadata (name, description) the state
   /// lacks; the import still proceeds when it cannot be retrieved.
-  Future<FitSnapshot?> _tryGetSnapshot(PlatformApiClient api, String fitHash) async {
+  Future<FitSnapshot?> _tryGetSnapshot(PlatformSession session, String fitHash) async {
     try {
-      return await api.getFitSnapshot(fitHash);
+      return await session.getFitSnapshot(fitHash);
     } on Object catch (e) {
       warning("Registered fit import: snapshot metadata unavailable for $fitHash: $e");
       return null;

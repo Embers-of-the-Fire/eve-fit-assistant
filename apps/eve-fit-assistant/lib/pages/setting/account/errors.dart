@@ -1,4 +1,4 @@
-import "package:eve_fit_assistant/features/account/account_api.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 

@@ -77,22 +77,38 @@ export async function updateUserPassword(
 // outstanding access tokens fail their version check; revoke all sessions
 // and clear their retained PII (user_agent, ip). The user row stays for
 // referential integrity.
-export async function deregisterUser(db: D1Database, userId: string): Promise<void> {
-    await db.batch([
+// The user update is conditional on the token_version the caller verified
+// the password against: if a concurrent password reset (or any other
+// token-version bump) won the race, the update is a no-op and the caller
+// must abort instead of destroying the account with a stale credential.
+// The session cleanup is guarded on the row being deregistered so it only
+// applies when a deregistration actually happened (D1 batches execute as a
+// single SQL transaction with statements applied sequentially, so the guard
+// observes this batch's own update). Returns true only when the caller's
+// update applied.
+export async function deregisterUser(
+    db: D1Database,
+    userId: string,
+    expectedTokenVersion: number,
+): Promise<boolean> {
+    const [update] = await db.batch([
         db
             .prepare(
                 "UPDATE users SET email = ?, password_hash = '', status = 'deregistered', " +
-                    `token_version = token_version + 1, ${TOUCH} WHERE user_id = ?`,
+                    `token_version = token_version + 1, ${TOUCH} ` +
+                    "WHERE user_id = ? AND token_version = ?",
             )
-            .bind(`deleted-${userId}@deregistered.invalid`, userId),
+            .bind(`deleted-${userId}@deregistered.invalid`, userId, expectedTokenVersion),
         db
             .prepare(
                 "UPDATE auth_sessions SET " +
                     "revoked_at = COALESCE(revoked_at, strftime('%Y-%m-%dT%H:%M:%fZ','now')), " +
-                    "user_agent = NULL, ip = NULL WHERE user_id = ?",
+                    "user_agent = NULL, ip = NULL WHERE user_id = ? AND EXISTS (" +
+                    "SELECT 1 FROM users WHERE user_id = ? AND status = 'deregistered')",
             )
-            .bind(userId),
+            .bind(userId, userId),
     ]);
+    return update.meta.changes === 1;
 }
 
 export async function insertSession(

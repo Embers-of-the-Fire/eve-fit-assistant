@@ -2,7 +2,7 @@ import "package:efa_compat/io.dart";
 
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
-import "package:eve_fit_assistant/features/account/token_store.dart";
+import "package:eve_fit_assistant/features/account/session_store.dart";
 import "package:eve_fit_assistant/features/remote_content/cache_manager.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/repo_store.dart";
@@ -27,7 +27,7 @@ class ResetStorageService {
   /// Injectable because secure storage needs the platform binding.
   final Future<void> Function() _clearAccountCredentials;
 
-  static Future<void> _defaultClearAccountCredentials() => AccountTokenStore().clearAll();
+  static Future<void> _defaultClearAccountCredentials() => SecurePlatformSessionStore().clearAll();
 
   /// Deletes all mutable app data and clears in-memory caches.
   ///

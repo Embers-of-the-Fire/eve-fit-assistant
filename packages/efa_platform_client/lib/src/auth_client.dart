@@ -1,11 +1,8 @@
 import "dart:convert";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 
-/// Production origin of the platform auth API (`worker/efa-platform-api`,
-/// mounted at `/platform/auth`).
-const accountApiProductionOrigin = "https://api.efa-tech.dev";
+import "package:efa_platform_client/src/dio_options.dart";
 
 const String _authBasePath = "/platform/auth";
 
@@ -62,12 +59,7 @@ class AccountApiException implements Exception {
 /// pass the Access gate protecting the preview environment.
 class AccountApiClient {
   AccountApiClient({required this.origin, String? cfAccessToken, Dio? dio})
-    : _dio =
-          dio ??
-          createRemoteDio(
-            connectTimeout: const Duration(seconds: 10),
-            receiveTimeout: const Duration(seconds: 30),
-          ) {
+    : _dio = dio ?? Dio(defaultBaseOptions()) {
     if (cfAccessToken != null && cfAccessToken.isNotEmpty) {
       // An interceptor (not BaseOptions) so injected test transports get the
       // header too.
@@ -192,19 +184,4 @@ class AccountApiClient {
     }
     return (error: json["error"] as String?, message: json["message"] as String?);
   }
-}
-
-/// Decodes the `sub` (user id) claim of an access-token JWT without
-/// verifying the signature (display metadata only; the server verifies).
-String? decodeJwtSubject(String token) {
-  final parts = token.split(".");
-  if (parts.length != 3) return null;
-  try {
-    final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
-    final json = jsonDecode(payload);
-    if (json is Map<String, dynamic>) return json["sub"] as String?;
-  } on Object {
-    // Malformed token; treated as undecodable.
-  }
-  return null;
 }

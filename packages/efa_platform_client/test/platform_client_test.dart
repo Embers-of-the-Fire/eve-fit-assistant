@@ -5,9 +5,9 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_platform_client/src/platform_client.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
-import "package:eve_fit_assistant/features/platform/platform_api.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 
@@ -27,8 +27,13 @@ class _FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+const _origin = "https://api.efa-tech.dev";
+
 PlatformApiClient _clientWith(Future<ResponseBody> Function(RequestOptions options) onFetch) =>
-    PlatformApiClient(dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(onFetch));
+    PlatformApiClient(
+      origin: _origin,
+      dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(onFetch),
+    );
 
 ResponseBody _json(Object body, [int status = 200]) => ResponseBody.fromString(
   jsonEncode(body),
@@ -79,7 +84,9 @@ void main() {
     });
 
     test("decodes the last page with a null cursor", () async {
-      final client = _clientWith((options) async => _json({"posts": [], "nextCursor": null}));
+      final client = _clientWith(
+        (options) async => _json({"posts": <Object?>[], "nextCursor": null}),
+      );
       final page = await client.listPosts();
       expect(page.posts, isEmpty);
       expect(page.nextCursor, isNull);
@@ -181,7 +188,7 @@ void main() {
 
   group("getThreads", () {
     test("decodes the stub response", () async {
-      final client = _clientWith((options) async => _json({"threads": []}));
+      final client = _clientWith((options) async => _json({"threads": <Object?>[]}));
       expect(await client.getThreads("p"), isEmpty);
     });
   });

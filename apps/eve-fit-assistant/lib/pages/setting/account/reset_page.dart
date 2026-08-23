@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
-import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -45,7 +45,8 @@ class _AccountResetPasswordPageState extends ConsumerState<AccountResetPasswordP
       _error = null;
     });
     try {
-      await ref.read(accountControllerProvider.notifier).requestPasswordReset(email);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.requestPasswordReset(email: email);
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -73,9 +74,8 @@ class _AccountResetPasswordPageState extends ConsumerState<AccountResetPasswordP
       _error = null;
     });
     try {
-      await ref
-          .read(accountControllerProvider.notifier)
-          .confirmPasswordReset(email, code, newPassword);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.confirmPasswordReset(email: email, code: code, newPassword: newPassword);
       if (!mounted) return;
       unawaited(context.router.popToRootAndPush(const AccountRoute()));
     } on Object catch (e) {

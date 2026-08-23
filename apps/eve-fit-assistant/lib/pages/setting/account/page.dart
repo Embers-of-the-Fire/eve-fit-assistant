@@ -1,11 +1,12 @@
 import "dart:async";
 
 import "package:auto_route/auto_route.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
-import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -18,14 +19,12 @@ class AccountPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(accountControllerProvider);
+    final identity = ref.watch(platformIdentityProvider);
     return Layout(
       title: context.l10n.accountPageTitle,
-      child: switch (state) {
-        AsyncData(:final value) => switch (value) {
-          AccountSignedIn() => _SignedInView(account: value),
-          AccountSignedOut() => const _SignedOutView(),
-        },
+      child: switch (identity) {
+        AsyncData(:final value) =>
+          value == null ? const _SignedOutView() : _SignedInView(identity: value),
         AsyncError() => const _SignedOutView(),
         _ => const Center(child: CircularProgressIndicator()),
       },
@@ -57,9 +56,9 @@ class _SignedOutView extends StatelessWidget {
 }
 
 class _SignedInView extends ConsumerWidget {
-  const _SignedInView({required this.account});
+  const _SignedInView({required this.identity});
 
-  final AccountSignedIn account;
+  final PlatformIdentity identity;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => ConfigListView(
@@ -68,8 +67,8 @@ class _SignedInView extends ConsumerWidget {
       ConfigListTile.custom(
         ListTile(
           leading: const Icon(Icons.person_outline),
-          title: Text(account.email),
-          subtitle: Text("${context.l10n.accountUserIdLabel}: ${account.userId}"),
+          title: Text(identity.email),
+          subtitle: Text("${context.l10n.accountUserIdLabel}: ${identity.userId}"),
         ),
       ),
       ConfigListTile.item(
@@ -93,7 +92,8 @@ class _SignedInView extends ConsumerWidget {
     );
     if (!confirmed || !context.mounted) return;
     try {
-      await ref.read(accountControllerProvider.notifier).logout();
+      final session = await ref.read(platformSessionProvider.future);
+      await session.logout();
     } on Object catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
@@ -112,7 +112,8 @@ class _SignedInView extends ConsumerWidget {
     final password = await _promptPassword(context);
     if (password == null || !context.mounted) return;
     try {
-      await ref.read(accountControllerProvider.notifier).deregister(password);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.deregister(password: password);
     } on Object catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(

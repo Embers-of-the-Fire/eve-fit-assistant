@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
-import "package:eve_fit_assistant/features/account/account_controller.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -64,7 +64,8 @@ class _AccountRegisterPageState extends ConsumerState<AccountRegisterPage> {
       _error = null;
     });
     try {
-      await ref.read(accountControllerProvider.notifier).signup(email, password);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.signup(email: email, password: password);
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -92,7 +93,8 @@ class _AccountRegisterPageState extends ConsumerState<AccountRegisterPage> {
     try {
       // Dedicated resend endpoint: the verification step may have been
       // reached from the login redirect, where no password was collected.
-      await ref.read(accountControllerProvider.notifier).resendSignupCode(email);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.resendSignupCode(email: email);
       if (!mounted) return;
       setState(() => _busy = false);
     } on Object catch (e) {
@@ -116,7 +118,8 @@ class _AccountRegisterPageState extends ConsumerState<AccountRegisterPage> {
       _error = null;
     });
     try {
-      await ref.read(accountControllerProvider.notifier).verifyEmail(email, code);
+      final session = await ref.read(platformSessionProvider.future);
+      await session.verifyEmail(email: email, code: code);
       if (!mounted) return;
       unawaited(context.router.popToRootAndPush(const AccountRoute()));
     } on Object catch (e) {

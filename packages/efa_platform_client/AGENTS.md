@@ -1,0 +1,36 @@
+# efa_platform_client
+
+Scope: the platform API client facade exposed as
+`package:efa_platform_client/efa_platform_client.dart`.
+
+The package provides:
+
+- `PlatformSession`, the single facade app code talks to: account auth flows
+  (signup, verification, login, password reset, logout, deregistration), the
+  whole token lifecycle (storage via the app-implemented
+  `PlatformSessionStore`, expiry tracking, mutex-serialized refresh,
+  cold-start rotation, 401 retry, session clearing), and the public
+  `/platform/internal` read endpoints;
+- `PlatformIdentity`/`identity`/`me` for the signed-in profile (derived
+  locally: JWT subject + cached email; no server `/me` endpoint exists yet);
+- `PlatformAuthRequiredException` plus the `onAuthRequired` hook for the
+  "interactive login required" signal (throttled to once per signed-out
+  stretch);
+- the public read models (`PostSummary`, `PostListPage`, `PostRecord`,
+  `ThreadSummary`) and the API exceptions (`AccountApiException`,
+  `PlatformApiException`);
+- `platformApiProductionOrigin`, the single production-origin constant.
+
+Only the entrypoint is public API; `src/` clients (`AccountApiClient`,
+`PlatformApiClient`) and token types are package-internal and imported
+directly only by tests.
+
+Keep this package pure Dart (no Flutter imports) and free of app-storage
+dependencies; persistence is injected via `PlatformSessionStore`, Dio
+instances via `dioFactory`.
+
+Validation:
+
+```sh
+melos run pkg:test
+```

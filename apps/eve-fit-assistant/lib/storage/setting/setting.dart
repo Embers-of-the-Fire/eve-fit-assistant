@@ -32,8 +32,10 @@ abstract class RemoteContentSetting with _$RemoteContentSetting {
 }
 
 /// Platform account settings: a developer-only API origin override plus the
-/// local profile cache of the signed-in account (the auth API has no `/me`
-/// endpoint, so the profile shown in the UI is cached here at login/signup).
+/// legacy profile cache of the signed-in account. New sessions persist
+/// email/user id in the secure-storage session record instead; the fields
+/// here are only read as the migration source for pre-session-record
+/// installs and are no longer written.
 @freezed
 abstract class AccountSetting with _$AccountSetting {
   const factory AccountSetting({

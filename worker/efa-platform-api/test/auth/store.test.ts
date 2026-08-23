@@ -5,6 +5,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+    deregisterUser,
     getSessionByRefreshHash,
     getUserById,
     insertSession,
@@ -29,15 +30,19 @@ async function seedUser(): Promise<string> {
     return userId;
 }
 
-async function seedSession(userId: string, refreshHash: string): Promise<string> {
+async function seedSession(
+    userId: string,
+    refreshHash: string,
+    metadata: { userAgent: string | null; ip: string | null } = { userAgent: null, ip: null },
+): Promise<string> {
     const sessionId = crypto.randomUUID();
     await insertSession(db, {
         sessionId,
         userId,
         refreshHash,
         expiresAt: EXPIRES_AT,
-        userAgent: null,
-        ip: null,
+        userAgent: metadata.userAgent,
+        ip: metadata.ip,
     });
     return sessionId;
 }
@@ -138,6 +143,48 @@ describe("rotateSession", () => {
 
         const previous = await getSessionByRefreshHash(db, "hash-old");
         expect(previous?.replaced_by).toBe(null);
+    });
+});
+
+describe("deregisterUser", () => {
+    it("anonymizes the account and revokes sessions when the token version matches", async () => {
+        const userId = await seedUser();
+        await seedSession(userId, "hash-a", { userAgent: "TestAgent/1.0", ip: "192.0.2.1" });
+        const before = await getUserById(db, userId);
+
+        expect(await deregisterUser(db, userId, before?.token_version ?? -1)).toBe(true);
+
+        const after = await getUserById(db, userId);
+        expect(after?.status).toBe("deregistered");
+        expect(after?.password_hash).toBe("");
+        expect(after?.email).toMatch(/^deleted-[0-9a-f-]{36}@deregistered\.invalid$/);
+        expect(after?.token_version).toBe((before?.token_version ?? 0) + 1);
+        const session = await getSessionByRefreshHash(db, "hash-a");
+        expect(session?.revoked_at).not.toBe(null);
+        expect(session?.user_agent).toBe(null);
+        expect(session?.ip).toBe(null);
+    });
+
+    it("is a no-op when the token version moved on", async () => {
+        const userId = await seedUser();
+        await seedSession(userId, "hash-a");
+        const before = await getUserById(db, userId);
+        // A concurrent password reset / invalidation bumped the version.
+        await invalidateUserTokens(db, userId);
+        await db
+            .prepare("UPDATE auth_sessions SET revoked_at = NULL WHERE user_id = ?")
+            .bind(userId)
+            .run();
+
+        expect(await deregisterUser(db, userId, before?.token_version ?? -1)).toBe(false);
+
+        const after = await getUserById(db, userId);
+        expect(after?.status).toBe("pending");
+        expect(after?.password_hash).toBe("hash");
+        expect(after?.token_version).toBe((before?.token_version ?? 0) + 1);
+        // Sessions were not touched by the losing deregistration.
+        const session = await getSessionByRefreshHash(db, "hash-a");
+        expect(session?.revoked_at).toBe(null);
     });
 });
 

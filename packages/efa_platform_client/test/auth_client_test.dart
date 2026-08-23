@@ -5,7 +5,8 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
-import "package:eve_fit_assistant/features/account/account_api.dart";
+import "package:efa_platform_client/src/auth_client.dart";
+import "package:efa_platform_client/src/jwt.dart";
 import "package:flutter_test/flutter_test.dart";
 
 class _FakeAdapter implements HttpClientAdapter {
@@ -24,9 +25,11 @@ class _FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+const _origin = "https://api.efa-tech.dev";
+
 AccountApiClient _clientWith(
   Future<ResponseBody> Function(RequestOptions options) onFetch, {
-  String origin = accountApiProductionOrigin,
+  String origin = _origin,
   String? cfAccessToken,
 }) => AccountApiClient(
   origin: origin,

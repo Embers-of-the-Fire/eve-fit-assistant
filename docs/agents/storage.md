@@ -23,7 +23,7 @@ resource snapshots, channel discovery, checkout lifecycle handling, and Riverpod
 | Migration Layer | `lib/storage/repo/migration/` | `action/` contains `MigrateService` (fits → characters → finalize), `MigrateFits`, `MigrateCharacters`, the freezed `MigrateProgress` state machine and `MigrateProgressStore`, and the migration result types. Progress persists to `.migration_progress.json`. |
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit and character storage schemas; fits support storage version 3 with `CheckoutRef`. |
 | Settings | `lib/storage/setting/` | User settings, including remote content and platform account configuration. |
-| Account/Auth | `lib/features/account/` | Platform auth client (`{origin}/platform/auth/*`), secure-storage session store, Riverpod `AccountController`, and settings UI. |
+| Account/Auth | `lib/features/account/` | `PlatformSession` providers (from `packages/efa_platform_client`), the secure-storage `SecurePlatformSessionStore` adapter, and settings UI. |
 | Storage FS | `lib/storage/fs/` | `DocStore`/`BlobStore` abstraction with File (native) and Hive/OPFS (web) backends; `createUserDocStore` and `createRepoBlobStore` route settings, fits, characters, announcements, feedback, and version state to the right backend. |
 
 ## Concurrency And Startup
@@ -35,12 +35,13 @@ provides a reactive stream for live UI updates.
 renders the appropriate screens. `MigrationGate` checks for v1 data remnants and offers a
 one-time migration prompt before the repository system activates.
 
-`AccountTokenStore` stores the account session as one JSON document under a single key for
-atomic rotation writes, with a legacy per-field read fallback; it also stores the developer
-Cloudflare Access `cf-access-token`. `AccountController` rotates the session once per cold
-start through eager instantiation in `initWithRef`, and all read-refresh-write or
-session-mutating flows run inside a session mutex that re-reads the stored session in the
-critical section.
+`SecurePlatformSessionStore` stores the account session as one JSON document under a single
+key for atomic rotation writes, with legacy read fallbacks (a pre-identity blob without
+email/user id, and a per-field triple); it also stores the developer Cloudflare Access
+`cf-access-token`. The session lifecycle itself (cold-start rotation through eager
+instantiation in `initWithRef`, expiry tracking, and the session mutex that re-reads the
+stored session inside the critical section) is owned by `PlatformSession` in
+`packages/efa_platform_client`.
 
 ## Data-Flow Orchestration
 
