@@ -7,5 +7,5 @@
 
 热量会蔓延到同一槽位中相邻的装备，因此在战斗前应将关键装备分散布置。
 
-关于槽位基础，请参见[装备与槽位](../modules)，或返回
+关于槽位基础，请参见[装备与槽位](efa://manual/fitting/modules)，或返回
 [新手上路](efa://manual/getting-started)。

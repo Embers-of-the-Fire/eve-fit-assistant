@@ -88,8 +88,8 @@ when the snapshot has no registry row, or
 
 ## Deployment
 
-Deployed via the Cloudflare Git integration; the build phase runs
-`./build.sh` (dependency install + `tsc --noEmit`), the deploy command is
+Deployed via the Cloudflare Git integration; the build phase runs dependency
+install plus `pnpm check` (`tsc --noEmit`), the deploy command is
 `wrangler deploy`.
 
 One-time setup:

@@ -4,14 +4,14 @@
 
 All fits are stored locally in the app's storage directory, and won't be loaded until accessed.
 
-The manager is written in [this file](../../lib/storage/fit/manager.dart).
+The manager is written in [this file](../../apps/eve-fit-assistant/lib/storage/fit/manager.dart).
 
 The registry manager owns a fit registry, which is a list of all fits available in the app.
 The registry is stored in `<document>/fittings/registry.json`.
 
 And, when required to load a fit, the manager will load the fit from the disk,
 and cache it in memory for future access.
-The fit schema is defined in [this file](../../lib/storage/fit/schema.dart).
+The fit schema is defined in [this file](../../apps/eve-fit-assistant/lib/storage/fit/schema.dart).
 
 ## Fit Registry
 
@@ -28,12 +28,13 @@ Locally a fit is a json file with an extra entry in the registry.
 The fit's file is stored in `<documents>/fittings/<fitId>.json`,
 where the `fitId` is a UUID v4 string.
 
-## Bundle Compatibility
+## Checkout Compatibility
 
-Each fit stores bundle snapshot metadata alongside its bundle id. Editing remains enabled only when
-the currently active bundle is compatible with the fit's saved snapshot.
+Each fit stores a `CheckoutRef` binding (checkout hash + server metadata). Editing remains
+enabled only when the active checkout is compatible with the fit's saved binding
+(`FitCheckoutCompatibilityKind.compatible`); outdated or incompatible bindings mark the fit
+as requiring attention.
 
-In the current alpha multi-bundle flow, testers may install multiple bundles, but only one bundle is
-active globally. If a fit becomes read-only because of a bundle mismatch, the intended recovery path
-is to switch back to the saved bundle when it is installed, or re-import the required bundle data if
-it is missing.
+If a fit becomes read-only because of a checkout mismatch, the intended recovery path is to
+switch back to the saved checkout when it is installed, or re-fetch the required checkout
+data if it is missing.

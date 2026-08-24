@@ -11,7 +11,7 @@ used as sub-pages (e.g., tabs, navigator tabs) or dialogs.
 
 ## Router Configuration
 
-The router configuration is defined in [`lib/pages/router.dart`](../../lib/pages/router.dart).
+The router configuration is defined in [`lib/pages/router.dart`](../../apps/eve-fit-assistant/lib/pages/router.dart).
 Thanks to AutoRoute, we can define the routes in a declarative way using annotations.
 
 To add a new route, simply add a new entry in the `@RoutePage` annotation, like:
