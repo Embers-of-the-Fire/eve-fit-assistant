@@ -62,39 +62,56 @@ origins, the web app origins, and loopback dev origins), so arbitrary sites
 cannot relay the token and email flows through a visitor's browser; clients
 without an `Origin` header (the native app) are unaffected. Errors are JSON
 `{ "error": <code>, "message": <string> }` with status 400 `bad_request`, 401
-`unauthorized`, 404 `not_found`, 500 `internal`; errors from fit-storage are
+`invalid_token` (`unauthorized` is no longer used), 404 `not_found`, 500
+`internal`; errors from fit-storage are
 passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 `validation_failed`).
 
 | Endpoint | Auth | Description |
 | --- | --- | --- |
-| `POST /platform/internal/posts` | Bearer | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post. `201` JSON `{ postId, fitHash, alreadyExisted }` |
-| `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt }`; 400 on malformed UUID |
+| `POST /platform/internal/posts` | account | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted }` |
+| `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted }`; 400 on malformed UUID |
 | `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes, immutable cache |
 | `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache |
-| `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`, `shipTypeId`, `window` = 24h/7d/30d/all), `Cache-Control: public, max-age=30` |
+| `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`, `shipTypeId`, `window` = 24h/7d/30d/all); each summary carries `authorId`/`authorDeleted`. `Cache-Control: public, max-age=30` |
 | `GET /platform/internal/ships` | public | Ship directory aggregated from `posts` (`q` name search, `window`, keyset `cursor`, `limit` ≤ 50, `locale`), `max-age=30` |
 | `GET /platform/internal/ships/:id` | public | Per-ship aggregate `{ shipTypeId, shipName, postCount, firstPostAt, lastPostAt }`; 404 when the ship has no posts |
 | `GET /platform/internal/posts/:id/threads` | public | Stub: `{ "threads": [] }` |
 | `GET /platform/internal/health` | public | `{ "ok": true }`; a valid Bearer token additionally pings D1 and the fit-storage binding |
 
-Public reads are unauthenticated; post creation requires
-`Authorization: Bearer <FIT_STORAGE_TOKEN>` (constant-time comparison).
+Public reads are unauthenticated; post creation requires an account access
+token (`Authorization: Bearer <accessToken>`, verified with the same
+active-status and `token_version` re-check as `/platform/auth/deregister`;
+failures return `401 invalid_token`). The shared `FIT_STORAGE_TOKEN` bearer
+no longer gates uploads — it only unlocks the privileged `/health` probes.
 Binding calls between this worker and fit-storage are account-internal and
 unauthenticated.
+
+Post ownership: every post records its uploading account in
+`posts.author_id`. `authorId` is the account's user id, or `null` when the
+author is a tombstone; `authorDeleted` is `true` when `authorId` is `null`
+**or** the author row is deregistered (anonymized). Account deletion never
+removes posts: deregistration anonymizes the user row in place, and a hard
+user delete nulls the reference (`ON DELETE SET NULL`) — either way the post
+survives with `authorDeleted: true`. Deleting a post is a plain row drop with
+no effect on users. Posts created before accounts existed were migrated with
+`author_id = NULL` and read as tombstones.
 
 ## Data model
 
 One physical D1 database (`efa-platform`) with disjoint table ownership:
-`posts` is written only here (`migrations/0001_posts.sql`); `fits` is written
+`posts` is written only here (`migrations/0001_posts.sql`,
+`0004_post_author.sql` adds the `author_id` foreign key into `users`);
+`fits` is written
 only by `efa-platform-fit-storage`; the auth tables (`users`, `auth_sessions`,
 `migrations/0003_auth.sql`) are written only here. Migration filenames must
 never collide across the two workers — wrangler records applied filenames per
 database.
 
-The list endpoint is pure SQL over `posts`: the display summary is
-denormalized at post creation (`description` truncated to 280 code points,
-`ship_names` a JSON locale map), so the read path does no joins or blob
+The list endpoint is pure SQL over `posts` plus a `LEFT JOIN` to `users` to
+calculate author deletion status (`authorId`/`authorDeleted`): the display
+summary is denormalized at post creation (`description` truncated to 280 code
+points, `ship_names` a JSON locale map), so the read path does no blob
 decodes.
 
 ## Local development

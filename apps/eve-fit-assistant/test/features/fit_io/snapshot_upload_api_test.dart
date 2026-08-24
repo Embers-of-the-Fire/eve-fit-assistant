@@ -5,6 +5,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart" show DamageProfile;
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
@@ -35,6 +36,8 @@ class _FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+const _origin = "https://api.efa-tech.dev";
+
 FitUploadRequest _request() => FitUploadRequest(
   serverId: "Serenity",
   snapshotHash: "hash",
@@ -46,15 +49,31 @@ FitUploadRequest _request() => FitUploadRequest(
   ),
 );
 
-FitSnapshotUploadApi _apiWith(
-  Future<ResponseBody> Function(RequestOptions options, List<int> body) onFetch,
-) => FitSnapshotUploadApi(dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(onFetch));
+/// Builds the injected transport: a fake adapter, optionally behind the same
+/// bearer-attaching interceptor shape the platform session's authed Dio uses.
+Dio _dioWith(
+  Future<ResponseBody> Function(RequestOptions options, List<int> body) onFetch, {
+  String? accessToken,
+}) {
+  final dio = Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(onFetch);
+  if (accessToken != null) {
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.headers["Authorization"] = "Bearer $accessToken";
+          handler.next(options);
+        },
+      ),
+    );
+  }
+  return dio;
+}
 
 void main() {
-  test("submits a protobuf body with bearer auth and decodes the response", () async {
+  test("submits a protobuf body through the authed dio and decodes the response", () async {
     RequestOptions? captured;
     List<int>? capturedBody;
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       captured = options;
       capturedBody = body;
       return ResponseBody.fromString(
@@ -64,17 +83,19 @@ void main() {
           Headers.contentTypeHeader: ["application/json"],
         },
       );
-    });
+    }, accessToken: "account-access-token");
 
-    final response = await api.submit(_request(), token: "secret-token");
+    final response = await FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin);
 
     expect(response.postId, "post-1");
     expect(response.fitHash, "abc123");
     expect(response.alreadyExisted, isTrue);
+    expect(response.origin, _origin);
 
-    expect(captured?.path, "https://api.efa-tech.dev/platform/internal/posts");
+    expect(captured?.path, "$_origin/platform/internal/posts");
     expect(captured?.method, "POST");
-    expect(captured?.headers["Authorization"], "Bearer secret-token");
+    // The bearer header arrives via the injected authed dio, not the API.
+    expect(captured?.headers["Authorization"], "Bearer account-access-token");
     expect(captured?.contentType, "application/x-protobuf");
     final decoded = FitUploadRequest.fromBuffer(capturedBody!);
     expect(decoded.serverId, "Serenity");
@@ -82,7 +103,7 @@ void main() {
   });
 
   test("maps the worker error envelope to a typed exception", () async {
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       return ResponseBody.fromBytes(
         Uint8List.fromList(
           utf8.encode(jsonEncode({"error": "snapshot_incomplete", "message": "not registered"})),
@@ -95,7 +116,7 @@ void main() {
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(
         isA<FitUploadException>()
             .having((e) => e.code, "code", FitUploadErrorCode.snapshotIncomplete)
@@ -108,7 +129,7 @@ void main() {
     const issues = [
       {"slot_type": "High", "index": 0, "severity": "Error", "kind": "ModuleState"},
     ];
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       return ResponseBody.fromBytes(
         Uint8List.fromList(
           utf8.encode(
@@ -127,7 +148,7 @@ void main() {
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(
         isA<FitUploadException>()
             .having((e) => e.code, "code", FitUploadErrorCode.validationFailed)
@@ -138,12 +159,12 @@ void main() {
   });
 
   test("falls back to the status code when the 401 body is empty", () async {
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       return ResponseBody.fromBytes(Uint8List(0), 401);
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(
         isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.unauthorized),
       ),
@@ -151,7 +172,7 @@ void main() {
   });
 
   test("falls back to the status code when the body is a proxy HTML page", () async {
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       return ResponseBody.fromString(
         "<html><body>404 Not Found</body></html>",
         404,
@@ -162,13 +183,13 @@ void main() {
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.notFound)),
     );
   });
 
   test("falls back to the status code when the JSON body has no error field", () async {
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       return ResponseBody.fromString(
         jsonEncode({"message": "token expired"}),
         401,
@@ -179,7 +200,7 @@ void main() {
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(
         isA<FitUploadException>()
             .having((e) => e.code, "code", FitUploadErrorCode.unauthorized)
@@ -189,7 +210,7 @@ void main() {
   });
 
   test("maps connection failures to the network code", () async {
-    final api = _apiWith((options, body) async {
+    final dio = _dioWith((options, body) async {
       throw DioException(
         requestOptions: options,
         type: DioExceptionType.connectionError,
@@ -198,15 +219,73 @@ void main() {
     });
 
     await expectLater(
-      () => api.submit(_request(), token: "t"),
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
       throwsA(isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.network)),
     );
   });
 
-  test("builds the public by-hash URL", () {
+  test("maps a wrapped account-api failure without status to the network code", () async {
+    // The session interceptor wraps a failed token refresh in a bare
+    // DioException; an AccountApiException without a status code means the
+    // refresh request never received a response.
+    final dio = _dioWith((options, body) async {
+      throw DioException(requestOptions: options, error: const AccountApiException(null));
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.network)),
+    );
+  });
+
+  test("surfaces a wrapped account-api failure with a status", () async {
+    final dio = _dioWith((options, body) async {
+      throw DioException(
+        requestOptions: options,
+        error: const AccountApiException(429, "rate_limited", "slow down"),
+      );
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(
+        isA<FitUploadException>()
+            .having((e) => e.code, "code", FitUploadErrorCode.unexpected)
+            .having(
+              (e) => e.message,
+              "message",
+              "AccountApiException(429, rate_limited: slow down)",
+            ),
+      ),
+    );
+  });
+
+  test("keeps the type and cause for unknown dio failures", () async {
+    final dio = _dioWith((options, body) async {
+      throw DioException(requestOptions: options, error: StateError("boom"));
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(
+        isA<FitUploadException>()
+            .having((e) => e.code, "code", FitUploadErrorCode.unexpected)
+            .having((e) => e.message, "message", contains("boom")),
+      ),
+    );
+  });
+
+  test("builds the public by-hash URL against the given origin", () {
     expect(
-      FitSnapshotUploadApi.byHashUrl("abc123"),
+      FitSnapshotUploadApi.byHashUrl("abc123", origin: _origin),
       "https://api.efa-tech.dev/platform/internal/fits/abc123/snapshot",
+    );
+  });
+
+  test("builds the by-hash URL against a custom origin", () {
+    expect(
+      FitSnapshotUploadApi.byHashUrl("abc123", origin: "https://preview.example.com"),
+      "https://preview.example.com/platform/internal/fits/abc123/snapshot",
     );
   });
 }

@@ -8,7 +8,6 @@ import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/user_store.dart";
-import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -292,20 +291,8 @@ class AppSettingService extends _$AppSettingService {
     } else {
       json = {};
     }
-    await _migrateFitUploadToken(json);
     final setting = AppSetting.fromJson({"locale": _defaultLocale().name, ...json});
     _appSetting = setting;
-  }
-
-  /// Moves the legacy plain-JSON upload token into platform secure storage.
-  /// The returned [json] no longer carries the field, so the next store sync
-  /// scrubs it from disk.
-  static Future<void> _migrateFitUploadToken(Map<String, dynamic> json) async {
-    final legacy = json.remove(FitUploadTokenStore.legacySettingsKey);
-    if (legacy is String && legacy.trim().isNotEmpty) {
-      final store = FitUploadTokenStore();
-      if ((await store.read()).isEmpty) await store.write(legacy.trim());
-    }
   }
 
   static Locale _defaultLocale() {

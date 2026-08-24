@@ -1,8 +1,10 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
 import "package:eve_fit_assistant/features/fit_io/text_export.dart";
 import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
@@ -10,7 +12,6 @@ import "package:eve_fit_assistant/features/fit_link/share_link.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
-import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -56,7 +57,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   @override
   Widget build(BuildContext context) {
     final canUpload = ref.watch(
-      fitUploadTokenProvider.select((token) => token.value?.isNotEmpty ?? false),
+      platformIdentityProvider.select((identity) => identity.value != null),
     );
     final uploadResult = _uploadResult;
     return AppDialog(
@@ -130,7 +131,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                 child: Text(context.l10n.close),
               ),
               FilledButton(
-                onPressed: () => unawaited(_handleCopyUploadUrl(uploadResult.fitHash)),
+                onPressed: () => unawaited(_handleCopyUploadUrl(uploadResult)),
                 child: Text(context.l10n.fitExportCopyLinkButton),
               ),
             ]
@@ -161,7 +162,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   }
 
   Widget _buildUploadResult(BuildContext context, FitPostSubmitResult result) {
-    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash);
+    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash, origin: result.origin);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,6 +259,11 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
       warning("Fit upload aborted: data repository is not ready");
       if (!mounted) return;
       setState(() => _actionError = context.l10n.fitUploadErrorDataNotReady);
+    } on PlatformAuthRequiredException {
+      // The global onAuthRequired handler already pushed the login route.
+      warning("Fit upload aborted: platform sign-in required");
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitUploadErrorUnauthorized);
     } on FitUploadException catch (e, stackTrace) {
       if (e.code == FitUploadErrorCode.unexpected) {
         fatal("Fit upload failed unexpectedly", error: e, stackTrace: stackTrace);
@@ -298,8 +304,8 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     if (e.issues != null) jsonEncode(e.issues),
   ].join(" — ");
 
-  Future<void> _handleCopyUploadUrl(String fitHash) async {
-    final url = FitSnapshotUploadApi.byHashUrl(fitHash);
+  Future<void> _handleCopyUploadUrl(FitPostSubmitResult result) async {
+    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash, origin: result.origin);
     try {
       await Clipboard.setData(ClipboardData(text: url));
     } on Object {

@@ -58,6 +58,24 @@ class AccountApiException implements Exception {
 /// token is provided (both Client ID and Client Secret) it is sent as the
 /// `CF-Access-Client-Id`/`CF-Access-Client-Secret` header pair so the request
 /// can pass the Access gate protecting the preview environment.
+/// Builds the interceptor that sends the Cloudflare Access service token as
+/// the `CF-Access-Client-Id`/`CF-Access-Client-Secret` header pair so the
+/// request can pass the Access gate protecting the preview environment.
+/// Returns null when the pair is incomplete. An interceptor (not
+/// BaseOptions) so injected test transports get the headers too.
+Interceptor? cfAccessServiceTokenInterceptor(String? clientId, String? clientSecret) {
+  final id = clientId ?? "";
+  final secret = clientSecret ?? "";
+  if (id.isEmpty || secret.isEmpty) return null;
+  return InterceptorsWrapper(
+    onRequest: (options, handler) {
+      options.headers["CF-Access-Client-Id"] = id;
+      options.headers["CF-Access-Client-Secret"] = secret;
+      handler.next(options);
+    },
+  );
+}
+
 class AccountApiClient {
   AccountApiClient({
     required this.origin,
@@ -65,20 +83,9 @@ class AccountApiClient {
     String? cfAccessClientSecret,
     Dio? dio,
   }) : _dio = dio ?? Dio(defaultBaseOptions()) {
-    final clientId = cfAccessClientId ?? "";
-    final clientSecret = cfAccessClientSecret ?? "";
-    if (clientId.isNotEmpty && clientSecret.isNotEmpty) {
-      // An interceptor (not BaseOptions) so injected test transports get the
-      // headers too.
-      _dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            options.headers["CF-Access-Client-Id"] = clientId;
-            options.headers["CF-Access-Client-Secret"] = clientSecret;
-            handler.next(options);
-          },
-        ),
-      );
+    final interceptor = cfAccessServiceTokenInterceptor(cfAccessClientId, cfAccessClientSecret);
+    if (interceptor != null) {
+      _dio.interceptors.add(interceptor);
     }
   }
 

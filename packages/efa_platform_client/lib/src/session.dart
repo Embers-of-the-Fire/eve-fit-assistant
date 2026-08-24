@@ -72,7 +72,7 @@ class _Mutex {
 /// refresh token alive for active users and dropping stale sessions early.
 class PlatformSession {
   PlatformSession({
-    required String origin,
+    required this.origin,
     required this._store,
     Dio Function()? dioFactory,
     String? cfAccessClientId,
@@ -81,14 +81,26 @@ class PlatformSession {
     this._emailLocale,
   }) {
     final createDio = dioFactory ?? Dio.new;
+    // The Access gate protecting the preview environment challenges every
+    // path on the origin, not just /platform/auth: the service token must
+    // ride on public reads and authed uploads too.
+    Dio scopedDio() {
+      final dio = createDio();
+      final interceptor = cfAccessServiceTokenInterceptor(cfAccessClientId, cfAccessClientSecret);
+      if (interceptor != null) {
+        dio.interceptors.add(interceptor);
+      }
+      return dio;
+    }
+
     _authClient = AccountApiClient(
       origin: origin,
       cfAccessClientId: cfAccessClientId,
       cfAccessClientSecret: cfAccessClientSecret,
       dio: createDio(),
     );
-    _publicClient = PlatformApiClient(origin: origin, dio: createDio());
-    _authedDio = createDio()..interceptors.add(_AuthInterceptor(this));
+    _publicClient = PlatformApiClient(origin: origin, dio: scopedDio());
+    _authedDio = scopedDio()..interceptors.add(_AuthInterceptor(this));
     // Eagerly start the cold-start load/rotation (errors are contained in
     // [_ready]; the session simply reads as signed out).
     unawaited(_ready);
@@ -97,6 +109,11 @@ class PlatformSession {
   final PlatformSessionStore _store;
   final void Function()? _onAuthRequired;
   final String? Function()? _emailLocale;
+
+  /// The platform API origin this session talks to (already resolved,
+  /// including any developer-mode override); authenticated uploads build
+  /// their URL from it.
+  final String origin;
   late final AccountApiClient _authClient;
   late final PlatformApiClient _publicClient;
   late final Dio _authedDio;

@@ -2,12 +2,9 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_request.pb.dart";
-import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-
-const _workerOrigin = "https://api.efa-tech.dev";
-const _submitUrl = "$_workerOrigin/platform/internal/posts";
 
 /// Injectable seam for the upload API, so tests can substitute a fake transport.
 final fitSnapshotUploadApiProvider = Provider<FitSnapshotUploadApi>(
@@ -49,46 +46,54 @@ class FitPostSubmitResult {
     required this.postId,
     required this.fitHash,
     required this.alreadyExisted,
+    required this.origin,
   });
 
-  factory FitPostSubmitResult.fromJson(Map<String, dynamic> json) => FitPostSubmitResult(
-    postId: json["postId"] as String,
-    fitHash: json["fitHash"] as String,
-    alreadyExisted: json["alreadyExisted"] as bool,
-  );
+  factory FitPostSubmitResult.fromJson(Map<String, dynamic> json, {required String origin}) =>
+      FitPostSubmitResult(
+        postId: json["postId"] as String,
+        fitHash: json["fitHash"] as String,
+        alreadyExisted: json["alreadyExisted"] as bool,
+        origin: origin,
+      );
 
   final String postId;
   final String fitHash;
   final bool alreadyExisted;
+
+  /// The origin the upload went to. Snapshot URLs for this fit must be built
+  /// against it: preview and production use separate database and fit-storage
+  /// bindings, so a URL on the wrong origin can return no snapshot.
+  final String origin;
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
-/// `api.efa-tech.dev/platform/internal`).
+/// `{origin}/platform/internal`).
 class FitSnapshotUploadApi {
-  FitSnapshotUploadApi({Dio? dio})
-    : _dio = dio ?? createRemoteDio(connectTimeout: const Duration(seconds: 10));
+  /// Public URL of the stored snapshot for a given fit hash (spec §6.2),
+  /// built against the origin the upload targeted (the resolved
+  /// `PlatformSession.origin`, not always production).
+  static String byHashUrl(String fitHash, {required String origin}) =>
+      "$origin/platform/internal/fits/$fitHash/snapshot";
 
-  final Dio _dio;
-
-  /// Public URL of the stored snapshot for a given fit hash (spec §6.2).
-  static String byHashUrl(String fitHash) =>
-      "$_workerOrigin/platform/internal/fits/$fitHash/snapshot";
-
-  Future<FitPostSubmitResult> submit(FitUploadRequest request, {required String token}) async {
+  /// Submits the upload through the session's authenticated Dio (the access
+  /// token is attached — and refreshed on 401 — by the session interceptor).
+  Future<FitPostSubmitResult> submit(
+    FitUploadRequest request, {
+    required Dio dio,
+    required String origin,
+  }) async {
     try {
-      final response = await _dio.post<Object>(
-        _submitUrl,
+      final response = await dio.post<Object>(
+        "$origin/platform/internal/posts",
         data: request.writeToBuffer(),
-        options: Options(
-          contentType: "application/x-protobuf",
-          headers: {"Authorization": "Bearer $token"},
-        ),
+        options: Options(contentType: "application/x-protobuf"),
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
         throw const FitUploadException(FitUploadErrorCode.unexpected);
       }
-      return FitPostSubmitResult.fromJson(data);
+      return FitPostSubmitResult.fromJson(data, origin: origin);
     } on DioException catch (e) {
       throw _mapDioException(e);
     } on FitUploadException {
@@ -129,7 +134,22 @@ class FitSnapshotUploadApi {
         e.type == DioExceptionType.connectionError) {
       return const FitUploadException(FitUploadErrorCode.network);
     }
-    return FitUploadException(FitUploadErrorCode.unexpected, e.message);
+    // The session interceptor wraps non-Dio failures (e.g. an
+    // AccountApiException from a failed token refresh) in a bare
+    // DioException with no message or response; surface the wrapped cause
+    // instead of an opaque "unexpected".
+    final cause = e.error;
+    if (cause is AccountApiException) {
+      if (cause.statusCode == null) {
+        return FitUploadException(FitUploadErrorCode.network, cause.message);
+      }
+      return FitUploadException(FitUploadErrorCode.unexpected, "$cause");
+    }
+    final description = StringBuffer(e.message ?? e.type.name);
+    if (cause != null) {
+      description.write(": $cause");
+    }
+    return FitUploadException(FitUploadErrorCode.unexpected, description.toString());
   }
 
   ({String? error, String? message, Object? issues})? _decodeErrorBody(Object? data) {

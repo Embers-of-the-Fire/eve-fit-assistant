@@ -5,6 +5,7 @@ import "package:efa_proto/fit.pb.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/announcements/repository/announcement_repository.dart";
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
@@ -14,7 +15,6 @@ import "package:eve_fit_assistant/storage/fit/schema.dart" hide FitDynamicItem;
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
-import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/utils/native.dart";
 import "package:eve_fit_assistant/utils/native_convert.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -31,9 +31,9 @@ class FitUploadNotReadyException implements Exception {
   String toString() => "FitUploadNotReadyException";
 }
 
-/// The whole "build request + load token + submit" upload operation, exposed
-/// as a provider so widget tests can exercise the upload flow without the data
-/// repository or the network.
+/// The whole "build request + submit via the account session" upload
+/// operation, exposed as a provider so widget tests can exercise the upload
+/// flow without the data repository or the network.
 typedef FitSnapshotUploadFn =
     Future<FitPostSubmitResult> Function(
       WidgetRef ref, {
@@ -49,8 +49,11 @@ Future<FitPostSubmitResult> _submitFitSnapshot(
   required FitStorage fit,
 }) async {
   final request = await FitUploadRequestBuilder(ref).build(fitId: fitId, fit: fit);
-  final token = await ref.read(fitUploadTokenStoreProvider).read();
-  return ref.read(fitSnapshotUploadApiProvider).submit(request, token: token);
+  final session = await ref.read(platformSessionProvider.future);
+  return session.authed(
+    (dio) =>
+        ref.read(fitSnapshotUploadApiProvider).submit(request, dio: dio, origin: session.origin),
+  );
 }
 
 /// Builds the [FitUploadRequest] for the remote fit storage service from the

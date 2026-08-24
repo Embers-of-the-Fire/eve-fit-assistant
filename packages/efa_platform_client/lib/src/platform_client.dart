@@ -10,6 +10,8 @@ import "package:efa_proto/fit_snapshot.pb.dart";
 class PostSummary {
   const PostSummary({
     required this.postId,
+    required this.authorId,
+    required this.authorDeleted,
     required this.fitHash,
     required this.fitName,
     required this.description,
@@ -22,6 +24,8 @@ class PostSummary {
 
   factory PostSummary.fromJson(Map<String, dynamic> json) => PostSummary(
     postId: json["postId"] as String,
+    authorId: json["authorId"] as String?,
+    authorDeleted: json["authorDeleted"] as bool,
     fitHash: json["fitHash"] as String,
     fitName: json["fitName"] as String,
     description: json["description"] as String,
@@ -33,6 +37,14 @@ class PostSummary {
   );
 
   final String postId;
+
+  /// The uploading account's user id; null when the author is a tombstone
+  /// (deleted account or pre-auth legacy post).
+  final String? authorId;
+
+  /// True when the author is a tombstone (null [authorId]) or the account
+  /// was deregistered (anonymized in place). Posts survive account deletion.
+  final bool authorDeleted;
   final String fitHash;
   final String fitName;
 
@@ -56,15 +68,31 @@ class PostListPage {
 
 /// The post record of `GET /platform/internal/posts/:id` (spec §6.2).
 class PostRecord {
-  const PostRecord({required this.postId, required this.fitHash, required this.createdAt});
+  const PostRecord({
+    required this.postId,
+    required this.authorId,
+    required this.authorDeleted,
+    required this.fitHash,
+    required this.createdAt,
+  });
 
   factory PostRecord.fromJson(Map<String, dynamic> json) => PostRecord(
     postId: json["postId"] as String,
+    authorId: json["authorId"] as String?,
+    authorDeleted: json["authorDeleted"] as bool,
     fitHash: json["fitHash"] as String,
     createdAt: json["createdAt"] as String,
   );
 
   final String postId;
+
+  /// The uploading account's user id; null when the author is a tombstone
+  /// (deleted account or pre-auth legacy post).
+  final String? authorId;
+
+  /// True when the author is a tombstone (null [authorId]) or the account
+  /// was deregistered (anonymized in place). Posts survive account deletion.
+  final bool authorDeleted;
   final String fitHash;
   final String createdAt;
 }
