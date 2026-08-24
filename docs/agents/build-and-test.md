@@ -121,7 +121,7 @@ powersync-ja/sqlite_async.dart releases matching `sqlite_async`. Both are copied
 | Flutter/Dart | `./x test dart`, `melos run app:test`, or `flutter test` from the app directory |
 | Web platform | `./x test web` |
 | Repo module | `dart test test/storage/repo/` from the app directory |
-| Migration | `dart test test/storage/repo/migration/action/from_v1/` from the app directory |
+| Migration | `dart test test/storage/repo/migration/` from the app directory |
 | Bridge crate | `cargo test -p rust_lib_eve_fit_assistant` |
 | Fitting engine | `cargo test -p eve-fit-os` |
 | Chat crate | `cargo test -p efa-chat` |

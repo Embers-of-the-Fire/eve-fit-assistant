@@ -5,11 +5,11 @@ The app uses [`riverpod`](https://riverpod.dev) to manage data.
 ## Concept, Choice and Suggestion
 
 There're four layers of data storage:
-- [Global state](#global-state), including [settings (`AppSettingService`)](../../lib/storage/setting/setting.dart).
+- [Global state](#global-state), including [settings (`AppSettingService`)](../../apps/eve-fit-assistant/lib/storage/setting/setting.dart).
   The global state is used across the app, and should be loaded at the app start.
   Any error in global state is considered critical,
   and should be immediately available once the splash screen is dismissed.
-- [Global data](#global-data), including [bundle manager (`BundleManager`)](../../lib/storage/bundle/manager.dart).
+- [Global data](#global-data), including [the repository system (`RepoService`)](../../apps/eve-fit-assistant/lib/storage/repo/service.dart).
   This layer is also error-critical, but can be loaded after the app start.
   The app should show a loading indicator when the user tries to access this data.
 - [Service data](#service-data), loaded by managers, is offered as a global provider (in riverpod).
@@ -26,10 +26,10 @@ To properly handle and manage states, the application follows these principles:
    This ensures that the state is easily accessible and manageable throughout the app.
 2. If the state contains complicated logic, use a `service` to handle the logic.
    This service class is responsible for fetching, updating, and managing the data.
-   For example, bundle data are served through `BundleService`.
+   For example, type data are served through `RepoCollectionService`.
 3. If the state will change, a `manager` class should be created to handle the state changes.
    This manager class is responsible for updating the state and notifying any listeners of changes.
-   For example, `BundleManager` manages the bundle data state, or `BundleService`.
+   For example, `FitManager` manages the fit data state.
 4. The `manager` class should be a singleton, ensuring that there is only one instance
    managing the state throughout the app. Use `@riverpodSingleton` to create a singleton provider.
 5. The `manager` class do not need to expose data interfaces as the data should be forwarded to
@@ -51,11 +51,12 @@ To properly handle and manage states, the application follows these principles:
 
 ### Global Data
 
-- `BundleManager`: The overall bundle data manager. This provider offers no direct data interface.
-- `BundleRegistryManager` > `BundleRegistry`: The bundle registry manager.
-  The registry is stored in `<settingsPath>/registry.json`.
-  This provider offers the bundle registry data interface.
-  The interface to operate on the registry is limited to the `BundleManager`.
+- `RepoService`: The content-addressed repository service.
+  It owns checkout lifecycle, channel discovery, and resource fetching.
+  See [Storage Layer](../agents/storage.md) for the repository system.
+- `CheckoutRegistryService`: The checkout registry manager.
+  The registry is stored in `checkouts/checkouts.json` under the repository storage.
+  This service offers the checkout registry data interface.
 - `FitManager`: The overall fit data manager. This provider offers no direct data interface.
 - `FitRegistryManager` > `FitRegistry`: The fit registry manager.
   The registry is stored in `<documents>/fittings/registry.json`.
@@ -66,21 +67,17 @@ To properly handle and manage states, the application follows these principles:
 
 ### Service Data
 
-- `BundleService` > `CurrentBundleStatus` > `BundleMetadata`: The current bundle service.
-  This provider offers the current bundle metadata data interface.
-  The value might be changed by the `BundleManager`.
-- Bundle-specific services, in [`lib/storage/bundle/service`](../../lib/storage/bundle/service):
-  - `BundlePaths`: The paths of the current bundle.
-    See [this file](../../lib/storage/bundle/service/paths.dart) for details.
-  - `BundleLocalization`: Exposed through `bundleLocalization (riverpod)`.
-  Use `localization (riverpod)` to access the localized strings.
+- `RepoCollectionService`: The structural type-data source.
+  It pre-loads ships, skills, items, and icons from the active checkout's `ResourceIndex`.
+- `LocalizationDbService`: Resolves localized strings from the active checkout's
+  prebuilt `localization.db`; `localizedNameProvider` resolves `(id, locale)` on demand.
 - `FitService` > `FitServiceStatus`: The fit service.
   This provider offers the fit service status data interface.
   Fit files are decoded through the versioned fit persistence layer,
   and legacy alpha payloads are eagerly normalized when loaded.
   The value might be changed by the `FitManager`.
 - `FitEmulatorService` > `FitEmulatorState`: The wrapper over backend engine service.
-  See [this file](../../lib/storage/fit/service.dart) for details.
+  See [this file](../../apps/eve-fit-assistant/lib/storage/fit/service.dart) for details.
 - `NativeFitEngineService` > `NativeFitEngineState`: The backend(native) engine service.
-  See [this dart port](../../lib/storage/fit/service.dart)
-  and [this rust source](../../rust/src/api/server.rs) for more information.
+  See [this dart port](../../apps/eve-fit-assistant/lib/storage/fit/service.dart)
+  and [this rust source](../../apps/eve-fit-assistant/rust/src/api/server.rs) for more information.

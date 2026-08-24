@@ -61,6 +61,6 @@ stored session inside the critical section) is owned by `PlatformSession` in
 ## Tests
 
 Repository-module tests run from the app directory with `dart test test/storage/repo/`.
-Migration tests use `dart test test/storage/repo/migration/action/from_v1/`. Data-flow
+Migration tests use `dart test test/storage/repo/migration/`. Data-flow
 integration tests use `package:mocktail` for network and filesystem mocks; async tests require
 `flutter test` or `dart test` with the Flutter SDK on `PATH`.

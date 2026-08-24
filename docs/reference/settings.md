@@ -21,7 +21,7 @@ General settings for the app.
 The language of the app. This will also affect the locale used for formatting dates and numbers.
 
 - Key: `locale`
-- Type: [`String (enum Locale)`](../../lib/config/locale.dart)
+- Type: `String (enum Locale)`, generated at `lib/config/locale.dart` by codegen
 - Possible Values: See [`efa.config.toml > localizations.supported`](../../efa.config.example.toml).
 
 ## Develop

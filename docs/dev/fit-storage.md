@@ -9,14 +9,16 @@ including file layout, versioning, eager normalization, and native text import b
 ## Concept, Choice and Suggestion
 
 The fit persistence layer has three related payload types:
-- [Fit files](#fit-files), represented in code by [`FitStorage`](../../lib/storage/fit/schema.dart).
-- [Fit registry](#fit-registry), represented in code by [`FitRegistry`](../../lib/storage/fit/manager.dart).
+
+- [Fit files](#fit-files), represented in code by [`FitStorage`](../../apps/eve-fit-assistant/lib/storage/fit/schema.dart).
+- [Fit registry](#fit-registry), represented in code by [`FitRegistry`](../../apps/eve-fit-assistant/lib/storage/fit/schema.dart).
 - [Native text payloads](#native-text-payloads), used by the fit import/export UI.
 
 To keep local data forward-compatible without introducing full migration machinery yet,
 the app follows these principles:
+
 1. Persisted fit files and the fit registry must use an explicit top-level `version` field.
-   The encode/decode logic lives in [`lib/storage/fit/persistence.dart`](../../lib/storage/fit/persistence.dart).
+   The encode/decode logic lives in [`lib/storage/fit/persistence.dart`](../../apps/eve-fit-assistant/lib/storage/fit/persistence.dart).
 2. Runtime models such as `FitStorage` and `FitRegistry` should remain domain models.
    Version envelopes and compatibility checks should stay in the persistence layer.
 3. Missing top-level `version` is treated as the legacy alpha payload shape.
@@ -35,7 +37,7 @@ the app follows these principles:
 - `FitService` loads the file for an individual fit.
   It decodes through `decodeFitStorage(...)`, prunes stale dynamic registry entries,
   and eagerly rewrites legacy unversioned payloads.
-- `FitStorage` is defined in [`lib/storage/fit/schema.dart`](../../lib/storage/fit/schema.dart).
+- `FitStorage` is defined in [`lib/storage/fit/schema.dart`](../../apps/eve-fit-assistant/lib/storage/fit/schema.dart).
   This is the in-memory fit model, not the on-disk version envelope.
 
 The current on-disk fit file shape is:
@@ -71,7 +73,7 @@ then rewritten immediately in the versioned format.
 
 ### Native Text Payloads
 
-- Native text import/export lives in [`lib/features/fit_io`](../../lib/features/fit_io).
+- Native text import/export lives in [`lib/features/fit_io`](../../apps/eve-fit-assistant/lib/features/fit_io).
 - Export currently emits the `EFA:` prefix only.
 - Import accepts both the legacy `EFA:` prefix and the explicit `EFA1:` prefix.
 - Explicit numeric prefixes newer than `EFA1:` are rejected as unsupported.
