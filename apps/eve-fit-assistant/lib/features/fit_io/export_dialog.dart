@@ -131,7 +131,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                 child: Text(context.l10n.close),
               ),
               FilledButton(
-                onPressed: () => unawaited(_handleCopyUploadUrl(uploadResult.fitHash)),
+                onPressed: () => unawaited(_handleCopyUploadUrl(uploadResult)),
                 child: Text(context.l10n.fitExportCopyLinkButton),
               ),
             ]
@@ -162,7 +162,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
   }
 
   Widget _buildUploadResult(BuildContext context, FitPostSubmitResult result) {
-    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash);
+    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash, origin: result.origin);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,8 +304,8 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     if (e.issues != null) jsonEncode(e.issues),
   ].join(" — ");
 
-  Future<void> _handleCopyUploadUrl(String fitHash) async {
-    final url = FitSnapshotUploadApi.byHashUrl(fitHash);
+  Future<void> _handleCopyUploadUrl(FitPostSubmitResult result) async {
+    final url = FitSnapshotUploadApi.byHashUrl(result.fitHash, origin: result.origin);
     try {
       await Clipboard.setData(ClipboardData(text: url));
     } on Object {

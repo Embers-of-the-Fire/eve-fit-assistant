@@ -46,25 +46,35 @@ class FitPostSubmitResult {
     required this.postId,
     required this.fitHash,
     required this.alreadyExisted,
+    required this.origin,
   });
 
-  factory FitPostSubmitResult.fromJson(Map<String, dynamic> json) => FitPostSubmitResult(
-    postId: json["postId"] as String,
-    fitHash: json["fitHash"] as String,
-    alreadyExisted: json["alreadyExisted"] as bool,
-  );
+  factory FitPostSubmitResult.fromJson(Map<String, dynamic> json, {required String origin}) =>
+      FitPostSubmitResult(
+        postId: json["postId"] as String,
+        fitHash: json["fitHash"] as String,
+        alreadyExisted: json["alreadyExisted"] as bool,
+        origin: origin,
+      );
 
   final String postId;
   final String fitHash;
   final bool alreadyExisted;
+
+  /// The origin the upload went to. Snapshot URLs for this fit must be built
+  /// against it: preview and production use separate database and fit-storage
+  /// bindings, so a URL on the wrong origin can return no snapshot.
+  final String origin;
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
 /// `{origin}/platform/internal`).
 class FitSnapshotUploadApi {
-  /// Public URL of the stored snapshot for a given fit hash (spec §6.2).
-  static String byHashUrl(String fitHash) =>
-      "$platformApiProductionOrigin/platform/internal/fits/$fitHash/snapshot";
+  /// Public URL of the stored snapshot for a given fit hash (spec §6.2),
+  /// built against the origin the upload targeted (the resolved
+  /// `PlatformSession.origin`, not always production).
+  static String byHashUrl(String fitHash, {required String origin}) =>
+      "$origin/platform/internal/fits/$fitHash/snapshot";
 
   /// Submits the upload through the session's authenticated Dio (the access
   /// token is attached — and refreshed on 401 — by the session interceptor).
@@ -83,7 +93,7 @@ class FitSnapshotUploadApi {
       if (data is! Map<String, dynamic>) {
         throw const FitUploadException(FitUploadErrorCode.unexpected);
       }
-      return FitPostSubmitResult.fromJson(data);
+      return FitPostSubmitResult.fromJson(data, origin: origin);
     } on DioException catch (e) {
       throw _mapDioException(e);
     } on FitUploadException {

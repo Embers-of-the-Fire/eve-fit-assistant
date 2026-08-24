@@ -148,8 +148,12 @@ void main() {
       buildDialog(
         _makeFit(),
         signedIn: true,
-        uploadFn: (ref, {required fitId, required fit}) async =>
-            const FitPostSubmitResult(postId: "post-1", fitHash: fitHash, alreadyExisted: false),
+        uploadFn: (ref, {required fitId, required fit}) async => const FitPostSubmitResult(
+          postId: "post-1",
+          fitHash: fitHash,
+          alreadyExisted: false,
+          origin: platformApiProductionOrigin,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -167,6 +171,12 @@ void main() {
 
     expect(find.text("配置已上传至平台。"), findsOneWidget);
     expect(find.text(fitHash, findRichText: true), findsOneWidget);
-    expect(find.text(FitSnapshotUploadApi.byHashUrl(fitHash), findRichText: true), findsOneWidget);
+    expect(
+      find.text(
+        FitSnapshotUploadApi.byHashUrl(fitHash, origin: platformApiProductionOrigin),
+        findRichText: true,
+      ),
+      findsOneWidget,
+    );
   });
 }

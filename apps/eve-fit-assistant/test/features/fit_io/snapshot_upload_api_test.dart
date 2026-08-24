@@ -90,6 +90,7 @@ void main() {
     expect(response.postId, "post-1");
     expect(response.fitHash, "abc123");
     expect(response.alreadyExisted, isTrue);
+    expect(response.origin, _origin);
 
     expect(captured?.path, "$_origin/platform/internal/posts");
     expect(captured?.method, "POST");
@@ -274,10 +275,17 @@ void main() {
     );
   });
 
-  test("builds the public by-hash URL", () {
+  test("builds the public by-hash URL against the given origin", () {
     expect(
-      FitSnapshotUploadApi.byHashUrl("abc123"),
+      FitSnapshotUploadApi.byHashUrl("abc123", origin: _origin),
       "https://api.efa-tech.dev/platform/internal/fits/abc123/snapshot",
+    );
+  });
+
+  test("builds the by-hash URL against a custom origin", () {
+    expect(
+      FitSnapshotUploadApi.byHashUrl("abc123", origin: "https://preview.example.com"),
+      "https://preview.example.com/platform/internal/fits/abc123/snapshot",
     );
   });
 }
