@@ -54,19 +54,27 @@ class AccountApiException implements Exception {
 /// (`worker/efa-platform-api`, `{origin}/platform/auth`).
 ///
 /// All endpoints are POST with JSON bodies; errors follow the platform
-/// envelope `{ "error": code, "message" }`. When a Cloudflare Access token
-/// is provided it is sent as the `cf-access-token` header so the request can
-/// pass the Access gate protecting the preview environment.
+/// envelope `{ "error": code, "message" }`. When a Cloudflare Access service
+/// token is provided (both Client ID and Client Secret) it is sent as the
+/// `CF-Access-Client-Id`/`CF-Access-Client-Secret` header pair so the request
+/// can pass the Access gate protecting the preview environment.
 class AccountApiClient {
-  AccountApiClient({required this.origin, String? cfAccessToken, Dio? dio})
-    : _dio = dio ?? Dio(defaultBaseOptions()) {
-    if (cfAccessToken != null && cfAccessToken.isNotEmpty) {
+  AccountApiClient({
+    required this.origin,
+    String? cfAccessClientId,
+    String? cfAccessClientSecret,
+    Dio? dio,
+  }) : _dio = dio ?? Dio(defaultBaseOptions()) {
+    final clientId = cfAccessClientId ?? "";
+    final clientSecret = cfAccessClientSecret ?? "";
+    if (clientId.isNotEmpty && clientSecret.isNotEmpty) {
       // An interceptor (not BaseOptions) so injected test transports get the
-      // header too.
+      // headers too.
       _dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            options.headers["cf-access-token"] = cfAccessToken;
+            options.headers["CF-Access-Client-Id"] = clientId;
+            options.headers["CF-Access-Client-Secret"] = clientSecret;
             handler.next(options);
           },
         ),

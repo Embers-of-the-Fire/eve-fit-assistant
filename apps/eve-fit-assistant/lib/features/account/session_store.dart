@@ -9,8 +9,8 @@ import "package:riverpod_annotation/riverpod_annotation.dart";
 part "session_store.g.dart";
 
 /// Stores the platform session and the developer-only Cloudflare Access
-/// token in platform secure storage (Keychain/Keystore-backed on native,
-/// encrypted on web) instead of the plain settings document.
+/// service token in platform secure storage (Keychain/Keystore-backed on
+/// native, encrypted on web) instead of the plain settings document.
 ///
 /// The whole session lives under a single key holding one JSON document, so
 /// persisting a rotated pair is a single atomic write: a failure mid-rotation
@@ -33,7 +33,11 @@ class SecurePlatformSessionStore implements PlatformSessionStore {
   static const String _legacyAccessTokenExpiryKey = "account_access_token_expiry_ms";
   static const String _legacyRefreshTokenKey = "account_refresh_token";
 
-  static const String _cfAccessTokenKey = "account_cf_access_token";
+  static const String _cfAccessServiceTokenKey = "account_cf_access_service_token";
+
+  // Legacy layout (pre service-token), deleted on the next write/clear: a
+  // `cloudflared access token` user JWT cannot stand in for a service token.
+  static const String _legacyCfAccessTokenKey = "account_cf_access_token";
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
@@ -124,25 +128,51 @@ class SecurePlatformSessionStore implements PlatformSessionStore {
     await _storage.delete(key: _legacyRefreshTokenKey);
   }
 
-  /// The `cf-access-token` used to pass the Cloudflare Access gate of the
-  /// preview environment (`cloudflared access token -app=<origin>`).
-  Future<String> readCfAccessToken() async =>
-      (await _storage.read(key: _cfAccessTokenKey))?.trim() ?? "";
-
-  Future<void> writeCfAccessToken(String token) async {
-    final trimmed = token.trim();
-    if (trimmed.isEmpty) {
-      await clearCfAccessToken();
-      return;
+  /// The Cloudflare Access service token (Client ID + Client Secret) sent as
+  /// the `CF-Access-Client-Id`/`CF-Access-Client-Secret` headers to pass the
+  /// Access gate of the preview environment. The pair lives under a single
+  /// key holding one JSON document, so persisting it is one atomic write;
+  /// empty fields mean "no token".
+  Future<({String clientId, String clientSecret})> readCfAccessServiceToken() async {
+    final serialized = await _storage.read(key: _cfAccessServiceTokenKey);
+    if (serialized == null) return (clientId: "", clientSecret: "");
+    try {
+      final json = jsonDecode(serialized) as Map<String, dynamic>;
+      return (
+        clientId: (json["clientId"] as String).trim(),
+        clientSecret: (json["clientSecret"] as String).trim(),
+      );
+    } on Object {
+      // Corrupt blob: report no token.
+      return (clientId: "", clientSecret: "");
     }
-    await _storage.write(key: _cfAccessTokenKey, value: trimmed);
   }
 
-  Future<void> clearCfAccessToken() => _storage.delete(key: _cfAccessTokenKey);
+  Future<void> writeCfAccessServiceToken({
+    required String clientId,
+    required String clientSecret,
+  }) async {
+    final trimmedId = clientId.trim();
+    final trimmedSecret = clientSecret.trim();
+    if (trimmedId.isEmpty || trimmedSecret.isEmpty) {
+      await clearCfAccessServiceToken();
+      return;
+    }
+    await _storage.write(
+      key: _cfAccessServiceTokenKey,
+      value: jsonEncode({"clientId": trimmedId, "clientSecret": trimmedSecret}),
+    );
+    await _storage.delete(key: _legacyCfAccessTokenKey);
+  }
+
+  Future<void> clearCfAccessServiceToken() async {
+    await _storage.delete(key: _cfAccessServiceTokenKey);
+    await _storage.delete(key: _legacyCfAccessTokenKey);
+  }
 
   Future<void> clearAll() async {
     await clear();
-    await clearCfAccessToken();
+    await clearCfAccessServiceToken();
   }
 }
 

@@ -31,12 +31,13 @@ Future<PlatformSession> platformSession(Ref ref) async {
   // developer mode is on, and never clear the stored value.
   final origin = developerMode && custom.isNotEmpty ? custom : platformApiProductionOrigin;
   final store = ref.watch(securePlatformSessionStoreProvider);
-  final cfAccessToken = await store.readCfAccessToken();
+  final (:clientId, :clientSecret) = await store.readCfAccessServiceToken();
   return PlatformSession(
     origin: origin,
     store: store,
     dioFactory: createRemoteDio,
-    cfAccessToken: cfAccessToken.isEmpty ? null : cfAccessToken,
+    cfAccessClientId: clientId.isEmpty ? null : clientId,
+    cfAccessClientSecret: clientSecret.isEmpty ? null : clientSecret,
     emailLocale: () => ref.read(localeProvider).name,
     onAuthRequired: () => ref.read(platformAuthRequiredHandlerProvider)(),
   );

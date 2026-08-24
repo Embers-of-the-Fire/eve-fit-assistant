@@ -38,7 +38,8 @@ one-time migration prompt before the repository system activates.
 `SecurePlatformSessionStore` stores the account session as one JSON document under a single
 key for atomic rotation writes, with legacy read fallbacks (a pre-identity blob without
 email/user id, and a per-field triple); it also stores the developer Cloudflare Access
-`cf-access-token`. The session lifecycle itself (cold-start rotation through eager
+service token (Client ID/Client Secret) as one JSON document. The session lifecycle itself
+(cold-start rotation through eager
 instantiation in `initWithRef`, expiry tracking, and the session mutex that re-reads the
 stored session inside the critical section) is owned by `PlatformSession` in
 `packages/efa_platform_client`.
