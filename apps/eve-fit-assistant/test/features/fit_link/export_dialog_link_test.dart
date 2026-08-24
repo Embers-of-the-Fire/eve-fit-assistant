@@ -1,13 +1,14 @@
 import "dart:math";
 
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
 import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
-import "package:eve_fit_assistant/storage/setting/fit_upload_token_store.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
@@ -56,15 +57,6 @@ String _randomText(int length, int seed) {
   );
 }
 
-class _FakeFitUploadToken extends FitUploadToken {
-  _FakeFitUploadToken(this._token);
-
-  final String _token;
-
-  @override
-  Future<String> build() async => _token;
-}
-
 void main() {
   final clipboardWrites = <String>[];
 
@@ -88,7 +80,7 @@ void main() {
     );
   });
 
-  Widget buildDialog(FitStorage fit, {String? uploadToken, FitSnapshotUploadFn? uploadFn}) =>
+  Widget buildDialog(FitStorage fit, {bool signedIn = false, FitSnapshotUploadFn? uploadFn}) =>
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(
@@ -101,8 +93,11 @@ void main() {
               developerMode: false,
             ),
           ),
-          if (uploadToken != null)
-            fitUploadTokenProvider.overrideWith(() => _FakeFitUploadToken(uploadToken)),
+          platformIdentityProvider.overrideWith(
+            (ref) => Stream.value(
+              signedIn ? const PlatformIdentity(userId: "user-1", email: "user@example.com") : null,
+            ),
+          ),
           if (uploadFn != null) fitSnapshotUploadFnProvider.overrideWithValue(uploadFn),
         ],
         child: testApp(
@@ -137,8 +132,8 @@ void main() {
     expect(find.text("该配置过大，无法生成分享链接，请改用文本导出。"), findsOneWidget);
   });
 
-  testWidgets("snapshot mode hides the upload button without a token", (tester) async {
-    await tester.pumpWidget(buildDialog(_makeFit(), uploadToken: ""));
+  testWidgets("snapshot mode hides the upload button when signed out", (tester) async {
+    await tester.pumpWidget(buildDialog(_makeFit()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text("快照"));
@@ -152,7 +147,7 @@ void main() {
     await tester.pumpWidget(
       buildDialog(
         _makeFit(),
-        uploadToken: "test-token",
+        signedIn: true,
         uploadFn: (ref, {required fitId, required fit}) async =>
             const FitPostSubmitResult(postId: "post-1", fitHash: fitHash, alreadyExisted: false),
       ),

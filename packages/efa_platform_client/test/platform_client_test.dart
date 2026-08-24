@@ -45,6 +45,8 @@ ResponseBody _json(Object body, [int status = 200]) => ResponseBody.fromString(
 
 final _postJson = {
   "postId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "authorId": "0f5f0d2f-6d21-4f69-8f8a-2c2f2dbb6f9a",
+  "authorDeleted": false,
   "fitHash": "abc123",
   "fitName": "Test Fit",
   "description": "A description",
@@ -75,12 +77,28 @@ void main() {
       expect(page.posts, hasLength(1));
       final post = page.posts.single;
       expect(post.postId, _postJson["postId"]);
+      expect(post.authorId, "0f5f0d2f-6d21-4f69-8f8a-2c2f2dbb6f9a");
+      expect(post.authorDeleted, isFalse);
       expect(post.fitName, "Test Fit");
       expect(post.description, "A description");
       expect(post.shipName, "Heron");
       expect(post.shipTypeId, 605);
       expect(post.lastModifiedMs, 1755550000000);
       expect(post.generator, "eve-fit-assistant/1.2.3");
+    });
+
+    test("decodes a null-author tombstone", () async {
+      final client = _clientWith(
+        (options) async => _json({
+          "posts": [
+            {..._postJson, "authorId": null, "authorDeleted": true},
+          ],
+          "nextCursor": null,
+        }),
+      );
+      final page = await client.listPosts();
+      expect(page.posts.single.authorId, isNull);
+      expect(page.posts.single.authorDeleted, isTrue);
     });
 
     test("decodes the last page with a null cursor", () async {
@@ -96,11 +114,33 @@ void main() {
   group("getPost", () {
     test("decodes the record", () async {
       final client = _clientWith(
-        (options) async =>
-            _json({"postId": "p", "fitHash": "abc", "createdAt": "2026-08-19T00:00:00.000Z"}),
+        (options) async => _json({
+          "postId": "p",
+          "authorId": "u-1",
+          "authorDeleted": false,
+          "fitHash": "abc",
+          "createdAt": "2026-08-19T00:00:00.000Z",
+        }),
       );
       final record = await client.getPost("p");
       expect(record?.fitHash, "abc");
+      expect(record?.authorId, "u-1");
+      expect(record?.authorDeleted, isFalse);
+    });
+
+    test("decodes the record of a tombstone author", () async {
+      final client = _clientWith(
+        (options) async => _json({
+          "postId": "p",
+          "authorId": null,
+          "authorDeleted": true,
+          "fitHash": "abc",
+          "createdAt": "2026-08-19T00:00:00.000Z",
+        }),
+      );
+      final record = await client.getPost("p");
+      expect(record?.authorId, isNull);
+      expect(record?.authorDeleted, isTrue);
     });
 
     test("returns null on 404", () async {

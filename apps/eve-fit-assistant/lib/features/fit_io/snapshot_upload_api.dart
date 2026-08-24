@@ -2,12 +2,9 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_request.pb.dart";
-import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-
-const _workerOrigin = "https://api.efa-tech.dev";
-const _submitUrl = "$_workerOrigin/platform/internal/posts";
 
 /// Injectable seam for the upload API, so tests can substitute a fake transport.
 final fitSnapshotUploadApiProvider = Provider<FitSnapshotUploadApi>(
@@ -63,26 +60,24 @@ class FitPostSubmitResult {
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
-/// `api.efa-tech.dev/platform/internal`).
+/// `{origin}/platform/internal`).
 class FitSnapshotUploadApi {
-  FitSnapshotUploadApi({Dio? dio})
-    : _dio = dio ?? createRemoteDio(connectTimeout: const Duration(seconds: 10));
-
-  final Dio _dio;
-
   /// Public URL of the stored snapshot for a given fit hash (spec §6.2).
   static String byHashUrl(String fitHash) =>
-      "$_workerOrigin/platform/internal/fits/$fitHash/snapshot";
+      "$platformApiProductionOrigin/platform/internal/fits/$fitHash/snapshot";
 
-  Future<FitPostSubmitResult> submit(FitUploadRequest request, {required String token}) async {
+  /// Submits the upload through the session's authenticated Dio (the access
+  /// token is attached — and refreshed on 401 — by the session interceptor).
+  Future<FitPostSubmitResult> submit(
+    FitUploadRequest request, {
+    required Dio dio,
+    required String origin,
+  }) async {
     try {
-      final response = await _dio.post<Object>(
-        _submitUrl,
+      final response = await dio.post<Object>(
+        "$origin/platform/internal/posts",
         data: request.writeToBuffer(),
-        options: Options(
-          contentType: "application/x-protobuf",
-          headers: {"Authorization": "Bearer $token"},
-        ),
+        options: Options(contentType: "application/x-protobuf"),
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
@@ -129,7 +124,22 @@ class FitSnapshotUploadApi {
         e.type == DioExceptionType.connectionError) {
       return const FitUploadException(FitUploadErrorCode.network);
     }
-    return FitUploadException(FitUploadErrorCode.unexpected, e.message);
+    // The session interceptor wraps non-Dio failures (e.g. an
+    // AccountApiException from a failed token refresh) in a bare
+    // DioException with no message or response; surface the wrapped cause
+    // instead of an opaque "unexpected".
+    final cause = e.error;
+    if (cause is AccountApiException) {
+      if (cause.statusCode == null) {
+        return FitUploadException(FitUploadErrorCode.network, cause.message);
+      }
+      return FitUploadException(FitUploadErrorCode.unexpected, "$cause");
+    }
+    final description = StringBuffer(e.message ?? e.type.name);
+    if (cause != null) {
+      description.write(": $cause");
+    }
+    return FitUploadException(FitUploadErrorCode.unexpected, description.toString());
   }
 
   ({String? error, String? message, Object? issues})? _decodeErrorBody(Object? data) {

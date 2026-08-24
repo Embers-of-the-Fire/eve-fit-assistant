@@ -119,10 +119,16 @@ void main() {
   late _Server server;
   int authRequiredCalls = 0;
 
-  PlatformSession session({bool trackAuthRequired = true}) => PlatformSession(
+  PlatformSession session({
+    bool trackAuthRequired = true,
+    String? cfAccessClientId,
+    String? cfAccessClientSecret,
+  }) => PlatformSession(
     origin: origin,
     store: store,
     dioFactory: () => Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(server.fetch),
+    cfAccessClientId: cfAccessClientId,
+    cfAccessClientSecret: cfAccessClientSecret,
     onAuthRequired: trackAuthRequired ? () => authRequiredCalls++ : null,
   );
 
@@ -547,7 +553,13 @@ void main() {
       String? authorization;
       server.authedHandler = (options) async {
         authorization = options.headers["Authorization"] as String?;
-        return _json({"postId": "p", "fitHash": "abc", "createdAt": "2026-08-19T00:00:00.000Z"});
+        return _json({
+          "postId": "p",
+          "authorId": null,
+          "authorDeleted": true,
+          "fitHash": "abc",
+          "createdAt": "2026-08-19T00:00:00.000Z",
+        });
       };
       final s = session();
       await s.ready;
@@ -557,6 +569,57 @@ void main() {
       expect(record?.fitHash, "abc");
       expect(authorization, isNull);
       expect(authRequiredCalls, 0);
+    });
+  });
+
+  group("Cloudflare Access service token", () {
+    test("rides on authed requests and public reads, not just auth calls", () async {
+      seedSignedIn();
+      final seen = <String, RequestOptions>{};
+      server.authedHandler = (options) async {
+        seen[options.path] = options;
+        if (options.path.endsWith("/posts/p")) {
+          return _json({
+            "postId": "p",
+            "authorId": null,
+            "authorDeleted": true,
+            "fitHash": "abc",
+            "createdAt": "2026-08-19T00:00:00.000Z",
+          });
+        }
+        return _json({"ok": true});
+      };
+      final s = session(cfAccessClientId: "cf-id-1.access", cfAccessClientSecret: "cf-secret-1");
+      await s.ready;
+
+      await s.authed(
+        (dio) async => (await dio.get<Map<String, dynamic>>("$origin/platform/internal/x")).data,
+      );
+      await s.getPost("p");
+
+      for (final options in seen.values) {
+        expect(options.headers["CF-Access-Client-Id"], "cf-id-1.access");
+        expect(options.headers["CF-Access-Client-Secret"], "cf-secret-1");
+      }
+      expect(seen, hasLength(2));
+    });
+
+    test("is absent from every client when not configured", () async {
+      seedSignedIn();
+      final seen = <RequestOptions>[];
+      server.authedHandler = (options) async {
+        seen.add(options);
+        return _json({"ok": true});
+      };
+      final s = session();
+      await s.ready;
+
+      await s.authed(
+        (dio) async => (await dio.get<Map<String, dynamic>>("$origin/platform/internal/x")).data,
+      );
+
+      expect(seen.single.headers["CF-Access-Client-Id"], isNull);
+      expect(seen.single.headers["CF-Access-Client-Secret"], isNull);
     });
   });
 }

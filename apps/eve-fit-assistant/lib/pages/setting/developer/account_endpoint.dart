@@ -130,8 +130,8 @@ class CloudflareAccessServiceTokenTile extends ConsumerWidget {
     leading: const Icon(Icons.shield_outlined),
     title: const Text("Cloudflare Access service token"),
     subtitle: const Text(
-      "CF-Access-Client-Id/-Secret sent to the account API endpoint; "
-      "required for the Access-protected preview environment",
+      "CF-Access-Client-Id/-Secret sent with every request to the platform "
+      "API endpoint; required for the Access-protected preview environment",
     ),
     onTap: () => unawaited(_editToken(context, ref)),
   );
