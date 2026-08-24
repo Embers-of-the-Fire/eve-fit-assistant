@@ -16,7 +16,8 @@ a **Developer Settings** card appears on the Version page.
 
 - Version page → Developer Settings (`/setting/developer-settings`): debug-log toggle,
   remote-content settings visibility, account API endpoint override (production or the
-  Cloudflare-Access-protected preview origin, with a `cf-access-token` entry), open remote
+  Cloudflare-Access-protected preview origin, with a service-token entry holding the
+  `CF-Access-Client-Id`/`CF-Access-Client-Secret` credentials), open remote
   content settings, collect logs, clear cache, and a shortcut to Developer Tools.
 - Developer Settings → Developer Tools (`/setting/developer-tools`): channel overview,
   restart init, trigger feedback, and reset all storage.

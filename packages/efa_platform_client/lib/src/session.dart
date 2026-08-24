@@ -75,12 +75,18 @@ class PlatformSession {
     required String origin,
     required this._store,
     Dio Function()? dioFactory,
-    String? cfAccessToken,
+    String? cfAccessClientId,
+    String? cfAccessClientSecret,
     this._onAuthRequired,
     this._emailLocale,
   }) {
     final createDio = dioFactory ?? Dio.new;
-    _authClient = AccountApiClient(origin: origin, cfAccessToken: cfAccessToken, dio: createDio());
+    _authClient = AccountApiClient(
+      origin: origin,
+      cfAccessClientId: cfAccessClientId,
+      cfAccessClientSecret: cfAccessClientSecret,
+      dio: createDio(),
+    );
     _publicClient = PlatformApiClient(origin: origin, dio: createDio());
     _authedDio = createDio()..interceptors.add(_AuthInterceptor(this));
     // Eagerly start the cold-start load/rotation (errors are contained in

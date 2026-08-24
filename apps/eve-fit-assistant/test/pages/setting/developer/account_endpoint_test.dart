@@ -39,7 +39,8 @@ class _FakeAdapter implements HttpClientAdapter {
 /// provider's exposed type, so the fake extends it and replaces persistence.
 class _MemorySessionStore extends SecurePlatformSessionStore {
   StoredPlatformSession? session;
-  String cfAccessToken = "";
+  String cfAccessClientId = "";
+  String cfAccessClientSecret = "";
 
   @override
   Future<StoredPlatformSession?> read() async => session;
@@ -51,13 +52,23 @@ class _MemorySessionStore extends SecurePlatformSessionStore {
   Future<void> clear() async => session = null;
 
   @override
-  Future<String> readCfAccessToken() async => cfAccessToken;
+  Future<({String clientId, String clientSecret})> readCfAccessServiceToken() async =>
+      (clientId: cfAccessClientId, clientSecret: cfAccessClientSecret);
 
   @override
-  Future<void> writeCfAccessToken(String token) async => cfAccessToken = token.trim();
+  Future<void> writeCfAccessServiceToken({
+    required String clientId,
+    required String clientSecret,
+  }) async {
+    cfAccessClientId = clientId.trim();
+    cfAccessClientSecret = clientSecret.trim();
+  }
 
   @override
-  Future<void> clearCfAccessToken() async => cfAccessToken = "";
+  Future<void> clearCfAccessServiceToken() async {
+    cfAccessClientId = "";
+    cfAccessClientSecret = "";
+  }
 }
 
 class _TestAppSettingService extends AppSettingService {
@@ -86,10 +97,10 @@ ResponseBody _json(Object body, [int status = 200]) => ResponseBody.fromString(
 );
 
 /// Scriptable auth API: serves the cold-start rotation and records every
-/// request URI plus its `cf-access-token` header so tests can assert which
-/// origin a call targeted and which credential it carried.
+/// request URI plus its Cloudflare Access service-token headers so tests can
+/// assert which origin a call targeted and which credential it carried.
 class _Server {
-  final List<({String uri, String? cfAccessToken})> requests = [];
+  final List<({String uri, String? cfAccessClientId, String? cfAccessClientSecret})> requests = [];
 
   /// Overrides the logout response, e.g. to keep the revoke in flight while
   /// the endpoint dialog finishes closing.
@@ -98,7 +109,8 @@ class _Server {
   Future<ResponseBody> fetch(RequestOptions options) async {
     requests.add((
       uri: options.uri.toString(),
-      cfAccessToken: options.headers["cf-access-token"] as String?,
+      cfAccessClientId: options.headers["CF-Access-Client-Id"] as String?,
+      cfAccessClientSecret: options.headers["CF-Access-Client-Secret"] as String?,
     ));
     if (options.path.endsWith("/platform/auth/refresh")) {
       return _json({
@@ -154,8 +166,8 @@ void main() {
       ),
       securePlatformSessionStoreProvider.overrideWithValue(store),
       // Mirrors the real provider's origin resolution (including the rebuild
-      // on an endpoint switch) and Cloudflare Access token read, but routes
-      // HTTP through the fake server.
+      // on an endpoint switch) and Cloudflare Access service-token read, but
+      // routes HTTP through the fake server.
       platformSessionProvider.overrideWith((ref) async {
         final (:developerMode, :customOrigin) = ref.watch(
           appSettingServiceProvider.select<({bool developerMode, String customOrigin})>(
@@ -165,12 +177,13 @@ void main() {
         final custom = customOrigin.trim();
         final origin = developerMode && custom.isNotEmpty ? custom : platformApiProductionOrigin;
         final store = ref.watch(securePlatformSessionStoreProvider);
-        final cfAccessToken = await store.readCfAccessToken();
+        final (:clientId, :clientSecret) = await store.readCfAccessServiceToken();
         return PlatformSession(
           origin: origin,
           store: store,
           dioFactory: () => Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(server.fetch),
-          cfAccessToken: cfAccessToken.isEmpty ? null : cfAccessToken,
+          cfAccessClientId: clientId.isEmpty ? null : clientId,
+          cfAccessClientSecret: clientSecret.isEmpty ? null : clientSecret,
         );
       }),
     ],
@@ -212,9 +225,12 @@ void main() {
     expect(await store.read(), isNull);
   });
 
-  testWidgets("switching the endpoint drops the Cloudflare Access token", (tester) async {
-    // A token issued for the previous origin's Access gate.
-    await store.writeCfAccessToken("cf-token-preview");
+  testWidgets("switching the endpoint drops the Cloudflare Access service token", (tester) async {
+    // A service token issued for the previous origin's Access gate.
+    await store.writeCfAccessServiceToken(
+      clientId: "cf-id-preview.access",
+      clientSecret: "cf-secret-preview",
+    );
     final logoutCompleter = Completer<ResponseBody>();
     server.logoutResponder = () => logoutCompleter.future;
 
@@ -233,15 +249,26 @@ void main() {
 
     // Sanity check: while still on the previous origin, the session did
     // attach the token to its requests (cold-start rotation + revoke).
-    final previousOriginTokens = server.requests
-        .where((request) => request.uri.startsWith(_previousOrigin))
-        .map((request) => request.cfAccessToken);
-    expect(previousOriginTokens, isNotEmpty);
-    expect(previousOriginTokens.every((token) => token == "cf-token-preview"), isTrue);
+    final previousOriginRequests = server.requests.where(
+      (request) => request.uri.startsWith(_previousOrigin),
+    );
+    expect(previousOriginRequests, isNotEmpty);
+    expect(
+      previousOriginRequests.every((request) => request.cfAccessClientId == "cf-id-preview.access"),
+      isTrue,
+    );
+    expect(
+      previousOriginRequests.every(
+        (request) => request.cfAccessClientSecret == "cf-secret-preview",
+      ),
+      isTrue,
+    );
 
     // The switch must have cleared the stored token before the settings
     // update rebuilt the session against the new origin.
-    expect(await store.readCfAccessToken(), isEmpty);
+    final stored = await store.readCfAccessServiceToken();
+    expect(stored.clientId, isEmpty);
+    expect(stored.clientSecret, isEmpty);
 
     final context = tester.element(find.byType(AccountApiEndpointTile));
     final container = ProviderScope.containerOf(context);
@@ -257,6 +284,7 @@ void main() {
       (request) => request.uri.startsWith(_nextOrigin),
     );
     expect(nextOriginRequests, isNotEmpty);
-    expect(nextOriginRequests.every((request) => request.cfAccessToken == null), isTrue);
+    expect(nextOriginRequests.every((request) => request.cfAccessClientId == null), isTrue);
+    expect(nextOriginRequests.every((request) => request.cfAccessClientSecret == null), isTrue);
   });
 }

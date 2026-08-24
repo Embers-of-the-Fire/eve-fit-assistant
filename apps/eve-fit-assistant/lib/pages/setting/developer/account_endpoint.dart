@@ -1,8 +1,9 @@
 part of "page.dart";
 
 /// Developer-only tiles for pointing the platform account client at the
-/// preview deployment and for supplying the Cloudflare Access token that
-/// deployment requires. Hardcoded English per the dev-only localization rule.
+/// preview deployment and for supplying the Cloudflare Access service token
+/// that deployment requires. Hardcoded English per the dev-only localization
+/// rule.
 class AccountApiEndpointTile extends ConsumerWidget {
   const AccountApiEndpointTile({super.key});
 
@@ -47,10 +48,10 @@ class AccountApiEndpointTile extends ConsumerWidget {
               const SizedBox(height: 12),
               const Text(
                 "The preview environment is protected by Cloudflare Access: "
-                "requests without a valid cf-access-token (below) get "
+                "requests without a valid service token (below) get "
                 "the Access login page instead of the API. Changing the "
                 "endpoint signs out the current account session and clears "
-                "the Cloudflare Access token.",
+                "the Cloudflare Access service token.",
               ),
             ],
           ),
@@ -97,19 +98,19 @@ class AccountApiEndpointTile extends ConsumerWidget {
         }
         return;
       }
-      // Sessions and the Cloudflare Access token are scoped to their origin;
-      // never carry either across endpoints. Revoke the current session
-      // BEFORE the settings update: the update rebuilds
+      // Sessions and the Cloudflare Access service token are scoped to their
+      // origin; never carry either across endpoints. Revoke the current
+      // session BEFORE the settings update: the update rebuilds
       // platformSessionProvider against the new origin, so logging out
       // afterwards would send the revoke there and leave the previous-origin
       // session active server-side. The logout is a best-effort server
       // revoke plus a local clear.
       await (await ref.read(platformSessionProvider.future)).logout();
-      // The CF Access token is issued for the old origin's Access gate; left
-      // in place, the rebuilt session would attach it to requests against
-      // the new origin. Clear it before the settings update triggers the
-      // rebuild so the next session starts without it.
-      await ref.read(securePlatformSessionStoreProvider).clearCfAccessToken();
+      // The service token authenticates against the old origin's Access
+      // gate; left in place, the rebuilt session would attach it to requests
+      // against the new origin. Clear it before the settings update triggers
+      // the rebuild so the next session starts without it.
+      await ref.read(securePlatformSessionStoreProvider).clearCfAccessServiceToken();
       ref
           .read(appSettingServiceProvider.notifier)
           .update(
@@ -121,56 +122,70 @@ class AccountApiEndpointTile extends ConsumerWidget {
   }
 }
 
-class CloudflareAccessTokenTile extends ConsumerWidget {
-  const CloudflareAccessTokenTile({super.key});
+class CloudflareAccessServiceTokenTile extends ConsumerWidget {
+  const CloudflareAccessServiceTokenTile({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => ListTile(
     leading: const Icon(Icons.shield_outlined),
-    title: const Text("Cloudflare Access token"),
+    title: const Text("Cloudflare Access service token"),
     subtitle: const Text(
-      "cf-access-token sent to the account API endpoint; required for the "
-      "Access-protected preview environment",
+      "CF-Access-Client-Id/-Secret sent to the account API endpoint; "
+      "required for the Access-protected preview environment",
     ),
     onTap: () => unawaited(_editToken(context, ref)),
   );
 
   Future<void> _editToken(BuildContext context, WidgetRef ref) async {
     final store = ref.read(securePlatformSessionStoreProvider);
-    final controller = TextEditingController(text: await store.readCfAccessToken());
+    final (:clientId, :clientSecret) = await store.readCfAccessServiceToken();
+    final idController = TextEditingController(text: clientId);
+    final secretController = TextEditingController(text: clientSecret);
     try {
       if (!context.mounted) return;
       final saved = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text("Cloudflare Access token"),
+          title: const Text("Cloudflare Access service token"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
-                controller: controller,
+                controller: idController,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: "Client ID",
+                  hintText: "<id>.access",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: secretController,
                 obscureText: true,
                 autocorrect: false,
                 enableSuggestions: false,
                 decoration: const InputDecoration(
-                  labelText: "cf-access-token",
-                  hintText: "cloudflared access token -app=<origin>",
+                  labelText: "Client Secret",
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               const Text(
-                "Obtain with: cloudflared access token -app=\n"
-                "https://efa-platform-api-preview.<subdomain>.workers.dev "
-                "(re-run after the Access session expires).",
+                "Create in the Zero Trust dashboard: Access controls → "
+                "Service credentials → Service Tokens. Requests send the "
+                "CF-Access-Client-Id/-Secret headers; renew the token "
+                "before its configured duration expires.",
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                controller.text = "";
+                idController.text = "";
+                secretController.text = "";
                 Navigator.of(context).pop(true);
               },
               child: const Text("Clear"),
@@ -187,12 +202,16 @@ class CloudflareAccessTokenTile extends ConsumerWidget {
         ),
       );
       if (saved != true) return;
-      await store.writeCfAccessToken(controller.text);
+      await store.writeCfAccessServiceToken(
+        clientId: idController.text,
+        clientSecret: secretController.text,
+      );
       // The token is captured at session construction; rebuild so the next
       // request carries the new value.
       ref.invalidate(platformSessionProvider);
     } finally {
-      controller.dispose();
+      idController.dispose();
+      secretController.dispose();
     }
   }
 }

@@ -58,7 +58,7 @@ class DeveloperSettingsPage extends ConsumerWidget {
           const ConfigListTile.custom(ForceColumnTile()),
           const ConfigListTile.custom(FitUploadTokenTile()),
           const ConfigListTile.custom(AccountApiEndpointTile()),
-          const ConfigListTile.custom(CloudflareAccessTokenTile()),
+          const ConfigListTile.custom(CloudflareAccessServiceTokenTile()),
           ConfigListTile.title(context.l10n.developerSettingsPageSectionActions),
           ConfigListTile.item(
             icon: const Icon(Icons.cloud_sync_outlined),

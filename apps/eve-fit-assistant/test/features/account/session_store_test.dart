@@ -178,4 +178,47 @@ void main() {
     final read = await store.read();
     expect(read?.userId, "user-1");
   });
+
+  test("the Cloudflare Access service token persists as one JSON document", () async {
+    await store.writeCfAccessServiceToken(
+      clientId: " cf-id-1.access ",
+      clientSecret: " cf-secret-1 ",
+    );
+
+    final stored =
+        jsonDecode(storage.backing["account_cf_access_service_token"]!) as Map<String, dynamic>;
+    expect(stored, {"clientId": "cf-id-1.access", "clientSecret": "cf-secret-1"});
+
+    final read = await store.readCfAccessServiceToken();
+    expect(read.clientId, "cf-id-1.access");
+    expect(read.clientSecret, "cf-secret-1");
+  });
+
+  test("writing the service token drops the legacy cf-access-token key", () async {
+    storage.backing["account_cf_access_token"] = "legacy-user-jwt";
+
+    await store.writeCfAccessServiceToken(clientId: "cf-id-1.access", clientSecret: "cf-secret-1");
+
+    expect(storage.backing.containsKey("account_cf_access_token"), isFalse);
+  });
+
+  test("an incomplete service token clears the stored pair", () async {
+    await store.writeCfAccessServiceToken(clientId: "cf-id-1.access", clientSecret: "cf-secret-1");
+    await store.writeCfAccessServiceToken(clientId: "cf-id-1.access", clientSecret: "");
+
+    expect(storage.backing.containsKey("account_cf_access_service_token"), isFalse);
+    final read = await store.readCfAccessServiceToken();
+    expect(read.clientId, isEmpty);
+    expect(read.clientSecret, isEmpty);
+  });
+
+  test("clearAll removes the session and the service token", () async {
+    await store.write(_session("1"));
+    await store.writeCfAccessServiceToken(clientId: "cf-id-1.access", clientSecret: "cf-secret-1");
+    storage.backing["account_cf_access_token"] = "legacy-user-jwt";
+
+    await store.clearAll();
+
+    expect(storage.backing, isEmpty);
+  });
 }

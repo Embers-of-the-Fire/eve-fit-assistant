@@ -30,10 +30,12 @@ const _origin = "https://api.efa-tech.dev";
 AccountApiClient _clientWith(
   Future<ResponseBody> Function(RequestOptions options) onFetch, {
   String origin = _origin,
-  String? cfAccessToken,
+  String? cfAccessClientId,
+  String? cfAccessClientSecret,
 }) => AccountApiClient(
   origin: origin,
-  cfAccessToken: cfAccessToken,
+  cfAccessClientId: cfAccessClientId,
+  cfAccessClientSecret: cfAccessClientSecret,
   dio: Dio(BaseOptions())..httpClientAdapter = _FakeAdapter(onFetch),
 );
 
@@ -168,16 +170,37 @@ void main() {
       );
     });
 
-    test("the Cloudflare Access token is sent as the cf-access-token header", () async {
+    test(
+      "the Cloudflare Access service token is sent as the Client-Id/-Secret header pair",
+      () async {
+        RequestOptions? captured;
+        final client = _clientWith(
+          (options) async {
+            captured = options;
+            return _json(_pair);
+          },
+          cfAccessClientId: "cf-id-1.access",
+          cfAccessClientSecret: "cf-secret-1",
+        );
+
+        await client.login(email: "a@b.c", password: "pw");
+
+        expect(captured?.headers["CF-Access-Client-Id"], "cf-id-1.access");
+        expect(captured?.headers["CF-Access-Client-Secret"], "cf-secret-1");
+      },
+    );
+
+    test("an incomplete Cloudflare Access service token sends no headers", () async {
       RequestOptions? captured;
       final client = _clientWith((options) async {
         captured = options;
         return _json(_pair);
-      }, cfAccessToken: "cf-token-1");
+      }, cfAccessClientId: "cf-id-1.access");
 
       await client.login(email: "a@b.c", password: "pw");
 
-      expect(captured?.headers["cf-access-token"], "cf-token-1");
+      expect(captured?.headers["CF-Access-Client-Id"], isNull);
+      expect(captured?.headers["CF-Access-Client-Secret"], isNull);
     });
   });
 
