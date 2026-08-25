@@ -1,0 +1,13 @@
+name: acl
+description: "ACL token DSL runtime: grammar parser and exact-match token set queries for {domain}:{action}[:{qualifier}] tokens."
+publish_to: none
+resolution: workspace
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
