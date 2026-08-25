@@ -24,7 +24,8 @@ let loadingMore = $state(false);
 let loadMoreFailed = $state(false);
 let feedVersion = 0;
 let fetchedLocale: Locale | null = null;
-let started = false;
+let loadedIdentity: string | null = null;
+let identityInitialized = false;
 
 async function loadFirstPage() {
     const version = ++feedVersion;
@@ -67,18 +68,35 @@ async function loadMore() {
     }
 }
 
-// The feed needs the session to be settled; a signed-in identity starting (or
-// changing) kicks off the first page exactly once per sign-in.
+// The feed needs the session to be settled; every identity change (including
+// sign-out) invalidates in-flight requests via feedVersion and reloads the
+// first page for the new identity, so stale posts can neither stay visible
+// nor commit for another account.
 $effect(() => {
-    if (!started && authState.ready && authState.identity !== null) {
-        started = true;
+    if (!authState.ready) return;
+    const userId = authState.identity?.userId ?? null;
+    if (identityInitialized && userId === loadedIdentity) return;
+    untrack(() => {
+        identityInitialized = true;
+        loadedIdentity = userId;
+        if (userId === null) {
+            // Signed out: drop the previous account's feed and invalidate
+            // in-flight requests so their results cannot commit.
+            ++feedVersion;
+            posts = [];
+            nextCursor = null;
+            failed = false;
+            loadingMore = false;
+            loadMoreFailed = false;
+            return;
+        }
         loadFirstPage();
-    }
+    });
 });
 
 $effect(() => {
     const current = locale.current;
-    if (!started || fetchedLocale === null || current === fetchedLocale) return;
+    if (loadedIdentity === null || fetchedLocale === null || current === fetchedLocale) return;
     untrack(() => {
         loadFirstPage();
     });
