@@ -1,0 +1,19 @@
+{
+    "name": "acl-ts",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "check": "tsc --noEmit",
+        "pretest": "pnpm --filter acl-tool generate:fixtures",
+        "test": "vitest run"
+    },
+    "devDependencies": {
+        "acl-tool": "workspace:*",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.11"
+    }
+}

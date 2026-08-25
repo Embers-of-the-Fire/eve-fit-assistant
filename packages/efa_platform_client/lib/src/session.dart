@@ -226,6 +226,13 @@ class PlatformSession {
     await _clearSession();
   }
 
+  /// `POST /account` with a fresh access token: identity plus the account's
+  /// ACL roles and their resolved permission tokens (see `packages/efa_acl`).
+  Future<PlatformAccountInfo> accountInfo() async {
+    final accessToken = await _requireValidAccessToken();
+    return _authClient.account(accessToken: accessToken);
+  }
+
   // ---- public reads (no auth involved) ----
 
   /// Cursor-paginated post list. [limit] is clamped server-side to 1..50

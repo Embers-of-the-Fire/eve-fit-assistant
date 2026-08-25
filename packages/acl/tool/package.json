@@ -1,0 +1,19 @@
+{
+    "name": "acl-tool",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "check": "tsc --noEmit",
+        "test": "vitest run",
+        "generate:fixtures": "node src/cli.ts --schema ../example/acl.yaml --ts ../ts/test/fixtures/generated/acl.generated.ts --dart ../dart/test/fixtures/generated/acl_test.generated.dart --ts-runtime-import ../../../src/index"
+    },
+    "dependencies": {
+        "yaml": "^2.9.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.11"
+    }
+}

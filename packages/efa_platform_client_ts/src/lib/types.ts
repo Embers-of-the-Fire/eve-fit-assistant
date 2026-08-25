@@ -38,3 +38,17 @@ export interface PlatformIdentity {
     userId: string;
     email: string;
 }
+
+/**
+ * Account record returned by the auth API's `POST /account` endpoint:
+ * identity plus the account's placeholder ACL roles and their resolved
+ * permission tokens (schema and roles: `packages/efa_acl`).
+ */
+export interface PlatformAccountInfo {
+    userId: string;
+    email: string;
+    /** The account's ACL role names (source of truth: `users.acl_roles`). */
+    roles: string[];
+    /** The roles' resolved ACL tokens (`{domain}:{action}[:{qualifier}]`). */
+    permissions: string[];
+}

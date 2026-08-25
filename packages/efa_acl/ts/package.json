@@ -1,0 +1,22 @@
+{
+    "name": "efa-acl-ts",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "check": "tsc --noEmit",
+        "generate": "node ../../acl/tool/src/cli.ts --schema ../acl.yaml --ts src/acl.generated.ts --dart ../dart/lib/acl.generated.dart",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "acl-ts": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.11"
+    }
+}

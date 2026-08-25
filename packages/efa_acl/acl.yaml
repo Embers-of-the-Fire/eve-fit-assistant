@@ -1,0 +1,40 @@
+# Product ACL schema for the EFA platform. This is the single source of truth
+# for permission domains/actions; the typed Dart and TypeScript bindings in
+# this package are generated from it (see docs/dsl.md in packages/acl for the
+# schema format). Regenerate with `pnpm --filter efa-acl-ts generate`.
+post:
+  description: Fit post management permission group.
+  actions:
+    create:
+      description: Publish fit posts to the platform.
+    delete:
+      description: Delete fit posts.
+      qualifiers:
+        own: Delete posts published by the account itself.
+        all: Delete any post on the platform.
+
+admin:
+  description: Platform administration permission group.
+  actions:
+    manage_roles:
+      description: Assign or revoke account permission roles.
+
+roles:
+  user:
+    description: Base role granted to every account.
+    default: true
+    tokens:
+      - post:create
+      - post:delete:own
+  moderator:
+    description: Can moderate posts published by any account.
+    tokens:
+      - post:create
+      - post:delete:own
+      - post:delete:all
+  admin:
+    description: Full platform administration.
+    tokens:
+      - post:create
+      - post:delete:all
+      - admin:manage_roles

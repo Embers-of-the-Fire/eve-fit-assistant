@@ -1,0 +1,40 @@
+# Example ACL schema used as the test fixture for both runtimes and the
+# codegen tool. Consumers define their own schema; see docs/dsl.md.
+post:
+  description: Post management permission group.
+  actions:
+    create:
+      description: Create posts.
+    delete:
+      description: Delete posts.
+      qualifiers:
+        own: Manage owned posts.
+        all: Manage all posts.
+
+comment:
+  description: Comment management permission group.
+  actions:
+    create:
+      description: Create comments.
+    delete:
+      description: Delete comments.
+      qualifiers:
+        own: Manage owned comments.
+        all: Manage all comments.
+
+roles:
+  user:
+    description: Base role granted to every account.
+    default: true
+    tokens:
+      - post:create
+      - post:delete:own
+      - comment:create
+      - comment:delete:own
+  moderator:
+    description: Can remove any post or comment.
+    tokens:
+      - post:create
+      - post:delete:all
+      - comment:create
+      - comment:delete:all

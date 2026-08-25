@@ -11,6 +11,8 @@ changes inside it while working on the parent repository. Initialize it after cl
 
 | Package | Role |
 | ------- | ---- |
+| `acl/` | Dual-runtime (Dart + TypeScript) ACL token DSL library with YAML-driven codegen; single-package layout with `dart/`, `ts/`, and `tool/` subdirectories (exception to the `efa_*` sibling convention). |
+| `efa_acl/` | Product ACL bindings for the EFA platform: `acl.yaml` schema at the root, generated Dart/TS bindings, and the default placeholder permission roles; single-package layout like `acl/`. |
 | `efa_compat/` | Platform compatibility shims for `dart:io`, isolates, and web WASM preconditions. |
 | `efa_component/` | Shared presentational Flutter widgets and image assets. |
 | `efa_constant/` | Dependency-free EVE static constant definitions. |

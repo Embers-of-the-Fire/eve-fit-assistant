@@ -2,7 +2,12 @@ import { AccountApiClient, type FetchLike } from "./client";
 import { AccountApiError, PlatformAuthRequiredError } from "./errors";
 import { decodeJwtSubject } from "./jwt";
 import type { PlatformSessionStore } from "./store";
-import type { AuthTokenPair, PlatformIdentity, StoredPlatformSession } from "./types";
+import type {
+    AuthTokenPair,
+    PlatformAccountInfo,
+    PlatformIdentity,
+    StoredPlatformSession,
+} from "./types";
 
 /**
  * Production origin of the platform API (`worker/efa-platform-api`): auth
@@ -209,6 +214,15 @@ export class PlatformSession {
         const accessToken = await this._requireValidAccessToken();
         await this._authClient.deregister(accessToken, password);
         await this._clearSession();
+    }
+
+    /**
+     * `POST /account` with a fresh access token: identity plus the account's
+     * ACL roles and their resolved permission tokens (see `packages/efa_acl`).
+     */
+    async accountInfo(): Promise<PlatformAccountInfo> {
+        const accessToken = await this._requireValidAccessToken();
+        return this._authClient.account(accessToken);
     }
 
     // ---- escape hatch for future authenticated endpoints ----

@@ -1,5 +1,5 @@
 import { AccountApiError } from "./errors";
-import type { AuthTokenPair } from "./types";
+import type { AuthTokenPair, PlatformAccountInfo } from "./types";
 
 const AUTH_BASE_PATH = "/platform/auth";
 
@@ -65,6 +65,35 @@ export class AccountApiClient {
      */
     deregister(accessToken: string, password: string): Promise<void> {
         return this._post("/deregister", { password }, accessToken);
+    }
+
+    /**
+     * `POST /account`: identity plus the account's ACL roles and their
+     * resolved permission tokens. Requires the current access token as
+     * Bearer.
+     */
+    async account(accessToken: string): Promise<PlatformAccountInfo> {
+        const data = await this._postRaw("/account", {}, accessToken);
+        if (data === null) {
+            throw new AccountApiError(null, null, "empty response body");
+        }
+        const info = data as Partial<PlatformAccountInfo>;
+        if (
+            typeof info.userId !== "string" ||
+            typeof info.email !== "string" ||
+            !Array.isArray(info.roles) ||
+            !info.roles.every((role) => typeof role === "string") ||
+            !Array.isArray(info.permissions) ||
+            !info.permissions.every((token) => typeof token === "string")
+        ) {
+            throw new AccountApiError(null, null, "malformed account info");
+        }
+        return {
+            userId: info.userId,
+            email: info.email,
+            roles: info.roles,
+            permissions: info.permissions,
+        };
     }
 
     /**

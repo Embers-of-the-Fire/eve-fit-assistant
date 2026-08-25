@@ -6,6 +6,8 @@ environment:
 
 workspace:
   - apps/eve-fit-assistant
+  - packages/acl/dart
+  - packages/efa_acl/dart
   - packages/efa_compat
   - packages/efa_component
   - packages/efa_constant
@@ -62,6 +64,8 @@ melos:
       packageFilters:
         scope:
           - eve_fit_assistant
+          - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -74,6 +78,8 @@ melos:
       packageFilters:
         scope:
           - eve_fit_assistant
+          - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -86,6 +92,8 @@ melos:
       packageFilters:
         scope:
           - eve_fit_assistant
+          - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -98,6 +106,8 @@ melos:
       packageFilters:
         scope:
           - eve_fit_assistant
+          - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -113,12 +123,18 @@ melos:
       description: Run the packages' test suites.
       steps:
         - pkg:l10n
+        - acl:gen
         - pkg:test:exec
+    acl:gen:
+      description: Generate the ACL package's test fixtures from the example schema.
+      exec: pnpm --filter acl-tool generate:fixtures
     pkg:test:exec:
       private: true
       exec: flutter test
       packageFilters:
         scope:
+          - acl
+          - efa_acl
           - efa_fit
           - efa_component
           - efa_fit_snapshot

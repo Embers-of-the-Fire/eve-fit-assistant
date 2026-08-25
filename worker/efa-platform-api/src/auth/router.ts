@@ -2,10 +2,11 @@
 // bodies; errors follow the platform envelope { "error": code, "message" }.
 // Persistent state lives in D1 (users, sessions); atomic OTP and rate-limit
 // state lives in the AUTH_OTP / AUTH_RATE_LIMIT Durable Objects; AUTH_KV
-// holds only the short-lived rotation stash.
+// holds the short-lived rotation stash and the resolved-ACL cache.
 
 import { Hono } from "hono";
 import { z } from "zod";
+import { getUserAcl } from "./acl.ts";
 import { type OtpEmailEnv, type OtpEmailInput, sendOtpEmail } from "./email.ts";
 import { getAuthClaims, requireAccessToken } from "./middleware.ts";
 import {
@@ -704,6 +705,41 @@ export function createAuthApp(deps: AuthDeps = {}): Hono<{ Bindings: AuthEnv }> 
                 return errorJson(401, "invalid_token", "missing or invalid access token");
             }
             return c.json({ ok: true }, 200);
+        },
+    );
+
+    // Authenticated account read: identity plus the account's ACL roles and
+    // their resolved permission tokens (roles live on the account row; the
+    // resolution is served through the AUTH_KV cache).
+    app.post(
+        "/account",
+        requireAccessToken<{ Bindings: AuthEnv }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: async (c, claims) => {
+                const user = await getUserById(c.env.FIT_DB, claims.sub);
+                if (user?.status !== "active" || user.token_version !== claims.tv) {
+                    return errorJson(401, "invalid_token", "missing or invalid access token");
+                }
+            },
+        }),
+        async (c) => {
+            const claims = getAuthClaims(c);
+            // Re-read the row: the middleware validated it before this
+            // handler ran, and it carries the acl_roles source of truth.
+            const user = await getUserById(c.env.FIT_DB, claims.sub);
+            if (user?.status !== "active" || user.token_version !== claims.tv) {
+                return errorJson(401, "invalid_token", "missing or invalid access token");
+            }
+            const acl = await getUserAcl(c.env, user);
+            return c.json(
+                {
+                    userId: user.user_id,
+                    email: user.email,
+                    roles: acl.roles,
+                    permissions: acl.permissions,
+                },
+                200,
+            );
         },
     );
 

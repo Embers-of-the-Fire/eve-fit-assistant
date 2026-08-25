@@ -9,6 +9,8 @@
         "includes": [
             "site/**/*",
             "worker/**/*",
+            "packages/acl/ts/**/*",
+            "packages/acl/tool/**/*",
             "packages/efa_fit_snapshot_ts/**/*",
             "packages/efa_platform_client_ts/**/*"
         ],

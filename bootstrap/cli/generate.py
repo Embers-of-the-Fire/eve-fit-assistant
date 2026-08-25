@@ -15,6 +15,7 @@ from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import I18N_ROOT
+from bootstrap.constant import PROJECT_ROOT
 from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
@@ -137,6 +138,36 @@ def _run_dart(watch: bool) -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
 
 
+def _run_acl() -> None:
+    """Generate ACL test fixtures for both runtimes from the example schema.
+
+    Thin wrapper over the `acl-tool` package's `generate:fixtures` script; the
+    generator itself lives in `packages/acl/tool`. Skips with a warning when
+    pnpm is unavailable.
+    """
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        warning(
+            "pnpm not found on PATH; install dependencies with `pnpm install` "
+            "to enable ACL fixture generation. Skipping."
+        )
+        return
+    if runtime.is_dry_run():
+        info("[Dry-Run] Would generate ACL test fixtures.")
+        return
+    runtime.execute(
+        [pnpm, "--filter", "acl-tool", "generate:fixtures"],
+        "ACL CODEGEN OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
+    # Product bindings for packages/efa_acl (schema at packages/efa_acl/acl.yaml).
+    runtime.execute(
+        [pnpm, "--filter", "efa-acl-ts", "generate"],
+        "EFA ACL CODEGEN OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
+
+
 def _run_l10n_once() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:l10n")
     runtime.run_melos("app:l10n", "FLUTTER GEN-L10N OUTPUT")
@@ -167,6 +198,7 @@ def register_generate_commands(cli_group: click.Group) -> None:
         _run_protobuf()
         _run_rust()
         _run_dart(watch=False)
+        _run_acl()
         _run_l10n_once()
 
         if ctx.obj.get("format_source", False):
@@ -194,6 +226,14 @@ def register_generate_commands(cli_group: click.Group) -> None:
     def dart_build_runner(ctx: click.Context, watch: bool):
         """Run `flutter pub run build_runner build`."""
         _run_dart(watch=watch)
+        if ctx.obj.get("format_source", False):
+            runtime.run_format()
+
+    @generate.command("acl")
+    @click.pass_context
+    def acl_cmd(ctx: click.Context):
+        """Generate ACL test fixtures for both runtimes from the example schema."""
+        _run_acl()
         if ctx.obj.get("format_source", False):
             runtime.run_format()
 

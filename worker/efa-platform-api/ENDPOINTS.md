@@ -171,6 +171,26 @@ Responses:
 - `429 rate_limited` — 5 failed attempts/30 min per account+IP (successful
   calls are refunded and never consume quota).
 
+### `/account`
+
+Authenticated account read: identity plus the account's placeholder ACL roles
+and their resolved permission tokens (schema and roles: `packages/efa_acl`).
+Roles are stored on the account row (`users.acl_roles`, source of truth); the
+resolved token set is served through the `AUTH_KV` cache
+(`acl:<userId>`, 5-minute TTL, self-healing on role divergence).
+
+Request: `{}`; requires `Authorization: Bearer <accessToken>`.
+
+Responses:
+
+- `200 { "userId": string, "email": string, "roles": string[],
+  "permissions": string[] }` — `permissions` is the union of the roles' ACL
+  tokens (`{domain}:{action}[:{qualifier}]`). `roles` is self-view only:
+  clients must treat role names as opaque internal identifiers (label-map them
+  before display) and gate UI exclusively on `permissions`.
+- `401 invalid_token` — missing/invalid/expired access token, or a stale token
+  version.
+
 ### `/reset-password`
 
 Requests a password-reset code. Enumeration-safe by construction.

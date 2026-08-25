@@ -12,7 +12,10 @@ The package provides:
   cold-start rotation, 401 retry, session clearing), and the public
   `/platform/internal` read endpoints;
 - `PlatformIdentity`/`identity`/`me` for the signed-in profile (derived
-  locally: JWT subject + cached email; no server `/me` endpoint exists yet);
+  locally: JWT subject + cached email), and
+  `PlatformAccountInfo`/`accountInfo()` for the server-side account record
+  (`POST /platform/auth/account`: identity plus the placeholder ACL roles and
+  their resolved permission tokens — see `packages/efa_acl`);
 - `PlatformAuthRequiredException` plus the `onAuthRequired` hook for the
   "interactive login required" signal (throttled to once per signed-out
   stretch);

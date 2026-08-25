@@ -1,4 +1,5 @@
 <script lang="ts">
+import { accountAclState, loadAccountAcl, roleLabel } from "../lib/acl.svelte";
 import { authState, getSession } from "../lib/auth.svelte";
 import { accountErrorMessage } from "../lib/auth-errors";
 import { t } from "../lib/i18n.svelte";
@@ -15,6 +16,15 @@ let error = $state<string | null>(null);
 let confirmingLogout = $state(false);
 let confirmingDeregister = $state(false);
 let deregisterPassword = $state("");
+
+// Fetch the account's roles/permissions whenever auth is ready; calling on the
+// signed-out path too lets loadAccountAcl clear the previous identity's state
+// (it no-ops while already loaded).
+$effect(() => {
+    if (authState.ready) {
+        loadAccountAcl();
+    }
+});
 
 async function logout() {
     busy = true;
@@ -85,7 +95,21 @@ const inputClass =
             <p class="text-sm text-console-text-muted">
                 {t("account.userId")}: {authState.identity.userId}
             </p>
+            {#if accountAclState.roles.length > 0}
+                <p class="text-sm text-console-text-muted">
+                    {t("account.roles")}: {accountAclState.roles.map(roleLabel).join(", ")}
+                </p>
+            {/if}
         </div>
+
+        {#if accountAclState.acl.can("admin:manage_roles")}
+            <div class="mb-6 rounded border border-dashed border-console-primary/60 bg-console-deep p-4">
+                <p class="mb-1 text-sm font-semibold text-console-primary">
+                    {t("account.adminSection")}
+                </p>
+                <p class="text-sm text-console-text-muted">{t("account.adminPlaceholder")}</p>
+            </div>
+        {/if}
 
         <div class="grid gap-3">
             {#if confirmingLogout}

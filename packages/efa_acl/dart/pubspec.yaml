@@ -1,0 +1,17 @@
+name: efa_acl
+description: "EFA platform ACL product bindings: typed tokens generated from acl.yaml plus the default placeholder permission roles."
+publish_to: none
+resolution: workspace
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  acl:
+    path: ../../acl/dart
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

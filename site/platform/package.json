@@ -12,6 +12,7 @@
     },
     "dependencies": {
         "@bufbuild/protobuf": "^2.14.0",
+        "efa-acl-ts": "workspace:*",
         "efa-fit-snapshot-ts": "workspace:*",
         "efa-platform-client-ts": "workspace:*",
         "efa-proto-ts": "workspace:*"
