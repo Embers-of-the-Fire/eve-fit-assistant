@@ -198,6 +198,7 @@ def register_generate_commands(cli_group: click.Group) -> None:
         _run_protobuf()
         _run_rust()
         _run_dart(watch=False)
+        _run_acl()
         _run_l10n_once()
 
         if ctx.obj.get("format_source", False):
