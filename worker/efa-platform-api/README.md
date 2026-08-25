@@ -159,7 +159,8 @@ Local secrets: copy `.dev.vars.example` to `.dev.vars` and set a token.
 1. Apply migrations: `wrangler d1 migrations apply efa-platform --remote`
    for the default environment and `wrangler d1 migrations apply efa-platform-test
    --remote --env preview` for the preview environment.
-2. Create the auth KV namespaces (rotation stash only): `wrangler kv namespace create
+2. Create the auth KV namespaces (rotation stash plus the `acl:<userId>`
+   resolved-permission cache): `wrangler kv namespace create
    efa-platform-auth` for the default environment and `wrangler kv namespace create
    efa-platform-auth --env preview` for the preview environment, then paste the
    IDs into `wrangler.toml` (`[[kv_namespaces]]` and
