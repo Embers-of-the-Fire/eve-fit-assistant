@@ -17,10 +17,11 @@ let confirmingLogout = $state(false);
 let confirmingDeregister = $state(false);
 let deregisterPassword = $state("");
 
-// Fetch the account's roles/permissions whenever a signed-in identity is
-// present (loadAccountAcl no-ops while signed out or already loaded).
+// Fetch the account's roles/permissions whenever auth is ready; calling on the
+// signed-out path too lets loadAccountAcl clear the previous identity's state
+// (it no-ops while already loaded).
 $effect(() => {
-    if (authState.ready && authState.identity !== null) {
+    if (authState.ready) {
         loadAccountAcl();
     }
 });
