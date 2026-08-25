@@ -62,14 +62,14 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
     );
     // Client-side ACL gate for the upload action: the platform API enforces
     // `post:create` for real; here the button only appears for accounts whose
-    // resolved permissions include it. Fail-closed while the ACL loads.
+    // resolved permissions include it. Fail-closed while the ACL loads, and
+    // ignore stale values kept from a previous resolution during refresh or
+    // after an error (`hasValue` stays true in both cases).
     final accountAcl = ref.watch(accountAclProvider);
-    final canCreatePost = accountAcl.value?.canPostCreate() ?? false;
+    final aclReady = !accountAcl.isLoading && !accountAcl.hasError;
+    final canCreatePost = aclReady && (accountAcl.value?.canPostCreate() ?? false);
     final showUploadDeniedNote =
-        signedIn &&
-        accountAcl.hasValue &&
-        !canCreatePost &&
-        _selectedFormat == FitTextExportFormat.snapshot;
+        signedIn && aclReady && !canCreatePost && _selectedFormat == FitTextExportFormat.snapshot;
     final uploadResult = _uploadResult;
     return AppDialog(
       title: context.l10n.fitExportDialogTitle,
