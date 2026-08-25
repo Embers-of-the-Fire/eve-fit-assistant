@@ -57,7 +57,6 @@ melos:
       description: Statically analyze the app's Dart code.
       steps:
         - pkg:l10n
-        - acl:gen
         - app:analyze:exec
     app:analyze:exec:
       private: true

@@ -55,6 +55,27 @@ def _step_protobuf_ts() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "TypeScript protobuf generation completed."))
 
 
+def _step_acl() -> None:
+    """Generate ACL test fixtures for both runtimes (requires pnpm).
+
+    The `acl` Dart package's test suite imports these gitignored fixtures, so
+    the fixtures must exist before `dart analyze` runs in the pnpm-less Dart
+    shell. A filtered `pnpm install` is performed first because the Dart CI
+    job never installs JS dependencies.
+    """
+    pnpm = get_command("pnpm")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm install --filter acl-tool"
+    )
+    execute_command([pnpm, "install", "--filter", "acl-tool"], "PNPM INSTALL OUTPUT")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+        + "pnpm --filter acl-tool generate:fixtures"
+    )
+    execute_command([pnpm, "--filter", "acl-tool", "generate:fixtures"], "ACL CODEGEN OUTPUT")
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "ACL fixture generation completed."))
+
+
 def _step_frb() -> None:
     """Generate flutter-rust-bridge glue code."""
     native_output_dir = EFA_APP_ROOT / "lib" / "native"
@@ -105,15 +126,16 @@ CODEGEN_STEPS = {
     "frb": {"run": _step_frb, "depends": []},
     "dart_build_runner": {"run": _step_dart_build_runner, "depends": ["frb", "protobuf"]},
     "l10n": {"run": _step_l10n, "depends": []},
+    "acl": {"run": _step_acl, "depends": []},
 }
 
 
 LANGUAGE_STEPS = {
     "python": ["protobuf"],
-    "dart": ["protobuf", "frb", "dart_build_runner", "l10n"],
+    "dart": ["protobuf", "frb", "dart_build_runner", "l10n", "acl"],
     "site": ["protobuf_ts"],
     "snapshot-ts": ["protobuf_ts"],
-    "all": ["protobuf", "protobuf_ts", "frb", "dart_build_runner", "l10n"],
+    "all": ["protobuf", "protobuf_ts", "frb", "dart_build_runner", "l10n", "acl"],
 }
 
 
