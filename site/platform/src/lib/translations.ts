@@ -79,6 +79,9 @@ export const en = {
     "role.user": "Member",
     "role.moderator": "Moderator",
     "role.admin": "Administrator",
+    "account.adminSection": "Administration",
+    "account.adminPlaceholder":
+        "Admin-only placeholder panel, shown because this account passes the client-side ACL check. Real authorization is enforced by the API.",
     "account.signOut": "Sign out",
     "account.signOutConfirm": "Sign out?",
     "account.signOutConfirmDesc": "You will be signed out and the local session will be cleared.",
@@ -211,6 +214,9 @@ export const zh: Record<TranslationKey, string> = {
     "role.user": "成员",
     "role.moderator": "版主",
     "role.admin": "管理员",
+    "account.adminSection": "管理",
+    "account.adminPlaceholder":
+        "管理员专用占位面板：当前账号通过了客户端 ACL 检查，因此显示此面板。实际权限由 API 强制执行。",
     "account.signOut": "退出登录",
     "account.signOutConfirm": "退出登录？",
     "account.signOutConfirmDesc": "将退出当前账号，本地会话将被清除。",

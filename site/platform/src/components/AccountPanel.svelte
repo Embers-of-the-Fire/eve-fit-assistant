@@ -101,6 +101,15 @@ const inputClass =
             {/if}
         </div>
 
+        {#if accountAclState.acl.can("admin:manage_roles")}
+            <div class="mb-6 rounded border border-dashed border-console-primary/60 bg-console-deep p-4">
+                <p class="mb-1 text-sm font-semibold text-console-primary">
+                    {t("account.adminSection")}
+                </p>
+                <p class="text-sm text-console-text-muted">{t("account.adminPlaceholder")}</p>
+            </div>
+        {/if}
+
         <div class="grid gap-3">
             {#if confirmingLogout}
                 <div class="rounded border border-console-border bg-console-deep p-4">

@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/account/roles.dart";
 import "package:eve_fit_assistant/pages/router.dart";
+import "package:eve_fit_assistant/pages/setting/account/admin_placeholder.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -89,6 +90,7 @@ class _SignedInView extends ConsumerWidget {
           title: context.l10n.accountDeregisterTileTitle,
           onTap: () => unawaited(_deregister(context, ref)),
         ),
+        const ConfigListTile.custom(AccountAdminPlaceholder()),
       ],
     );
   }
