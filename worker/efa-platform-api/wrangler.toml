@@ -89,9 +89,14 @@ class_name = "OtpState"
 name = "AUTH_RATE_LIMIT"
 class_name = "RateLimitWindow"
 
+# Must target the fit-storage worker's `preview` environment explicitly
+# (`<name>-preview`, same convention as site/platform's PLATFORM_API binding):
+# a service binding without it resolves to the target Worker's default
+# (production) environment, leaking preview fits into the production
+# `efa-platform` D1 while the preview chain reads `efa-platform-test`.
 [[env.preview.services]]
 binding = "FIT_STORAGE"
-service = "efa-platform-fit-storage"
+service = "efa-platform-fit-storage-preview" # env=preview for efa-platform-fit-storage
 
 [env.preview.observability]
 enabled = true
