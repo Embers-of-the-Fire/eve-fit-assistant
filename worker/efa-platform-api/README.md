@@ -64,14 +64,17 @@ origins, the web app origins, and loopback dev origins), so arbitrary sites
 cannot relay the token and email flows through a visitor's browser; clients
 without an `Origin` header (the native app) are unaffected. Errors are JSON
 `{ "error": <code>, "message": <string> }` with status 400 `bad_request`, 401
-`invalid_token` (`unauthorized` is no longer used), 404 `not_found`, 500
+`invalid_token` (`unauthorized` is no longer used), 403 `forbidden` (ACL
+permission missing), 404 `not_found`, 500
 `internal`; errors from fit-storage are
 passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 `validation_failed`).
 
 | Endpoint | Auth | Description |
 | --- | --- | --- |
-| `POST /platform/internal/posts` | account | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted }` |
+| `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted }` |
+| `DELETE /platform/internal/posts/:id` | account + `post:delete:{own,all}` | Deletes the post row. `own` covers only the caller's own posts, `all` any post (qualifier validated against `posts.author_id` in the handler; NULL-author tombstones need `all`). The shared `fits` blob is unaffected. `200 { postId }`; 404 on unknown id |
+| `GET /platform/internal/my/posts` | account | The caller's own posts; same keyset pagination contract and summary shape as the public list, minus the ship/window filters. `Cache-Control: no-store` |
 | `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted }`; 400 on malformed UUID |
 | `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes, immutable cache |
 | `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache |
@@ -81,10 +84,17 @@ passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 | `GET /platform/internal/posts/:id/threads` | public | Stub: `{ "threads": [] }` |
 | `GET /platform/internal/health` | public | `{ "ok": true }`; a valid Bearer token additionally pings D1 and the fit-storage binding |
 
-Public reads are unauthenticated; post creation requires an account access
-token (`Authorization: Bearer <accessToken>`, verified with the same
-active-status and `token_version` re-check as `/platform/auth/deregister`;
-failures return `401 invalid_token`). The shared `FIT_STORAGE_TOKEN` bearer
+Public reads are unauthenticated; post creation and deletion require an
+account access token (`Authorization: Bearer <accessToken>`, verified with
+the same active-status and `token_version` re-check as
+`/platform/auth/deregister`; failures return `401 invalid_token`) plus an ACL
+permission. The `requirePermission` middleware (`src/auth/permission.ts`)
+resolves the account's roles into tokens (through the `AUTH_KV` cache) and
+performs the action-level match: unqualified actions (`post:create`) need the
+exact token, qualified actions (`post:delete`) pass with any qualifier and
+the handler validates the qualifier against the resource (`own` = the
+caller authors the post, `all` = any post). A missing permission returns
+`403 forbidden`. The shared `FIT_STORAGE_TOKEN` bearer
 no longer gates uploads — it only unlocks the privileged `/health` probes.
 Binding calls between this worker and fit-storage are account-internal and
 unauthenticated.
@@ -96,7 +106,8 @@ author is a tombstone; `authorDeleted` is `true` when `authorId` is `null`
 removes posts: deregistration anonymizes the user row in place, and a hard
 user delete nulls the reference (`ON DELETE SET NULL`) — either way the post
 survives with `authorDeleted: true`. Deleting a post is a plain row drop with
-no effect on users. Posts created before accounts existed were migrated with
+no effect on users, gated by the `post:delete:{own,all}` ACL tokens (above).
+Posts created before accounts existed were migrated with
 `author_id = NULL` and read as tombstones.
 
 ## Data model

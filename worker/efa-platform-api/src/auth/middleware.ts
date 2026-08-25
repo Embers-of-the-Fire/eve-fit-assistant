@@ -5,12 +5,15 @@
 // getAuthClaims.
 
 import type { Context, Env, MiddlewareHandler } from "hono";
+import { getUserById, type UserRow } from "./store.ts";
 import { type AccessTokenClaims, verifyAccessToken } from "./tokens.ts";
 
 declare module "hono" {
     interface ContextVariableMap {
         // Verified access-token claims; set by requireAccessToken.
         authClaims?: AccessTokenClaims;
+        // The verified account row; set by requireActiveAccount.
+        authUser?: UserRow;
     }
 }
 
@@ -62,4 +65,29 @@ export function getAuthClaims(c: Context): AccessTokenClaims {
         throw new Error("getAuthClaims called without requireAccessToken");
     }
     return claims;
+}
+
+// Ready-made validateClaims for routes that need the account row: re-reads
+// the user and rejects deregistered/absent accounts and tokens issued before
+// a token_version bump, then publishes the row as the authUser context
+// variable for downstream guards (requirePermission) and handlers.
+export async function requireActiveAccount<E extends { Bindings: { FIT_DB: D1Database } }>(
+    c: Context<E>,
+    claims: AccessTokenClaims,
+): Promise<Response | undefined> {
+    const user = await getUserById(c.env.FIT_DB, claims.sub);
+    if (user?.status !== "active" || user.token_version !== claims.tv) {
+        return errorJson(401, "invalid_token", "missing or invalid access token");
+    }
+    c.set("authUser", user);
+}
+
+// The verified account row of the current request. Only callable downstream
+// of requireActiveAccount.
+export function getAuthUser(c: Context): UserRow {
+    const user = c.get("authUser");
+    if (!user) {
+        throw new Error("getAuthUser called without requireActiveAccount");
+    }
+    return user;
 }

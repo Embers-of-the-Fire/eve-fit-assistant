@@ -400,6 +400,8 @@
   "fitUploadUrlCopied": "Snapshot URL copied to clipboard.",
   "fitUploadErrorDataNotReady": "The data repository is not ready yet. Try again later.",
   "fitUploadErrorUnauthorized": "The upload token is invalid. Check it in Developer Settings.",
+  "fitUploadErrorForbidden": "This account is not allowed to publish fits to the platform.",
+  "fitUploadNoPermission": "This account is not allowed to publish fits to the platform.",
   "fitUploadErrorSnapshotIncomplete": "The platform has not ingested the current data snapshot yet. Try again later.",
   "fitUploadErrorValidation": "The platform rejected this fit: {message}",
   "fitUploadErrorUnknownType": "The platform could not recognize an item in this fit: {message}",

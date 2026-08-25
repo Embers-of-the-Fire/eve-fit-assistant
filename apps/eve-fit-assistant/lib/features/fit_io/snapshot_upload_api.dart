@@ -15,6 +15,7 @@ final fitSnapshotUploadApiProvider = Provider<FitSnapshotUploadApi>(
 enum FitUploadErrorCode {
   badRequest,
   unauthorized,
+  forbidden,
   notFound,
   snapshotIncomplete,
   unknownType,
@@ -108,6 +109,7 @@ class FitSnapshotUploadApi {
     final envelopeCode = switch (body?.error) {
       "bad_request" => FitUploadErrorCode.badRequest,
       "unauthorized" => FitUploadErrorCode.unauthorized,
+      "forbidden" => FitUploadErrorCode.forbidden,
       "not_found" => FitUploadErrorCode.notFound,
       "snapshot_incomplete" => FitUploadErrorCode.snapshotIncomplete,
       "unknown_type" => FitUploadErrorCode.unknownType,
@@ -119,7 +121,10 @@ class FitSnapshotUploadApi {
     }
     final statusCode = switch (e.response?.statusCode) {
       400 => FitUploadErrorCode.badRequest,
-      401 || 403 => FitUploadErrorCode.unauthorized,
+      401 => FitUploadErrorCode.unauthorized,
+      // 403 is the worker's ACL permission failure (post:create missing),
+      // not an authentication problem.
+      403 => FitUploadErrorCode.forbidden,
       404 => FitUploadErrorCode.notFound,
       409 => FitUploadErrorCode.snapshotIncomplete,
       422 => FitUploadErrorCode.validationFailed,

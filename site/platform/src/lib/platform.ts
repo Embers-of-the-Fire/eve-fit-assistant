@@ -11,6 +11,10 @@ export const POST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 
 export interface StoredPost {
     postId: string;
+    /** The authoring account's user id; null for tombstoned authors. */
+    authorId: string | null;
+    /** True when the author is a tombstone or a deregistered account. */
+    authorDeleted: boolean;
     fitHash: string;
     snapshot: FitSnapshot;
     snapshotJson: JsonValue;
@@ -37,8 +41,10 @@ export async function getPostSnapshot(postId: string): Promise<StoredPost | null
         return null;
     }
     if (typeof raw !== "object" || raw === null) return null;
-    const record = raw as { fitHash?: unknown };
+    const record = raw as { fitHash?: unknown; authorId?: unknown; authorDeleted?: unknown };
     if (typeof record.fitHash !== "string") return null;
+    const authorId = typeof record.authorId === "string" ? record.authorId : null;
+    const authorDeleted = record.authorDeleted === true;
 
     const snapshotResponse = await fetchApi(`/platform/internal/posts/${postId}/snapshot`);
     if (!snapshotResponse?.ok) return null;
@@ -56,5 +62,5 @@ export async function getPostSnapshot(postId: string): Promise<StoredPost | null
     } catch {
         return null;
     }
-    return { postId, fitHash: record.fitHash, snapshot, snapshotJson };
+    return { postId, authorId, authorDeleted, fitHash: record.fitHash, snapshot, snapshotJson };
 }

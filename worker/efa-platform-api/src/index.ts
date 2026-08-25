@@ -3,9 +3,9 @@ import { FitStoreResponseSchema } from "efa-proto-ts/fit_request_pb";
 import { type FitSnapshot, FitSnapshotSchema } from "efa-proto-ts/fit_snapshot_pb";
 import { Hono } from "hono";
 
-import { getAuthClaims, requireAccessToken } from "./auth/middleware.ts";
+import { getAuthClaims, requireAccessToken, requireActiveAccount } from "./auth/middleware.ts";
+import { getAuthPermissions, requirePermission } from "./auth/permission.ts";
 import { type AuthEnv, authApp } from "./auth/router.ts";
-import { getUserById } from "./auth/store.ts";
 import { createRootApp } from "./root.ts";
 
 // Durable Object classes must be exported from the worker entrypoint.
@@ -29,8 +29,9 @@ import {
 } from "./util.ts";
 
 // Public front of the platform. Owns the `posts` table and orchestrates
-// submissions through the FIT_STORAGE service binding. Post creation is
-// gated by an account access token; the platform's Bearer credential
+// submissions through the FIT_STORAGE service binding. Post creation and
+// deletion are gated by ACL permissions (post:create, post:delete:{own,all})
+// on top of an account access token; the platform's Bearer credential
 // (FIT_STORAGE_TOKEN) only unlocks the privileged /health probes.
 
 interface Env extends AuthEnv {
@@ -53,7 +54,7 @@ const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const LIST_CACHE_CONTROL = "public, max-age=30";
 const STATS_CACHE_CONTROL = "public, max-age=60";
 
-function errorJson(status: 400 | 401 | 404 | 500, code: string, message: string): Response {
+function errorJson(status: 400 | 401 | 403 | 404 | 500, code: string, message: string): Response {
     return Response.json({ error: code, message }, { status });
 }
 
@@ -79,21 +80,17 @@ function blobResponse(value: unknown): Response {
 export function createPublicApp(): Hono<{ Bindings: Env }> {
     const app = new Hono<{ Bindings: Env }>();
 
-    // Create post. Requires an active account's access token; the verified
-    // identity becomes the post's author.
+    // Create post. Requires an active account's access token plus the
+    // post:create permission; the verified identity becomes the author.
     app.post(
         "/posts",
         requireAccessToken<{ Bindings: Env }>({
             secret: (c) => c.env.AUTH_TOKEN_SECRET,
-            // Same re-check as /deregister: deregistered or absent users, and
-            // tokens issued before a token_version bump, are rejected.
-            validateClaims: async (c, claims) => {
-                const user = await getUserById(c.env.FIT_DB, claims.sub);
-                if (user?.status !== "active" || user.token_version !== claims.tv) {
-                    return errorJson(401, "invalid_token", "missing or invalid access token");
-                }
-            },
+            // Deregistered or absent users, and tokens issued before a
+            // token_version bump, are rejected.
+            validateClaims: requireActiveAccount,
         }),
+        requirePermission<{ Bindings: Env }>("post:create"),
         async (c) => {
             const claims = getAuthClaims(c);
 
@@ -206,6 +203,30 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         created_at: string;
     }
 
+    const POST_LIST_COLUMNS =
+        "posts.post_id, posts.author_id, posts.fit_hash, posts.fit_name, posts.description, " +
+        "posts.ship_names, posts.ship_type_id, posts.last_modified_ms, posts.generator, " +
+        "posts.created_at, users.status AS author_status";
+
+    // Shared list projection; names are localized at projection time.
+    function postSummary(row: PostRow, locale: string) {
+        return {
+            postId: row.post_id,
+            authorId: row.author_id,
+            // NULL author_id is the deleted-user (or pre-auth legacy)
+            // tombstone; an anonymized deregistered row counts too.
+            authorDeleted: row.author_id === null || row.author_status === "deregistered",
+            fitHash: row.fit_hash,
+            fitName: row.fit_name,
+            description: row.description,
+            shipName: resolveShipName(row.ship_names, locale),
+            shipTypeId: row.ship_type_id,
+            createdAt: row.created_at,
+            lastModifiedMs: row.last_modified_ms,
+            generator: row.generator,
+        };
+    }
+
     // List posts (keyset pagination over posts_created_at, pure SQL).
     app.get("/posts", async (c) => {
         let limit = DEFAULT_LIST_LIMIT;
@@ -243,10 +264,6 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
             }
         }
 
-        const columns =
-            "posts.post_id, posts.author_id, posts.fit_hash, posts.fit_name, posts.description, " +
-            "posts.ship_names, posts.ship_type_id, posts.last_modified_ms, posts.generator, " +
-            "posts.created_at, users.status AS author_status";
         const conditions: string[] = [];
         const binds: (string | number)[] = [];
         if (shipTypeId !== null) {
@@ -263,7 +280,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         }
         const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")} ` : "";
         const statement = c.env.FIT_DB.prepare(
-            `SELECT ${columns} FROM posts LEFT JOIN users ON users.user_id = posts.author_id ` +
+            `SELECT ${POST_LIST_COLUMNS} FROM posts LEFT JOIN users ON users.user_id = posts.author_id ` +
                 `${where}ORDER BY posts.created_at DESC, posts.post_id DESC LIMIT ?`,
         ).bind(...binds, limit + 1);
         const { results } = await statement.all<PostRow>();
@@ -277,27 +294,76 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
 
         return c.json(
             {
-                posts: page.map((row) => ({
-                    postId: row.post_id,
-                    authorId: row.author_id,
-                    // NULL author_id is the deleted-user (or pre-auth legacy)
-                    // tombstone; an anonymized deregistered row counts too.
-                    authorDeleted: row.author_id === null || row.author_status === "deregistered",
-                    fitHash: row.fit_hash,
-                    fitName: row.fit_name,
-                    description: row.description,
-                    shipName: resolveShipName(row.ship_names, locale),
-                    shipTypeId: row.ship_type_id,
-                    createdAt: row.created_at,
-                    lastModifiedMs: row.last_modified_ms,
-                    generator: row.generator,
-                })),
+                posts: page.map((row) => postSummary(row, locale)),
                 nextCursor,
             },
             200,
             { "Cache-Control": LIST_CACHE_CONTROL },
         );
     });
+
+    // The caller's own posts. Auth-only: reading one's own posts needs no
+    // ACL grant. Same keyset pagination contract as the public list, minus
+    // the ship/window filters; private data is never cached.
+    app.get(
+        "/my/posts",
+        requireAccessToken<{ Bindings: Env }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: requireActiveAccount,
+        }),
+        async (c) => {
+            const claims = getAuthClaims(c);
+            let limit = DEFAULT_LIST_LIMIT;
+            const limitRaw = c.req.query("limit");
+            if (limitRaw !== undefined) {
+                const parsed = parseLimit(limitRaw, MAX_LIST_LIMIT);
+                if (parsed === null) {
+                    return errorJson(400, "bad_request", "malformed limit");
+                }
+                limit = parsed;
+            }
+            const locale = c.req.query("locale") ?? "en";
+
+            const cursorRaw = c.req.query("cursor");
+            let cursor: { createdAt: string; postId: string } | null = null;
+            if (cursorRaw !== undefined) {
+                cursor = decodeCursor(cursorRaw);
+                if (!cursor) {
+                    return errorJson(400, "bad_request", "malformed cursor");
+                }
+            }
+
+            const conditions = ["posts.author_id = ?"];
+            const binds: (string | number)[] = [claims.sub];
+            if (cursor) {
+                conditions.push("(posts.created_at, posts.post_id) < (?, ?)");
+                binds.push(cursor.createdAt, cursor.postId);
+            }
+            const statement = c.env.FIT_DB.prepare(
+                `SELECT ${POST_LIST_COLUMNS} FROM posts ` +
+                    "LEFT JOIN users ON users.user_id = posts.author_id " +
+                    `WHERE ${conditions.join(" AND ")} ` +
+                    "ORDER BY posts.created_at DESC, posts.post_id DESC LIMIT ?",
+            ).bind(...binds, limit + 1);
+            const { results } = await statement.all<PostRow>();
+
+            const page = results.slice(0, limit);
+            let nextCursor: string | null = null;
+            if (results.length > limit && page.length > 0) {
+                const last = page[page.length - 1];
+                nextCursor = encodeCursor(last.created_at, last.post_id);
+            }
+
+            return c.json(
+                {
+                    posts: page.map((row) => postSummary(row, locale)),
+                    nextCursor,
+                },
+                200,
+                { "Cache-Control": "no-store" },
+            );
+        },
+    );
 
     // Post record.
     app.get("/posts/:id", async (c) => {
@@ -329,6 +395,41 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
             authorDeleted: row.author_id === null || row.author_status === "deregistered",
         });
     });
+
+    // Delete post. The requirePermission middleware performs the action-level
+    // match (any post:delete qualifier); the qualifier itself is validated
+    // here against the resource: `all` covers any post, `own` only the
+    // caller's own (NULL-author tombstones are never "own"). Only the posts
+    // row is deleted — the fits blob is shared by fit_hash and stays.
+    app.delete(
+        "/posts/:id",
+        requireAccessToken<{ Bindings: Env }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: requireActiveAccount,
+        }),
+        requirePermission<{ Bindings: Env }>("post:delete"),
+        async (c) => {
+            const postId = c.req.param("id");
+            if (!UUID_PATTERN.test(postId)) {
+                return errorJson(400, "bad_request", "invalid post id");
+            }
+            const row = await c.env.FIT_DB.prepare("SELECT author_id FROM posts WHERE post_id = ?")
+                .bind(postId)
+                .first<{ author_id: string | null }>();
+            if (!row) {
+                return errorJson(404, "not_found", "unknown post id");
+            }
+            const permissions = getAuthPermissions(c);
+            const allowed =
+                permissions.includes("post:delete:all") ||
+                (permissions.includes("post:delete:own") && row.author_id === getAuthClaims(c).sub);
+            if (!allowed) {
+                return errorJson(403, "forbidden", "permission denied");
+            }
+            await c.env.FIT_DB.prepare("DELETE FROM posts WHERE post_id = ?").bind(postId).run();
+            return c.json({ postId }, 200);
+        },
+    );
 
     // Raw FitSnapshot protobuf bytes behind a post.
     app.get("/posts/:id/snapshot", async (c) => {

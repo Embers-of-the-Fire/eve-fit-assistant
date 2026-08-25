@@ -1,5 +1,6 @@
 import "dart:math";
 
+import "package:efa_acl/efa_acl.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
@@ -80,7 +81,12 @@ void main() {
     );
   });
 
-  Widget buildDialog(FitStorage fit, {bool signedIn = false, FitSnapshotUploadFn? uploadFn}) =>
+  Widget buildDialog(
+    FitStorage fit, {
+    bool signedIn = false,
+    FitSnapshotUploadFn? uploadFn,
+    Acl? accountAcl,
+  }) =>
       ProviderScope(
         overrides: [
           appSettingServiceProvider.overrideWithValue(
@@ -98,6 +104,12 @@ void main() {
               signedIn ? const PlatformIdentity(userId: "user-1", email: "user@example.com") : null,
             ),
           ),
+          // The upload action is gated on the account's ACL; default to the
+          // default roles (post:create included) for signed-in scenarios.
+          if (signedIn)
+            accountAclProvider.overrideWith(
+              (ref) async => accountAcl ?? aclForRoles(aclDefaultRoles.map((role) => role.name)),
+            ),
           if (uploadFn != null) fitSnapshotUploadFnProvider.overrideWithValue(uploadFn),
         ],
         child: testApp(
@@ -140,6 +152,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("上传"), findsNothing);
+  });
+
+  testWidgets("snapshot mode hides the upload button without post:create", (tester) async {
+    await tester.pumpWidget(buildDialog(_makeFit(), signedIn: true, accountAcl: Acl(const {})));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("快照"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("上传"), findsNothing);
+    expect(find.text("当前账号无权向平台发布配置。"), findsOneWidget);
   });
 
   testWidgets("snapshot upload renders the hash and URL after a successful upload", (tester) async {

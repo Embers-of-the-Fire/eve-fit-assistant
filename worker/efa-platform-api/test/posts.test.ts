@@ -9,6 +9,7 @@
 import { applyD1Migrations, reset } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { setUserAclRoles } from "../src/auth/acl.ts";
 import { createAuthApp } from "../src/auth/router.ts";
 import { createPublicApp } from "../src/index.ts";
 import { AUTH_MOUNT_PATH, createRootApp, MOUNT_PATH } from "../src/root.ts";
@@ -88,8 +89,21 @@ function setup(options?: { storageResponse?: Response }) {
             }),
             testEnv,
         );
-    const get = (path: string) =>
-        root.fetch(new Request(`https://api.efa-tech.dev${path}`), testEnv);
+    const get = (path: string, accessToken?: string) =>
+        root.fetch(
+            new Request(`https://api.efa-tech.dev${path}`, {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+            }),
+            testEnv,
+        );
+    const del = (path: string, accessToken?: string) =>
+        root.fetch(
+            new Request(`https://api.efa-tech.dev${path}`, {
+                method: "DELETE",
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+            }),
+            testEnv,
+        );
     const upload = (accessToken?: string) =>
         root.fetch(
             new Request(`https://api.efa-tech.dev${MOUNT_PATH}/posts`, {
@@ -118,7 +132,7 @@ function setup(options?: { storageResponse?: Response }) {
         return (await verify.json()) as TokenPair;
     };
 
-    return { post, get, upload, register };
+    return { post, get, del, upload, register };
 }
 
 async function userIdByEmail(email: string): Promise<string> {
@@ -273,6 +287,167 @@ describe("POST /posts auth", () => {
             .bind(body.postId)
             .first<{ author_id: string }>();
         expect(row?.author_id).toBe(await userIdByEmail(email));
+    });
+
+    it("rejects an account without the post:create permission", async () => {
+        const { upload, register } = setup();
+        const pair = await register("no-create@example.com");
+        await setUserAclRoles(env, await userIdByEmail("no-create@example.com"), []);
+
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(403);
+        expect(await res.json()).toMatchObject({ error: "forbidden" });
+    });
+});
+
+describe("GET /my/posts", () => {
+    it("rejects requests without a token", async () => {
+        const { get } = setup();
+        const res = await get(`${MOUNT_PATH}/my/posts`);
+        expect(res.status).toBe(401);
+        expect(await res.json()).toMatchObject({ error: "invalid_token" });
+    });
+
+    it("lists only the caller's own posts and is never cached", async () => {
+        const { upload, register, get } = setup();
+        const own = await register("mine@example.com");
+        const other = await register("other@example.com");
+        const ownUpload = await upload(own.accessToken);
+        expect(ownUpload.status).toBe(201);
+        const { postId } = (await ownUpload.json()) as { postId: string };
+        expect((await upload(other.accessToken)).status).toBe(201);
+
+        const res = await get(`${MOUNT_PATH}/my/posts`, own.accessToken);
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Cache-Control")).toBe("no-store");
+        const body = (await res.json()) as {
+            posts: Record<string, unknown>[];
+            nextCursor: string | null;
+        };
+        expect(body.posts).toHaveLength(1);
+        expect(body.posts[0]).toMatchObject({
+            postId,
+            authorId: await userIdByEmail("mine@example.com"),
+            authorDeleted: false,
+        });
+        expect(body.nextCursor).toBeNull();
+    });
+
+    it("rejects a malformed cursor", async () => {
+        const { register, get } = setup();
+        const pair = await register("cursor@example.com");
+        const res = await get(`${MOUNT_PATH}/my/posts?cursor=garbage`, pair.accessToken);
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: "bad_request" });
+    });
+});
+
+describe("DELETE /posts/:id", () => {
+    async function uploadAs(email: string): Promise<{ postId: string; pair: TokenPair }> {
+        const { upload, register } = setup();
+        const pair = await register(email);
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(201);
+        const { postId } = (await res.json()) as { postId: string };
+        return { postId, pair };
+    }
+
+    it("rejects requests without a token", async () => {
+        const { del } = setup();
+        const res = await del(`${MOUNT_PATH}/posts/44444444-4444-4444-8444-444444444444`);
+        expect(res.status).toBe(401);
+        expect(await res.json()).toMatchObject({ error: "invalid_token" });
+    });
+
+    it("lets the owner delete their own post and keeps the shared fit row", async () => {
+        const { postId, pair } = await uploadAs("owner@example.com");
+        const { del } = setup();
+
+        const res = await del(`${MOUNT_PATH}/posts/${postId}`, pair.accessToken);
+        expect(res.status).toBe(200);
+        expect(await res.json()).toMatchObject({ postId });
+
+        const post = await env.FIT_DB.prepare("SELECT post_id FROM posts WHERE post_id = ?")
+            .bind(postId)
+            .first();
+        expect(post).toBeNull();
+        const fit = await env.FIT_DB.prepare("SELECT fit_hash FROM fits WHERE fit_hash = ?")
+            .bind(FIT_HASH)
+            .first();
+        expect(fit).not.toBeNull();
+    });
+
+    it("rejects a non-owner holding only post:delete:own", async () => {
+        const { postId } = await uploadAs("real-owner@example.com");
+        const { register, del } = setup();
+        const stranger = await register("stranger@example.com");
+
+        const res = await del(`${MOUNT_PATH}/posts/${postId}`, stranger.accessToken);
+        expect(res.status).toBe(403);
+        expect(await res.json()).toMatchObject({ error: "forbidden" });
+    });
+
+    it("lets a post:delete:all holder delete another account's post", async () => {
+        const { postId } = await uploadAs("victim@example.com");
+        const { register, del } = setup();
+        const moderator = await register("moderator@example.com");
+        await setUserAclRoles(env, await userIdByEmail("moderator@example.com"), ["moderator"]);
+
+        const res = await del(`${MOUNT_PATH}/posts/${postId}`, moderator.accessToken);
+        expect(res.status).toBe(200);
+    });
+
+    it("rejects deleting a NULL-author tombstone with post:delete:own only", async () => {
+        await env.FIT_DB.prepare(
+            "INSERT INTO posts (post_id, author_id, fit_hash, fit_name, description, ship_names, " +
+                "ship_type_id, last_modified_ms) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
+        )
+            .bind(
+                "55555555-5555-4555-8555-555555555555",
+                FIT_HASH,
+                "Legacy Fit",
+                "",
+                '{"en":"Merlin"}',
+                12017,
+                42,
+            )
+            .run();
+        const { register, del } = setup();
+        const pair = await register("tombstone@example.com");
+
+        const res = await del(
+            `${MOUNT_PATH}/posts/55555555-5555-4555-8555-555555555555`,
+            pair.accessToken,
+        );
+        expect(res.status).toBe(403);
+        expect(await res.json()).toMatchObject({ error: "forbidden" });
+    });
+
+    it("rejects an account without any post:delete qualifier", async () => {
+        const { postId } = await uploadAs("perm-owner@example.com");
+        const { register, del } = setup();
+        const stripped = await register("stripped@example.com");
+        await setUserAclRoles(env, await userIdByEmail("stripped@example.com"), []);
+
+        const res = await del(`${MOUNT_PATH}/posts/${postId}`, stripped.accessToken);
+        expect(res.status).toBe(403);
+        expect(await res.json()).toMatchObject({ error: "forbidden" });
+    });
+
+    it("reports unknown and malformed post ids", async () => {
+        const { register, del } = setup();
+        const pair = await register("ids@example.com");
+
+        const missing = await del(
+            `${MOUNT_PATH}/posts/66666666-6666-4666-8666-666666666666`,
+            pair.accessToken,
+        );
+        expect(missing.status).toBe(404);
+        expect(await missing.json()).toMatchObject({ error: "not_found" });
+
+        const malformed = await del(`${MOUNT_PATH}/posts/not-a-uuid`, pair.accessToken);
+        expect(malformed.status).toBe(400);
+        expect(await malformed.json()).toMatchObject({ error: "bad_request" });
     });
 });
 
