@@ -19,7 +19,7 @@ import type { TranslationKey } from "./translations";
 // server schema degrade to "no permission" instead of breaking typing.
 let _info = $state<PlatformAccountInfo | null>(null);
 let _loadingFor: string | null = null;
-let _acl: Acl<AclActionMap, AclToken> = createAcl([]);
+let _acl = $state<Acl<AclActionMap, AclToken>>(createAcl([]));
 
 /**
  * Ensures the account info (roles + permissions) for the current identity is
