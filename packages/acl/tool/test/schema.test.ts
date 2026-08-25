@@ -80,6 +80,11 @@ post:
         ["an empty schema", "{}\n", "<root>"],
         ["invalid YAML", "post: [unclosed\n", "<root>"],
         ["an invalid domain name", "Post:\n  description: x\n  actions: {}\n", "Post"],
+        [
+            "a domain name with a trailing underscore",
+            "read_:\n  description: x\n  actions: {}\n",
+            "read_",
+        ],
         ["a non-map domain", "post: 42\n", "post"],
         ["an unknown domain key", "post:\n  description: x\n  actions: {}\n  extra: 1\n", "post"],
         [
@@ -93,6 +98,11 @@ post:
             "an invalid action name",
             "post:\n  description: x\n  actions:\n    Create:\n      description: x\n",
             "post.Create",
+        ],
+        [
+            "an action name with consecutive underscores",
+            "post:\n  description: x\n  actions:\n    read__own:\n      description: x\n",
+            "post.read__own",
         ],
         [
             "a non-map action",

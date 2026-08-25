@@ -1,4 +1,6 @@
-const NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
+// Single underscores only: empty segments would collapse under pascalCase(),
+// letting distinct names (e.g. "read_" and "read__own") share an identifier.
+const NAME_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 
 /** Whether `name` is a valid schema name (domain, action, or qualifier). */
 export function isValidName(name: string): boolean {
@@ -9,7 +11,6 @@ export function isValidName(name: string): boolean {
 export function pascalCase(name: string): string {
     return name
         .split("_")
-        .filter((part) => part.length > 0)
         .map((part) => part[0].toUpperCase() + part.slice(1))
         .join("");
 }
