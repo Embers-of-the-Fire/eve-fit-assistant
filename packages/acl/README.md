@@ -27,8 +27,11 @@ post:delete:all
 
 ## Quickstart (TypeScript)
 
+Run the generator from the repository root; all paths below resolve from it.
+Substitute your own schema for the bundled example fixture:
+
 ```sh
-node packages/acl/tool/src/cli.ts --schema acl.yaml --ts src/lib/acl.generated.ts
+node packages/acl/tool/src/cli.ts --schema packages/acl/example/acl.yaml --ts src/lib/acl.generated.ts
 ```
 
 ```ts
@@ -44,8 +47,10 @@ acl.can("comment:delete"); // false
 
 ## Quickstart (Dart)
 
+Same working directory as above — the repository root:
+
 ```sh
-node packages/acl/tool/src/cli.ts --schema acl.yaml --dart lib/acl.generated.dart
+node packages/acl/tool/src/cli.ts --schema packages/acl/example/acl.yaml --dart lib/acl.generated.dart
 ```
 
 ```dart
