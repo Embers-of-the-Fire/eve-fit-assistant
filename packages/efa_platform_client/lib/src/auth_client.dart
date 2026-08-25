@@ -39,12 +39,29 @@ class PlatformAccountInfo {
     required this.permissions,
   });
 
-  factory PlatformAccountInfo.fromJson(Map<String, dynamic> json) => PlatformAccountInfo(
-    userId: json["userId"] as String,
-    email: json["email"] as String,
-    roles: (json["roles"] as List<dynamic>).cast<String>(),
-    permissions: (json["permissions"] as List<dynamic>).cast<String>(),
-  );
+  /// Validates every entry eagerly: a malformed role or permission would
+  /// otherwise slip through a lazy `cast<String>()` view and throw only when
+  /// a consumer reads it (mirrors the TypeScript client's contract).
+  factory PlatformAccountInfo.fromJson(Map<String, dynamic> json) {
+    final userId = json["userId"];
+    final email = json["email"];
+    final roles = json["roles"];
+    final permissions = json["permissions"];
+    if (userId is! String ||
+        email is! String ||
+        roles is! List<dynamic> ||
+        !roles.every((role) => role is String) ||
+        permissions is! List<dynamic> ||
+        !permissions.every((token) => token is String)) {
+      throw const AccountApiException(null, null, "malformed account info");
+    }
+    return PlatformAccountInfo(
+      userId: userId,
+      email: email,
+      roles: List<String>.from(roles),
+      permissions: List<String>.from(permissions),
+    );
+  }
 
   final String userId;
   final String email;

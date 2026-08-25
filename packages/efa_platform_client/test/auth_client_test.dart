@@ -150,6 +150,35 @@ void main() {
       expect(info.permissions, ["post:create", "post:delete:own"]);
     });
 
+    test("account rejects a malformed account info body as a local parsing failure", () async {
+      for (final body in [
+        {"userId": 1, "email": "a@b.c", "roles": <String>[], "permissions": <String>[]},
+        {
+          "userId": "u-1",
+          "email": "a@b.c",
+          "roles": ["user", 42],
+          "permissions": <String>[],
+        },
+        {
+          "userId": "u-1",
+          "email": "a@b.c",
+          "roles": <String>[],
+          "permissions": ["post:create", 7],
+        },
+      ]) {
+        final client = _clientWith((options) async => _json(body));
+
+        await expectLater(
+          () => client.account(accessToken: "access-1"),
+          throwsA(
+            isA<AccountApiException>()
+                .having((e) => e.statusCode, "statusCode", isNull)
+                .having((e) => e.message, "message", "malformed account info"),
+          ),
+        );
+      }
+    });
+
     test("logout posts the refresh token", () async {
       RequestOptions? captured;
       final client = _clientWith((options) async {
