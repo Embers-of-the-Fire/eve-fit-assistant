@@ -105,6 +105,11 @@ post:
             "post.read__own",
         ],
         [
+            "an action name colliding under pascalCase (read1 vs read_1)",
+            "post:\n  description: x\n  actions:\n    read_1:\n      description: x\n",
+            "post.read_1",
+        ],
+        [
             "a non-map action",
             "post:\n  description: x\n  actions:\n    create: 42\n",
             "post.create",
@@ -177,5 +182,16 @@ post:
     ])("rejects %s", (_label, content, path) => {
         expect(() => loadSchema(content)).toThrowError(AclSchemaError);
         expect(() => loadSchema(content)).toThrowError(new RegExp(path.replace(".", "\\.")));
+    });
+
+    it("accepts digits inside a segment (read1)", () => {
+        const schema = loadSchema(`
+post:
+  description: Post management.
+  actions:
+    read1:
+      description: Read posts.
+`);
+        expect(schema.domains[0].actions[0].name).toBe("read1");
     });
 });
