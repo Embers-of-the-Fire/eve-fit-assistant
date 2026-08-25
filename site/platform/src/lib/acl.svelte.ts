@@ -18,6 +18,8 @@ import type { TranslationKey } from "./translations";
 // token set is pre-filtered through the schema guard so tokens from a newer
 // server schema degrade to "no permission" instead of breaking typing.
 let _info = $state<PlatformAccountInfo | null>(null);
+// Monotonically increasing request id; only the latest request may update state.
+let _requestId = 0;
 let _loadingFor: string | null = null;
 let _acl = $state<Acl<AclActionMap, AclToken>>(createAcl([]));
 
@@ -29,6 +31,7 @@ let _acl = $state<Acl<AclActionMap, AclToken>>(createAcl([]));
 export function loadAccountAcl(): void {
     const identity = authState.identity;
     if (identity === null) {
+        _requestId += 1;
         _info = null;
         _loadingFor = null;
         _acl = createAcl([]);
@@ -37,12 +40,17 @@ export function loadAccountAcl(): void {
     if (_loadingFor === identity.userId) {
         return;
     }
+    // Identity changed (or first load): drop the previous identity's state so
+    // it is not visible while the new identity loads.
+    const requestId = ++_requestId;
+    _info = null;
+    _acl = createAcl([]);
     _loadingFor = identity.userId;
     getSession()
         .accountInfo()
         .then(
             (info) => {
-                if (_loadingFor !== info.userId) {
+                if (requestId !== _requestId) {
                     return;
                 }
                 _info = info;
@@ -50,7 +58,9 @@ export function loadAccountAcl(): void {
             },
             () => {
                 // Keep the signed-out-shaped default; the next call retries.
-                _loadingFor = null;
+                if (requestId === _requestId) {
+                    _loadingFor = null;
+                }
             },
         );
 }
