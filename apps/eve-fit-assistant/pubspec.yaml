@@ -35,6 +35,8 @@ dependencies:
     path: rust_builder
   efa_compat:
     path: ../../packages/efa_compat
+  efa_acl:
+    path: ../../packages/efa_acl/dart
   efa_component:
     path: ../../packages/efa_component
   efa_constant:

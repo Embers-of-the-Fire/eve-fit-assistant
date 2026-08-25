@@ -33,13 +33,15 @@ by the optional `locale` field).
 | `/platform/auth/refresh` | `{refreshToken}` — rotates the session (`200` new pair). Replaying the just-rotated token inside its ~60 s grace window returns the same successor pair (idempotent; a lost response must not log out mobile clients); replaying anything older revokes the whole session chain (`401 invalid_token`). 30 requests/5 min per IP (`429`, shared with `/logout`) |
 | `/platform/auth/logout` | `{refreshToken}` — revokes that session; `200 {ok:true}` for any well-formed body, including unknown tokens (idempotent). Shares the `/refresh` IP limit: 30 requests/5 min per IP (`429`) |
 | `/platform/auth/deregister` | Bearer access token + `{password}` (re-authentication: irreversible) — anonymizes the account (tombstone email, blanked hash, `token_version++`), revokes all sessions and clears their retained PII (`user_agent`, `ip`) in one atomic batch; `200 {ok:true}`; `401 invalid_credentials` on a wrong password; the address is free for re-signup. 5 failed attempts/30min per account+IP (successes are refunded) |
+| `/platform/auth/account` | Bearer access token — authenticated account read: `200 {userId, email, roles, permissions}` where `roles` are the account's placeholder ACL roles (source of truth: `users.acl_roles`, schema and roles defined in `packages/efa_acl`) and `permissions` their resolved ACL tokens (served through the `AUTH_KV` resolved-permission cache) |
 | `/platform/auth/reset-password` | `{email, locale?}` — always `200 {ok:true}` (no enumeration); sends a reset OTP when an active user exists (3/h per email, plus the shared OTP 60 s cooldown and 10/day cap, all enforced silently) |
 | `/platform/auth/reset-password/confirm` | `{email, code, newPassword}` — updates the hash, bumps `token_version`, revokes all sessions, issues a fresh pair (`200`); `401` on invalid/expired OTP |
 
 Rate-limit excess returns `429 {error:"rate_limited"}` with a `Retry-After`
 header. Sessions live only in D1 (KV eventual consistency is incompatible
-with rotation/reuse semantics); `AUTH_KV` holds only the short-lived rotation
-stash. State that must be atomic — OTP consumption, OTP failure counts, and
+with rotation/reuse semantics); `AUTH_KV` holds the short-lived rotation
+stash and the resolved-ACL permission cache (`acl:<userId>`, 5-minute TTL,
+self-healing against the `users.acl_roles` source of truth). State that must be atomic — OTP consumption, OTP failure counts, and
 rate-limit counters — lives in two SQLite-backed Durable Object classes
 (`OtpState`, one instance per purpose+email; `RateLimitWindow`, one per
 bucket+key), whose per-instance serialization plus single-transaction

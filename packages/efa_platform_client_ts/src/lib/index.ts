@@ -7,4 +7,9 @@ export {
     platformApiProductionOrigin,
 } from "./session";
 export { LocalStorageSessionStore, type PlatformSessionStore } from "./store";
-export type { AuthTokenPair, PlatformIdentity, StoredPlatformSession } from "./types";
+export type {
+    AuthTokenPair,
+    PlatformAccountInfo,
+    PlatformIdentity,
+    StoredPlatformSession,
+} from "./types";

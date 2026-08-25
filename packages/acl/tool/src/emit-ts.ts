@@ -1,4 +1,4 @@
-import type { AclAction, AclDomain, AclSchema } from "./model.ts";
+import type { AclAction, AclDomain, AclRole, AclSchema } from "./model.ts";
 import { pascalCase } from "./names.ts";
 
 const HEADER = "// GENERATED CODE - DO NOT EDIT BY HAND. Regenerate with `acl-codegen`.";
@@ -33,6 +33,11 @@ export function emitTypeScript(schema: AclSchema, options: EmitTsOptions): strin
     chunks.push(emitTokenList(schema));
     chunks.push(emitTokenGuard());
     chunks.push(emitFactory());
+    if (schema.roles.length > 0) {
+        for (const chunk of emitRoles(schema.roles)) {
+            chunks.push(chunk);
+        }
+    }
 
     return `${chunks.join("\n\n")}\n`;
 }
@@ -141,4 +146,60 @@ function emitFactory(): string {
         "    return new Acl<AclActionMap, AclToken>(tokens);",
         "}",
     ].join("\n");
+}
+
+function emitRoles(roles: AclRole[]): string[] {
+    const union = roles.map((role) => `"${role.name}"`).join(" | ");
+    const roleDoc = tsDoc([
+        "Roles defined by this schema.",
+        "",
+        ...roles.map(
+            (role) => `- \`${role.name}\`: ${role.description.replaceAll("\n", " ")}`,
+        ),
+    ]);
+    const roleList = roles.map((role) => `    "${role.name}",`).join("\n");
+    const defaults = roles.filter((role) => role.isDefault);
+    const defaultList = defaults.map((role) => `    "${role.name}",`).join("\n");
+    const bundles = roles
+        .map((role) => {
+            const tokens = role.tokens.map((token) => `"${token}"`).join(", ");
+            return `    ${role.name}: [${tokens}],`;
+        })
+        .join("\n");
+    return [
+        `${roleDoc}\nexport type AclRole = ${union};`,
+        `${tsDoc(["All roles in declaration order."])}\nexport const aclRoles = [\n${roleList}\n] as const;`,
+        `${tsDoc(["Roles granted to fresh accounts by default."])}\nexport const aclDefaultRoles = [\n${defaultList}\n] as const;`,
+        [
+            tsDoc(["Schema-level guard: whether `role` is defined by this schema."]),
+            "export function isAclRole(role: string): role is AclRole {",
+            "    return (aclRoles as readonly string[]).includes(role);",
+            "}",
+        ].join("\n"),
+        `${tsDoc(["The ACL tokens each role grants."])}\nconst roleTokens = {\n${bundles}\n} as const satisfies Record<AclRole, readonly AclToken[]>;`,
+        [
+            tsDoc([
+                "Resolves role names into the union of their ACL tokens. Unknown role names",
+                "are ignored so a stale or mistyped stored role cannot crash a consumer.",
+            ]),
+            "export function tokensForRoles(roles: Iterable<string>): AclToken[] {",
+            "    const tokens = new Set<AclToken>();",
+            "    for (const role of roles) {",
+            "        if (!isAclRole(role)) {",
+            "            continue;",
+            "        }",
+            "        for (const token of roleTokens[role]) {",
+            "            tokens.add(token);",
+            "        }",
+            "    }",
+            "    return [...tokens];",
+            "}",
+        ].join("\n"),
+        [
+            tsDoc(["Builds a typed `Acl` token set from role names."]),
+            "export function aclForRoles(roles: Iterable<string>): Acl<AclActionMap, AclToken> {",
+            "    return createAcl(tokensForRoles(roles));",
+            "}",
+        ].join("\n"),
+    ];
 }

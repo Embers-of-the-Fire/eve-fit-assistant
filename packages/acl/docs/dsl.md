@@ -31,6 +31,34 @@ post:
         all: Manage all posts.
 ```
 
+## Roles
+
+A schema may additionally declare named **roles** — bundles of schema tokens
+assignable to an account — under the reserved top-level `roles` key (a domain
+cannot be named `roles`):
+
+```yaml
+roles:
+  user:
+    description: Base role granted to every account.
+    default: true                  # optional boolean; fresh accounts start
+                                   # with all roles marked default
+    tokens:                        # required, non-empty list of token literals
+      - post:create
+      - post:delete:own
+  moderator:
+    description: Can remove any post.
+    tokens:
+      - post:create
+      - post:delete:all
+```
+
+Every role token must reference a declared action exactly: unqualified actions
+take `{domain}:{action}`, qualified actions must carry one of their declared
+qualifiers. A role token referencing an undeclared action or qualifier is
+rejected. The `roles` key is optional; omitting it yields a schema without
+roles and the generated bindings skip the role surface entirely.
+
 ## Rules
 
 - Names (domains, actions, qualifiers) must match `^[a-z][a-z0-9_]*$`.
@@ -54,3 +82,4 @@ snake_case schema names become PascalCase type names:
 | token for `post:delete` | `` PostDelete = `post:delete:${...}` `` | `PostDelete` (final class) |
 | token union of domain `post` | `PostToken` | — (classes share `AclToken`) |
 | whole schema | `AclToken`, `AclActionMap`, `aclTokens`, `isAclToken`, `createAcl` | `AclToken`, `parseAclToken`, `AclTokenQueries` extension |
+| roles section | `AclRole` (union), `aclRoles`, `aclDefaultRoles`, `isAclRole`, `tokensForRoles`, `aclForRoles` | `AclRole` (enum with `tokens` field and `tryByName`), `aclRoles`, `aclDefaultRoles`, `tokensForRoles`, `aclForRoles` |

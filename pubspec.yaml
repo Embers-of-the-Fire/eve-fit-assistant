@@ -7,6 +7,7 @@ environment:
 workspace:
   - apps/eve-fit-assistant
   - packages/acl/dart
+  - packages/efa_acl/dart
   - packages/efa_compat
   - packages/efa_component
   - packages/efa_constant
@@ -64,6 +65,7 @@ melos:
         scope:
           - eve_fit_assistant
           - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -77,6 +79,7 @@ melos:
         scope:
           - eve_fit_assistant
           - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -90,6 +93,7 @@ melos:
         scope:
           - eve_fit_assistant
           - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -103,6 +107,7 @@ melos:
         scope:
           - eve_fit_assistant
           - acl
+          - efa_acl
           - efa_compat
           - efa_component
           - efa_constant
@@ -129,6 +134,7 @@ melos:
       packageFilters:
         scope:
           - acl
+          - efa_acl
           - efa_fit
           - efa_component
           - efa_fit_snapshot

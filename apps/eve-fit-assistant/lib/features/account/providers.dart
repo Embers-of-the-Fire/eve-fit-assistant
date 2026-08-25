@@ -1,3 +1,4 @@
+import "package:efa_acl/efa_acl.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/features/account/session_store.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
@@ -49,4 +50,23 @@ Future<PlatformSession> platformSession(Ref ref) async {
 Stream<PlatformIdentity?> platformIdentity(Ref ref) async* {
   final session = await ref.watch(platformSessionProvider.future);
   yield* session.identity;
+}
+
+/// The signed-in account's server-side record: identity plus the placeholder
+/// ACL roles and their resolved permission tokens; null when signed out.
+@riverpodSingleton
+Future<PlatformAccountInfo?> platformAccountInfo(Ref ref) async {
+  final identity = await ref.watch(platformIdentityProvider.future);
+  if (identity == null) return null;
+  final session = await ref.watch(platformSessionProvider.future);
+  return session.accountInfo();
+}
+
+/// The signed-in account's ACL token set, resolved from its placeholder
+/// permission roles (see `packages/efa_acl`); empty while signed out.
+@riverpodSingleton
+Future<Acl> accountAcl(Ref ref) async {
+  final info = await ref.watch(platformAccountInfoProvider.future);
+  if (info == null) return Acl(const {});
+  return aclForRoles(info.roles);
 }

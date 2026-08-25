@@ -160,6 +160,12 @@ def _run_acl() -> None:
         "ACL CODEGEN OUTPUT",
         cwd=PROJECT_ROOT,
     )
+    # Product bindings for packages/efa_acl (schema at packages/efa_acl/acl.yaml).
+    runtime.execute(
+        [pnpm, "--filter", "efa-acl-ts", "generate"],
+        "EFA ACL CODEGEN OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
 
 
 def _run_l10n_once() -> None:

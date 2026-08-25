@@ -10,6 +10,8 @@ export interface UserRow {
     password_hash: string;
     status: UserStatus;
     token_version: number;
+    /** JSON array of ACL role names (see packages/efa_acl); `[]` parse-fallback. */
+    acl_roles: string;
     created_at: string;
     updated_at: string;
 }
@@ -55,6 +57,19 @@ export async function activateUser(db: D1Database, userId: string): Promise<void
     await db
         .prepare(`UPDATE users SET status = 'active', ${TOUCH} WHERE user_id = ?`)
         .bind(userId)
+        .run();
+}
+
+// Source-of-truth write for ACL roles; callers serving cached permissions
+// must bust the AUTH_KV `acl:<userId>` entry (see acl.ts setUserAclRoles).
+export async function updateUserAclRoles(
+    db: D1Database,
+    userId: string,
+    roles: string[],
+): Promise<void> {
+    await db
+        .prepare(`UPDATE users SET acl_roles = ?, ${TOUCH} WHERE user_id = ?`)
+        .bind(JSON.stringify(roles), userId)
         .run();
 }
 

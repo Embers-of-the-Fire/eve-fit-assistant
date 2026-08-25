@@ -18,7 +18,19 @@ export interface AclDomain {
     actions: AclAction[];
 }
 
+/** A named role bundling schema tokens, assignable to an account. */
+export interface AclRole {
+    name: string;
+    description: string;
+    /** Token literals (`{domain}:{action}[:{qualifier}]`) this role grants. */
+    tokens: string[];
+    /** Whether fresh accounts start with this role. */
+    isDefault: boolean;
+}
+
 /** Normalized ACL schema, preserving declaration order. */
 export interface AclSchema {
     domains: AclDomain[];
+    /** Declared roles; empty when the schema has no `roles` section. */
+    roles: AclRole[];
 }

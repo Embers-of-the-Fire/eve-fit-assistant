@@ -21,3 +21,20 @@ comment:
       qualifiers:
         own: Manage owned comments.
         all: Manage all comments.
+
+roles:
+  user:
+    description: Base role granted to every account.
+    default: true
+    tokens:
+      - post:create
+      - post:delete:own
+      - comment:create
+      - comment:delete:own
+  moderator:
+    description: Can remove any post or comment.
+    tokens:
+      - post:create
+      - post:delete:all
+      - comment:create
+      - comment:delete:all

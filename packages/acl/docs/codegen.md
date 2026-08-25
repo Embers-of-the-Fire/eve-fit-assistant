@@ -30,10 +30,14 @@ pnpm --filter acl-tool generate:fixtures  # direct
 
 ## Consumer workflow
 
-1. Write `acl.yaml` (see [dsl.md](dsl.md)).
+1. Write `acl.yaml` (see [dsl.md](dsl.md)) — domains/actions/qualifiers, plus
+   an optional `roles` section declaring named token bundles.
 2. Run `acl-codegen` into your project's sources (typically as a prebuild or
    pretest step; treat the outputs as generated files).
 3. Import the runtime (`acl-ts` / `package:acl`) and the generated bindings.
+   With a `roles` section, the bindings additionally expose the role
+   vocabulary (`AclRole`, `aclRoles`, `aclDefaultRoles`, `isAclRole`) and the
+   role-resolution helpers (`tokensForRoles`, `aclForRoles`).
 
 ## Errors
 

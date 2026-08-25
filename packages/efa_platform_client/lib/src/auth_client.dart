@@ -28,6 +28,34 @@ class AuthTokenPair {
   final int expiresIn;
 }
 
+/// Account record returned by the auth API's `POST /account` endpoint:
+/// identity plus the account's placeholder ACL roles and their resolved
+/// permission tokens (schema and roles: `packages/efa_acl`).
+class PlatformAccountInfo {
+  const PlatformAccountInfo({
+    required this.userId,
+    required this.email,
+    required this.roles,
+    required this.permissions,
+  });
+
+  factory PlatformAccountInfo.fromJson(Map<String, dynamic> json) => PlatformAccountInfo(
+    userId: json["userId"] as String,
+    email: json["email"] as String,
+    roles: (json["roles"] as List<dynamic>).cast<String>(),
+    permissions: (json["permissions"] as List<dynamic>).cast<String>(),
+  );
+
+  final String userId;
+  final String email;
+
+  /// The account's ACL role names (source of truth: `users.acl_roles`).
+  final List<String> roles;
+
+  /// The roles' resolved ACL tokens (`{domain}:{action}[:{qualifier}]`).
+  final List<String> permissions;
+}
+
 /// HTTP failure from the auth API; [code] is the worker's error-envelope code
 /// (`invalid_credentials`, `otp_invalid`, `email_taken`, ...) when present.
 class AccountApiException implements Exception {
@@ -124,6 +152,11 @@ class AccountApiClient {
   /// current access token as Bearer plus the account password.
   Future<void> deregister({required String accessToken, required String password}) =>
       _post("/deregister", {"password": password}, bearer: accessToken);
+
+  /// `POST /account`: identity plus the account's ACL roles and their
+  /// resolved permission tokens. Requires the current access token as Bearer.
+  Future<PlatformAccountInfo> account({required String accessToken}) async =>
+      PlatformAccountInfo.fromJson(await _postJson("/account", const {}, bearer: accessToken));
 
   /// `POST /reset-password`: always 200; sends a reset OTP when the address
   /// belongs to an active account.

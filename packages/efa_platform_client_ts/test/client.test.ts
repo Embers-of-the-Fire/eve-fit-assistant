@@ -127,6 +127,45 @@ describe("AccountApiClient", () => {
         );
     });
 
+    it("sends the bearer token for account and decodes the account info", async () => {
+        const fetchFn = vi.fn().mockImplementation(() =>
+            Promise.resolve(
+                jsonResponse(200, {
+                    userId: "u-1",
+                    email: "a@b.c",
+                    roles: ["user"],
+                    permissions: ["post:create", "post:delete:own"],
+                }),
+            ),
+        );
+        const client = new AccountApiClient(ORIGIN, fetchFn);
+        const info = await client.account("the-access-token");
+        const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe(`${ORIGIN}/platform/auth/account`);
+        expect((init.headers as Record<string, string>).Authorization).toBe(
+            "Bearer the-access-token",
+        );
+        expect(info).toEqual({
+            userId: "u-1",
+            email: "a@b.c",
+            roles: ["user"],
+            permissions: ["post:create", "post:delete:own"],
+        });
+    });
+
+    it("rejects a malformed account info body as a local parsing failure", async () => {
+        const fetchFn = vi
+            .fn()
+            .mockImplementation(() => Promise.resolve(jsonResponse(200, { userId: 1 })));
+        const client = new AccountApiClient(ORIGIN, fetchFn);
+        const error = (await client
+            .account("the-access-token")
+            .catch((e: unknown) => e)) as AccountApiError;
+        expect(error).toBeInstanceOf(AccountApiError);
+        expect(error.statusCode).toBeNull();
+        expect(error.transportFailure).toBe(false);
+    });
+
     it("rejects a malformed token pair body as a local parsing failure", async () => {
         const fetchFn = vi
             .fn()

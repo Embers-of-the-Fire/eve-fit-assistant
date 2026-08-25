@@ -41,4 +41,47 @@ void main() {
       expect(acl.hasToken(const PostCreate()), isFalse);
     });
   });
+
+  group("generated role bindings (example schema)", () {
+    test("lists roles in declaration order with the default marker", () {
+      expect(aclRoles, [AclRole.user, AclRole.moderator]);
+      expect(aclDefaultRoles, [AclRole.user]);
+      expect(AclRole.tryByName("ghost"), isNull);
+      expect(AclRole.tryByName("user"), AclRole.user);
+    });
+
+    test("role bundles expose their tokens", () {
+      expect(AclRole.user.tokens.map((token) => token.encode()), [
+        "post:create",
+        "post:delete:own",
+        "comment:create",
+        "comment:delete:own",
+      ]);
+    });
+
+    test("resolves roles to the union of their tokens, ignoring unknown names", () {
+      expect(tokensForRoles(["user"]), {
+        "post:create",
+        "post:delete:own",
+        "comment:create",
+        "comment:delete:own",
+      });
+      expect(tokensForRoles(["ghost"]), isEmpty);
+      expect(tokensForRoles(["user", "moderator"]), {
+        "post:create",
+        "post:delete:own",
+        "post:delete:all",
+        "comment:create",
+        "comment:delete:own",
+        "comment:delete:all",
+      });
+    });
+
+    test("builds a queryable token set from roles", () {
+      final acl = aclForRoles(aclDefaultRoles.map((role) => role.name));
+      expect(acl.canPostCreate(), isTrue);
+      expect(acl.canCommentDelete(), {CommentDeleteQualifier.own});
+      expect(aclForRoles(["moderator"]).canPostDelete(), {PostDeleteQualifier.all});
+    });
+  });
 }

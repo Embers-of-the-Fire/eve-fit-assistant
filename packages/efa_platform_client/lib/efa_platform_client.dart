@@ -3,7 +3,8 @@
 /// replay, 401 retry, session clearing) from app code.
 library;
 
-export "package:efa_platform_client/src/auth_client.dart" show AccountApiException;
+export "package:efa_platform_client/src/auth_client.dart"
+    show AccountApiException, PlatformAccountInfo;
 export "package:efa_platform_client/src/jwt.dart" show decodeJwtSubject;
 export "package:efa_platform_client/src/platform_client.dart"
     show PlatformApiException, PostListPage, PostRecord, PostSummary, ThreadSummary;

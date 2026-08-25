@@ -116,6 +116,48 @@ extension AclTokenQueries on Acl {
     return {for (final qualifier in matched) CommentDeleteQualifier.values.byName(qualifier)};
   }
 }
+
+/// Permission roles defined by this schema.
+enum AclRole {
+  /// Base role granted to every account.
+  user([PostCreate(), PostDelete(PostDeleteQualifier.own), CommentCreate(), CommentDelete(CommentDeleteQualifier.own)]),
+
+  /// Can remove any post or comment.
+  moderator([PostCreate(), PostDelete(PostDeleteQualifier.all), CommentCreate(), CommentDelete(CommentDeleteQualifier.all)]);
+
+  const AclRole(this.tokens);
+
+  /// The ACL tokens this role grants.
+  final List<AclToken> tokens;
+
+  /// Looks a role up by its name, returning \`null\` for unknown names so a
+  /// stale or mistyped stored role cannot crash a consumer.
+  static AclRole? tryByName(String name) => values.asNameMap()[name];
+}
+
+/// All roles in declaration order.
+const List<AclRole> aclRoles = AclRole.values;
+
+/// Roles granted to fresh accounts by default.
+const aclDefaultRoles = <AclRole>[AclRole.user];
+
+/// Resolves role names into the union of their encoded ACL tokens. Unknown
+/// role names are ignored so a stale or mistyped stored role cannot crash a
+/// consumer.
+Set<String> tokensForRoles(Iterable<String> roles) {
+  final tokens = <String>{};
+  for (final role in roles) {
+    final resolved = AclRole.tryByName(role);
+    if (resolved == null) {
+      continue;
+    }
+    tokens.addAll(resolved.tokens.map((token) => token.encode()));
+  }
+  return tokens;
+}
+
+/// Builds an [Acl] token set from role names.
+Acl aclForRoles(Iterable<String> roles) => Acl(tokensForRoles(roles));
 "
 `;
 
@@ -187,6 +229,58 @@ export function isAclToken(token: string): token is AclToken {
 /** Creates a typed \`Acl\` token set for this schema. */
 export function createAcl(tokens: Iterable<AclToken>): Acl<AclActionMap, AclToken> {
     return new Acl<AclActionMap, AclToken>(tokens);
+}
+
+/**
+ * Roles defined by this schema.
+ *
+ * - \`user\`: Base role granted to every account.
+ * - \`moderator\`: Can remove any post or comment.
+ */
+export type AclRole = "user" | "moderator";
+
+/** All roles in declaration order. */
+export const aclRoles = [
+    "user",
+    "moderator",
+] as const;
+
+/** Roles granted to fresh accounts by default. */
+export const aclDefaultRoles = [
+    "user",
+] as const;
+
+/** Schema-level guard: whether \`role\` is defined by this schema. */
+export function isAclRole(role: string): role is AclRole {
+    return (aclRoles as readonly string[]).includes(role);
+}
+
+/** The ACL tokens each role grants. */
+const roleTokens = {
+    user: ["post:create", "post:delete:own", "comment:create", "comment:delete:own"],
+    moderator: ["post:create", "post:delete:all", "comment:create", "comment:delete:all"],
+} as const satisfies Record<AclRole, readonly AclToken[]>;
+
+/**
+ * Resolves role names into the union of their ACL tokens. Unknown role names
+ * are ignored so a stale or mistyped stored role cannot crash a consumer.
+ */
+export function tokensForRoles(roles: Iterable<string>): AclToken[] {
+    const tokens = new Set<AclToken>();
+    for (const role of roles) {
+        if (!isAclRole(role)) {
+            continue;
+        }
+        for (const token of roleTokens[role]) {
+            tokens.add(token);
+        }
+    }
+    return [...tokens];
+}
+
+/** Builds a typed \`Acl\` token set from role names. */
+export function aclForRoles(roles: Iterable<string>): Acl<AclActionMap, AclToken> {
+    return createAcl(tokensForRoles(roles));
 }
 "
 `;

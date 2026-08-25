@@ -1,4 +1,5 @@
 <script lang="ts">
+import { accountAclState, loadAccountAcl, roleLabel } from "../lib/acl.svelte";
 import { authState, getSession } from "../lib/auth.svelte";
 import { accountErrorMessage } from "../lib/auth-errors";
 import { t } from "../lib/i18n.svelte";
@@ -15,6 +16,14 @@ let error = $state<string | null>(null);
 let confirmingLogout = $state(false);
 let confirmingDeregister = $state(false);
 let deregisterPassword = $state("");
+
+// Fetch the account's roles/permissions whenever a signed-in identity is
+// present (loadAccountAcl no-ops while signed out or already loaded).
+$effect(() => {
+    if (authState.ready && authState.identity !== null) {
+        loadAccountAcl();
+    }
+});
 
 async function logout() {
     busy = true;
@@ -85,6 +94,11 @@ const inputClass =
             <p class="text-sm text-console-text-muted">
                 {t("account.userId")}: {authState.identity.userId}
             </p>
+            {#if accountAclState.roles.length > 0}
+                <p class="text-sm text-console-text-muted">
+                    {t("account.roles")}: {accountAclState.roles.map(roleLabel).join(", ")}
+                </p>
+            {/if}
         </div>
 
         <div class="grid gap-3">

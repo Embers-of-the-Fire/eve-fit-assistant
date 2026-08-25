@@ -25,6 +25,11 @@ export function emitDart(schema: AclSchema): string {
 
     chunks.push(emitParser(schema));
     chunks.push(emitQueries(schema));
+    if (schema.roles.length > 0) {
+        for (const chunk of emitRoles(schema)) {
+            chunks.push(chunk);
+        }
+    }
 
     return `${chunks.join("\n\n")}\n`;
 }
@@ -181,4 +186,95 @@ function emitQueries(schema: AclSchema): string {
         members.join("\n\n"),
         "}",
     ].join("\n");
+}
+
+// Maps every schema token literal to its const-constructor expression, e.g.
+// `post:create` -> `PostCreate()`, `post:delete:own` ->
+// `PostDelete(PostDeleteQualifier.own)`.
+function tokenExpressions(schema: AclSchema): Map<string, string> {
+    const expressions = new Map<string, string>();
+    for (const domain of schema.domains) {
+        for (const action of domain.actions) {
+            const className = tokenClassName(domain, action);
+            const key = `${domain.name}:${action.name}`;
+            if (action.qualifiers.length === 0) {
+                expressions.set(key, `${className}()`);
+            } else {
+                for (const qualifier of action.qualifiers) {
+                    expressions.set(
+                        `${key}:${qualifier.name}`,
+                        `${className}(${qualifierEnumName(domain, action)}.${qualifier.name})`,
+                    );
+                }
+            }
+        }
+    }
+    return expressions;
+}
+
+function emitRoles(schema: AclSchema): string[] {
+    const expressions = tokenExpressions(schema);
+    const values = schema.roles
+        .map((role) => {
+            const tokens = role.tokens
+                .map((token) => {
+                    const expression = expressions.get(token);
+                    if (expression === undefined) {
+                        throw new Error(`role "${role.name}" references unknown token "${token}"`);
+                    }
+                    return expression;
+                })
+                .join(", ");
+            return `${indent(dartDoc(descriptionLines(role.description)))}\n  ${role.name}([${tokens}])`;
+        })
+        .join(",\n\n");
+    const roleEnum = [
+        dartDoc(["Permission roles defined by this schema."]),
+        "enum AclRole {",
+        `${values};`,
+        "",
+        "  const AclRole(this.tokens);",
+        "",
+        indent(dartDoc(["The ACL tokens this role grants."])),
+        "  final List<AclToken> tokens;",
+        "",
+        indent(
+            dartDoc([
+                "Looks a role up by its name, returning `null` for unknown names so a",
+                "stale or mistyped stored role cannot crash a consumer.",
+            ]),
+        ),
+        "  static AclRole? tryByName(String name) => values.asNameMap()[name];",
+        "}",
+    ].join("\n");
+
+    const defaults = schema.roles
+        .filter((role) => role.isDefault)
+        .map((role) => `AclRole.${role.name}`)
+        .join(", ");
+
+    return [
+        roleEnum,
+        `${dartDoc(["All roles in declaration order."])}\nconst List<AclRole> aclRoles = AclRole.values;`,
+        `${dartDoc(["Roles granted to fresh accounts by default."])}\nconst aclDefaultRoles = <AclRole>[${defaults}];`,
+        [
+            dartDoc([
+                "Resolves role names into the union of their encoded ACL tokens. Unknown",
+                "role names are ignored so a stale or mistyped stored role cannot crash a",
+                "consumer.",
+            ]),
+            "Set<String> tokensForRoles(Iterable<String> roles) {",
+            "  final tokens = <String>{};",
+            "  for (final role in roles) {",
+            "    final resolved = AclRole.tryByName(role);",
+            "    if (resolved == null) {",
+            "      continue;",
+            "    }",
+            "    tokens.addAll(resolved.tokens.map((token) => token.encode()));",
+            "  }",
+            "  return tokens;",
+            "}",
+        ].join("\n"),
+        `${dartDoc(["Builds an [Acl] token set from role names."])}\nAcl aclForRoles(Iterable<String> roles) => Acl(tokensForRoles(roles));`,
+    ];
 }

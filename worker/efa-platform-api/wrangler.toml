@@ -22,8 +22,8 @@ database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
 migrations_dir = "migrations"
 
 # Namespace IDs are provisioned manually (`wrangler kv namespace create
-# efa-platform-auth`, plus a preview namespace) and pasted here. Holds only
-# the short-lived refresh-rotation stash.
+# efa-platform-auth`, plus a preview namespace) and pasted here. Holds the
+# short-lived refresh-rotation stash and the resolved-ACL permission cache.
 [[kv_namespaces]]
 binding = "AUTH_KV"
 id = "ea552ca4c83941688be5a7eb8d415164"

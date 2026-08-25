@@ -40,6 +40,22 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
+  packages/efa_acl/ts:
+    dependencies:
+      acl-ts:
+        specifier: workspace:*
+        version: link:../../acl/ts
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@24.13.3)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+
   packages/efa_fit_snapshot_ts:
     dependencies:
       '@bufbuild/protobuf':
@@ -131,6 +147,9 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.14.0
         version: 2.14.0
+      efa-acl-ts:
+        specifier: workspace:*
+        version: link:../../packages/efa_acl/ts
       efa-fit-snapshot-ts:
         specifier: workspace:*
         version: link:../../packages/efa_fit_snapshot_ts
@@ -177,6 +196,9 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.14.0
         version: 2.14.0
+      efa-acl-ts:
+        specifier: workspace:*
+        version: link:../../packages/efa_acl/ts
       efa-proto-ts:
         specifier: workspace:*
         version: link:../../packages/efa_proto_ts

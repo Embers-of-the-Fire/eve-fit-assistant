@@ -19,7 +19,39 @@ post:
                     actions: [{ name: "create", description: "Create posts.", qualifiers: [] }],
                 },
             ],
+            roles: [],
         });
+    });
+
+    it("parses a roles section and validates its tokens against the domains", () => {
+        const schema = loadSchema(`
+post:
+  description: Post management.
+  actions:
+    create:
+      description: Create posts.
+    delete:
+      description: Delete posts.
+      qualifiers:
+        own: Manage owned posts.
+        all: Manage all posts.
+
+roles:
+  user:
+    description: Base role.
+    default: true
+    tokens:
+      - post:create
+      - post:delete:own
+`);
+        expect(schema.roles).toEqual([
+            {
+                name: "user",
+                description: "Base role.",
+                tokens: ["post:create", "post:delete:own"],
+                isDefault: true,
+            },
+        ]);
     });
 
     it("parses qualifiers and trims block-scalar descriptions", () => {
@@ -81,6 +113,56 @@ post:
             "a non-string qualifier description",
             "post:\n  description: x\n  actions:\n    create:\n      description: x\n      qualifiers:\n        own: 42\n",
             "post.create.qualifiers.own",
+        ],
+        [
+            "a non-map roles section",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles: 42\n",
+            "roles",
+        ],
+        [
+            "an empty roles section",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles: {}\n",
+            "roles",
+        ],
+        [
+            "an invalid role name",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  User:\n    description: x\n    tokens: [post:create]\n",
+            "roles.User",
+        ],
+        [
+            "an unknown role key",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n    tokens: [post:create]\n    extra: 1\n",
+            "roles.user",
+        ],
+        [
+            "a role without tokens",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n",
+            "roles.user.tokens",
+        ],
+        [
+            "a role with an empty token list",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n    tokens: []\n",
+            "roles.user.tokens",
+        ],
+        [
+            "a role token outside the schema",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n    tokens: [post:delete]\n",
+            "roles.user.tokens",
+        ],
+        [
+            "a role token with an undeclared qualifier",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n    tokens: [post:create:own]\n",
+            "roles.user.tokens",
+        ],
+        [
+            "a role token missing a required qualifier",
+            "post:\n  description: x\n  actions:\n    delete:\n      description: x\n      qualifiers:\n        own: x\nroles:\n  user:\n    description: x\n    tokens: [post:delete]\n",
+            "roles.user.tokens",
+        ],
+        [
+            "a non-boolean role default",
+            "post:\n  description: x\n  actions:\n    create:\n      description: x\nroles:\n  user:\n    description: x\n    default: yes-string\n    tokens: [post:create]\n",
+            "roles.user.default",
         ],
     ])("rejects %s", (_label, content, path) => {
         expect(() => loadSchema(content)).toThrowError(AclSchemaError);

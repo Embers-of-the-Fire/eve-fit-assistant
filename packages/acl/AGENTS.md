@@ -12,7 +12,10 @@ The package provides:
 - `dart/` — Dart runtime, package name `acl`, pure Dart. Exports `parseToken`,
   `AclTokenFormatException`, `TokenParts`, and `Acl` from `lib/acl.dart`.
 - `tool/` — the `acl-codegen` generator, npm name `acl-tool`. Reads a YAML ACL schema
-  and emits type-safe bindings for both runtimes. Runs on Node's native type stripping;
+  (domains/actions/qualifiers, plus an optional reserved `roles` section declaring named
+  token bundles with `default` markers) and emits type-safe bindings for both runtimes,
+  including the role vocabulary and `tokensForRoles`/`aclForRoles` resolvers. Runs on
+  Node's native type stripping;
   keep all sources erasable-syntax-only (no enums, namespaces, or parameter properties)
   and use explicit `.ts` extensions plus `import type`.
 - `example/acl.yaml` — the shared example schema. It is a fixture, not a product schema;

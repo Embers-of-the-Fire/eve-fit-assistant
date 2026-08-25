@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
+import "package:eve_fit_assistant/features/account/roles.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/setting/account/errors.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -61,28 +62,36 @@ class _SignedInView extends ConsumerWidget {
   final PlatformIdentity identity;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ConfigListView(
-    children: [
-      ConfigListTile.title(context.l10n.accountSignedInSection),
-      ConfigListTile.custom(
-        ListTile(
-          leading: const Icon(Icons.person_outline),
-          title: Text(identity.email),
-          subtitle: Text("${context.l10n.accountUserIdLabel}: ${identity.userId}"),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountInfo = ref.watch(platformAccountInfoProvider);
+    final roles = accountInfo.value?.roles ?? const <String>[];
+    final roleLabels = roles.map((role) => accountRoleLabel(context, role)).join(", ");
+    return ConfigListView(
+      children: [
+        ConfigListTile.title(context.l10n.accountSignedInSection),
+        ConfigListTile.custom(
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: Text(identity.email),
+            subtitle: Text(
+              "${context.l10n.accountUserIdLabel}: ${identity.userId}"
+              "${roles.isEmpty ? "" : "\n${context.l10n.accountRolesLabel}: $roleLabels"}",
+            ),
+          ),
         ),
-      ),
-      ConfigListTile.item(
-        icon: const Icon(Icons.logout_outlined),
-        title: context.l10n.accountLogoutTileTitle,
-        onTap: () => unawaited(_logout(context, ref)),
-      ),
-      ConfigListTile.item(
-        icon: const Icon(Icons.person_remove_outlined),
-        title: context.l10n.accountDeregisterTileTitle,
-        onTap: () => unawaited(_deregister(context, ref)),
-      ),
-    ],
-  );
+        ConfigListTile.item(
+          icon: const Icon(Icons.logout_outlined),
+          title: context.l10n.accountLogoutTileTitle,
+          onTap: () => unawaited(_logout(context, ref)),
+        ),
+        ConfigListTile.item(
+          icon: const Icon(Icons.person_remove_outlined),
+          title: context.l10n.accountDeregisterTileTitle,
+          onTap: () => unawaited(_deregister(context, ref)),
+        ),
+      ],
+    );
+  }
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirmed = await showConfirmDialog(
