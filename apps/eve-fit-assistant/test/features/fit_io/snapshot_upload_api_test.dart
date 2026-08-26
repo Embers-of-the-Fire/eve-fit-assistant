@@ -171,6 +171,40 @@ void main() {
     );
   });
 
+  test("maps the ACL forbidden envelope to the forbidden code", () async {
+    final dio = _dioWith((options, body) async {
+      return ResponseBody.fromString(
+        jsonEncode({"error": "forbidden", "message": "permission denied"}),
+        403,
+        headers: {
+          Headers.contentTypeHeader: ["application/json"],
+        },
+      );
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(
+        isA<FitUploadException>()
+            .having((e) => e.code, "code", FitUploadErrorCode.forbidden)
+            .having((e) => e.message, "message", "permission denied"),
+      ),
+    );
+  });
+
+  test("falls back to the forbidden code when the 403 body is empty", () async {
+    final dio = _dioWith((options, body) async {
+      return ResponseBody.fromBytes(Uint8List(0), 403);
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(
+        isA<FitUploadException>().having((e) => e.code, "code", FitUploadErrorCode.forbidden),
+      ),
+    );
+  });
+
   test("falls back to the status code when the body is a proxy HTML page", () async {
     final dio = _dioWith((options, body) async {
       return ResponseBody.fromString(

@@ -1,0 +1,8 @@
+---
+import MyPosts from "../../components/MyPosts.svelte";
+import Base from "../../layouts/Base.astro";
+---
+
+<Base titleKey="myPosts.pageTitle">
+    <MyPosts client:load />
+</Base>

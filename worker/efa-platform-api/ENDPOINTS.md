@@ -47,6 +47,10 @@ Returned by `verify-email`, `login`, `refresh`, and `reset-password/confirm`.
 | 429 | `rate_limited` — always with a `Retry-After: <seconds>` header |
 | 500 | `internal` |
 
+(The `/platform/internal` mount additionally uses `403 forbidden` for ACL
+permission failures; see README.md. The auth mount itself has no
+permission-denied code.)
+
 ## Endpoints
 
 ### `/signup`

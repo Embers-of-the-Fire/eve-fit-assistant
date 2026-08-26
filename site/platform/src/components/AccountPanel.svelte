@@ -112,6 +112,11 @@ const inputClass =
         {/if}
 
         <div class="grid gap-3">
+            <a href="/account/posts" class={tileClass}>
+                <p class="font-semibold text-console-text">{t("account.myPosts")}</p>
+                <p class="text-sm text-console-text-muted">{t("account.myPostsDesc")}</p>
+            </a>
+
             {#if confirmingLogout}
                 <div class="rounded border border-console-border bg-console-deep p-4">
                     <p class="font-semibold text-console-text">{t("account.signOutConfirm")}</p>

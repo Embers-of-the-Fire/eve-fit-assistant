@@ -1,5 +1,9 @@
 export interface PostSummary {
     postId: string;
+    /** The authoring account's user id; null for tombstoned authors. */
+    authorId: string | null;
+    /** True when the author is a tombstone or a deregistered account. */
+    authorDeleted: boolean;
     fitHash: string;
     fitName: string;
     /** Preview of the fit's description, truncated to 280 code points. */

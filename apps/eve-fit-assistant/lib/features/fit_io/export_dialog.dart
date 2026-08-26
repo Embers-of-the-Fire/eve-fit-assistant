@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:efa_acl/efa_acl.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -56,9 +57,19 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final canUpload = ref.watch(
+    final signedIn = ref.watch(
       platformIdentityProvider.select((identity) => identity.value != null),
     );
+    // Client-side ACL gate for the upload action: the platform API enforces
+    // `post:create` for real; here the button only appears for accounts whose
+    // resolved permissions include it. Fail-closed while the ACL loads, and
+    // ignore stale values kept from a previous resolution during refresh or
+    // after an error (`hasValue` stays true in both cases).
+    final accountAcl = ref.watch(accountAclProvider);
+    final aclReady = !accountAcl.isLoading && !accountAcl.hasError;
+    final canCreatePost = aclReady && (accountAcl.value?.canPostCreate() ?? false);
+    final showUploadDeniedNote =
+        signedIn && aclReady && !canCreatePost && _selectedFormat == FitTextExportFormat.snapshot;
     final uploadResult = _uploadResult;
     return AppDialog(
       title: context.l10n.fitExportDialogTitle,
@@ -112,6 +123,15 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
                       ),
                     ),
                   ],
+                  if (showUploadDeniedNote) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      context.l10n.fitUploadNoPermission,
+                      style: context.theme.textTheme.bodySmall?.copyWith(
+                        color: context.theme.hintColor,
+                      ),
+                    ),
+                  ],
                   if (_actionError != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -136,7 +156,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
               ),
             ]
           : [
-              if (canUpload && _selectedFormat == FitTextExportFormat.snapshot)
+              if (signedIn && canCreatePost && _selectedFormat == FitTextExportFormat.snapshot)
                 TextButton(
                   onPressed: _fit == null || _isExporting ? null : _handleUpload,
                   child: Text(context.l10n.fitUploadButton),
@@ -288,6 +308,7 @@ class _FitExportDialogState extends ConsumerState<FitExportDialog> {
 
   String _uploadErrorMessage(FitUploadException e) => switch (e.code) {
     FitUploadErrorCode.unauthorized => context.l10n.fitUploadErrorUnauthorized,
+    FitUploadErrorCode.forbidden => context.l10n.fitUploadErrorForbidden,
     FitUploadErrorCode.snapshotIncomplete => context.l10n.fitUploadErrorSnapshotIncomplete,
     FitUploadErrorCode.validationFailed => context.l10n.fitUploadErrorValidation(
       message: _describeUploadFailure(e),

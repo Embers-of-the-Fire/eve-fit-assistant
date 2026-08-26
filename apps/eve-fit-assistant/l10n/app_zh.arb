@@ -975,6 +975,8 @@
   "fitUploadUrlCopied": "已复制快照链接。",
   "fitUploadErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
   "fitUploadErrorUnauthorized": "上传令牌无效，请在开发者设置中检查。",
+  "fitUploadErrorForbidden": "当前账号无权向平台发布配置。",
+  "fitUploadNoPermission": "当前账号无权向平台发布配置。",
   "fitUploadErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
   "fitUploadErrorValidation": "平台拒绝了该配置：{message}",
   "@fitUploadErrorValidation": {

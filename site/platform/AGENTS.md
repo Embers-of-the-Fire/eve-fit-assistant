@@ -43,13 +43,18 @@ configuration (worker `efa-platform`, both custom domains). Only a matching
 
 ## Account Auth
 
-- `/account` (profile, sign-out, deregistration) and `/account/login`, `/account/register`,
-  `/account/reset` are data-free shells over Svelte islands under `src/components/auth/`;
-  they follow the app's account flows and must stay uncached.
-- Browser islands call the platform API directly (public reads in `src/lib/api.ts`, auth
-  via `efa-platform-client-ts` in `packages/efa_platform_client_ts`);
-  `src/lib/auth.svelte.ts` holds the singleton `PlatformSession` and bridges identity into
-  `$state` runes.
+- `/account` (profile, sign-out, deregistration), `/account/posts` (the signed-in
+  account's own posts, via the auth-required `GET /platform/internal/my/posts`), and
+  `/account/login`, `/account/register`, `/account/reset` are data-free shells over Svelte
+  islands under `src/components/` (account flows under `src/components/auth/`); they follow
+  the app's account flows and must stay uncached.
+- Browser islands call the platform API directly (public reads in `src/lib/api.ts`,
+  authenticated internal-mount calls in `src/lib/account-api.ts` through the session's
+  `authedFetch`, auth flows via `efa-platform-client-ts` in
+  `packages/efa_platform_client_ts`); `src/lib/auth.svelte.ts` holds the singleton
+  `PlatformSession` and bridges identity into `$state` runes, and `src/lib/acl.svelte.ts`
+  bridges the account's ACL tokens for permission-gated UI (gate on tokens, never role
+  names — real authorization is always enforced by the API).
 - The API origin is the build-time constant `__PLATFORM_API_ORIGIN__` (defined in
   `astro.config.mjs`): production `https://api.efa-tech.dev`, or the preview API when built
   with `CLOUDFLARE_ENV=preview`. The worker's auth CORS allowlist
@@ -63,7 +68,10 @@ configuration (worker `efa-platform`, both custom domains). Only a matching
 
 Route caching uses Astro's Cloudflare CDN cache provider (`cacheCloudflare()` in
 `astro.config.mjs`). `routeRules` is deliberately scoped to `/post/[id]` with
-`maxAge: 31536000` and `swr: 86400`.
+`maxAge: 31536000` and `swr: 86400`. Deleting a post does not purge that cache: a deleted
+post's page may keep serving stale HTML until the SWR window or the next deploy (cache keys
+include the Worker version). This staleness is accepted by design; post-delete UI must live
+in client-side islands, never in SSR output.
 
 List/account pages are data-free shells whose islands fetch live data client-side and must
 remain uncached. The post page opts out through `Astro.cache.set(false)` on its 404 branch.
