@@ -11,7 +11,12 @@ import {
 describe("roles", () => {
     it("grants fresh accounts the default user role", () => {
         expect(aclDefaultRoles).toEqual(["user"]);
-        expect(tokensForRoles(aclDefaultRoles)).toEqual(["post:create", "post:delete:own"]);
+        expect(tokensForRoles(aclDefaultRoles)).toEqual([
+            "post:create",
+            "post:delete:own",
+            "comment:create",
+            "comment:delete:own",
+        ]);
     });
 
     it("resolves roles to the union of their tokens in declaration order", () => {
@@ -19,18 +24,29 @@ describe("roles", () => {
             "post:create",
             "post:delete:own",
             "post:delete:all",
+            "comment:create",
+            "comment:delete:own",
+            "comment:delete:all",
         ]);
         expect(tokensForRoles(["user", "admin"])).toEqual([
             "post:create",
             "post:delete:own",
+            "comment:create",
+            "comment:delete:own",
             "post:delete:all",
+            "comment:delete:all",
             "admin:manage_roles",
         ]);
     });
 
     it("ignores unknown role names", () => {
         expect(tokensForRoles(["superuser"])).toEqual([]);
-        expect(tokensForRoles(["superuser", "user"])).toEqual(["post:create", "post:delete:own"]);
+        expect(tokensForRoles(["superuser", "user"])).toEqual([
+            "post:create",
+            "post:delete:own",
+            "comment:create",
+            "comment:delete:own",
+        ]);
     });
 
     it("guards role names", () => {
@@ -44,6 +60,8 @@ describe("roles", () => {
         const acl = aclForRoles(["admin"]);
         expect(acl.can("post:create")).toBe(true);
         expect(acl.can("post:delete")).toEqual(["all"]);
+        expect(acl.can("comment:create")).toBe(true);
+        expect(acl.can("comment:delete")).toEqual(["all"]);
         expect(acl.can("admin:manage_roles")).toBe(true);
         expect(aclForRoles(["user"]).can("admin:manage_roles")).toBe(false);
     });

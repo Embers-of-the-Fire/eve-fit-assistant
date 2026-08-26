@@ -13,6 +13,17 @@ post:
         own: Delete posts published by the account itself.
         all: Delete any post on the platform.
 
+comment:
+  description: Post discussion comment permission group.
+  actions:
+    create:
+      description: Post comments on fit post threads.
+    delete:
+      description: Delete comments.
+      qualifiers:
+        own: Delete comments written by the account itself.
+        all: Delete any comment on the platform.
+
 admin:
   description: Platform administration permission group.
   actions:
@@ -26,15 +37,22 @@ roles:
     tokens:
       - post:create
       - post:delete:own
+      - comment:create
+      - comment:delete:own
   moderator:
     description: Can moderate posts published by any account.
     tokens:
       - post:create
       - post:delete:own
       - post:delete:all
+      - comment:create
+      - comment:delete:own
+      - comment:delete:all
   admin:
     description: Full platform administration.
     tokens:
       - post:create
       - post:delete:all
+      - comment:create
+      - comment:delete:all
       - admin:manage_roles

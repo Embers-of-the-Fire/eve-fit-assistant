@@ -10,6 +10,14 @@ import { Acl } from "acl-ts";
  */
 export type PostDeleteQualifier = "own" | "all";
 
+/**
+ * Delete comments.
+ *
+ * - `own`: Delete comments written by the account itself.
+ * - `all`: Delete any comment on the platform.
+ */
+export type CommentDeleteQualifier = "own" | "all";
+
 /** Publish fit posts to the platform. */
 export type PostCreate = "post:create";
 
@@ -19,6 +27,15 @@ export type PostDelete = `post:delete:${PostDeleteQualifier}`;
 /** Fit post management permission group. */
 export type PostToken = PostCreate | PostDelete;
 
+/** Post comments on fit post threads. */
+export type CommentCreate = "comment:create";
+
+/** Delete comments. */
+export type CommentDelete = `comment:delete:${CommentDeleteQualifier}`;
+
+/** Post discussion comment permission group. */
+export type CommentToken = CommentCreate | CommentDelete;
+
 /** Assign or revoke account permission roles. */
 export type AdminManageRoles = "admin:manage_roles";
 
@@ -26,12 +43,14 @@ export type AdminManageRoles = "admin:manage_roles";
 export type AdminToken = AdminManageRoles;
 
 /** All ACL tokens defined by this schema. */
-export type AclToken = PostToken | AdminToken;
+export type AclToken = PostToken | CommentToken | AdminToken;
 
 /** Maps every action key to its qualifier union (`never` when unqualified). */
 export interface AclActionMap {
     "post:create": never;
     "post:delete": PostDeleteQualifier;
+    "comment:create": never;
+    "comment:delete": CommentDeleteQualifier;
     "admin:manage_roles": never;
 }
 
@@ -40,6 +59,9 @@ export const aclTokens = [
     "post:create",
     "post:delete:own",
     "post:delete:all",
+    "comment:create",
+    "comment:delete:own",
+    "comment:delete:all",
     "admin:manage_roles",
 ] as const;
 
@@ -81,9 +103,9 @@ export function isAclRole(role: string): role is AclRole {
 
 /** The ACL tokens each role grants. */
 const roleTokens = {
-    user: ["post:create", "post:delete:own"],
-    moderator: ["post:create", "post:delete:own", "post:delete:all"],
-    admin: ["post:create", "post:delete:all", "admin:manage_roles"],
+    user: ["post:create", "post:delete:own", "comment:create", "comment:delete:own"],
+    moderator: ["post:create", "post:delete:own", "post:delete:all", "comment:create", "comment:delete:own", "comment:delete:all"],
+    admin: ["post:create", "post:delete:all", "comment:create", "comment:delete:all", "admin:manage_roles"],
 } as const satisfies Record<AclRole, readonly AclToken[]>;
 
 /**

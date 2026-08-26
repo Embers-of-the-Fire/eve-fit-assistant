@@ -8,24 +8,43 @@ void main() {
       expect(tokensForRoles(aclDefaultRoles.map((role) => role.name)), {
         "post:create",
         "post:delete:own",
+        "comment:create",
+        "comment:delete:own",
       });
     });
 
     test("role bundles expose their tokens as typed values", () {
-      expect(AclRole.user.tokens, [const PostCreate(), const PostDelete(PostDeleteQualifier.own)]);
+      expect(AclRole.user.tokens, [
+        const PostCreate(),
+        const PostDelete(PostDeleteQualifier.own),
+        const CommentCreate(),
+        const CommentDelete(CommentDeleteQualifier.own),
+      ]);
       expect(AclRole.admin.tokens, [
         const PostCreate(),
         const PostDelete(PostDeleteQualifier.all),
+        const CommentCreate(),
+        const CommentDelete(CommentDeleteQualifier.all),
         const AdminManageRoles(),
       ]);
     });
 
     test("resolves roles to the union of their tokens", () {
-      expect(tokensForRoles(["moderator"]), {"post:create", "post:delete:own", "post:delete:all"});
-      expect(tokensForRoles(["user", "admin"]), {
+      expect(tokensForRoles(["moderator"]), {
         "post:create",
         "post:delete:own",
         "post:delete:all",
+        "comment:create",
+        "comment:delete:own",
+        "comment:delete:all",
+      });
+      expect(tokensForRoles(["user", "admin"]), {
+        "post:create",
+        "post:delete:own",
+        "comment:create",
+        "comment:delete:own",
+        "post:delete:all",
+        "comment:delete:all",
         "admin:manage_roles",
       });
     });
@@ -40,6 +59,8 @@ void main() {
       final acl = aclForRoles(["admin"]);
       expect(acl.canPostCreate(), isTrue);
       expect(acl.canPostDelete(), {PostDeleteQualifier.all});
+      expect(acl.canCommentCreate(), isTrue);
+      expect(acl.canCommentDelete(), {CommentDeleteQualifier.all});
       expect(acl.canAdminManageRoles(), isTrue);
       expect(aclForRoles(["user"]).canAdminManageRoles(), isFalse);
     });
