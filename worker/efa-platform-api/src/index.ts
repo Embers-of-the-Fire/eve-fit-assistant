@@ -614,6 +614,9 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
             } catch {
                 return errorJson(400, "bad_request", "malformed JSON body");
             }
+            if (typeof payload !== "object" || payload === null) {
+                return errorJson(400, "bad_request", "malformed JSON body");
+            }
             const bodyRaw = (payload as { body?: unknown }).body;
             if (typeof bodyRaw !== "string") {
                 return errorJson(400, "bad_request", "body must be a string");

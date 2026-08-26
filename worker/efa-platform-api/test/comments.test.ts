@@ -296,6 +296,9 @@ describe("POST /posts/:id/comments", () => {
         const wrongType = await createComment(POST_ID, { body: 42 }, pair.accessToken);
         expect(wrongType.status).toBe(400);
 
+        const nullPayload = await createComment(POST_ID, null, pair.accessToken);
+        expect(nullPayload.status).toBe(400);
+
         const empty = await createComment(POST_ID, { body: "   " }, pair.accessToken);
         expect(empty.status).toBe(400);
 
