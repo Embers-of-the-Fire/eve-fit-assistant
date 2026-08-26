@@ -341,6 +341,81 @@ class TestWebSocketTransport:
         assert json.loads(failing.sent[0])["type"] == "complete"
         assert json.loads(recovered.sent[0])["type"] == "complete"
 
+    def test_retries_when_reconnect_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from websockets.exceptions import ConnectionClosed
+
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        failing = _FakeConnection(replies=[ConnectionClosed(None, None)])
+        recovered = _FakeConnection(replies=[{"id": 2, "ok": True}])
+        transport = self._make_transport(failing)
+
+        connect_calls = 0
+
+        def flaky_connect() -> None:
+            nonlocal connect_calls
+            connect_calls += 1
+            if connect_calls == 1:
+                raise OSError("network unreachable")
+            transport._connection = recovered
+
+        transport._connect = flaky_connect
+
+        reply = transport.post("complete", {"entry_count": 1})
+
+        assert reply["ok"] is True
+        # The first reconnect attempt fails and is retried inside post().
+        assert connect_calls == 2
+        assert len(recovered.sent) == 1
+        assert json.loads(recovered.sent[0])["type"] == "complete"
+
+    def test_does_not_retry_permanent_handshake_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from websockets.datastructures import Headers
+        from websockets.exceptions import InvalidStatus
+        from websockets.http11 import Response
+
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        transport = self._make_transport()
+        connect_calls = 0
+
+        def unauthorized_connect() -> None:
+            nonlocal connect_calls
+            connect_calls += 1
+            raise InvalidStatus(Response(401, "Unauthorized", Headers(), b""))
+
+        transport._connect = unauthorized_connect
+
+        with pytest.raises(InvalidStatus):
+            transport.post("complete", {})
+
+        # Authentication failures are permanent: a single attempt, no retries.
+        assert connect_calls == 1
+
+    def test_retries_transient_handshake_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from websockets.datastructures import Headers
+        from websockets.exceptions import InvalidStatus
+        from websockets.http11 import Response
+
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        recovered = _FakeConnection(replies=[{"id": 1, "ok": True}])
+        transport = self._make_transport()
+        connect_calls = 0
+
+        def flaky_connect() -> None:
+            nonlocal connect_calls
+            connect_calls += 1
+            if connect_calls == 1:
+                raise InvalidStatus(Response(503, "Service Unavailable", Headers(), b""))
+            transport._connection = recovered
+
+        transport._connect = flaky_connect
+
+        reply = transport.post("complete", {})
+
+        assert reply["ok"] is True
+        assert connect_calls == 2
+
     def test_gives_up_after_max_attempts(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("time.sleep", lambda _seconds: None)
         connection = _FakeConnection(replies=[TimeoutError("slow")] * 3)

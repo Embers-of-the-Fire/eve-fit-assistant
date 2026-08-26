@@ -174,12 +174,18 @@ class WebSocketTransport:
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         from websockets.exceptions import ConnectionClosed
+        from websockets.exceptions import InvalidStatus
 
         last_error: Exception | None = None
         for attempt in range(1, self._max_attempts + 1):
             try:
                 return self._roundtrip(path, payload)
-            except (ConnectionClosed, TimeoutError, OSError) as exc:
+            except (ConnectionClosed, TimeoutError, OSError, InvalidStatus) as exc:
+                # 5xx handshake responses are transient; other handshake
+                # failures (notably 401/403 authentication errors) are
+                # permanent and must not burn retry attempts.
+                if isinstance(exc, InvalidStatus) and exc.response.status_code < 500:
+                    raise
                 last_error = exc
                 delay = min(2.0 ** (attempt - 1), 30.0) + random.uniform(0.0, 1.0)
                 warning(
@@ -187,7 +193,9 @@ class WebSocketTransport:
                     f"reconnecting in {delay:.1f}s (attempt {attempt}/{self._max_attempts})"
                 )
                 time.sleep(delay)
-                self._connect()
+                # Drop the broken connection so the next attempt reconnects
+                # inside the try block; a failed reconnect is retried too.
+                self.close()
         raise RuntimeError(
             f"D1 sync '{path}' frame failed after {self._max_attempts} attempts: {last_error}"
         ) from last_error
