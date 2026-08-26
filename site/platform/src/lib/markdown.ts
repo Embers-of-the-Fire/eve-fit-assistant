@@ -10,6 +10,12 @@ marked.use({ gfm: true, breaks: true });
 
 /** Renders a raw markdown comment body to sanitized HTML. */
 export function renderMarkdown(body: string): string {
+    if (!DOMPurify.isSupported) {
+        throw new Error(
+            "renderMarkdown is client-side only: DOMPurify has no DOM here. " +
+                "Do not call it during SSR.",
+        );
+    }
     const html = marked.parse(body, { async: false });
     return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
 }
