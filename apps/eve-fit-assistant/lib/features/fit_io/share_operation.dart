@@ -50,9 +50,17 @@ class FitShareOperation {
     return result;
   }
 
-  /// Opens a post page URL through [fitShareUrlLauncherProvider].
+  /// Opens a post page URL through [fitShareUrlLauncherProvider]. Launcher
+  /// failures (a `false` return or a thrown exception) are non-fatal: they
+  /// are logged and the caller still receives the upload result.
   Future<void> openPost(WidgetRef ref, String postUrl) async {
-    final opened = await ref.read(fitShareUrlLauncherProvider)(Uri.parse(postUrl));
+    bool opened;
+    try {
+      opened = await ref.read(fitShareUrlLauncherProvider)(Uri.parse(postUrl));
+    } catch (error, stackTrace) {
+      warning("Fit share: unable to open the post page $postUrl: $error", stackTrace: stackTrace);
+      return;
+    }
     if (!opened) {
       warning("Fit share: unable to open the post page $postUrl");
     }

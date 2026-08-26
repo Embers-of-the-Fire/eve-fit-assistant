@@ -59,8 +59,10 @@ void main() {
   // The operation logs a warning when the redirect fails; initialize the
   // global logger once (it is `late final`) with a throwaway file target.
   setUpAll(() {
-    GlobalLogger.init(Directory.systemTemp.createTempSync("efa-share-test").path,
-        enableDebugLog: false);
+    GlobalLogger.init(
+      Directory.systemTemp.createTempSync("efa-share-test").path,
+      enableDebugLog: false,
+    );
   });
 
   group("FitShareOperation.share", () {
@@ -91,10 +93,13 @@ void main() {
 
     testWidgets("uploads and redirects to the worker-provided post page", (tester) async {
       final launched = <Uri>[];
-      final ref = await pumpRef(tester, launcher: (uri) async {
-        launched.add(uri);
-        return true;
-      });
+      final ref = await pumpRef(
+        tester,
+        launcher: (uri) async {
+          launched.add(uri);
+          return true;
+        },
+      );
 
       final outcome = await const FitShareOperation().share(
         ref,
@@ -108,6 +113,21 @@ void main() {
 
     testWidgets("a failed redirect still resolves the upload result", (tester) async {
       final ref = await pumpRef(tester, launcher: (uri) async => false);
+
+      final outcome = await const FitShareOperation().share(
+        ref,
+        fitId: "test-fit-1",
+        fit: _makeFit(),
+      );
+
+      expect(outcome, _result);
+    });
+
+    testWidgets("a throwing launcher still resolves the upload result", (tester) async {
+      final ref = await pumpRef(
+        tester,
+        launcher: (uri) async => throw StateError("no browser available"),
+      );
 
       final outcome = await const FitShareOperation().share(
         ref,
