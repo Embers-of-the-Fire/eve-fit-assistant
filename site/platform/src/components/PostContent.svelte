@@ -140,13 +140,6 @@ async function doDelete() {
     <section class="overflow-hidden rounded border border-console-border">
         <FitSnapshotView snapshot={fitSnapshot} locale={locale.current} showHeader={false} />
     </section>
-    <details class="mt-4 rounded border border-console-border bg-console-surface p-4">
-        <summary class="cursor-pointer text-lg font-semibold text-console-text">
-            {t("fit.snapshotData")}
-        </summary>
-        <pre class="mt-2 max-h-[36rem] overflow-auto rounded bg-console-deep p-3 text-xs text-console-text-dim">
-{JSON.stringify(snapshot.snapshotJson, null, 2)}</pre>
-    </details>
 {:else}
     <p class="text-console-text-muted">{t("fit.notFound")}</p>
 {/if}
