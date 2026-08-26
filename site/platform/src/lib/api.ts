@@ -1,9 +1,9 @@
 import type {
+    CommentsPage,
     PlatformStats,
     PostsPage,
     ShipDetail,
     ShipsPage,
-    ThreadSummary,
     TimeWindow,
 } from "./types";
 
@@ -75,9 +75,11 @@ export async function fetchStats(locale: string): Promise<PlatformStats> {
     );
 }
 
-export async function fetchThreads(postId: string): Promise<ThreadSummary[]> {
-    const data = await getJson<{ threads: ThreadSummary[] }>(
-        `${API_ORIGIN}/platform/internal/posts/${postId}/threads`,
+export async function fetchComments(postId: string, cursor?: string | null): Promise<CommentsPage> {
+    const params = new URLSearchParams();
+    if (cursor) params.set("cursor", cursor);
+    const query = params.size > 0 ? `?${params.toString()}` : "";
+    return getJson<CommentsPage>(
+        `${API_ORIGIN}/platform/internal/posts/${postId}/comments${query}`,
     );
-    return data.threads;
 }

@@ -11,6 +11,15 @@ enum PostDeleteQualifier {
   all,
 }
 
+/// Qualifiers for `comment:delete`.
+enum CommentDeleteQualifier {
+  /// Delete comments written by the account itself.
+  own,
+
+  /// Delete any comment on the platform.
+  all,
+}
+
 /// Base type for all ACL tokens defined by this schema.
 sealed class AclToken {
   const AclToken();
@@ -38,6 +47,25 @@ final class PostDelete extends AclToken {
   String encode() => "post:delete:${qualifier.name}";
 }
 
+/// Post comments on fit post threads.
+final class CommentCreate extends AclToken {
+  const CommentCreate();
+
+  @override
+  String encode() => "comment:create";
+}
+
+/// Delete comments.
+final class CommentDelete extends AclToken {
+  const CommentDelete(this.qualifier);
+
+  /// The qualifier narrowing this action.
+  final CommentDeleteQualifier qualifier;
+
+  @override
+  String encode() => "comment:delete:${qualifier.name}";
+}
+
 /// Assign or revoke account permission roles.
 final class AdminManageRoles extends AclToken {
   const AdminManageRoles();
@@ -53,6 +81,12 @@ AclToken? parseAclToken(String token) => switch (token.split(":")) {
   ["post", "delete", final qualifier] => switch (qualifier) {
     "own" => const PostDelete(PostDeleteQualifier.own),
     "all" => const PostDelete(PostDeleteQualifier.all),
+    _ => null,
+  },
+  ["comment", "create"] => const CommentCreate(),
+  ["comment", "delete", final qualifier] => switch (qualifier) {
+    "own" => const CommentDelete(CommentDeleteQualifier.own),
+    "all" => const CommentDelete(CommentDeleteQualifier.all),
     _ => null,
   },
   ["admin", "manage_roles"] => const AdminManageRoles(),
@@ -76,6 +110,18 @@ extension AclTokenQueries on Acl {
     return {for (final qualifier in matched) PostDeleteQualifier.values.byName(qualifier)};
   }
 
+  /// Post comments on fit post threads.
+  bool canCommentCreate() => can("comment:create") as bool;
+
+  /// Delete comments.
+  Set<CommentDeleteQualifier>? canCommentDelete() {
+    final matched = can("comment:delete");
+    if (matched is! Set<String>) {
+      return null;
+    }
+    return {for (final qualifier in matched) CommentDeleteQualifier.values.byName(qualifier)};
+  }
+
   /// Assign or revoke account permission roles.
   bool canAdminManageRoles() => can("admin:manage_roles") as bool;
 }
@@ -83,17 +129,31 @@ extension AclTokenQueries on Acl {
 /// Permission roles defined by this schema.
 enum AclRole {
   /// Base role granted to every account.
-  user([PostCreate(), PostDelete(PostDeleteQualifier.own)]),
+  user([
+    PostCreate(),
+    PostDelete(PostDeleteQualifier.own),
+    CommentCreate(),
+    CommentDelete(CommentDeleteQualifier.own),
+  ]),
 
   /// Can moderate posts published by any account.
   moderator([
     PostCreate(),
     PostDelete(PostDeleteQualifier.own),
     PostDelete(PostDeleteQualifier.all),
+    CommentCreate(),
+    CommentDelete(CommentDeleteQualifier.own),
+    CommentDelete(CommentDeleteQualifier.all),
   ]),
 
   /// Full platform administration.
-  admin([PostCreate(), PostDelete(PostDeleteQualifier.all), AdminManageRoles()]);
+  admin([
+    PostCreate(),
+    PostDelete(PostDeleteQualifier.all),
+    CommentCreate(),
+    CommentDelete(CommentDeleteQualifier.all),
+    AdminManageRoles(),
+  ]);
 
   const AclRole(this.tokens);
 

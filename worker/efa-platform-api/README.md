@@ -75,13 +75,15 @@ passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 | `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted, postUrl }` — `postUrl` is the site's post page (`$PLATFORM_SITE_ORIGIN/post/<postId>`), so clients can redirect the user straight to it |
 | `DELETE /platform/internal/posts/:id` | account + `post:delete:{own,all}` | Deletes the post row. `own` covers only the caller's own posts, `all` any post (qualifier validated against `posts.author_id` in the handler; NULL-author tombstones need `all`). The shared `fits` blob is unaffected. `200 { postId }`; 404 on unknown id |
 | `GET /platform/internal/my/posts` | account | The caller's own posts; same keyset pagination contract and summary shape as the public list, minus the ship/window filters. `Cache-Control: no-store` |
-| `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted }`; 400 on malformed UUID |
+| `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted, commentCount }`; 400 on malformed UUID |
 | `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes, immutable cache |
 | `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache |
 | `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`, `shipTypeId`, `window` = 24h/7d/30d/all); each summary carries `authorId`/`authorDeleted`. `Cache-Control: public, max-age=30` |
 | `GET /platform/internal/ships` | public | Ship directory aggregated from `posts` (`q` name search, `window`, keyset `cursor`, `limit` ≤ 50, `locale`), `max-age=30` |
 | `GET /platform/internal/ships/:id` | public | Per-ship aggregate `{ shipTypeId, shipName, postCount, firstPostAt, lastPostAt }`; 404 when the ship has no posts |
-| `GET /platform/internal/posts/:id/threads` | public | Stub: `{ "threads": [] }` |
+| `GET /platform/internal/posts/:id/comments` | public | The post's discussion comments, oldest-first (`cursor`, `limit` ≤ 100); each comment carries `{ commentId, authorId, authorDeleted, body, createdAt }` with `body` as raw markdown. `Cache-Control: public, max-age=10` |
+| `POST /platform/internal/posts/:id/comments` | account + `comment:create` | JSON `{ body }` (markdown, trimmed, 1–10 000 code points). `201` with the created comment; 404 on unknown post |
+| `DELETE /platform/internal/comments/:id` | account + `comment:delete:{own,all}` | Deletes the comment row; same qualifier contract as post deletion. `200 { commentId }`; 404 on unknown id |
 | `GET /platform/internal/health` | public | `{ "ok": true }`; a valid Bearer token additionally pings D1 and the fit-storage binding |
 
 Public reads are unauthenticated; post creation and deletion require an
@@ -107,6 +109,11 @@ removes posts: deregistration anonymizes the user row in place, and a hard
 user delete nulls the reference (`ON DELETE SET NULL`) — either way the post
 survives with `authorDeleted: true`. Deleting a post is a plain row drop with
 no effect on users, gated by the `post:delete:{own,all}` ACL tokens (above).
+
+Discussion comments follow the same ownership and tombstone rules
+(`comments.author_id`, `ON DELETE SET NULL`); deleting a post cascades to its
+comments (`ON DELETE CASCADE`). Comment bodies are stored as raw markdown —
+rendering and sanitizing are the client's job.
 Posts created before accounts existed were migrated with
 `author_id = NULL` and read as tombstones.
 

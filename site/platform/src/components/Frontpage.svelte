@@ -248,8 +248,3 @@ onMount(() => {
         {/if}
     {/if}
 </section>
-
-<section class="mt-10 rounded border border-console-border bg-console-surface p-4">
-    <h2 class="mb-1 text-lg font-semibold text-console-text">{t("threads.title")}</h2>
-    <p class="text-sm text-console-text-muted">{t("threads.comingSoon")}</p>
-</section>

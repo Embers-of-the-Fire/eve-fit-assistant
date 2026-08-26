@@ -1,5 +1,5 @@
 import type { PlatformSession } from "efa-platform-client-ts";
-import type { PostsPage } from "./types";
+import type { Comment, PostsPage } from "./types";
 
 // Authenticated platform API calls for browser islands (public reads stay in
 // ./api.ts). The session's authedFetch attaches a valid access token,
@@ -35,6 +35,37 @@ export async function deletePost(session: PlatformSession, postId: string): Prom
     const res = await session.authedFetch(`${API_ORIGIN}/platform/internal/posts/${postId}`, {
         method: "DELETE",
     });
+    if (res.status === 403) throw new Error("forbidden");
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+}
+
+/** Posts a markdown comment on a post's discussion thread. Returns the
+ * created comment as stored. Throws Error("forbidden") on a 403. */
+export async function createComment(
+    session: PlatformSession,
+    postId: string,
+    body: string,
+): Promise<Comment> {
+    const res = await session.authedFetch(
+        `${API_ORIGIN}/platform/internal/posts/${postId}/comments`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ body }),
+        },
+    );
+    if (res.status === 403) throw new Error("forbidden");
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    return (await res.json()) as Comment;
+}
+
+/** Deletes a comment the session's account is allowed to delete (own, or any
+ * with the `all` qualifier). Throws Error("forbidden") on a 403. */
+export async function deleteComment(session: PlatformSession, commentId: string): Promise<void> {
+    const res = await session.authedFetch(
+        `${API_ORIGIN}/platform/internal/comments/${commentId}`,
+        { method: "DELETE" },
+    );
     if (res.status === 403) throw new Error("forbidden");
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
 }

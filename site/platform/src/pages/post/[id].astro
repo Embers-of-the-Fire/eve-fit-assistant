@@ -1,6 +1,6 @@
 ---
 import PostContent from "../../components/PostContent.svelte";
-import ThreadSection from "../../components/ThreadSection.svelte";
+import CommentSection from "../../components/CommentSection.svelte";
 import Base from "../../layouts/Base.astro";
 import { getPostSnapshot, POST_ID_PATTERN } from "../../lib/platform";
 
@@ -29,5 +29,5 @@ const snapshot = stored
 
 <Base title={fitName || undefined} {titleKey}>
     <PostContent client:load {snapshot} />
-    {stored && <ThreadSection client:load postId={stored.postId} />}
+    {stored && <CommentSection client:load postId={stored.postId} />}
 </Base>

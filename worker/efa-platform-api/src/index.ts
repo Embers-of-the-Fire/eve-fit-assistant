@@ -53,10 +53,18 @@ const DESCRIPTION_PREVIEW_CODE_POINTS = 280;
 // Free-text ship search is capped like the other free-text fields.
 const MAX_SHIP_QUERY_CODE_POINTS = 100;
 
+// Comment lists are chat-like (ascending) and longer than post lists.
+const DEFAULT_COMMENT_LIST_LIMIT = 50;
+const MAX_COMMENT_LIST_LIMIT = 100;
+// Raw markdown bodies are stored verbatim; the cap keeps rows bounded.
+const MAX_COMMENT_BODY_CODE_POINTS = 10_000;
+
 const PROTOBUF_CONTENT_TYPE = "application/x-protobuf";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const LIST_CACHE_CONTROL = "public, max-age=30";
 const STATS_CACHE_CONTROL = "public, max-age=60";
+// Comment lists change more often than post lists; keep the edge copy short.
+const COMMENT_LIST_CACHE_CONTROL = "public, max-age=10";
 
 function errorJson(status: 400 | 401 | 403 | 404 | 500, code: string, message: string): Response {
     return Response.json({ error: code, message }, { status });
@@ -378,7 +386,9 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         }
         const row = await c.env.FIT_DB.prepare(
             "SELECT posts.post_id, posts.author_id, posts.fit_hash, posts.created_at, " +
-                "users.status AS author_status FROM posts " +
+                "users.status AS author_status, " +
+                "(SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.post_id) AS comment_count " +
+                "FROM posts " +
                 "LEFT JOIN users ON users.user_id = posts.author_id WHERE posts.post_id = ?",
         )
             .bind(postId)
@@ -388,6 +398,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
                 author_status: string | null;
                 fit_hash: string;
                 created_at: string;
+                comment_count: number;
             }>();
         if (!row) {
             return errorJson(404, "not_found", "unknown post id");
@@ -398,6 +409,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
             createdAt: row.created_at,
             authorId: row.author_id,
             authorDeleted: row.author_id === null || row.author_status === "deregistered",
+            commentCount: row.comment_count,
         });
     });
 
@@ -485,10 +497,202 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         return blobResponse(row.fit_state);
     });
 
-    // Threads (stub).
-    app.get("/posts/:id/threads", (c) => {
-        return c.json({ threads: [] });
+    // Discussion comments. The post itself is the titled thread; comments are
+    // a flat, chronological list of markdown messages under it. Bodies are
+    // stored as raw markdown — rendering and sanitizing are the client's job.
+    interface CommentRow {
+        comment_id: string;
+        author_id: string | null;
+        author_status: string | null;
+        body: string;
+        created_at: string;
+    }
+
+    function commentView(row: CommentRow) {
+        return {
+            commentId: row.comment_id,
+            authorId: row.author_id,
+            // Same tombstone rule as posts: NULL author_id or a deregistered
+            // account renders as a deleted author.
+            authorDeleted: row.author_id === null || row.author_status === "deregistered",
+            body: row.body,
+            createdAt: row.created_at,
+        };
+    }
+
+    // List a post's comments (keyset pagination over comments_post_created,
+    // ascending like a chat log; the cursor carries the last seen row).
+    app.get("/posts/:id/comments", async (c) => {
+        const postId = c.req.param("id");
+        if (!UUID_PATTERN.test(postId)) {
+            return errorJson(400, "bad_request", "invalid post id");
+        }
+        const post = await c.env.FIT_DB.prepare("SELECT post_id FROM posts WHERE post_id = ?")
+            .bind(postId)
+            .first();
+        if (!post) {
+            return errorJson(404, "not_found", "unknown post id");
+        }
+
+        let limit = DEFAULT_COMMENT_LIST_LIMIT;
+        const limitRaw = c.req.query("limit");
+        if (limitRaw !== undefined) {
+            const parsed = parseLimit(limitRaw, MAX_COMMENT_LIST_LIMIT);
+            if (parsed === null) {
+                return errorJson(400, "bad_request", "malformed limit");
+            }
+            limit = parsed;
+        }
+
+        const cursorRaw = c.req.query("cursor");
+        let cursor: { createdAt: string; postId: string } | null = null;
+        if (cursorRaw !== undefined) {
+            cursor = decodeCursor(cursorRaw);
+            if (!cursor) {
+                return errorJson(400, "bad_request", "malformed cursor");
+            }
+        }
+
+        const conditions = ["comments.post_id = ?"];
+        const binds: (string | number)[] = [postId];
+        if (cursor) {
+            conditions.push("(comments.created_at, comments.comment_id) > (?, ?)");
+            binds.push(cursor.createdAt, cursor.postId);
+        }
+        const statement = c.env.FIT_DB.prepare(
+            "SELECT comments.comment_id, comments.author_id, comments.body, comments.created_at, " +
+                "users.status AS author_status FROM comments " +
+                "LEFT JOIN users ON users.user_id = comments.author_id " +
+                `WHERE ${conditions.join(" AND ")} ` +
+                "ORDER BY comments.created_at ASC, comments.comment_id ASC LIMIT ?",
+        ).bind(...binds, limit + 1);
+        const { results } = await statement.all<CommentRow>();
+
+        const page = results.slice(0, limit);
+        let nextCursor: string | null = null;
+        if (results.length > limit && page.length > 0) {
+            const last = page[page.length - 1];
+            nextCursor = encodeCursor(last.created_at, last.comment_id);
+        }
+
+        return c.json(
+            {
+                comments: page.map(commentView),
+                nextCursor,
+            },
+            200,
+            { "Cache-Control": COMMENT_LIST_CACHE_CONTROL },
+        );
     });
+
+    // Create comment. The verified identity becomes the author; the body is
+    // stored as raw markdown (empty and oversized bodies are rejected, never
+    // silently truncated).
+    app.post(
+        "/posts/:id/comments",
+        requireAccessToken<{ Bindings: Env }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: requireActiveAccount,
+        }),
+        requirePermission<{ Bindings: Env }>("comment:create"),
+        async (c) => {
+            const claims = getAuthClaims(c);
+            const postId = c.req.param("id");
+            if (!UUID_PATTERN.test(postId)) {
+                return errorJson(400, "bad_request", "invalid post id");
+            }
+            const post = await c.env.FIT_DB.prepare("SELECT post_id FROM posts WHERE post_id = ?")
+                .bind(postId)
+                .first();
+            if (!post) {
+                return errorJson(404, "not_found", "unknown post id");
+            }
+
+            let payload: unknown;
+            try {
+                payload = await c.req.json();
+            } catch {
+                return errorJson(400, "bad_request", "malformed JSON body");
+            }
+            if (typeof payload !== "object" || payload === null) {
+                return errorJson(400, "bad_request", "malformed JSON body");
+            }
+            const bodyRaw = (payload as { body?: unknown }).body;
+            if (typeof bodyRaw !== "string") {
+                return errorJson(400, "bad_request", "body must be a string");
+            }
+            const body = bodyRaw.trim();
+            if (body.length === 0) {
+                return errorJson(400, "bad_request", "comment body must not be empty");
+            }
+            if ([...body].length > MAX_COMMENT_BODY_CODE_POINTS) {
+                return errorJson(400, "bad_request", "comment body too long");
+            }
+
+            const commentId = crypto.randomUUID();
+            const row = await c.env.FIT_DB.prepare(
+                "INSERT INTO comments (comment_id, post_id, author_id, body) VALUES (?, ?, ?, ?) " +
+                    "RETURNING created_at",
+            )
+                .bind(commentId, postId, claims.sub, body)
+                .first<{ created_at: string }>();
+            if (!row) {
+                console.error(`comment ${commentId} inserted but not readable`);
+                return errorJson(500, "internal", "internal server error");
+            }
+
+            return c.json(
+                {
+                    commentId,
+                    postId,
+                    authorId: claims.sub,
+                    authorDeleted: false,
+                    body,
+                    createdAt: row.created_at,
+                },
+                201,
+            );
+        },
+    );
+
+    // Delete comment. Same qualifier contract as post deletion: the
+    // middleware matches any comment:delete qualifier; `all` covers any
+    // comment, `own` only the caller's own (NULL-author tombstones are never
+    // "own").
+    app.delete(
+        "/comments/:id",
+        requireAccessToken<{ Bindings: Env }>({
+            secret: (c) => c.env.AUTH_TOKEN_SECRET,
+            validateClaims: requireActiveAccount,
+        }),
+        requirePermission<{ Bindings: Env }>("comment:delete"),
+        async (c) => {
+            const commentId = c.req.param("id");
+            if (!UUID_PATTERN.test(commentId)) {
+                return errorJson(400, "bad_request", "invalid comment id");
+            }
+            const row = await c.env.FIT_DB.prepare(
+                "SELECT author_id FROM comments WHERE comment_id = ?",
+            )
+                .bind(commentId)
+                .first<{ author_id: string | null }>();
+            if (!row) {
+                return errorJson(404, "not_found", "unknown comment id");
+            }
+            const permissions = getAuthPermissions(c);
+            const allowed =
+                permissions.includes("comment:delete:all") ||
+                (permissions.includes("comment:delete:own") &&
+                    row.author_id === getAuthClaims(c).sub);
+            if (!allowed) {
+                return errorJson(403, "forbidden", "permission denied");
+            }
+            await c.env.FIT_DB.prepare("DELETE FROM comments WHERE comment_id = ?")
+                .bind(commentId)
+                .run();
+            return c.json({ commentId }, 200);
+        },
+    );
 
     interface StatsRow {
         total_posts: number;

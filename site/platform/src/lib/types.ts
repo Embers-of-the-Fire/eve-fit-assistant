@@ -15,12 +15,20 @@ export interface PostSummary {
     generator: string | null;
 }
 
-export interface ThreadSummary {
-    id: string;
-    title: string;
-    author: string;
-    replyCount: number;
-    lastActivityAt: string;
+export interface Comment {
+    commentId: string;
+    /** The authoring account's user id; null for tombstoned authors. */
+    authorId: string | null;
+    /** True when the author is a tombstone or a deregistered account. */
+    authorDeleted: boolean;
+    /** Raw markdown body; render through lib/markdown.ts, never raw HTML. */
+    body: string;
+    createdAt: string;
+}
+
+export interface CommentsPage {
+    comments: Comment[];
+    nextCursor: string | null;
 }
 
 export interface PostsPage {
