@@ -401,7 +401,7 @@
   "fitShareOpenPost": "Open post",
   "fitShareLinkCopied": "Post link copied to clipboard.",
   "fitShareErrorDataNotReady": "The data repository is not ready yet. Try again later.",
-  "fitShareErrorUnauthorized": "The upload token is invalid. Check it in Developer Settings.",
+  "fitShareErrorUnauthorized": "Your session is no longer valid. Sign in again and retry.",
   "fitShareErrorForbidden": "This account is not allowed to publish fits to the platform.",
   "fitShareErrorSnapshotIncomplete": "The platform has not ingested the current data snapshot yet. Try again later.",
   "fitShareErrorValidation": "The platform rejected this fit: {message}",

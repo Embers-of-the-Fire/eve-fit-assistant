@@ -976,7 +976,7 @@
   "fitShareOpenPost": "查看帖子",
   "fitShareLinkCopied": "已复制帖子链接。",
   "fitShareErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
-  "fitShareErrorUnauthorized": "上传令牌无效，请在开发者设置中检查。",
+  "fitShareErrorUnauthorized": "登录状态已失效，请重新登录后重试。",
   "fitShareErrorForbidden": "当前账号无权向平台发布配置。",
   "fitShareErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
   "fitShareErrorValidation": "平台拒绝了该配置：{message}",
