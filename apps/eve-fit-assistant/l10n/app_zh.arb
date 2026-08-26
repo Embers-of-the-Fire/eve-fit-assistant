@@ -967,35 +967,36 @@
   "fitExportCopyLinkButton": "复制链接",
   "fitExportLinkCopied": "已复制配置分享链接。",
   "fitExportLinkTooLarge": "该配置过大，无法生成分享链接，请改用文本导出。",
-  "fitUploadButton": "上传",
-  "fitUploadSuccessNew": "配置已上传至平台。",
-  "fitUploadSuccessExisting": "平台已存在相同配置。",
-  "fitUploadFitHashLabel": "配置哈希",
-  "fitUploadSnapshotUrlLabel": "快照链接",
-  "fitUploadUrlCopied": "已复制快照链接。",
-  "fitUploadErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
-  "fitUploadErrorUnauthorized": "上传令牌无效，请在开发者设置中检查。",
-  "fitUploadErrorForbidden": "当前账号无权向平台发布配置。",
-  "fitUploadNoPermission": "当前账号无权向平台发布配置。",
-  "fitUploadErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
-  "fitUploadErrorValidation": "平台拒绝了该配置：{message}",
-  "@fitUploadErrorValidation": {
+  "fitExportSendButton": "发送",
+  "fitShareDialogTitle": "分享配置",
+  "fitShareDescription": "将该配置发布到平台，并在浏览器中打开帖子页面。",
+  "fitShareButton": "分享",
+  "fitShareSuccessNew": "配置已发布至平台，帖子页面已在浏览器中打开。",
+  "fitShareSuccessExisting": "平台已存在相同配置，帖子页面已在浏览器中打开。",
+  "fitShareOpenPost": "查看帖子",
+  "fitShareLinkCopied": "已复制帖子链接。",
+  "fitShareErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
+  "fitShareErrorUnauthorized": "上传令牌无效，请在开发者设置中检查。",
+  "fitShareErrorForbidden": "当前账号无权向平台发布配置。",
+  "fitShareErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
+  "fitShareErrorValidation": "平台拒绝了该配置：{message}",
+  "@fitShareErrorValidation": {
     "placeholders": {
       "message": {
         "type": "String"
       }
     }
   },
-  "fitUploadErrorUnknownType": "平台无法识别该配置中的物品：{message}",
-  "@fitUploadErrorUnknownType": {
+  "fitShareErrorUnknownType": "平台无法识别该配置中的物品：{message}",
+  "@fitShareErrorUnknownType": {
     "placeholders": {
       "message": {
         "type": "String"
       }
     }
   },
-  "fitUploadErrorNetwork": "无法连接配置存储服务。",
-  "fitUploadErrorGeneric": "当前无法上传该配置。",
+  "fitShareErrorNetwork": "无法连接配置存储服务。",
+  "fitShareErrorGeneric": "当前无法分享该配置。",
   "@@_ACCOUNT": {},
   "settingTileAccountTitle": "账号",
   "accountPageTitle": "账号",
@@ -1059,6 +1060,7 @@
   "fitLinkInvalidDialogTitle": "无效的配置链接",
   "fitLinkInvalidDialogDescription": "该链接无效或已损坏，未导入任何数据。",
   "fitListActionExport": "导出",
+  "fitListActionShare": "分享",
   "fitListActionImport": "导入",
   "fitImportDialogTitle": "导入配置",
   "fitImportDialogDescription": "请在下方粘贴配置文本。当前导入流程支持 EFA 原生编码和 EFT 文本。",

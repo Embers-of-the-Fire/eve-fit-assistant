@@ -77,7 +77,12 @@ void main() {
       captured = options;
       capturedBody = body;
       return ResponseBody.fromString(
-        jsonEncode({"postId": "post-1", "fitHash": "abc123", "alreadyExisted": true}),
+        jsonEncode({
+          "postId": "post-1",
+          "fitHash": "abc123",
+          "alreadyExisted": true,
+          "postUrl": "https://platform.efa-tech.dev/post/post-1",
+        }),
         201,
         headers: {
           Headers.contentTypeHeader: ["application/json"],
@@ -90,6 +95,7 @@ void main() {
     expect(response.postId, "post-1");
     expect(response.fitHash, "abc123");
     expect(response.alreadyExisted, isTrue);
+    expect(response.postUrl, "https://platform.efa-tech.dev/post/post-1");
     expect(response.origin, _origin);
 
     expect(captured?.path, "$_origin/platform/internal/posts");
@@ -306,20 +312,6 @@ void main() {
             .having((e) => e.code, "code", FitUploadErrorCode.unexpected)
             .having((e) => e.message, "message", contains("boom")),
       ),
-    );
-  });
-
-  test("builds the public by-hash URL against the given origin", () {
-    expect(
-      FitSnapshotUploadApi.byHashUrl("abc123", origin: _origin),
-      "https://api.efa-tech.dev/platform/internal/fits/abc123/snapshot",
-    );
-  });
-
-  test("builds the by-hash URL against a custom origin", () {
-    expect(
-      FitSnapshotUploadApi.byHashUrl("abc123", origin: "https://preview.example.com"),
-      "https://preview.example.com/platform/internal/fits/abc123/snapshot",
     );
   });
 }
