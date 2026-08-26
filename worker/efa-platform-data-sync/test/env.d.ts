@@ -3,6 +3,7 @@
 declare namespace Cloudflare {
     interface Env {
         PLATFORM_DB: D1Database;
+        SYNC_SESSION: DurableObjectNamespace<import("../src/session.ts").SyncSession>;
         SYNC_TOKEN: string;
         TEST_MIGRATIONS: import("cloudflare:test").D1Migration[];
     }

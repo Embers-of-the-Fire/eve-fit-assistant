@@ -1,6 +1,9 @@
 // Endpoint tests against the real local bindings provided by the Workers
 // Vitest integration: PLATFORM_DB is a genuine D1 database (migrated from
-// migrations/ by the test setup file), not a re-implemented shim.
+// migrations/ by the test setup file) and SYNC_SESSION a real Durable Object,
+// not re-implemented shims. Uploads go through the WebSocket protocol
+// terminated by the SyncSession object; completeness probes additionally
+// exercise the public HTTP GET routes.
 
 import { applyD1Migrations, reset } from "cloudflare:test";
 import { env } from "cloudflare:workers";
@@ -18,20 +21,42 @@ beforeEach(async () => {
     await applyD1Migrations(env.PLATFORM_DB, env.TEST_MIGRATIONS);
 });
 
-function post(path: string, body: unknown): Promise<Response> {
-    return Promise.resolve(
-        worker.fetch(
-            new Request(`https://example.com${MOUNT}${path}`, {
-                method: "POST",
-                headers: {
-                    "content-type": "application/json",
-                    authorization: `Bearer ${TOKEN}`,
-                },
-                body: JSON.stringify(body),
-            }),
-            env,
-        ),
+async function connect(): Promise<WebSocket> {
+    const res = await worker.fetch(
+        new Request(`https://example.com${MOUNT}/sync`, {
+            headers: { Upgrade: "websocket", Authorization: `Bearer ${TOKEN}` },
+        }),
+        env,
     );
+    expect(res.status).toBe(101);
+    const ws = res.webSocket;
+    if (!ws) {
+        throw new Error("Expected a WebSocket on the upgrade response");
+    }
+    ws.accept();
+    return ws;
+}
+
+// Synchronous request/reply helper: tests never pipeline frames on one
+// socket, so the next message event after send() is this frame's reply.
+function call(
+    ws: WebSocket,
+    message: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
+        const onMessage = (event: MessageEvent) => {
+            ws.removeEventListener("message", onMessage);
+            ws.removeEventListener("close", onClose);
+            resolve(JSON.parse(event.data as string) as Record<string, unknown>);
+        };
+        const onClose = () => {
+            ws.removeEventListener("message", onMessage);
+            reject(new Error("WebSocket closed before reply"));
+        };
+        ws.addEventListener("message", onMessage);
+        ws.addEventListener("close", onClose);
+        ws.send(JSON.stringify(message));
+    });
 }
 
 function get(path: string): Promise<Response> {
@@ -47,45 +72,127 @@ function toBase64(data: Uint8Array): string {
     return btoa(String.fromCharCode(...data));
 }
 
+describe("sync route access", () => {
+    it("rejects unauthenticated upgrade requests", async () => {
+        const res = await worker.fetch(
+            new Request(`https://example.com${MOUNT}/sync`, {
+                headers: { Upgrade: "websocket" },
+            }),
+            env,
+        );
+        expect(res.status).toBe(401);
+    });
+
+    it("rejects authenticated non-upgrade requests", async () => {
+        const res = await worker.fetch(
+            new Request(`https://example.com${MOUNT}/sync`, {
+                headers: { Authorization: `Bearer ${TOKEN}` },
+            }),
+            env,
+        );
+        expect(res.status).toBe(426);
+    });
+});
+
+describe("frame validation", () => {
+    it("replies with an error for malformed and invalid frames", async () => {
+        const ws = await connect();
+
+        const malformed = await new Promise<Record<string, unknown>>((resolve) => {
+            ws.addEventListener("message", function onMessage(event) {
+                ws.removeEventListener("message", onMessage);
+                resolve(JSON.parse(event.data as string) as Record<string, unknown>);
+            });
+            ws.send("not json");
+        });
+        expect(malformed.ok).toBe(false);
+        expect(malformed.error).toBe("Invalid JSON message");
+
+        const invalid = await call(ws, { id: 1, type: "unknown-type" });
+        expect(invalid.id).toBe(1);
+        expect(invalid.ok).toBe(false);
+        expect(invalid.error).toBe("Validation failed");
+
+        ws.close();
+    });
+});
+
+describe("lookup", () => {
+    it("reports only the hashes missing from the family content table", async () => {
+        const ws = await connect();
+        const content = new TextEncoder().encode("type-entry-1");
+        const contentHash = await sha256Hex(content);
+
+        const before = await call(ws, {
+            id: 1,
+            type: "lookup",
+            family: "types",
+            content_hashes: [contentHash],
+        });
+        expect(before).toEqual({ id: 1, ok: true, missing: [contentHash] });
+
+        await call(ws, {
+            id: 2,
+            type: "content",
+            entries: [{ family: "types", content_hash: contentHash, content_b64: toBase64(content) }],
+        });
+
+        const after = await call(ws, {
+            id: 3,
+            type: "lookup",
+            family: "types",
+            content_hashes: [contentHash, "00".repeat(32)],
+        });
+        expect(after).toEqual({ id: 3, ok: true, missing: ["00".repeat(32)] });
+
+        ws.close();
+    });
+});
+
 describe("snapshot freeze", () => {
-    it("rejects /register after /complete and keeps the registration set frozen", async () => {
+    it("rejects register after complete and keeps the registration set frozen", async () => {
+        const ws = await connect();
         const serverId = "tranquility";
         const snapshotHash = "ab".repeat(32);
 
         const content = new TextEncoder().encode("type-entry-1");
         const contentHash = await sha256Hex(content);
 
-        let res = await post("/content", {
-            entries: [
-                { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
-            ],
+        let reply = await call(ws, {
+            id: 1,
+            type: "content",
+            entries: [{ family: "types", content_hash: contentHash, content_b64: toBase64(content) }],
         });
-        expect(res.status).toBe(200);
+        expect(reply).toEqual({ id: 1, ok: true, inserted: 1 });
 
-        res = await post("/register", {
+        reply = await call(ws, {
+            id: 2,
+            type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
             entries: [{ family: "types", entry_id: 1, content_hash: contentHash }],
         });
-        expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ ok: true, inserted: 1 });
+        expect(reply).toEqual({ id: 2, ok: true, inserted: 1 });
 
-        res = await post("/complete", {
+        reply = await call(ws, {
+            id: 3,
+            type: "complete",
             server_id: serverId,
             snapshot_hash: snapshotHash,
             entry_count: 1,
         });
-        expect(res.status).toBe(200);
+        expect(reply).toEqual({ id: 3, ok: true });
 
-        res = await post("/register", {
+        reply = await call(ws, {
+            id: 4,
+            type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
             entries: [{ family: "types", entry_id: 2, content_hash: contentHash }],
         });
-        expect(res.status).toBe(409);
-        const conflict = (await res.json()) as { ok: boolean; error: string };
-        expect(conflict.ok).toBe(false);
-        expect(conflict.error).toBe("Snapshot already complete");
+        expect(reply.id).toBe(4);
+        expect(reply.ok).toBe(false);
+        expect(reply.error).toBe("Snapshot already complete");
 
         const regCount = await env.PLATFORM_DB.prepare(
             "SELECT COUNT(*) AS n FROM types_reg WHERE server_id = ? AND snapshot_hash = ?",
@@ -94,7 +201,20 @@ describe("snapshot freeze", () => {
             .first<{ n: number }>();
         expect(regCount?.n).toBe(1);
 
-        res = await get(`/snapshot?server_id=${serverId}&snapshot_hash=${snapshotHash}`);
+        // The snapshot probe agrees over both the WS frame and the public
+        // HTTP GET route.
+        reply = await call(ws, {
+            id: 5,
+            type: "snapshot",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+        });
+        expect(reply.id).toBe(5);
+        expect(reply.ok).toBe(true);
+        expect(reply.complete).toBe(true);
+        expect(reply.entry_count).toBe(1);
+
+        const res = await get(`/snapshot?server_id=${serverId}&snapshot_hash=${snapshotHash}`);
         expect(res.status).toBe(200);
         const snapshot = (await res.json()) as {
             ok: boolean;
@@ -103,18 +223,38 @@ describe("snapshot freeze", () => {
         };
         expect(snapshot.complete).toBe(true);
         expect(snapshot.entry_count).toBe(1);
+
+        ws.close();
+    });
+
+    it("rejects registration of unknown content hashes", async () => {
+        const ws = await connect();
+        const reply = await call(ws, {
+            id: 1,
+            type: "register",
+            server_id: "tranquility",
+            snapshot_hash: "cd".repeat(32),
+            entries: [{ family: "types", entry_id: 1, content_hash: "ef".repeat(32) }],
+        });
+        expect(reply.id).toBe(1);
+        expect(reply.ok).toBe(false);
+        expect(reply.error).toBe("Unknown content hashes");
+        ws.close();
     });
 });
 
 describe("entry_id validation", () => {
     it("accepts negative entry IDs used by engine-internal pseudo entries", async () => {
+        const ws = await connect();
         const serverId = "tranquility";
         const snapshotHash = "cd".repeat(32);
 
         const content = new TextEncoder().encode("pseudo-effect");
         const contentHash = await sha256Hex(content);
 
-        let res = await post("/content", {
+        let reply = await call(ws, {
+            id: 1,
+            type: "content",
             entries: [
                 {
                     family: "dogma_effects",
@@ -123,28 +263,34 @@ describe("entry_id validation", () => {
                 },
             ],
         });
-        expect(res.status).toBe(200);
+        expect(reply).toEqual({ id: 1, ok: true, inserted: 1 });
 
-        res = await post("/register", {
+        reply = await call(ws, {
+            id: 2,
+            type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
             entries: [{ family: "dogma_effects", entry_id: -64, content_hash: contentHash }],
         });
-        expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ ok: true, inserted: 1 });
+        expect(reply).toEqual({ id: 2, ok: true, inserted: 1 });
+
+        ws.close();
     });
 
     it("rejects entry IDs outside the int32 range", async () => {
-        const snapshotHash = "ef".repeat(32);
-        const contentHash = "ab".repeat(32);
-
+        const ws = await connect();
         for (const entryId of [-2147483649, 2147483648]) {
-            const res = await post("/register", {
+            const reply = await call(ws, {
+                id: 1,
+                type: "register",
                 server_id: "tranquility",
-                snapshot_hash: snapshotHash,
-                entries: [{ family: "types", entry_id: entryId, content_hash: contentHash }],
+                snapshot_hash: "ef".repeat(32),
+                entries: [{ family: "types", entry_id: entryId, content_hash: "ab".repeat(32) }],
             });
-            expect(res.status).toBe(400);
+            expect(reply.id).toBe(1);
+            expect(reply.ok).toBe(false);
+            expect(reply.error).toBe("Validation failed");
         }
+        ws.close();
     });
 });
