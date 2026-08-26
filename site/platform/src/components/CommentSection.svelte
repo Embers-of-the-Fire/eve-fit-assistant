@@ -100,14 +100,18 @@ async function submit() {
     submitError = null;
     try {
         const created = await createComment(session, postId, body);
-        // The new comment is the latest row: append only when the list is
-        // fully loaded, otherwise reload so pagination stays consistent.
-        if (nextCursor === null) {
+        // The new comment is the latest row. If the list is only partially
+        // loaded, page forward to the end so the created comment becomes
+        // visible without skipping the unloaded middle pages.
+        let cursor = nextCursor;
+        while (cursor !== null) {
+            const page = await fetchComments(postId, cursor);
+            comments = [...comments, ...page.comments];
+            cursor = page.nextCursor;
+        }
+        nextCursor = null;
+        if (!comments.some((comment) => comment.commentId === created.commentId)) {
             comments = [...comments, created];
-        } else {
-            const page = await fetchComments(postId);
-            comments = page.comments;
-            nextCursor = page.nextCursor;
         }
         draft = "";
         preview = false;
