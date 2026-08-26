@@ -1,3 +1,6 @@
+@TestOn("vm")
+library;
+
 import "dart:io";
 
 import "package:efa_platform_client/efa_platform_client.dart";
