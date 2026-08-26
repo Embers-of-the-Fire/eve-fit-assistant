@@ -35,7 +35,8 @@ The reusable app release workflow is `_release.yml`; the reusable data snapshot 
 4. `notify-qqbot` — posts a `data_update` event with one entry per rebuilt server (Chinese
    name, game build/version, and snapshot creation time from each snapshot's `metadata.json`)
    to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-data`; real
-   releases only.
+   releases only. Depends only on `publish`, never on `d1-sync`, so a platform D1 sync
+   failure does not suppress the announcement.
 
 ## App Release Workflow
 

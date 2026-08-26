@@ -191,13 +191,15 @@ Operational notes:
 - Real app releases pause for a required-reviewer approval before the job can
   access `production-app` secrets. Data releases and raw-data uploads run
   unattended (`dev`-branch restriction only).
-- Data snapshot announcements: after a real data release (channel publish +
-  platform D1 sync), `_release-data.yml`'s `notify-qqbot` job posts a
-  `data_update` event to the bofa-qqbot event endpoint
-  (`https://bot.efa-tech.dev/event`) with one entry per rebuilt server
-  (localized Chinese name, game build/version, snapshot creation time, read
-  from each snapshot's `metadata.json`), which broadcasts the announcement to
-  the configured QQ groups. Test-mode runs never reach the bot.
+- Data snapshot announcements: after a real data release's channel publish,
+  `_release-data.yml`'s `notify-qqbot` job posts a `data_update` event to the
+  bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`) with one entry
+  per rebuilt server (localized Chinese name, game build/version, snapshot
+  creation time, read from each snapshot's `metadata.json`), which broadcasts
+  the announcement to the configured QQ groups. The job depends only on
+  `publish` — it deliberately does not wait for the platform D1 sync, so a
+  `d1-sync` failure never suppresses the announcement. Test-mode runs never
+  reach the bot.
 - Android release signing: real app releases sign the APK with the EFA release
   key. `_release.yml` decodes `APP_KEYSTORE` (base64) into a runner-temp file
   and passes it plus the passwords/alias to Gradle as `EFA_*` environment

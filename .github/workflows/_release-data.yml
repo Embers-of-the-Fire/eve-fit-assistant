@@ -235,16 +235,16 @@ jobs:
 
   notify-qqbot:
     name: Announce data update to QQ bot
-    needs: [publish, d1-sync]
+    needs: [publish]
     runs-on: ubuntu-slim
-    # Post-publish announcement, real releases only: in test mode the d1-sync
-    # job is skipped and this job follows suit, so mock releases never reach
-    # the bot. The production-data environment supplies the bot's bearer
-    # secret.
+    # Post-publish announcement, real releases only: in test mode the publish
+    # job targets the MinIO mock, so mock releases never reach the bot. The
+    # announcement depends only on the published snapshots, not on the d1-sync
+    # job, so a D1 sync failure never suppresses the broadcast. The
+    # production-data environment supplies the bot's bearer secret.
     if: |
       always() &&
       needs.publish.result == 'success' &&
-      needs.d1-sync.result == 'success' &&
       inputs.test_mode == false
     environment: production-data
     steps:
