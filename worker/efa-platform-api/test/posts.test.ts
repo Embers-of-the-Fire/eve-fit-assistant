@@ -280,8 +280,9 @@ describe("POST /posts auth", () => {
 
         const res = await upload(pair.accessToken);
         expect(res.status).toBe(201);
-        const body = (await res.json()) as { postId: string; fitHash: string };
+        const body = (await res.json()) as { postId: string; fitHash: string; postUrl: string };
         expect(body.fitHash).toBe(FIT_HASH);
+        expect(body.postUrl).toBe(`https://platform.efa-tech.dev/post/${body.postId}`);
 
         const row = await env.FIT_DB.prepare("SELECT author_id FROM posts WHERE post_id = ?")
             .bind(body.postId)

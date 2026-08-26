@@ -72,7 +72,7 @@ passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
 
 | Endpoint | Auth | Description |
 | --- | --- | --- |
-| `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted }` |
+| `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted, postUrl }` — `postUrl` is the site's post page (`$PLATFORM_SITE_ORIGIN/post/<postId>`), so clients can redirect the user straight to it |
 | `DELETE /platform/internal/posts/:id` | account + `post:delete:{own,all}` | Deletes the post row. `own` covers only the caller's own posts, `all` any post (qualifier validated against `posts.author_id` in the handler; NULL-author tombstones need `all`). The shared `fits` blob is unaffected. `200 { postId }`; 404 on unknown id |
 | `GET /platform/internal/my/posts` | account | The caller's own posts; same keyset pagination contract and summary shape as the public list, minus the ship/window filters. `Cache-Control: no-store` |
 | `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted }`; 400 on malformed UUID |

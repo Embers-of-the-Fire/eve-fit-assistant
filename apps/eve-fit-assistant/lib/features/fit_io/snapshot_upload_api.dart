@@ -47,6 +47,7 @@ class FitPostSubmitResult {
     required this.postId,
     required this.fitHash,
     required this.alreadyExisted,
+    required this.postUrl,
     required this.origin,
   });
 
@@ -55,6 +56,7 @@ class FitPostSubmitResult {
         postId: json["postId"] as String,
         fitHash: json["fitHash"] as String,
         alreadyExisted: json["alreadyExisted"] as bool,
+        postUrl: json["postUrl"] as String,
         origin: origin,
       );
 
@@ -62,21 +64,19 @@ class FitPostSubmitResult {
   final String fitHash;
   final bool alreadyExisted;
 
-  /// The origin the upload went to. Snapshot URLs for this fit must be built
-  /// against it: preview and production use separate database and fit-storage
-  /// bindings, so a URL on the wrong origin can return no snapshot.
+  /// The post page URL on the platform site, provided by the worker
+  /// (`$PLATFORM_SITE_ORIGIN/post/<postId>`). Share flows redirect the user
+  /// here instead of the raw snapshot endpoints (which download protobuf).
+  final String postUrl;
+
+  /// The origin the upload went to, kept for diagnostics: preview and
+  /// production use separate databases and fit-storage bindings.
   final String origin;
 }
 
 /// Client for the platform's public front (`worker/efa-platform-api`,
 /// `{origin}/platform/internal`).
 class FitSnapshotUploadApi {
-  /// Public URL of the stored snapshot for a given fit hash (spec §6.2),
-  /// built against the origin the upload targeted (the resolved
-  /// `PlatformSession.origin`, not always production).
-  static String byHashUrl(String fitHash, {required String origin}) =>
-      "$origin/platform/internal/fits/$fitHash/snapshot";
-
   /// Submits the upload through the session's authenticated Dio (the access
   /// token is attached — and refreshed on 401 — by the session interceptor).
   Future<FitPostSubmitResult> submit(

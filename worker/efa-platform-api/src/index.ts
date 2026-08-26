@@ -37,6 +37,10 @@ import {
 interface Env extends AuthEnv {
     FIT_STORAGE: Fetcher;
     FIT_STORAGE_TOKEN?: string;
+    // Origin of the platform site; used to build the post page URL handed
+    // back to uploaders so clients can redirect straight to the post page
+    // instead of the raw protobuf endpoints.
+    PLATFORM_SITE_ORIGIN: string;
 }
 
 const FIT_STORAGE_ORIGIN = "https://efa-platform-fit-storage.internal";
@@ -183,6 +187,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
                     postId,
                     fitHash: storeResult.fitHash,
                     alreadyExisted: storeResult.alreadyExisted,
+                    postUrl: `${c.env.PLATFORM_SITE_ORIGIN}/post/${postId}`,
                 },
                 201,
             );

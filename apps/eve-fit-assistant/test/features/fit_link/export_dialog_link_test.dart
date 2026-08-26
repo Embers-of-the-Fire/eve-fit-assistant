@@ -1,13 +1,8 @@
 import "dart:math";
 
-import "package:efa_acl/efa_acl.dart";
-import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
-import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
-import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
-import "package:eve_fit_assistant/features/fit_io/upload_request.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
@@ -81,43 +76,23 @@ void main() {
     );
   });
 
-  Widget buildDialog(
-    FitStorage fit, {
-    bool signedIn = false,
-    FitSnapshotUploadFn? uploadFn,
-    Acl? accountAcl,
-  }) =>
-      ProviderScope(
-        overrides: [
-          appSettingServiceProvider.overrideWithValue(
-            const AppSetting(
-              locale: Locale.zh,
-              enableDebugLog: false,
-              shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
-              showCheckoutImpactWarnings: true,
-              typeListReturnBehavior: TypeListReturnBehavior.previousPage,
-              developerMode: false,
-            ),
-          ),
-          platformIdentityProvider.overrideWith(
-            (ref) => Stream.value(
-              signedIn ? const PlatformIdentity(userId: "user-1", email: "user@example.com") : null,
-            ),
-          ),
-          // The upload action is gated on the account's ACL; default to the
-          // default roles (post:create included) for signed-in scenarios.
-          if (signedIn)
-            accountAclProvider.overrideWith(
-              (ref) async => accountAcl ?? aclForRoles(aclDefaultRoles.map((role) => role.name)),
-            ),
-          if (uploadFn != null) fitSnapshotUploadFnProvider.overrideWithValue(uploadFn),
-        ],
-        child: testApp(
-          Scaffold(
-            body: FitExportDialog(fitId: fit.metadata.fitId, initialFit: fit),
-          ),
+  Widget buildDialog(FitStorage fit) => ProviderScope(
+    overrides: [
+      appSettingServiceProvider.overrideWithValue(
+        const AppSetting(
+          locale: Locale.zh,
+          enableDebugLog: false,
+          shipSelectListDisplayVariant: TypeListDisplayVariant.marketGroup,
+          showCheckoutImpactWarnings: true,
+          typeListReturnBehavior: TypeListReturnBehavior.previousPage,
+          developerMode: false,
         ),
-      );
+      ),
+    ],
+    child: testApp(
+      Scaffold(body: FitExportDialog(fitId: fit.metadata.fitId, initialFit: fit)),
+    ),
+  );
 
   testWidgets("copy link writes the share URL to the clipboard", (tester) async {
     await tester.pumpWidget(buildDialog(_makeFit()));
@@ -144,62 +119,16 @@ void main() {
     expect(find.text("该配置过大，无法生成分享链接，请改用文本导出。"), findsOneWidget);
   });
 
-  testWidgets("snapshot mode hides the upload button when signed out", (tester) async {
+  testWidgets("the export dialog no longer carries the platform share action", (tester) async {
     await tester.pumpWidget(buildDialog(_makeFit()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("快照"));
-    await tester.pumpAndSettle();
-
-    expect(find.text("上传"), findsNothing);
-  });
-
-  testWidgets("snapshot mode hides the upload button without post:create", (tester) async {
-    await tester.pumpWidget(buildDialog(_makeFit(), signedIn: true, accountAcl: Acl(const {})));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("快照"));
-    await tester.pumpAndSettle();
-
-    expect(find.text("上传"), findsNothing);
-    expect(find.text("当前账号无权向平台发布配置。"), findsOneWidget);
-  });
-
-  testWidgets("snapshot upload renders the hash and URL after a successful upload", (tester) async {
-    const fitHash = "0123456789abcdef0123456789abcdef";
-    await tester.pumpWidget(
-      buildDialog(
-        _makeFit(),
-        signedIn: true,
-        uploadFn: (ref, {required fitId, required fit}) async => const FitPostSubmitResult(
-          postId: "post-1",
-          fitHash: fitHash,
-          alreadyExisted: false,
-          origin: platformApiProductionOrigin,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text("上传"), findsNothing);
-
-    await tester.tap(find.text("快照"));
-    await tester.pumpAndSettle();
-
-    final uploadButton = find.text("上传");
-    expect(uploadButton, findsOneWidget);
-
-    await tester.tap(uploadButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text("配置已上传至平台。"), findsOneWidget);
-    expect(find.text(fitHash, findRichText: true), findsOneWidget);
-    expect(
-      find.text(
-        FitSnapshotUploadApi.byHashUrl(fitHash, origin: platformApiProductionOrigin),
-        findRichText: true,
-      ),
-      findsOneWidget,
-    );
+    // Text export actions only; platform sharing lives in the fit-list swipe
+    // action and its dedicated dialog.
+    for (final format in ["EFA 原生编码", "EFT 文本", "快照"]) {
+      await tester.tap(find.text(format));
+      await tester.pumpAndSettle();
+      expect(find.text("分享"), findsNothing);
+    }
   });
 }

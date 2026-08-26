@@ -11,6 +11,7 @@ declare namespace Cloudflare {
             import("../src/auth/rate-window.ts").RateLimitWindow
         >;
         AUTH_TOKEN_SECRET: string;
+        PLATFORM_SITE_ORIGIN: string;
         TEST_MIGRATIONS: import("cloudflare:test").D1Migration[];
     }
 }

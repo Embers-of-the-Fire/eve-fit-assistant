@@ -3,6 +3,8 @@ import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/share_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/share_operation.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
@@ -95,10 +97,14 @@ class _FitListTile extends ConsumerWidget {
       context,
     ).format(DateTime.fromMillisecondsSinceEpoch(metadata.lastModified).toLocal());
 
+    // The platform share action is only offered to signed-in accounts holding
+    // the post:create permission (fail-closed while the ACL resolves).
+    final canShare = ref.watch(fitShareEligibilityProvider);
+
     return Slidable(
       key: ValueKey(metadata.fitId),
       startActionPane: ActionPane(
-        extentRatio: 0.18,
+        extentRatio: canShare ? 0.36 : 0.18,
         motion: const StretchMotion(),
         children: [
           SlidableAction(
@@ -108,6 +114,14 @@ class _FitListTile extends ConsumerWidget {
             icon: Icons.ios_share_outlined,
             label: context.l10n.fitListActionExport,
           ),
+          if (canShare)
+            SlidableAction(
+              onPressed: (_) => showFitShareDialog(context, fitId: metadata.fitId),
+              backgroundColor: context.theme.colorScheme.tertiaryContainer,
+              foregroundColor: context.theme.colorScheme.onTertiaryContainer,
+              icon: Icons.share_outlined,
+              label: context.l10n.fitListActionShare,
+            ),
         ],
       ),
       endActionPane: ActionPane(
