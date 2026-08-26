@@ -6,7 +6,10 @@ import { marked } from "marked";
 // reaches `{@html}`. Client-side only: comment lists are populated from
 // onMount fetches, so this never runs during SSR (where DOMPurify has no
 // DOM).
-marked.use({ gfm: true, breaks: true });
+// GFM only: tables, strikethrough, task lists. `breaks` stays off so single
+// newlines collapse like standard markdown (matching GitHub's rendered .md
+// files, not its comment boxes).
+marked.use({ gfm: true });
 
 /** Renders a raw markdown comment body to sanitized HTML. */
 export function renderMarkdown(body: string): string {

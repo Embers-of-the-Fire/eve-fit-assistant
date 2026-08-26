@@ -201,9 +201,7 @@ onMount(loadInitial);
                             {/if}
                         </div>
                         <!-- Bodies are untrusted markdown; renderMarkdown sanitizes. -->
-                        <div
-                            class="mt-2 text-sm break-words text-console-text [&_a]:text-console-primary [&_a:hover]:text-console-highlight [&_code]:rounded [&_code]:bg-console-deep [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-console-deep [&_pre]:p-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
-                        >
+                        <div class="markdown-body mt-2 text-sm text-console-text">
                             {@html renderMarkdown(comment.body)}
                         </div>
                     </li>
@@ -270,7 +268,7 @@ onMount(loadInitial);
                     </div>
                     {#if preview}
                         <div
-                            class="min-h-24 w-full rounded border border-console-border bg-console-deep p-2 text-sm break-words text-console-text [&_a]:text-console-primary [&_code]:rounded [&_code]:bg-console-surface-alt [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-console-surface-alt [&_pre]:p-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                            class="markdown-body min-h-24 w-full rounded border border-console-border bg-console-deep p-2 text-sm text-console-text"
                         >
                             {#if draft.trim().length > 0}
                                 {@html renderMarkdown(draft)}
