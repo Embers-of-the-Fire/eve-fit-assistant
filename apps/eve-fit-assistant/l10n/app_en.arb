@@ -399,6 +399,7 @@
   "fitShareSuccessNew": "Fit published to the platform. The post page has been opened in your browser.",
   "fitShareSuccessExisting": "An identical fit already exists on the platform. The post page has been opened in your browser.",
   "fitShareOpenPost": "Open post",
+  "fitShareOpenPostError": "Unable to open the post page in the browser. Copy the link instead.",
   "fitShareLinkCopied": "Post link copied to clipboard.",
   "fitShareErrorDataNotReady": "The data repository is not ready yet. Try again later.",
   "fitShareErrorUnauthorized": "Your session is no longer valid. Sign in again and retry.",

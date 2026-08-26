@@ -974,6 +974,7 @@
   "fitShareSuccessNew": "配置已发布至平台，帖子页面已在浏览器中打开。",
   "fitShareSuccessExisting": "平台已存在相同配置，帖子页面已在浏览器中打开。",
   "fitShareOpenPost": "查看帖子",
+  "fitShareOpenPostError": "无法在浏览器中打开帖子页面，请改用复制链接。",
   "fitShareLinkCopied": "已复制帖子链接。",
   "fitShareErrorDataNotReady": "数据仓库尚未就绪，请稍后重试。",
   "fitShareErrorUnauthorized": "登录状态已失效，请重新登录后重试。",

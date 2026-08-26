@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/fit_io/share_operation.dart";
 import "package:eve_fit_assistant/features/fit_io/snapshot_upload_api.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
@@ -176,8 +177,18 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
     }
   }
 
-  Future<void> _handleOpenPost(FitPostSubmitResult result) =>
-      const FitShareOperation().openPost(ref, result.postUrl);
+  Future<void> _handleOpenPost(FitPostSubmitResult result) async {
+    try {
+      await const FitShareOperation().openPost(ref, result.postUrl);
+    } on Object catch (error, stackTrace) {
+      warning(
+        "Fit share: failed to open the post page ${result.postUrl}: $error",
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
+      setState(() => _actionError = context.l10n.fitShareOpenPostError);
+    }
+  }
 
   Future<void> _handleCopyShareLink(FitPostSubmitResult result) async {
     try {
