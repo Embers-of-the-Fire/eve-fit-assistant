@@ -11,17 +11,32 @@ Layout per family ``<f>``:
   - table ``<f>``:     (content_hash TEXT PRIMARY KEY, content BLOB)
   - table ``<f>_reg``: (server_id, snapshot_hash, entry_id, content_hash)
 
-A snapshot is only complete once the uploader has posted every content and
-registration batch and then marked it in the ``snapshots`` registry table
-(``POST complete``); readers must check that registry before serving data.
+Uploads run over a single WebSocket to the worker's ``SyncSession`` Durable
+Object: every frame is a small JSON message (``content``/``lookup``/
+``register``/``complete``/``snapshot``) answered by one JSON reply carrying
+the same client-chosen ``id``. Each frame is a separate Durable Object event
+with its own CPU budget, which replaced the old multi-request HTTP API whose
+large per-request batches regularly failed with 503s.
+
+All operations are idempotent, so the transport reconnects and resends an
+unacknowledged frame on connection failures, and a rerun of the whole sync
+converges: the ``snapshot`` frame skips already-completed snapshots and the
+``lookup`` frame skips already-uploaded content rows. A snapshot is only
+complete once the uploader has posted every content and registration frame and
+then marked it in the ``snapshots`` registry table (``complete``); readers
+must check that registry before serving data.
 """
 
 from __future__ import annotations
 
 import base64
+import contextlib
+import json
+import random
 import sqlite3
 import sys
 import tempfile
+import time
 
 from dataclasses import dataclass
 from dataclasses import field
@@ -29,9 +44,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Protocol
+from typing import Self
 
 from bootstrap.constant import NATIVE_LIB_ROOT
 from bootstrap.log import info
+from bootstrap.log import warning
 from bootstrap.remote.hash import content_hash
 from bootstrap.remote.hash import ident_hash
 from bootstrap.remote.models import read_pb2
@@ -85,51 +102,114 @@ class Registration:
 
 
 class SyncTransport(Protocol):
-    """POST a JSON payload to a worker endpoint path and return the decoded reply."""
+    """Send one frame payload to the worker and return the decoded reply.
+
+    ``path`` is the frame type (``content``, ``lookup``, ``register``,
+    ``complete``, ``snapshot``); the payload carries the frame's remaining
+    fields. Raises on ``ok: false`` replies.
+    """
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]: ...
 
+    def close(self) -> None: ...
 
-class HttpTransport:
-    """requests-based transport for the platform data-sync worker."""
 
-    def __init__(self, base_url: str, token: str, timeout: float = 120.0) -> None:
-        import requests
+class WebSocketTransport:
+    """WebSocket transport for the platform data-sync worker's SyncSession.
 
-        from requests.adapters import HTTPAdapter
-        from urllib3.util.retry import Retry
+    Holds one persistent connection and correlates each request frame with its
+    reply via a client-chosen ``id``. All sync operations are idempotent, so
+    on connection failures the transport transparently reconnects and resends
+    the unacknowledged frame with exponential backoff.
+    """
 
-        self._base_url = base_url.rstrip("/")
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        timeout: float = 120.0,
+        max_attempts: int = 10,
+    ) -> None:
+        self._ws_url = self._to_ws_url(base_url)
         self._token = token
         self._timeout = timeout
-        self._session = requests.Session()
-        # Both endpoints are idempotent (INSERT OR IGNORE / INSERT OR REPLACE),
-        # so retrying a POST on transient failures is safe.
-        retry = Retry(
-            total=5,
-            backoff_factor=1.0,
-            status_forcelist=(429, 500, 502, 503, 504),
-            allowed_methods=frozenset({"POST"}),
+        self._max_attempts = max_attempts
+        self._next_id = 0
+        self._connection: Any = None
+
+    @staticmethod
+    def _to_ws_url(base_url: str) -> str:
+        base = base_url.rstrip("/")
+        if base.startswith("https://"):
+            base = "wss://" + base[len("https://") :]
+        elif base.startswith("http://"):
+            base = "ws://" + base[len("http://") :]
+        if not base.startswith(("ws://", "wss://")):
+            raise ValueError(f"Unsupported data-sync URL scheme: {base_url}")
+        return f"{base}/sync"
+
+    def _connect(self) -> None:
+        from websockets.sync.client import connect
+
+        self.close()
+        self._connection = connect(
+            self._ws_url,
+            additional_headers={"Authorization": f"Bearer {self._token}"},
+            open_timeout=30.0,
+            close_timeout=5.0,
         )
-        adapter = HTTPAdapter(max_retries=retry)
-        self._session.mount("https://", adapter)
-        self._session.mount("http://", adapter)
+
+    def close(self) -> None:
+        if self._connection is not None:
+            with contextlib.suppress(Exception):
+                # Closing must never raise; the connection may be broken.
+                self._connection.close()
+            self._connection = None
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        resp = self._session.post(
-            f"{self._base_url}/{path.lstrip('/')}",
-            json=payload,
-            headers={"Authorization": f"Bearer {self._token}"},
-            timeout=self._timeout,
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(
-                f"D1 sync request to {path} failed with HTTP {resp.status_code}: {resp.text[:500]}"
-            )
-        body = resp.json()
-        if not body.get("ok", False):
-            raise RuntimeError(f"D1 sync request to {path} returned error: {body}")
-        return body
+        from websockets.exceptions import ConnectionClosed
+
+        last_error: Exception | None = None
+        for attempt in range(1, self._max_attempts + 1):
+            try:
+                return self._roundtrip(path, payload)
+            except (ConnectionClosed, TimeoutError, OSError) as exc:
+                last_error = exc
+                delay = min(2.0 ** (attempt - 1), 30.0) + random.uniform(0.0, 1.0)
+                warning(
+                    f"D1 sync '{path}' frame failed ({exc}); "
+                    f"reconnecting in {delay:.1f}s (attempt {attempt}/{self._max_attempts})"
+                )
+                time.sleep(delay)
+                self._connect()
+        raise RuntimeError(
+            f"D1 sync '{path}' frame failed after {self._max_attempts} attempts: {last_error}"
+        ) from last_error
+
+    def _roundtrip(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if self._connection is None:
+            self._connect()
+        connection = self._connection
+        self._next_id += 1
+        request_id = self._next_id
+        connection.send(json.dumps({"id": request_id, "type": path, **payload}))
+        # Replies are serialized per connection, so the next message is almost
+        # always ours; correlate by id defensively anyway.
+        while True:
+            raw = connection.recv(timeout=self._timeout)
+            reply: dict[str, Any] = json.loads(raw)
+            if reply.get("id") == request_id:
+                break
+            warning(f"D1 sync: discarding unexpected reply: {str(reply)[:200]}")
+        if not reply.get("ok", False):
+            raise RuntimeError(f"D1 sync '{path}' frame returned error: {reply}")
+        return reply
 
 
 def _load_efos_pb2():
@@ -290,16 +370,18 @@ def run_sync(
     hashes: dict[str, str],
     schema_root: Path,
     transport: SyncTransport | None,
-    batch_size: int = 2000,
+    batch_size: int = 500,
     dry_run: bool = False,
 ) -> None:
     """Sync every server snapshot in ``hashes`` to the platform D1 database.
 
     Content rows are deduplicated across servers before uploading (identical
     entries share a content hash); registration rows are uploaded per server.
+    Reruns converge: snapshots already marked complete are skipped, and
+    already-uploaded content rows are filtered out via ``lookup`` frames.
     """
-    if not 1 <= batch_size <= 10_000:
-        raise ValueError(f"batch_size must be between 1 and 10000, got {batch_size}")
+    if not 1 <= batch_size <= 2_000:
+        raise ValueError(f"batch_size must be between 1 and 2000, got {batch_size}")
 
     content: dict[tuple[str, str], bytes] = {}
     registrations: dict[tuple[str, str], list[Registration]] = {}
@@ -328,39 +410,71 @@ def run_sync(
     if transport is None:
         raise ValueError("transport is required unless dry_run is set")
 
-    content_rows = [
-        {
-            "family": family,
-            "content_hash": entry_hash,
-            "content_b64": base64.b64encode(data).decode("ascii"),
-        }
-        for (family, entry_hash), data in sorted(content.items())
-    ]
-    for batch in _batched(content_rows, batch_size):
-        reply = transport.post("content", {"entries": batch})
-        info(f"Uploaded {len(batch)} content rows (inserted: {reply.get('inserted', '?')})")
-
-    for (server_id, snapshot_hash), regs in sorted(registrations.items()):
-        reg_rows = [
-            {"family": reg.family, "entry_id": reg.entry_id, "content_hash": reg.hash}
-            for reg in regs
-        ]
-        for batch in _batched(reg_rows, batch_size):
+    try:
+        # Skip snapshots a previous run already finished: their registration
+        # set is frozen and the worker would reject further register frames.
+        pending = dict(registrations)
+        for server_id, snapshot_hash in sorted(registrations):
             reply = transport.post(
-                "register",
-                {"server_id": server_id, "snapshot_hash": snapshot_hash, "entries": batch},
+                "snapshot", {"server_id": server_id, "snapshot_hash": snapshot_hash}
             )
-        info(f"Registered {len(reg_rows)} rows for {server_id} ({snapshot_hash[:16]}...)")
+            if reply.get("complete", False):
+                info(f"Snapshot already complete, skipping: {server_id} ({snapshot_hash[:16]}...)")
+                del pending[(server_id, snapshot_hash)]
 
-        # Completeness marker: only reached when every content batch and every
-        # registration batch for this snapshot succeeded. Readers treat a
-        # snapshot without this marker as incomplete.
-        transport.post(
-            "complete",
-            {
-                "server_id": server_id,
-                "snapshot_hash": snapshot_hash,
-                "entry_count": len(reg_rows),
-            },
+        # Resume support: content rows already present on the server (from
+        # earlier runs or shared with completed snapshots) are not resent.
+        pending_hashes = {(reg.family, reg.hash) for regs in pending.values() for reg in regs}
+        rows_to_check = sorted(
+            (family, entry_hash)
+            for (family, entry_hash) in content
+            if (family, entry_hash) in pending_hashes
         )
-        info(f"Marked snapshot complete for {server_id} ({snapshot_hash[:16]}...)")
+        missing: set[tuple[str, str]] = set()
+        for family in ALL_FAMILIES:
+            family_hashes = [h for f, h in rows_to_check if f == family]
+            if not family_hashes:
+                continue
+            for chunk in _batched(family_hashes, 10_000):
+                reply = transport.post("lookup", {"family": family, "content_hashes": chunk})
+                missing.update((family, h) for h in reply.get("missing", []))
+        info(f"Content rows missing on the server: {len(missing)} of {len(rows_to_check)}")
+
+        content_rows = [
+            {
+                "family": family,
+                "content_hash": entry_hash,
+                "content_b64": base64.b64encode(content[(family, entry_hash)]).decode("ascii"),
+            }
+            for family, entry_hash in sorted(missing)
+        ]
+        for batch in _batched(content_rows, batch_size):
+            reply = transport.post("content", {"entries": batch})
+            info(f"Uploaded {len(batch)} content rows (inserted: {reply.get('inserted', '?')})")
+
+        for (server_id, snapshot_hash), regs in sorted(pending.items()):
+            reg_rows = [
+                {"family": reg.family, "entry_id": reg.entry_id, "content_hash": reg.hash}
+                for reg in regs
+            ]
+            for batch in _batched(reg_rows, batch_size):
+                reply = transport.post(
+                    "register",
+                    {"server_id": server_id, "snapshot_hash": snapshot_hash, "entries": batch},
+                )
+            info(f"Registered {len(reg_rows)} rows for {server_id} ({snapshot_hash[:16]}...)")
+
+            # Completeness marker: only reached when every content frame and
+            # every registration frame for this snapshot succeeded. Readers
+            # treat a snapshot without this marker as incomplete.
+            transport.post(
+                "complete",
+                {
+                    "server_id": server_id,
+                    "snapshot_hash": snapshot_hash,
+                    "entry_count": len(reg_rows),
+                },
+            )
+            info(f"Marked snapshot complete for {server_id} ({snapshot_hash[:16]}...)")
+    finally:
+        transport.close()

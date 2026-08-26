@@ -218,53 +218,138 @@ class TestLoadSnapshotEntries:
 
 
 class _FakeTransport:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        existing: set[tuple[str, str]] | None = None,
+        completed: set[tuple[str, str]] | None = None,
+    ) -> None:
         self.posts: list[tuple[str, dict[str, Any]]] = []
+        self.closed = False
+        # (family, content_hash) rows the server already holds.
+        self._existing = existing or set()
+        # (server_id, snapshot_hash) pairs already marked complete.
+        self._completed = completed or set()
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.posts.append((path, payload))
+        if path == "lookup":
+            missing = [
+                h for h in payload["content_hashes"] if (payload["family"], h) not in self._existing
+            ]
+            return {"ok": True, "missing": missing}
+        if path == "snapshot":
+            complete = (payload["server_id"], payload["snapshot_hash"]) in self._completed
+            return {"ok": True, "complete": complete}
         return {"ok": True, "inserted": len(payload.get("entries", []))}
 
-
-class _FakeResponse:
-    def __init__(self, status_code: int = 200, body: dict[str, Any] | None = None) -> None:
-        self.status_code = status_code
-        self._body = body or {}
-        self.text = json.dumps(self._body)
-
-    def json(self) -> dict[str, Any]:
-        return self._body
+    def close(self) -> None:
+        self.closed = True
 
 
-class _FakeSession:
-    def __init__(self, response: _FakeResponse) -> None:
-        self._response = response
+class _FakeConnection:
+    """In-memory stand-in for websockets' sync Connection (no real sockets)."""
 
-    def post(self, *args: Any, **kwargs: Any) -> _FakeResponse:
-        return self._response
+    def __init__(self, replies: list[Any]) -> None:
+        self.sent: list[str] = []
+        self._replies = list(replies)
+        self.closed = False
+
+    def send(self, message: str) -> None:
+        self.sent.append(message)
+
+    def recv(self, timeout: float | None = None) -> str:
+        del timeout
+        reply = self._replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return json.dumps(reply)
+
+    def close(self) -> None:
+        self.closed = True
 
 
-class TestHttpTransport:
-    def _make_transport(self, response: _FakeResponse) -> Any:
-        pytest.importorskip("requests")
-        from bootstrap.data.d1.sync import HttpTransport
+class TestWebSocketTransport:
+    def _make_transport(self, connection: Any = None) -> Any:
+        from bootstrap.data.d1.sync import WebSocketTransport
 
-        transport: Any = HttpTransport.__new__(HttpTransport)
-        transport._base_url = "https://worker.example"
-        transport._token = "test-token"  # noqa: S105
-        transport._timeout = 1.0
-        transport._session = _FakeSession(response)
+        transport: Any = WebSocketTransport("https://worker.example/data-sync", "test-token")
+        transport._connection = connection
         return transport
 
-    def test_non_200_raises(self) -> None:
-        transport = self._make_transport(_FakeResponse(status_code=403, body={"err": "nope"}))
-        with pytest.raises(RuntimeError, match="HTTP 403"):
-            transport.post("content", {"entries": []})
+    def test_url_normalization(self) -> None:
+        from bootstrap.data.d1.sync import WebSocketTransport
 
-    def test_ok_false_raises(self) -> None:
-        transport = self._make_transport(_FakeResponse(body={"ok": False, "error": "bad"}))
+        assert (
+            WebSocketTransport._to_ws_url("https://api.example.com/platform/storage/data-sync")
+            == "wss://api.example.com/platform/storage/data-sync/sync"
+        )
+        assert (
+            WebSocketTransport._to_ws_url("http://localhost:8790/platform/storage/data-sync/")
+            == "ws://localhost:8790/platform/storage/data-sync/sync"
+        )
+        assert (
+            WebSocketTransport._to_ws_url("wss://api.example.com/data-sync")
+            == "wss://api.example.com/data-sync/sync"
+        )
+        with pytest.raises(ValueError, match="Unsupported data-sync URL scheme"):
+            WebSocketTransport._to_ws_url("ftp://example.com")
+
+    def test_roundtrip_sends_typed_frame_with_id(self) -> None:
+        connection = _FakeConnection(replies=[{"id": 1, "ok": True, "inserted": 2}])
+        transport = self._make_transport(connection)
+
+        reply = transport.post("content", {"entries": [{"family": "types"}]})
+
+        assert reply["inserted"] == 2
+        sent = json.loads(connection.sent[0])
+        assert sent == {"id": 1, "type": "content", "entries": [{"family": "types"}]}
+
+    def test_discards_unrelated_replies(self) -> None:
+        connection = _FakeConnection(
+            replies=[{"id": 99, "ok": True}, {"id": 1, "ok": True, "missing": []}]
+        )
+        transport = self._make_transport(connection)
+
+        reply = transport.post("lookup", {"family": "types", "content_hashes": ["ab" * 32]})
+
+        assert reply == {"id": 1, "ok": True, "missing": []}
+
+    def test_error_reply_raises(self) -> None:
+        connection = _FakeConnection(replies=[{"id": 1, "ok": False, "error": "bad"}])
+        transport = self._make_transport(connection)
         with pytest.raises(RuntimeError, match="returned error"):
             transport.post("register", {})
+
+    def test_reconnects_and_resends_on_connection_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from websockets.exceptions import ConnectionClosed
+
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        failing = _FakeConnection(replies=[ConnectionClosed(None, None)])
+        recovered = _FakeConnection(replies=[{"id": 2, "ok": True}])
+        transport = self._make_transport(failing)
+
+        transport._connect = lambda: setattr(transport, "_connection", recovered)
+
+        reply = transport.post("complete", {"entry_count": 1})
+
+        assert reply["ok"] is True
+        # The same frame is resent after reconnecting, with a fresh id.
+        assert len(failing.sent) == 1
+        assert len(recovered.sent) == 1
+        assert json.loads(failing.sent[0])["type"] == "complete"
+        assert json.loads(recovered.sent[0])["type"] == "complete"
+
+    def test_gives_up_after_max_attempts(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("time.sleep", lambda _seconds: None)
+        connection = _FakeConnection(replies=[TimeoutError("slow")] * 3)
+        transport = self._make_transport(connection)
+        transport._max_attempts = 3
+        transport._connect = lambda: setattr(transport, "_connection", connection)
+
+        with pytest.raises(RuntimeError, match="after 3 attempts"):
+            transport.post("content", {"entries": []})
 
 
 class TestRunSync:
@@ -277,7 +362,7 @@ class TestRunSync:
         _build_snapshot(schema_root, hash_b)
 
         transport = _FakeTransport()
-        run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=5000)
+        run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
 
         content_posts = [p for p in transport.posts if p[0] == "content"]
         register_posts = [p for p in transport.posts if p[0] == "register"]
@@ -302,6 +387,47 @@ class TestRunSync:
         for _path, payload in complete_posts:
             assert payload["entry_count"] == 10
 
+        assert transport.closed
+
+    def test_skips_completed_snapshots(self, schema_root: Path) -> None:
+        from bootstrap.data.d1.sync import run_sync
+
+        hash_a = "aa" * 32
+        hash_b = "bb" * 32
+        _build_snapshot(schema_root, hash_a)
+        _build_snapshot(schema_root, hash_b)
+
+        transport = _FakeTransport(completed={("alpha", hash_a)})
+        run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
+
+        # Nothing is re-registered or re-completed for the finished snapshot.
+        register_posts = [p for p in transport.posts if p[0] == "register"]
+        complete_posts = [p for p in transport.posts if p[0] == "complete"]
+        assert {payload["server_id"] for _path, payload in register_posts} == {"beta"}
+        assert {payload["server_id"] for _path, payload in complete_posts} == {"beta"}
+
+    def test_lookup_skips_existing_content(self, schema_root: Path) -> None:
+        from bootstrap.data.d1.sync import load_snapshot_entries
+        from bootstrap.data.d1.sync import run_sync
+
+        snapshot_hash = "cc" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+
+        existing = {
+            (entry.family, entry.hash)
+            for entry in load_snapshot_entries(schema_root, snapshot_hash)
+            if entry.family == "types"
+        }
+        assert existing  # fixture sanity check
+
+        transport = _FakeTransport(existing=existing)
+        run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
+
+        content_posts = [p for p in transport.posts if p[0] == "content"]
+        uploaded = [e for _path, payload in content_posts for e in payload["entries"]]
+        assert "types" not in {e["family"] for e in uploaded}
+        assert len(uploaded) == 9  # 10 rows minus the existing types row
+
     def test_complete_not_posted_when_register_fails(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
 
@@ -316,7 +442,7 @@ class TestRunSync:
 
         transport = _FailingTransport()
         with pytest.raises(RuntimeError, match="boom"):
-            run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=5000)
+            run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
         assert [p for p in transport.posts if p[0] == "complete"] == []
 
     def test_dry_run_uploads_nothing(self, schema_root: Path) -> None:
@@ -334,16 +460,16 @@ class TestRunSync:
         with pytest.raises(ValueError, match="transport is required"):
             run_sync({"alpha": snapshot_hash}, schema_root, None)
 
-    @pytest.mark.parametrize("batch_size", [0, -1, 10_001])
+    @pytest.mark.parametrize("batch_size", [0, -1, 2_001])
     def test_rejects_invalid_batch_size(self, schema_root: Path, batch_size: int) -> None:
         from bootstrap.data.d1.sync import run_sync
 
         # Validation happens before any snapshot is loaded, so no snapshot
         # fixtures are needed here.
-        with pytest.raises(ValueError, match="batch_size must be between 1 and 10000"):
+        with pytest.raises(ValueError, match="batch_size must be between 1 and 2000"):
             run_sync({"alpha": "ab" * 32}, schema_root, None, batch_size=batch_size)
 
-    @pytest.mark.parametrize("batch_size", [1, 10_000])
+    @pytest.mark.parametrize("batch_size", [1, 2_000])
     def test_accepts_boundary_batch_size(self, schema_root: Path, batch_size: int) -> None:
         from bootstrap.data.d1.sync import run_sync
 
@@ -353,8 +479,9 @@ class TestRunSync:
         transport = _FakeTransport()
         run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=batch_size)
 
-        for _path, payload in transport.posts:
-            assert len(payload.get("entries", [])) <= batch_size
+        for path, payload in transport.posts:
+            if path in ("content", "register"):
+                assert len(payload["entries"]) <= batch_size
         assert [p for p in transport.posts if p[0] == "complete"] != []
 
 

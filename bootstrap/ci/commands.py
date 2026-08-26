@@ -559,9 +559,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @click.option("--token", default=None, help="Override the data-sync bearer token.")
     @click.option(
         "--batch-size",
-        type=click.IntRange(min=1),
-        default=2000,
-        help="Rows per upload request (default: 2000).",
+        type=click.IntRange(min=1, max=2000),
+        default=500,
+        help="Rows per upload frame (default: 500).",
     )
     @click.option(
         "--dry-run",
@@ -579,7 +579,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
         """Sync snapshot engine data into the platform D1 database."""
         import bootstrap.config
 
-        from bootstrap.data.d1.sync import HttpTransport
+        from bootstrap.data.d1.sync import WebSocketTransport
         from bootstrap.data.d1.sync import run_sync
 
         resolved_root = (PROJECT_ROOT / schema_root).resolve()
@@ -601,7 +601,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
                     "No D1 sync token configured. Set [d1].token in efa.dev.toml, "
                     "pass --token, or use --dev-env d1.token=... (or --dry-run)."
                 )
-            transport = HttpTransport(resolved_url, resolved_token)
+            transport = WebSocketTransport(resolved_url, resolved_token)
 
         run_sync(
             hashes_data,

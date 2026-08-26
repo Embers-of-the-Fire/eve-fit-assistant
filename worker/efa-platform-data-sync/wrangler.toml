@@ -8,6 +8,18 @@ database_name = "efa-platform-snapshots"
 database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
 migrations_dir = "migrations"
 
+# Sync session Durable Object: one named instance ("sync") terminates the
+# uploader's WebSocket and applies each frame to D1 in its own event/CPU
+# budget. SQLite-backed; no manual provisioning — created at deploy via the
+# migration below.
+[[durable_objects.bindings]]
+name = "SYNC_SESSION"
+class_name = "SyncSession"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncSession"]
+
 [[routes]]
 pattern = "api.efa-tech.dev/platform/storage/data-sync/*"
 zone_name = "efa-tech.dev"
