@@ -16,8 +16,8 @@ let _ready = $state(false);
 export function getSession(): PlatformSession {
     if (_session === null) {
         _session = new PlatformSession({
-            // Build-time constant: preview builds target the preview API
-            // (see astro.config.mjs).
+            // Build-time constant: preview builds target the API same-origin
+            // through the /platform/* proxy (see astro.config.mjs).
             origin: __PLATFORM_API_ORIGIN__,
             store: new LocalStorageSessionStore(),
             emailLocale: () => locale.current,
