@@ -15,6 +15,16 @@ page.
 - The D1 binding `FIT_DB` points to `efa-platform` and is shared with
   `worker/efa-platform-fit-storage`.
 - Platform HTTP API behavior lives in `worker/efa-platform-api/`, not in this Astro app.
+- `src/pages/platform/[...path].ts` is a same-origin reverse proxy for the platform API,
+  forwarding `/platform/*` to the `PLATFORM_API` service binding. Preview deployments
+  (both the site and the API worker sit behind Cloudflare Access) route all browser API
+  traffic through it: cross-origin calls to the preview API hostname fail under Access
+  (no `CF_Authorization` cookie on plain fetches, wildcard CORS incompatible with
+  credentialed fetches, cookie-less preflights blocked), while the same-origin proxy
+  carries the site's own Access cookie automatically and the service binding bypasses
+  Access on the API worker. The proxy is gated by the build-time
+  `__PLATFORM_API_PROXY_ENABLED__` constant (preview builds only, see `astro.config.mjs`);
+  production builds answer its requests with 400.
 
 ## Deploying
 
@@ -56,11 +66,13 @@ configuration (worker `efa-platform`, both custom domains). Only a matching
   bridges the account's ACL tokens for permission-gated UI (gate on tokens, never role
   names — real authorization is always enforced by the API).
 - The API origin is the build-time constant `__PLATFORM_API_ORIGIN__` (defined in
-  `astro.config.mjs`): production `https://api.efa-tech.dev`, or the preview API when built
-  with `CLOUDFLARE_ENV=preview`. The worker's auth CORS allowlist
-  (`worker/efa-platform-api/src/root.ts`) carries the matching site origins, including the
-  preview site origin and loopback dev origins. Note the preview API itself sits behind
-  Cloudflare Access; browser access to it depends on that Access policy.
+  `astro.config.mjs`): production `https://api.efa-tech.dev`, or the empty origin
+  (same-origin `/platform/*` proxy) when built with `CLOUDFLARE_ENV=preview`. The
+  worker's auth CORS allowlist (`worker/efa-platform-api/src/root.ts`) carries the
+  matching site origins, including the preview site origin and loopback dev origins.
+  The preview API itself sits behind Cloudflare Access; browser traffic never crosses
+  origins in preview (see the proxy bullet in "Architecture"), so no Access CORS
+  configuration is needed.
 - Tokens live in `localStorage` (`LocalStorageSessionStore`); the auth API sets no cookies
   by design.
 

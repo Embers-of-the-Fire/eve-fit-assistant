@@ -10,8 +10,9 @@ import type {
 // Browser islands call the platform API directly (the worker's CORS policy
 // permits this site's origin); SSR frontmatter uses the PLATFORM_API service
 // binding (./platform.ts). The origin is a build-time constant: preview builds
-// (CLOUDFLARE_ENV=preview) bake in the preview API origin, everything else the
-// production one (see astro.config.mjs).
+// (CLOUDFLARE_ENV=preview) use the empty origin so calls stay same-origin
+// through the /platform/* proxy endpoint, everything else bakes in the
+// production API origin (see astro.config.mjs).
 const API_ORIGIN = __PLATFORM_API_ORIGIN__;
 
 async function getJson<T>(url: string): Promise<T> {
