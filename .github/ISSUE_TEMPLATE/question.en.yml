@@ -1,7 +1,7 @@
 name: "Questions"
 description: "Ask a question about usage or behavior"
 title: "[Question]: "
-labels: ["question", "triage"]
+labels: ["T-Question", "V-Needs Triage"]
 body:
   - type: markdown
     attributes:

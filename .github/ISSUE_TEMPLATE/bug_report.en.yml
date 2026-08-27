@@ -1,7 +1,7 @@
 name: "Bug Report"
 description: "Report a reproducible problem"
 title: "[Bug]: "
-labels: ["bug", "triage"]
+labels: ["T-Bug", "V-Needs Triage"]
 body:
   - type: markdown
     attributes:
@@ -53,6 +53,7 @@ body:
       options:
         - Android
         - iOS
+        - Web
         - Windows 10/11
         - Linux
         - Other

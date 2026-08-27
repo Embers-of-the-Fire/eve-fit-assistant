@@ -1,7 +1,7 @@
 name: "错误报告"
 description: "报告一个可复现的问题"
 title: "[Bug]: "
-labels: ["bug", "triage"]
+labels: ["T-Bug", "V-Needs Triage"]
 body:
   - type: markdown
     attributes:
@@ -53,6 +53,7 @@ body:
       options:
         - Android
         - iOS
+        - Web
         - Windows 10/11
         - Linux
         - 其他

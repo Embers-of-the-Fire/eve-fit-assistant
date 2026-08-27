@@ -23,7 +23,7 @@ class ReportApi {
   }) async {
     final data = <String, dynamic>{
       "language": language,
-      "title": "[Bug]: ${report.title}",
+      "title": report.title,
       "summary": report.summary,
       "steps": report.steps,
       "expected": report.expected,
@@ -43,7 +43,7 @@ class ReportApi {
   }) async {
     final data = <String, dynamic>{
       "language": language,
-      "title": "[Feature]: ${req.title}",
+      "title": req.title,
       "problem": req.problem,
       "proposal": req.proposal,
       "impact": req.impact,
