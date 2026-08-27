@@ -20,11 +20,15 @@
 //! no rebake-on-read.
 
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::pin;
+use std::task::Poll;
+use std::time::Duration;
 
 use prost::Message;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use worker::{Cache, Env, Fetch, Method, Request, Response, console_log};
+use worker::{Cache, Delay, Env, Fetch, Method, Request, Response, console_log};
 
 use crate::proto::efa_v2::GenerationResources;
 use crate::proto::efa_v2::ResourceIndex;
@@ -35,6 +39,33 @@ const HEAD_CACHE_TTL_S: u32 = 300;
 /// TTL for content-addressed refs/indexes (seconds); their URLs embed the
 /// generation/snapshot hash, so they are immutable.
 const IMMUTABLE_CACHE_TTL_S: u32 = 86_400;
+
+/// Wall-clock budget for the whole catalog chain. Cache misses reach the
+/// storage origin through `Fetch::Request(...).send()` / `resp.bytes()`,
+/// which carry no per-request timeout in the runtime, so an unresponsive
+/// origin would otherwise hold the fit submit open indefinitely. On expiry
+/// the in-flight future is dropped and resolution degrades to "no baked
+/// URL" like any other failure.
+const RESOLUTION_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Race `fut` against a wall-clock budget, returning `None` on expiry. The
+/// losing future is dropped, which cancels the wait (the underlying
+/// runtime fetch may still settle in the background, but nothing awaits
+/// it).
+async fn with_timeout<F: Future>(budget: Duration, fut: F) -> Option<F::Output> {
+    let mut fut = pin!(fut);
+    let mut delay = pin!(Delay::from(budget));
+    std::future::poll_fn(|cx| {
+        if let Poll::Ready(out) = fut.as_mut().poll(cx) {
+            return Poll::Ready(Some(out));
+        }
+        if delay.as_mut().poll(cx).is_ready() {
+            return Poll::Ready(None);
+        }
+        Poll::Pending
+    })
+    .await
+}
 
 /// `channels/heads/channels.json`. The remote spec uses `defaultChannel`;
 /// `active` is the client's mapped key, accepted defensively.
@@ -235,16 +266,30 @@ async fn resolve_icon_urls_inner(
 ///
 /// Best-effort: any catalog-chain failure (including a missing
 /// `STORAGE_ORIGIN` var) yields an empty map; consumers then fall back to
-/// their default icon resolution. Never fails a fit submit.
+/// their default icon resolution. Never fails a fit submit. Bounded by
+/// [`RESOLUTION_TIMEOUT`] so an unresponsive origin cannot hold the submit
+/// open.
 pub async fn resolve_icon_urls(
     env: &Env,
     server_id: &str,
     metas: &HashMap<i32, PlatformTypeMeta>,
 ) -> HashMap<i32, String> {
-    match resolve_icon_urls_inner(env, server_id, metas).await {
-        Ok(urls) => urls,
-        Err(stage) => {
+    match with_timeout(
+        RESOLUTION_TIMEOUT,
+        resolve_icon_urls_inner(env, server_id, metas),
+    )
+    .await
+    {
+        Some(Ok(urls)) => urls,
+        Some(Err(stage)) => {
             console_log!("fit-storage: icon URL resolution failed ({stage}); baking no icon_url");
+            HashMap::new()
+        }
+        None => {
+            console_log!(
+                "fit-storage: icon URL resolution timed out after {}s; baking no icon_url",
+                RESOLUTION_TIMEOUT.as_secs()
+            );
             HashMap::new()
         }
     }
