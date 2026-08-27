@@ -30,7 +30,7 @@ function abilityLabel(ability: SnapshotFighter_Ability): string {
 <div class="efa-row">
     <StateIcon state={fighter.state}>
         {#if fighter.type}
-            <TypeIcon typeId={fighter.type.typeId} size={31} />
+            <TypeIcon typeId={fighter.type.typeId} url={fighter.type.iconUrl} size={31} />
         {/if}
     </StateIcon>
     <div class="efa-row-body">

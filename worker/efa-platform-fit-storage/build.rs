@@ -17,6 +17,8 @@ fn main() -> anyhow::Result<()> {
         "fit.proto",
         "utils.proto",
         "platform_data.proto",
+        "resource_index.proto",
+        "generation_resources.proto",
     ];
     for file in schema_files {
         println!(

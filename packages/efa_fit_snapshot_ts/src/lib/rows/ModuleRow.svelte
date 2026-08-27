@@ -22,7 +22,7 @@ const charge = $derived(module.charge);
 <div class="efa-row">
     <StateIcon state={module.state}>
         {#if type}
-            <TypeIcon typeId={type.typeId} size={31} />
+            <TypeIcon typeId={type.typeId} url={type.iconUrl} size={31} />
         {/if}
     </StateIcon>
     <div class="efa-row-body">
@@ -32,7 +32,7 @@ const charge = $derived(module.charge);
                 {#if charge.quantity > 0}
                     <span>{charge.quantity} x</span>
                 {/if}
-                <TypeIcon typeId={charge.type.typeId} size={16} />
+                <TypeIcon typeId={charge.type.typeId} url={charge.type.iconUrl} size={16} />
                 <span class="efa-charge-name">{ctx.name(charge.type.names)}</span>
             </div>
         {/if}

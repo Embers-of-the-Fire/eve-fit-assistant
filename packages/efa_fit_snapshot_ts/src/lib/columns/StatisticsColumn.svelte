@@ -94,7 +94,7 @@ function holdIcon(kind: HoldKindType): EfaIconName {
     <div class="efa-column">
         <div class="efa-ship-header">
             {#if ship}
-                <TypeIcon typeId={ship.typeId} size={40} />
+                <TypeIcon typeId={ship.typeId} url={ship.iconUrl} size={40} />
                 <span class="efa-ship-name">{ctx.name(ship.names)}</span>
             {/if}
         </div>

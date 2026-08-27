@@ -5,6 +5,7 @@ mod d1;
 mod engine;
 mod error;
 mod hash;
+mod icons;
 mod prefetch;
 mod proto;
 mod provider;
@@ -115,9 +116,20 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
             );
         }
 
-        // 5d/5e. Assemble + store the snapshot.
+        // 5d/5e. Assemble + store the snapshot. Icon URLs are baked at submit
+        // time only, best-effort (storage outage ⇒ no `icon_url`, never a
+        // failed submit).
         let created_at_ms = Date::now().as_millis() as i64;
-        let snapshot = snapshot::assemble(&request, &canonical, &ship, &data, created_at_ms);
+        let icon_urls =
+            prefetch::resolve_icon_urls(&env, &request.server_id, &data.type_meta).await;
+        let snapshot = snapshot::assemble(
+            &request,
+            &canonical,
+            &ship,
+            &data,
+            &icon_urls,
+            created_at_ms,
+        );
         let inserted = d1::insert_fit(
             &fit_db,
             &fit_hash,

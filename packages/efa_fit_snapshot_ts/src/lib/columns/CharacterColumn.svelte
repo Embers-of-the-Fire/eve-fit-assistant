@@ -89,7 +89,7 @@ const characterName = $derived.by(() => {
         <div class="efa-row">
             <StateIcon state={booster.state}>
                 {#if booster.type}
-                    <TypeIcon typeId={booster.type.typeId} size={31} />
+                    <TypeIcon typeId={booster.type.typeId} url={booster.type.iconUrl} size={31} />
                 {/if}
             </StateIcon>
             <div class="efa-row-body">

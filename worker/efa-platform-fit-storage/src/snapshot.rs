@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use eve_fit_os::calculate::Ship;
 use eve_fit_os::calculate::item::SlotType as EngineSlotType;
 use eve_fit_os::constant::patches::attr as patch;
@@ -11,7 +13,11 @@ use crate::proto::{fit as pb, utils};
 const EFFECT_LAUNCHER: i32 = 40;
 const EFFECT_TURRET: i32 = 42;
 
-fn snapshot_type(data: &SnapshotData, type_id: i32) -> pb::SnapshotType {
+fn snapshot_type(
+    data: &SnapshotData,
+    icon_urls: &HashMap<i32, String>,
+    type_id: i32,
+) -> pb::SnapshotType {
     let meta = data.type_meta.get(&type_id);
     pb::SnapshotType {
         type_id: type_id as u32,
@@ -27,6 +33,7 @@ fn snapshot_type(data: &SnapshotData, type_id: i32) -> pb::SnapshotType {
             }
         }),
         meta_group: None,
+        icon_url: icon_urls.get(&type_id).cloned(),
     }
 }
 
@@ -75,6 +82,7 @@ fn calculated_module(
 
 fn snapshot_module(
     data: &SnapshotData,
+    icon_urls: &HashMap<i32, String>,
     state: &pb::FitState,
     ship: &Ship,
     module: &pb::FitModule,
@@ -95,7 +103,7 @@ fn snapshot_module(
     let charge = module
         .charge_type_id
         .map(|charge_type_id| pb::SnapshotCharge {
-            r#type: snapshot_type(data, charge_type_id as i32),
+            r#type: snapshot_type(data, icon_urls, charge_type_id as i32),
             // Rounds loaded per module (dogma chargeAmount), read from the
             // module's calculated item — the patch attaches it to the module.
             quantity: calculated.map(|item| {
@@ -116,12 +124,12 @@ fn snapshot_module(
     };
 
     Some(pb::SnapshotModule {
-        r#type: snapshot_type(data, type_id),
+        r#type: snapshot_type(data, icon_urls, type_id),
         state: module.state,
         charge,
         is_turret: Some(is_turret),
         is_launcher: Some(is_launcher),
-        origin_type: origin_type_id.map(|base| snapshot_type(data, base)),
+        origin_type: origin_type_id.map(|base| snapshot_type(data, icon_urls, base)),
         related_values: Vec::new(),
     })
 }
@@ -143,6 +151,7 @@ pub fn assemble(
     state: &pb::FitState,
     ship: &Ship,
     data: &SnapshotData,
+    icon_urls: &HashMap<i32, String>,
     created_at_ms: i64,
 ) -> pb::FitSnapshot {
     let layout = state.layout;
@@ -152,7 +161,7 @@ pub fn assemble(
             .map(|index| pb::SnapshotSlot {
                 index,
                 item: find_module(state, slot_type, index)
-                    .and_then(|m| snapshot_module(data, state, ship, m)),
+                    .and_then(|m| snapshot_module(data, icon_urls, state, ship, m)),
             })
             .collect()
     };
@@ -165,7 +174,7 @@ pub fn assemble(
                 subsystem_type: module
                     .and_then(|m| m.subsystem_type)
                     .unwrap_or(pb::subsystem::SubsystemType::Unknown as i32),
-                item: module.and_then(|m| snapshot_module(data, state, ship, m)),
+                item: module.and_then(|m| snapshot_module(data, icon_urls, state, ship, m)),
             }
         })
         .collect();
@@ -176,7 +185,7 @@ pub fn assemble(
             .iter()
             .find(|mode| mode.type_id == selected)
             .map(|mode| pb::SnapshotTacticalMode {
-                r#type: snapshot_type(data, mode.type_id as i32),
+                r#type: snapshot_type(data, icon_urls, mode.type_id as i32),
                 variant: mode.variant,
             })
     });
@@ -185,7 +194,7 @@ pub fn assemble(
         .drones
         .iter()
         .map(|drone| pb::SnapshotDrone {
-            r#type: snapshot_type(data, drone.type_id as i32),
+            r#type: snapshot_type(data, icon_urls, drone.type_id as i32),
             state: drone.state,
             quantity: drone.quantity,
         })
@@ -195,7 +204,7 @@ pub fn assemble(
         .fighters
         .iter()
         .map(|fighter| pb::SnapshotFighter {
-            r#type: snapshot_type(data, fighter.type_id as i32),
+            r#type: snapshot_type(data, icon_urls, fighter.type_id as i32),
             // Fighters are always active (app convention, snapshot_export.dart).
             state: pb::slots::SlotState::Active as i32,
             quantity: fighter.quantity,
@@ -212,7 +221,7 @@ pub fn assemble(
             let implant = state.implants.iter().find(|i| i.slot_index == slot_index);
             let item = implant.and_then(|i| {
                 i.type_id.map(|type_id| pb::SnapshotModule {
-                    r#type: snapshot_type(data, type_id as i32),
+                    r#type: snapshot_type(data, icon_urls, type_id as i32),
                     state: i.state,
                     charge: None,
                     is_turret: Some(false),
@@ -230,7 +239,7 @@ pub fn assemble(
         .iter()
         .map(|booster| pb::SnapshotBooster {
             slot_index: booster.slot_index,
-            r#type: snapshot_type(data, booster.type_id as i32),
+            r#type: snapshot_type(data, icon_urls, booster.type_id as i32),
             state: booster.state,
         })
         .collect();
@@ -260,13 +269,13 @@ pub fn assemble(
             server_id: Some(request.server_id.clone()),
         },
         ship: pb::SnapshotShip {
-            r#type: snapshot_type(data, state.ship_type_id as i32),
+            r#type: snapshot_type(data, icon_urls, state.ship_type_id as i32),
             layout,
             available_tactical_modes: state
                 .available_tactical_modes
                 .iter()
                 .map(|mode| pb::SnapshotTacticalMode {
-                    r#type: snapshot_type(data, mode.type_id as i32),
+                    r#type: snapshot_type(data, icon_urls, mode.type_id as i32),
                     variant: mode.variant,
                 })
                 .collect(),
@@ -436,7 +445,17 @@ mod tests {
         let data = data();
         let state = state();
         let ship = Ship::new(100);
-        let snapshot = assemble(&request(state.clone()), &state, &ship, &data, 999);
+        let icon_urls: HashMap<i32, String> = [(100, "https://cdn.example/icon.png".to_string())]
+            .into_iter()
+            .collect();
+        let snapshot = assemble(
+            &request(state.clone()),
+            &state,
+            &ship,
+            &data,
+            &icon_urls,
+            999,
+        );
 
         assert_eq!(snapshot.version, 1);
         let header = snapshot.header;
@@ -451,6 +470,20 @@ mod tests {
             Some("Test Ship")
         );
         assert_eq!(ship_type.icon.unwrap().icon_id, Some(42));
+        // Baked icon URL from the resolver map; unresolved types keep `None`.
+        assert_eq!(
+            ship_type.icon_url.as_deref(),
+            Some("https://cdn.example/icon.png")
+        );
+        assert!(
+            snapshot.high_slots[0]
+                .item
+                .as_ref()
+                .unwrap()
+                .r#type
+                .icon_url
+                .is_none()
+        );
 
         // Rack lists sized exactly to layout.
         assert_eq!(snapshot.high_slots.len(), 2);
@@ -513,7 +546,14 @@ mod tests {
         let data = data();
         let state = state();
         let ship = Ship::new(100);
-        let snapshot = assemble(&request(state.clone()), &state, &ship, &data, 999);
+        let snapshot = assemble(
+            &request(state.clone()),
+            &state,
+            &ship,
+            &data,
+            &HashMap::new(),
+            999,
+        );
         let bytes = snapshot.encode_to_vec();
         // Byte comparison: a bare (attribute-less) ship yields a NaN stable
         // fraction, which would fail message equality on NaN != NaN.
