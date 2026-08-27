@@ -53,6 +53,30 @@ class _SignedOutView extends StatelessWidget {
         subtitle: context.l10n.accountRegisterTileSubtitle,
         onTap: () => unawaited(context.router.push(AccountRegisterRoute())),
       ),
+      ConfigListTile.custom(
+        Padding(
+          padding: const .symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final notice in [
+                context.l10n.platformSecurityNotice,
+                context.l10n.platformSecretsNotice,
+                context.l10n.platformTrademarkNotice,
+              ])
+                Padding(
+                  padding: const .only(bottom: 8),
+                  child: Text(
+                    notice,
+                    style: context.theme.textTheme.bodySmall?.copyWith(
+                      color: context.theme.hintColor,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     ],
   );
 }

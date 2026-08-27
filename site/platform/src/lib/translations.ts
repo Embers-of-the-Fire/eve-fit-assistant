@@ -157,6 +157,12 @@ export const en = {
     "share.downloadButton": "Download EVE Fit Assistant",
     "share.notFoundTitle": "Link not found",
     "share.notFoundDesc": "This link is not a valid fit link. Ask the sender for a new one.",
+    "legal.securityNotice":
+        "EFA Platform is an unofficial, community-run service provided \"as is\", without warranty of any kind. Staff will never ask for your password or verification codes. Report security issues to security@efa-tech.dev.",
+    "legal.trademarkNotice":
+        "EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. All other trademarks are the property of their respective owners. EFA Platform is a third-party service and is not endorsed by CCP hf.",
+    "legal.secretsNotice":
+        "Your session tokens are stored only in this browser's local storage and are never sent to third parties. Signing out clears them.",
 } as const;
 
 export type Locale = "en" | "zh";
@@ -319,4 +325,10 @@ export const zh: Record<TranslationKey, string> = {
     "share.downloadButton": "下载 EVE Fit Assistant",
     "share.notFoundTitle": "链接不存在",
     "share.notFoundDesc": "此链接不是有效的配置链接。请向发送者索取新的链接。",
+    "legal.securityNotice":
+        "EFA Platform 是非官方的社区服务，按“现状”提供，不作任何形式的担保。工作人员绝不会向您索要密码或验证码。安全问题请发送至 security@efa-tech.dev。",
+    "legal.trademarkNotice":
+        "EVE Online 和 EVE 标志是 CCP hf 的注册商标。保留所有权利。所有其他商标均为其各自所有者的财产。EFA Platform 是第三方服务，未经 CCP hf 认可。",
+    "legal.secretsNotice":
+        "您的会话令牌仅存储在此浏览器的本地存储中，绝不会发送给第三方。退出登录后将立即清除。",
 };

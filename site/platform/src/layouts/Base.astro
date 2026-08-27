@@ -1,4 +1,5 @@
 ---
+import Footer from "../components/Footer.svelte";
 import Topbar from "../components/Topbar.svelte";
 import { en, type TranslationKey } from "../lib/translations";
 import "../styles/global.css";
@@ -21,11 +22,12 @@ const resolvedTitle = title ?? (titleKey ? en[titleKey] : "EFA Platform");
         {titleKey && <meta name="efa:title-key" content={titleKey} />}
         <slot name="head" />
     </head>
-    <body class="min-h-screen">
+    <body class="flex min-h-screen flex-col">
         <Topbar client:load />
-        <main class="mx-auto max-w-5xl px-4 py-8">
+        <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
             <slot />
         </main>
+        <Footer client:load />
         <script>
             import { bindDocumentTitle } from "../lib/i18n.svelte";
             import type { TranslationKey } from "../lib/translations";
