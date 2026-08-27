@@ -11,6 +11,10 @@ import type {
 
 const NO_RESPONSE = "_No response_";
 
+function orNoResponse(value: string | undefined): string {
+    return value && value.trim().length > 0 ? value : NO_RESPONSE;
+}
+
 function formatBugReportEn(req: BugReport): string {
     const lines: string[] = [];
     lines.push("### Summary");
@@ -29,10 +33,10 @@ function formatBugReportEn(req: BugReport): string {
     lines.push(req.platform);
     lines.push("");
     lines.push("### App Version");
-    lines.push(req.version ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.version));
     lines.push("");
     lines.push("### Logs / Screenshots / Extra Context");
-    lines.push(req.logs ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.logs));
     return lines.join("\n");
 }
 
@@ -54,10 +58,10 @@ function formatBugReportZh(req: BugReport): string {
     lines.push(req.platform);
     lines.push("");
     lines.push("### 应用版本");
-    lines.push(req.version ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.version));
     lines.push("");
     lines.push("### 日志 / 截图 / 其他补充");
-    lines.push(req.logs ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.logs));
     return lines.join("\n");
 }
 
@@ -70,13 +74,13 @@ function formatFeatureRequestEn(req: FeatureRequest): string {
     lines.push(req.proposal);
     lines.push("");
     lines.push("### Alternatives Considered");
-    lines.push(req.alternatives ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.alternatives));
     lines.push("");
     lines.push("### Use Case / Impact");
     lines.push(req.impact);
     lines.push("");
     lines.push("### Mockups / References / Extra Context");
-    lines.push(req.extra ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.extra));
     return lines.join("\n");
 }
 
@@ -89,13 +93,13 @@ function formatFeatureRequestZh(req: FeatureRequest): string {
     lines.push(req.proposal);
     lines.push("");
     lines.push("### 替代方案");
-    lines.push(req.alternatives ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.alternatives));
     lines.push("");
     lines.push("### 使用场景 / 影响");
     lines.push(req.impact);
     lines.push("");
     lines.push("### 原型 / 参考 / 其他补充");
-    lines.push(req.extra ?? NO_RESPONSE);
+    lines.push(orNoResponse(req.extra));
     return lines.join("\n");
 }
 
