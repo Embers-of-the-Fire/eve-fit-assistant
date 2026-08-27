@@ -34,6 +34,8 @@ runs:
     - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
 
     - uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      with:
+        version: ^11.20.0
 
     - name: Install flutter_rust_bridge_codegen
       shell: pwsh
