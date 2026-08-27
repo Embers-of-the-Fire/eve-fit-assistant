@@ -55,6 +55,19 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
   D1 database (`migrations/0001_init.sql`): one `fits` row per canonical hash
   (idempotent re-submits skip computation). The `posts` table in the same
   database is owned by `efa-platform-api`.
+- At submit time only, each used type's icon is resolved through the EFA
+  storage catalog chain (`src/icons.rs`:
+  `channels/heads/channels.json` → head `metadata.json` → generation
+  `resources.pb2` → the server's `ResourceIndex`) and baked into the snapshot
+  as `SnapshotType.icon_url` — an absolute, immutable, content-addressed blob
+  URL under `STORAGE_ORIGIN` (`efa/v2/assets/blobs/...`, `identHash =
+  SHA-256(resource_id)`; graphic IDs preferred over icon IDs, matching the
+  app). Resolution is best-effort and cached (Cloudflare Cache API plus
+  in-isolate memoization of the immutable, content-addressed bodies): any
+  failure — including a missing `STORAGE_ORIGIN` var — leaves `icon_url`
+  unset and consumers fall back to the public EVE image server keyed by
+  `type_id`. There is no rebake-on-read; pre-existing fits rely on the
+  fallback until re-submitted.
 - Statistics are a field-for-field port of the app's
   `lib/features/fit_io/snapshot_export.dart::_statistics` (`src/statistics.rs`).
 

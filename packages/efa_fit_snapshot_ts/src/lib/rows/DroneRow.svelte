@@ -16,7 +16,7 @@ const ctx = snapshotDisplay();
 <div class="efa-row">
     <StateIcon state={drone.state}>
         {#if drone.type}
-            <TypeIcon typeId={drone.type.typeId} size={31} />
+            <TypeIcon typeId={drone.type.typeId} url={drone.type.iconUrl} size={31} />
         {/if}
     </StateIcon>
     <div class="efa-row-body">

@@ -391,6 +391,18 @@ where
     Ok(())
 }
 
+/// Resolve baked `icon_url`s for the fit's used types, alongside `type_meta`
+/// (submit path only). Best-effort: any catalog-chain failure yields an
+/// empty map and consumers fall back to their default icon resolution — a
+/// storage outage must never fail a fit submit.
+pub async fn resolve_icon_urls(
+    env: &worker::Env,
+    server_id: &str,
+    metas: &HashMap<i32, platform_data::PlatformTypeMeta>,
+) -> HashMap<i32, String> {
+    crate::icons::resolve_icon_urls(env, server_id, metas).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

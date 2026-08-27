@@ -14,7 +14,12 @@ interface Props {
      * component chrome translations and the resolution of snapshot `names` maps.
      */
     locale?: string;
-    /** Overrides type-icon resolution; defaults to the public EVE image server. */
+    /**
+     * Overrides type-icon resolution; defaults to the public EVE image server.
+     * Precedence per icon: the snapshot's baked `SnapshotType.icon_url`
+     * (content-addressed EFA CDN URL) first, then this resolver, then the
+     * bundled placeholder on load error.
+     */
     iconResolver?: TypeIconResolver;
     /** Resolves `SnapshotDisplayValue` icon hints (graphic/icon ids) to image URLs. */
     iconHintResolver?: IconHintResolver;

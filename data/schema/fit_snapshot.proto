@@ -79,10 +79,12 @@ message SnapshotHeader {
 
 /// A displayable game entity with all checkout-resolved data inlined.
 ///
-/// `type_id` doubles as the image key for public CDNs (e.g. the EVE image
-/// server `types/{type_id}/icon`), so renderers without any registry can still
-/// show artwork. `icon` is a hint for consumers that do have the EVE icon
-/// sheets; it is never required.
+/// `icon_url` is the preferred artwork source: an absolute, immutable,
+/// content-addressed URL baked by the snapshot producer. When it is absent,
+/// `type_id` doubles as the fallback image key for public CDNs (e.g. the EVE
+/// image server `types/{type_id}/icon`), so renderers without any registry can
+/// still show artwork. `icon` is a hint for consumers that do have the EVE
+/// icon sheets; it is never required.
 message SnapshotType {
   required uint32 type_id = 1;
 
@@ -95,6 +97,12 @@ message SnapshotType {
 
   /// Tech-tier meta group, driving the corner overlay on the item icon.
   optional SnapshotMetaGroup meta_group = 4;
+
+  /// Absolute, immutable, content-addressed URL of this type's icon PNG on the
+  /// EFA asset store, baked by the snapshot builder. Absent ⇒ consumers fall
+  /// back to their default icon resolution (e.g. the public EVE image server
+  /// keyed by `type_id`).
+  optional string icon_url = 5;
 }
 
 message SnapshotMetaGroup {

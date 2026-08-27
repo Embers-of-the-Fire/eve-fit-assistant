@@ -21,13 +21,33 @@ database_id = "2369a517-b61a-4f16-bcd9-8341016fb1b4"
 [build]
 command = "export PATH=\"$HOME/.cargo/bin:$HOME/.local/bin:$PATH\" && worker-build --release"
 
+# Origin of the EFA storage catalog chain, used to bake content-addressed
+# `icon_url`s into stored snapshots at submit time (see src/icons.rs).
+[vars]
+STORAGE_ORIGIN = "https://prod.storage.efa-tech.dev"
+
 [observability]
 enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
 head_sampling_rate = 1
 
 # Preview chain (spec §4.4): disposable data. Engine data (PLATFORM_DB) is
 # read-only and shared with production.
 [env.preview]
+
+# The storage catalog is read-only and shared with production.
+[env.preview.vars]
+STORAGE_ORIGIN = "https://prod.storage.efa-tech.dev"
 
 [[env.preview.d1_databases]]
 binding = "PLATFORM_DB"
