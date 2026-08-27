@@ -9,6 +9,7 @@ import {
     DocsFlagSchema,
     DocsQuestionSchema,
     FeatureRequestSchema,
+    PlatformFeedbackSchema,
 } from "./schema.js";
 import type { ErrorResponse, IssueRequest, IssueResult, TemplateType } from "./types.js";
 
@@ -90,6 +91,10 @@ app.post("/docs-flag", (c) => handleCreateIssue(c, "docs_flag", DocsFlagSchema))
 app.post("/docs-question", (c) => handleCreateIssue(c, "docs_question", DocsQuestionSchema));
 
 app.post("/agent-feedback", (c) => handleCreateIssue(c, "agent_feedback", AgentFeedbackSchema));
+
+app.post("/platform-feedback", (c) =>
+    handleCreateIssue(c, "platform_feedback", PlatformFeedbackSchema),
+);
 
 app.onError((err, c) => {
     const message = err instanceof Error ? err.message : String(err);

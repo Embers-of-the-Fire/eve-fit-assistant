@@ -59,3 +59,8 @@ export const AgentFeedbackSchema = z.object({
     body: z.string().min(1, "body is required"),
     dialog: z.string().optional(),
 });
+
+export const PlatformFeedbackSchema = z.object({
+    ...CommonFields,
+    body: z.string().min(1, "body is required"),
+});

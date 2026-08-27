@@ -5,6 +5,7 @@ import type {
     DocsQuestion,
     FeatureRequest,
     IssueRequest,
+    PlatformFeedback,
     TemplateType,
 } from "./types.js";
 
@@ -186,6 +187,20 @@ function formatAgentFeedbackZh(req: AgentFeedback): string {
     return lines.join("\n");
 }
 
+function formatPlatformFeedbackEn(req: PlatformFeedback): string {
+    const lines: string[] = [];
+    lines.push("## Feedback");
+    lines.push(req.body);
+    return lines.join("\n");
+}
+
+function formatPlatformFeedbackZh(req: PlatformFeedback): string {
+    const lines: string[] = [];
+    lines.push("## 反馈");
+    lines.push(req.body);
+    return lines.join("\n");
+}
+
 function formatFooter(req: IssueRequest): string {
     if (req.metadata) {
         const entries = Object.entries(req.metadata);
@@ -230,6 +245,13 @@ export function formatIssueBody(type: TemplateType, req: IssueRequest): string {
                 : formatAgentFeedbackEn(req as AgentFeedback);
         const footer = formatFooterSmall(req);
         return footer ? body + footer : body;
+    } else if (type === "platform_feedback") {
+        body =
+            req.language === "zh"
+                ? formatPlatformFeedbackZh(req as PlatformFeedback)
+                : formatPlatformFeedbackEn(req as PlatformFeedback);
+        const footer = formatFooterSmall(req);
+        return footer ? body + footer : body;
     } else {
         body =
             req.language === "zh"
@@ -246,6 +268,7 @@ const DefaultLabels: Record<string, string[]> = {
     docs_flag: ["F-App", "T-Docs", "T-Bug", "V-Needs Triage"],
     docs_question: ["F-App", "T-Docs", "T-Question", "V-Needs Triage"],
     agent_feedback: ["C-Feedback", "V-Needs Triage"],
+    platform_feedback: ["C-Feedback", "F-Site", "V-Needs Triage"],
 };
 
 export function resolveTitle(type: TemplateType, req: IssueRequest): string {
@@ -254,6 +277,9 @@ export function resolveTitle(type: TemplateType, req: IssueRequest): string {
     }
     if (type === "agent_feedback") {
         return `[Feedback/Agent]: ${req.title}`;
+    }
+    if (type === "platform_feedback") {
+        return `[Feedback/Platform]: ${req.title}`;
     }
     return req.title;
 }

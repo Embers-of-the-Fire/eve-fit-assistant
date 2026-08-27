@@ -20,13 +20,15 @@ onMount(initLocale);
             >
                 {t("nav.ships")}
             </a>
-            <a
-                href="/account"
-                class="text-console-text-dim transition-colors hover:text-console-highlight"
-            >
-                {t("nav.account")}
-            </a>
         </nav>
+        <a
+            href="https://efa-tech.dev/report/platform"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-console-text-dim transition-colors hover:text-console-highlight"
+        >
+            {t("nav.feedback")}
+        </a>
         <button
             type="button"
             onclick={() => locale.toggle()}
@@ -34,5 +36,11 @@ onMount(initLocale);
         >
             {locale.current === "zh" ? "EN" : "中文"}
         </button>
+        <a
+            href="/account"
+            class="text-sm text-console-text-dim transition-colors hover:text-console-highlight"
+        >
+            {t("nav.account")}
+        </a>
     </div>
 </header>

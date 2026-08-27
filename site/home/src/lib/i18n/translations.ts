@@ -89,6 +89,10 @@ export const en = {
     "report.agent.description":
         "Share your experience with the AI assistant — report issues or suggest improvements.",
 
+    "report.platform.title": "Platform Feedback",
+    "report.platform.description":
+        "Feedback about the online platform — report issues with the website or suggest improvements.",
+
     "report.form.title": "Title",
     "report.form.title.placeholder": "Short, descriptive title for this submission",
     "report.form.bug.prefix": "[Bug]: ",
@@ -134,6 +138,11 @@ export const en = {
     "report.form.agent.body.placeholder":
         "Describe your experience, issues, or suggestions for the AI assistant",
     "report.form.agent.prefix": "[Feedback/Agent]: ",
+
+    "report.form.platform_feedback.body": "Feedback",
+    "report.form.platform_feedback.body.placeholder":
+        "Describe the issue you found on the online platform, or your suggestion",
+    "report.form.platform_feedback.prefix": "[Feedback/Platform]: ",
 
     "report.form.labels": "Labels",
     "report.form.labels.placeholder": "Comma-separated labels, e.g. T-Bug, V-Needs Triage",
@@ -301,6 +310,9 @@ export const zh: Record<TranslationKey, string> = {
     "report.agent.title": "AI 反馈",
     "report.agent.description": "分享你使用 AI 助手的体验 — 报告问题或提出改进建议。",
 
+    "report.platform.title": "平台反馈",
+    "report.platform.description": "反馈在线平台的问题 — 报告网站问题或提出改进建议。",
+
     "report.form.title": "标题",
     "report.form.title.placeholder": "简短的描述性标题",
     "report.form.bug.prefix": "[Bug]: ",
@@ -341,6 +353,10 @@ export const zh: Record<TranslationKey, string> = {
     "report.form.agent.body": "反馈内容",
     "report.form.agent.body.placeholder": "描述你对 AI 助手的使用体验、问题或建议",
     "report.form.agent.prefix": "[Feedback/Agent]: ",
+
+    "report.form.platform_feedback.body": "反馈内容",
+    "report.form.platform_feedback.body.placeholder": "描述你在在线平台上遇到的问题，或你的建议",
+    "report.form.platform_feedback.prefix": "[Feedback/Platform]: ",
 
     "report.form.labels": "标签",
     "report.form.labels.placeholder": "逗号分隔的标签，例如 T-Bug, V-Needs Triage",

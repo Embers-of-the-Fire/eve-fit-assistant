@@ -100,6 +100,23 @@ as-is. The metadata footer is rendered with a `<small>` tag.
 }
 ```
 
+### `POST /platform-feedback`
+
+Create a feedback issue about the online platform site. The issue title is derived
+server-side as `[Feedback/Platform]: <title>`. Default labels: `C-Feedback`, `F-Site`,
+`V-Needs Triage`.
+
+`body` is the user's feedback text, rendered under a `## Feedback` heading. The metadata
+footer is rendered with a `<small>` tag.
+
+```json
+{
+    "title": "Ship directory search ignores case inconsistently",
+    "language": "en",
+    "body": "Searching the ship directory behaves differently depending on input casing."
+}
+```
+
 ### Response
 
 #### Success (201)
