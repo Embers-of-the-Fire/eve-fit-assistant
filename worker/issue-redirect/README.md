@@ -8,7 +8,10 @@ Target repo: `Embers-of-the-Fire/eve-fit-assistant`
 
 ### `POST /bug-report`
 
-Create a bug report issue.
+Create a bug report issue. The issue title is derived server-side as `[Bug]: <title>`, and
+the body mirrors the repository's GitHub bug-report issue form: `###`-level section
+headings in template order, with empty optional fields rendered as `_No response_`.
+Default labels: `T-Bug`, `V-Needs Triage`.
 
 ```json
 {
@@ -34,7 +37,11 @@ rejected with a validation error. Free-form or contact metadata is not accepted.
 
 ### `POST /feature-request`
 
-Create a feature request issue.
+Create a feature request issue. The issue title is derived server-side as
+`[Feature]: <title>`, and the body mirrors the repository's GitHub feature-request issue
+form (`### Problem to Solve` / `### Proposed Solution` / `### Alternatives Considered` /
+`### Use Case / Impact` / `### Mockups / References / Extra Context`, with empty optional
+fields rendered as `_No response_`). Default labels: `T-Feature`, `V-Needs Triage`.
 
 ```json
 {
@@ -83,7 +90,7 @@ Create an AI-usage feedback issue. The issue title is derived server-side as
 `[Feedback/Agent]: <title>`. Default labels: `C-Feedback`, `V-Needs Triage`.
 
 `body` is the user's feedback text. `dialog` is optional: when present (an exported chat
-transcript in markdown), the issue body is structured as `## Description` / `## Dialog`
+transcript in markdown), the issue body is structured as `### Description` / `### Dialog`
 with the transcript wrapped in a collapsed `<details>` block; otherwise the body is used
 as-is. The metadata footer is rendered with a `<small>` tag.
 
@@ -106,7 +113,7 @@ Create a feedback issue about the online platform site. The issue title is deriv
 server-side as `[Feedback/Platform]: <title>`. Default labels: `C-Feedback`, `F-Site`,
 `V-Needs Triage`.
 
-`body` is the user's feedback text, rendered under a `## Feedback` heading. The metadata
+`body` is the user's feedback text, rendered under a `### Feedback` heading. The metadata
 footer is rendered with a `<small>` tag.
 
 ```json

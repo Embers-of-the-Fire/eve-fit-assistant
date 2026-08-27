@@ -1,7 +1,7 @@
 name: "功能请求"
 description: "建议一个改进或新功能"
 title: "[Feature]: "
-labels: ["enhancement", "triage"]
+labels: ["T-Feature", "V-Needs Triage"]
 body:
   - type: markdown
     attributes:

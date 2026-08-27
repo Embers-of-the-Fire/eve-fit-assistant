@@ -9,142 +9,128 @@ import type {
     TemplateType,
 } from "./types.js";
 
+const NO_RESPONSE = "_No response_";
+
 function formatBugReportEn(req: BugReport): string {
     const lines: string[] = [];
-    lines.push("## Summary");
+    lines.push("### Summary");
     lines.push(req.summary);
     lines.push("");
-    lines.push("## Steps to Reproduce");
+    lines.push("### Steps to Reproduce");
     lines.push(req.steps);
     lines.push("");
-    lines.push("## Expected Behavior");
+    lines.push("### Expected Behavior");
     lines.push(req.expected);
     lines.push("");
-    lines.push("## Actual Behavior");
+    lines.push("### Actual Behavior");
     lines.push(req.actual);
     lines.push("");
-    lines.push("## Platform");
+    lines.push("### Platform");
     lines.push(req.platform);
-    if (req.version) {
-        lines.push("");
-        lines.push("## App Version");
-        lines.push(req.version);
-    }
-    if (req.logs) {
-        lines.push("");
-        lines.push("## Logs / Screenshots / Extra Context");
-        lines.push(req.logs);
-    }
+    lines.push("");
+    lines.push("### App Version");
+    lines.push(req.version ?? NO_RESPONSE);
+    lines.push("");
+    lines.push("### Logs / Screenshots / Extra Context");
+    lines.push(req.logs ?? NO_RESPONSE);
     return lines.join("\n");
 }
 
 function formatBugReportZh(req: BugReport): string {
     const lines: string[] = [];
-    lines.push("## 概述");
+    lines.push("### 概述");
     lines.push(req.summary);
     lines.push("");
-    lines.push("## 复现步骤");
+    lines.push("### 复现步骤");
     lines.push(req.steps);
     lines.push("");
-    lines.push("## 预期行为");
+    lines.push("### 预期行为");
     lines.push(req.expected);
     lines.push("");
-    lines.push("## 实际行为");
+    lines.push("### 实际行为");
     lines.push(req.actual);
     lines.push("");
-    lines.push("## 平台");
+    lines.push("### 平台");
     lines.push(req.platform);
-    if (req.version) {
-        lines.push("");
-        lines.push("## 应用版本");
-        lines.push(req.version);
-    }
-    if (req.logs) {
-        lines.push("");
-        lines.push("## 日志 / 截图 / 其他补充");
-        lines.push(req.logs);
-    }
+    lines.push("");
+    lines.push("### 应用版本");
+    lines.push(req.version ?? NO_RESPONSE);
+    lines.push("");
+    lines.push("### 日志 / 截图 / 其他补充");
+    lines.push(req.logs ?? NO_RESPONSE);
     return lines.join("\n");
 }
 
 function formatFeatureRequestEn(req: FeatureRequest): string {
     const lines: string[] = [];
-    lines.push("## Problem to Solve");
+    lines.push("### Problem to Solve");
     lines.push(req.problem);
     lines.push("");
-    lines.push("## Proposed Solution");
+    lines.push("### Proposed Solution");
     lines.push(req.proposal);
     lines.push("");
-    lines.push("## Use Case / Impact");
+    lines.push("### Alternatives Considered");
+    lines.push(req.alternatives ?? NO_RESPONSE);
+    lines.push("");
+    lines.push("### Use Case / Impact");
     lines.push(req.impact);
-    if (req.alternatives) {
-        lines.push("");
-        lines.push("## Alternatives Considered");
-        lines.push(req.alternatives);
-    }
-    if (req.extra) {
-        lines.push("");
-        lines.push("## Mockups / References / Extra Context");
-        lines.push(req.extra);
-    }
+    lines.push("");
+    lines.push("### Mockups / References / Extra Context");
+    lines.push(req.extra ?? NO_RESPONSE);
     return lines.join("\n");
 }
 
 function formatFeatureRequestZh(req: FeatureRequest): string {
     const lines: string[] = [];
-    lines.push("## 要解决的问题");
+    lines.push("### 要解决的问题");
     lines.push(req.problem);
     lines.push("");
-    lines.push("## 期望方案");
+    lines.push("### 期望方案");
     lines.push(req.proposal);
     lines.push("");
-    lines.push("## 使用场景 / 影响");
+    lines.push("### 替代方案");
+    lines.push(req.alternatives ?? NO_RESPONSE);
+    lines.push("");
+    lines.push("### 使用场景 / 影响");
     lines.push(req.impact);
-    if (req.alternatives) {
-        lines.push("");
-        lines.push("## 替代方案");
-        lines.push(req.alternatives);
-    }
-    if (req.extra) {
-        lines.push("");
-        lines.push("## 原型 / 参考 / 其他补充");
-        lines.push(req.extra);
-    }
+    lines.push("");
+    lines.push("### 原型 / 参考 / 其他补充");
+    lines.push(req.extra ?? NO_RESPONSE);
     return lines.join("\n");
 }
 
 function formatDocsFlagEn(req: DocsFlag): string {
     const lines: string[] = [];
-    lines.push("## Page");
+    lines.push("### Page");
     lines.push(`Path: ${req.pagePath}`);
     lines.push(`ID: ${req.pageId}`);
     lines.push("");
-    lines.push("## Report");
+    lines.push("### Report");
     lines.push(req.content);
     return lines.join("\n");
 }
 
 function formatDocsFlagZh(req: DocsFlag): string {
     const lines: string[] = [];
-    lines.push("## 页面");
+    lines.push("### 页面");
     lines.push(`路径：${req.pagePath}`);
     lines.push(`ID：${req.pageId}`);
     lines.push("");
-    lines.push("## 问题反馈");
+    lines.push("### 问题反馈");
     lines.push(req.content);
     return lines.join("\n");
 }
 
 function formatDocsQuestionEn(req: DocsQuestion): string {
     const lines: string[] = [];
-    lines.push("## Question");
+    lines.push("### Question");
     lines.push(req.content);
     return lines.join("\n");
 }
 
 function formatDocsQuestionZh(req: DocsQuestion): string {
     const lines: string[] = [];
-    lines.push("## 问题描述");
+    lines.push("### 问题描述");
     lines.push(req.content);
     return lines.join("\n");
 }
@@ -152,10 +138,10 @@ function formatDocsQuestionZh(req: DocsQuestion): string {
 function formatAgentFeedbackEn(req: AgentFeedback): string {
     const lines: string[] = [];
     if (req.dialog) {
-        lines.push("## Description");
+        lines.push("### Description");
         lines.push(req.body);
         lines.push("");
-        lines.push("## Dialog");
+        lines.push("### Dialog");
         lines.push("<details>");
         lines.push("<summary>Dialog transcript</summary>");
         lines.push("");
@@ -171,10 +157,10 @@ function formatAgentFeedbackEn(req: AgentFeedback): string {
 function formatAgentFeedbackZh(req: AgentFeedback): string {
     const lines: string[] = [];
     if (req.dialog) {
-        lines.push("## 描述");
+        lines.push("### 描述");
         lines.push(req.body);
         lines.push("");
-        lines.push("## 对话记录");
+        lines.push("### 对话记录");
         lines.push("<details>");
         lines.push("<summary>对话记录</summary>");
         lines.push("");
@@ -189,14 +175,14 @@ function formatAgentFeedbackZh(req: AgentFeedback): string {
 
 function formatPlatformFeedbackEn(req: PlatformFeedback): string {
     const lines: string[] = [];
-    lines.push("## Feedback");
+    lines.push("### Feedback");
     lines.push(req.body);
     return lines.join("\n");
 }
 
 function formatPlatformFeedbackZh(req: PlatformFeedback): string {
     const lines: string[] = [];
-    lines.push("## 反馈");
+    lines.push("### 反馈");
     lines.push(req.body);
     return lines.join("\n");
 }
@@ -274,6 +260,12 @@ const DefaultLabels: Record<string, string[]> = {
 export function resolveTitle(type: TemplateType, req: IssueRequest): string {
     if ("topic" in req) {
         return `[Docs] ${req.topic}`;
+    }
+    if (type === "bug_report") {
+        return `[Bug]: ${req.title}`;
+    }
+    if (type === "feature_request") {
+        return `[Feature]: ${req.title}`;
     }
     if (type === "agent_feedback") {
         return `[Feedback/Agent]: ${req.title}`;

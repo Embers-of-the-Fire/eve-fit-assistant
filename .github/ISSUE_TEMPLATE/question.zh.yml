@@ -1,7 +1,7 @@
 name: "使用提问"
 description: "询问用法、行为或其他一般问题"
 title: "[Question]: "
-labels: ["question", "triage"]
+labels: ["T-Question", "V-Needs Triage"]
 body:
   - type: markdown
     attributes:
