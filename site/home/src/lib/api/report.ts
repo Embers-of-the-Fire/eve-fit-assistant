@@ -32,6 +32,13 @@ export interface AgentFeedbackPayload {
     labels?: string[];
 }
 
+export interface PlatformFeedbackPayload {
+    language: Language;
+    title: string;
+    body: string;
+    labels?: string[];
+}
+
 export interface IssueResult {
     issue_url: string;
     issue_number: number;
@@ -100,4 +107,8 @@ export function submitFeatureRequest(payload: FeatureRequestPayload): Promise<Is
 
 export function submitAgentFeedback(payload: AgentFeedbackPayload): Promise<IssueResult> {
     return post<IssueResult>("/agent-feedback", payload);
+}
+
+export function submitPlatformFeedback(payload: PlatformFeedbackPayload): Promise<IssueResult> {
+    return post<IssueResult>("/platform-feedback", payload);
 }

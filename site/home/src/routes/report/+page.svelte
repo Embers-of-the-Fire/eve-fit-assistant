@@ -6,7 +6,13 @@ import { t } from "$lib/i18n/index.svelte";
 $effect(() => {
     const params = page.url.searchParams;
     const variant = params.get("variant");
-    if (variant !== "bug" && variant !== "feature" && variant !== "agent") return;
+    if (
+        variant !== "bug" &&
+        variant !== "feature" &&
+        variant !== "agent" &&
+        variant !== "platform"
+    )
+        return;
 
     const forward = new URLSearchParams(params);
     forward.delete("variant");
@@ -31,7 +37,7 @@ $effect(() => {
             <p class="mt-4 text-eve-text-muted">{t("report.description")}</p>
         </div>
 
-        <div class="mt-16 grid gap-8 sm:grid-cols-3">
+        <div class="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <a
                 href="/report/bug"
                 class="card-hover-glow group block rounded-lg border border-eve-border bg-eve-surface p-10 text-center transition-all duration-300"
@@ -80,6 +86,23 @@ $effect(() => {
                 </h2>
                 <p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
                     {t("report.agent.description")}
+                </p>
+            </a>
+
+            <a
+                href="/report/platform"
+                class="card-hover-glow group block rounded-lg border border-eve-border bg-eve-surface p-10 text-center transition-all duration-300"
+            >
+                <div
+                    class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded border border-eve-border bg-eve-surface-alt text-2xl text-eve-cyan transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,229,255,0.15)]"
+                >
+                    &#9783;
+                </div>
+                <h2 class="text-xl font-semibold text-eve-text transition-colors duration-300 group-hover:text-eve-gold">
+                    {t("report.platform.title")}
+                </h2>
+                <p class="mt-3 text-sm leading-relaxed text-eve-text-muted">
+                    {t("report.platform.description")}
                 </p>
             </a>
         </div>
