@@ -14,8 +14,9 @@ templates.
 - Do not add secrets to workflow files. Publishing credentials belong in GitHub
   Environments as described by `RELEASING.md` and @docs/agents/ci-release.
 - Preserve the release-label contract: `V-Release`, `V-Test`, and `V-Tested Release`.
-- Web preview behavior depends on `bootstrap/ci/suites.py` (`WEB_PREVIEW_PATTERNS`) and the
-  `x.py ci web-affected` check; update both sides together when changing the trigger model.
+- Web preview behavior depends on the monorepo dependency graph in `bootstrap/monorepo/`
+  (web-relevant package closure and meta entries) and the `x.py ci web-affected` check;
+  update both sides together when changing the trigger model.
 
 ## Validation
 

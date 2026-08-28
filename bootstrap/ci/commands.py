@@ -17,8 +17,8 @@ from bootstrap.ci.diagnostics import register_ci_diagnostics_commands
 from bootstrap.ci.lint import run_lint
 from bootstrap.ci.release import register_ci_release_commands
 from bootstrap.ci.release_github import register_github_release_command
-from bootstrap.ci.suites import SUITE_DEFINITIONS
 from bootstrap.ci.suites import calculate_ci_matrix
+from bootstrap.ci.suites import full_matrix
 from bootstrap.ci.suites import web_preview_affected
 from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import validate_remote_channel
@@ -44,16 +44,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
     def ci_matrix(from_file, full):
         """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
         if full:
-            suites = [
-                {
-                    "suite": s["suite"],
-                    "shell": s["shell"],
-                    "lint_command": s["lint_command"],
-                    "command": s["command"],
-                    "codegen_command": s["codegen_command"],
-                }
-                for s in SUITE_DEFINITIONS
-            ]
+            suites = full_matrix()
         elif from_file:
             with open(from_file) as f:
                 files = [line.strip() for line in f if line.strip()]
@@ -62,6 +53,47 @@ def register_ci_commands(cli_group: click.Group) -> None:
             suites = []
 
         print(json.dumps(suites))
+
+    @ci.command("affected")
+    @click.option("--from-file", type=click.Path(exists=True), default=None)
+    @click.option("--base-ref", default=None, help="Diff against this git ref instead of a file.")
+    @click.option("--full", is_flag=True, default=False)
+    def ci_affected(from_file, base_ref, full):
+        """Resolve changed files to affected packages/suites. Outputs JSON to stdout."""
+        from bootstrap.monorepo import ALL_SUITES
+        from bootstrap.monorepo import changed_files_from_git
+        from bootstrap.monorepo import resolve_affected
+
+        if full:
+            affected = resolve_affected([])
+            payload = {
+                "full": True,
+                "files": [],
+                "packages": [],
+                "suites": list(ALL_SUITES),
+                "web": True,
+            }
+        else:
+            if from_file:
+                with open(from_file) as f:
+                    files = [line.strip() for line in f if line.strip()]
+            elif base_ref:
+                try:
+                    files = changed_files_from_git(base_ref)
+                except RuntimeError as exception:
+                    raise click.ClickException(str(exception)) from exception
+            else:
+                files = []
+            affected = resolve_affected(files)
+            payload = {
+                "full": affected.full,
+                "files": list(affected.files),
+                "packages": sorted(affected.packages),
+                "suites": sorted(affected.suites),
+                "web": affected.web,
+            }
+
+        print(json.dumps(payload))
 
     @ci.command("web-affected")
     @click.option("--from-file", type=click.Path(exists=True), default=None)
@@ -89,9 +121,17 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default="all",
         help="Limit linting to a specific language (default: all).",
     )
-    def ci_lint(lang: str):
+    @click.option(
+        "--packages",
+        default=None,
+        help="Comma-separated monorepo package ids to restrict linting to.",
+    )
+    def ci_lint(lang: str, packages: str | None):
         """Check formatting and linting without modifying files."""
-        run_lint(lang, no_check=False, check_only=True, dry_run=False)
+        package_ids = None
+        if packages:
+            package_ids = tuple(p.strip() for p in packages.split(",") if p.strip()) or None
+        run_lint(lang, no_check=False, check_only=True, dry_run=False, packages=package_ids)
 
     @ci.command("codegen")
     @click.option(

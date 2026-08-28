@@ -58,15 +58,20 @@ def run_melos(
     title: str,
     args: list[str] | None = None,
     live_stdout: bool = False,
+    scope: list[str] | None = None,
 ) -> str:
     """Run a melos script from the workspace root (see root pubspec.yaml).
 
     Extra ``args`` are appended after ``--`` and forwarded to the script's
-    command.
+    command. ``scope`` restricts the run to the named workspace packages,
+    overriding/further restricting the script's ``packageFilters`` (see
+    https://melos.invertase.dev/commands/run).
     """
     from bootstrap.utils import get_melos_command
 
     cmd = [*get_melos_command(), "run", script]
+    if scope:
+        cmd += [f"--scope={name}" for name in scope]
     if args:
         cmd += ["--", *args]
     return execute(cmd, title, live_stdout=live_stdout, cwd=PROJECT_ROOT)
@@ -197,3 +202,42 @@ def run_format() -> None:
     from bootstrap.ci.lint import run_lint
 
     run_lint("all", no_check=True, check_only=False, dry_run=_DRY_RUN)
+
+
+def resolve_change_scope(
+    changed: bool, base_ref: str | None, packages: str | None
+) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
+    """Resolve ``--changed``/``--packages`` CLI options into a work scope.
+
+    Returns ``(package ids, changed files)``; both are ``None`` for the legacy
+    full behavior. Infrastructure changes escalate to a full (unscoped) run.
+    """
+    from bootstrap.monorepo import changed_files_from_git
+    from bootstrap.monorepo import resolve_affected
+
+    if changed and packages:
+        raise click.ClickException("--changed and --packages cannot be used together.")
+    if packages:
+        ids = tuple(p.strip() for p in packages.split(",") if p.strip())
+        return (ids or None), None
+    if not changed:
+        return None, None
+
+    try:
+        files = changed_files_from_git(base_ref)
+    except RuntimeError as exception:
+        raise click.ClickException(str(exception)) from exception
+    affected = resolve_affected(files)
+    if affected.full:
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.YELLOW],
+                "Infrastructure files changed; running the full pass.",
+            )
+        )
+        return None, tuple(affected.files)
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Affected packages: ")
+        + (", ".join(sorted(affected.packages)) or "(none)")
+    )
+    return tuple(sorted(affected.packages)), tuple(affected.files)

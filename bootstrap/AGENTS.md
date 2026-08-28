@@ -12,6 +12,8 @@ Scope: Python workspace tooling in `bootstrap/`, including the implementation be
 - Generated protobuf modules under `bootstrap/data/schema/` are outputs; change
   `data/schema/` and regenerate instead of editing them.
 - CI/release behavior must stay aligned with `.github/workflows/` and `RELEASING.md`.
+- Change-aware CI/CD selection is driven by the package registry in `bootstrap/monorepo/`;
+  keep it in sync with the real manifests — `bootstrap/tests/test_monorepo.py` enforces this.
 
 ## Detail Docs
 

@@ -4,6 +4,26 @@ App releases are driven by GitHub Actions workflows in `.github/workflows/`; see
 `RELEASING.md` for the manual release procedure. `flake.nix` and the workflow files are the
 sources of truth when this document disagrees with them.
 
+## Pull Request CI
+
+`ci.yml` runs a change-aware job matrix. The workflow diffs the PR base against its head and
+feeds the file list to `uv run x.py ci matrix --from-file` (pushes to `dev` use `--full`).
+Selection is driven by the monorepo dependency graph in `bootstrap/monorepo/`: changed files
+map to packages, the affected set is closed over dependents, and each affected CI suite emits
+fully-resolved commands scoped via `--packages` (for example
+`uv run x.py test dart --packages efa_fit,eve_fit_assistant`). Changes to `bootstrap/ci/**`,
+`bootstrap/monorepo/**`, `bootstrap/cli/runtime.py`, `flake.nix`, or `.github/workflows/**`
+escalate to the full, unscoped matrix as a fail-safe.
+
+The registry in `bootstrap/monorepo/packages.py` is the single source of truth for package
+paths, intra-repo dependency edges, and suite attribution; it is validated against the real
+`pubspec.yaml`/`package.json`/`Cargo.toml` manifests by `bootstrap/tests/test_monorepo.py`.
+Use `uv run x.py ci affected [--from-file F | --base-ref REF | --full]` to inspect the
+resolved packages/suites/web-gate for a change set as JSON.
+
+Release preflight (`ci release verify --check-all`) intentionally stays full-scope: a release
+must build and test everything regardless of what changed.
+
 ## Release Pull Requests
 
 Release PRs target the `dev` branch and use three labels:
@@ -108,8 +128,9 @@ config file, then runs `wrangler pages deploy` with `--commit-hash`.
 
 Entry points:
 
-- `web-preview.yml` — PRs to `dev` that touch web bundle inputs (`WEB_PREVIEW_PATTERNS` in
-  `bootstrap/ci/suites.py`, checked through `x.py ci web-affected`) get a branch preview on
+- `web-preview.yml` — PRs to `dev` that touch web bundle inputs (derived from the
+  `bootstrap/monorepo/` dependency graph: the app's forward dependency closure plus web
+  tooling meta entries, checked through `x.py ci web-affected`) get a branch preview on
   `efa-app-nightly` plus a pinned PR comment. This is gated on the `D-CI-Page Preview` label,
   which `D-Full CI` also enables. Release PRs labeled `V-Release` skip this build because
   `release-full.yml`'s `site`/`site-deploy` jobs build and deploy the web bundle instead.
