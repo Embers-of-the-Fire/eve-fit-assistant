@@ -10,20 +10,30 @@ void main() {
       expect(normalizeHttpProxy("socks5://127.0.0.1:1080"), isNull);
     });
 
-    test("strips the scheme and path, keeps userinfo", () {
-      expect(normalizeHttpProxy("http://127.0.0.1:7890"), "127.0.0.1:7890");
-      expect(normalizeHttpProxy("https://proxy.example.com:8080/"), "proxy.example.com:8080");
+    test("keeps the scheme, drops the path, keeps userinfo", () {
+      expect(normalizeHttpProxy("http://127.0.0.1:7890"), "http://127.0.0.1:7890");
+      expect(
+        normalizeHttpProxy("https://proxy.example.com:8080/"),
+        "https://proxy.example.com:8080",
+      );
       expect(
         normalizeHttpProxy("http://user:pass@proxy.example.com:3128"),
-        "user:pass@proxy.example.com:3128",
+        "http://user:pass@proxy.example.com:3128",
+      );
+      expect(
+        normalizeHttpProxy("https://user:pass@proxy.example.com:443"),
+        "https://user:pass@proxy.example.com:443",
       );
     });
 
-    test("adds the default port when missing", () {
-      expect(normalizeHttpProxy("proxy.example.com"), "proxy.example.com:1080");
-      expect(normalizeHttpProxy("user:pass@proxy.example.com"), "user:pass@proxy.example.com:1080");
-      expect(normalizeHttpProxy("[::1]"), "[::1]:1080");
-      expect(normalizeHttpProxy("[::1]:7890"), "[::1]:7890");
+    test("defaults scheme-less values to http and adds the default port", () {
+      expect(normalizeHttpProxy("proxy.example.com"), "http://proxy.example.com:1080");
+      expect(
+        normalizeHttpProxy("user:pass@proxy.example.com"),
+        "http://user:pass@proxy.example.com:1080",
+      );
+      expect(normalizeHttpProxy("[::1]"), "http://[::1]:1080");
+      expect(normalizeHttpProxy("[::1]:7890"), "http://[::1]:7890");
     });
   });
 
@@ -35,9 +45,9 @@ void main() {
         "all_proxy": "http://127.0.0.1:7892",
         "NO_PROXY": "localhost, .internal.example.com",
       });
-      expect(config.httpProxy, "127.0.0.1:7890");
-      expect(config.httpsProxy, "127.0.0.1:7891");
-      expect(config.allProxy, "127.0.0.1:7892");
+      expect(config.httpProxy, "http://127.0.0.1:7890");
+      expect(config.httpsProxy, "https://127.0.0.1:7891");
+      expect(config.allProxy, "http://127.0.0.1:7892");
       expect(config.bypass, ["localhost", ".internal.example.com"]);
       expect(config.isEmpty, isFalse);
     });
@@ -46,6 +56,17 @@ void main() {
       final config = systemProxyFromEnvironment({"no_proxy": "localhost"});
       expect(config.isEmpty, isTrue);
       expect(config.bypass, ["localhost"]);
+    });
+
+    test("an https proxy URL survives end to end for native chat", () {
+      final config = systemProxyFromEnvironment({
+        "https_proxy": "https://user:password@proxy.example:443",
+      });
+      expect(config.httpsProxy, "https://user:password@proxy.example:443");
+      expect(
+        proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")),
+        "https://user:password@proxy.example:443",
+      );
     });
   });
 
@@ -64,8 +85,8 @@ void main() {
         httpsPort: 7891,
         ignoreHosts: const ["localhost"],
       )!;
-      expect(config.httpProxy, "127.0.0.1:7890");
-      expect(config.httpsProxy, "127.0.0.1:7891");
+      expect(config.httpProxy, "http://127.0.0.1:7890");
+      expect(config.httpsProxy, "http://127.0.0.1:7891");
       expect(config.bypass, ["localhost"]);
     });
 
@@ -76,7 +97,7 @@ void main() {
         httpPort: 7890,
         useSameProxy: true,
       )!;
-      expect(config.httpsProxy, "127.0.0.1:7890");
+      expect(config.httpsProxy, "http://127.0.0.1:7890");
     });
 
     test("authentication credentials are embedded into the http proxy", () {
@@ -90,9 +111,9 @@ void main() {
         authenticationUser: "alice",
         authenticationPassword: "s3cret",
       )!;
-      expect(config.httpProxy, "alice:s3cret@proxy.example.com:3128");
+      expect(config.httpProxy, "http://alice:s3cret@proxy.example.com:3128");
       // GNOME stores credentials for the HTTP proxy only.
-      expect(config.httpsProxy, "https-proxy.example.com:3129");
+      expect(config.httpsProxy, "http://https-proxy.example.com:3129");
     });
 
     test("use-same-proxy carries the credentials over to https", () {
@@ -105,7 +126,7 @@ void main() {
         authenticationUser: "alice",
         authenticationPassword: "s3cret",
       )!;
-      expect(config.httpsProxy, "alice:s3cret@proxy.example.com:3128");
+      expect(config.httpsProxy, "http://alice:s3cret@proxy.example.com:3128");
     });
 
     test("authentication without a user is ignored", () {
@@ -116,7 +137,7 @@ void main() {
         useAuthentication: true,
         authenticationPassword: "s3cret",
       )!;
-      expect(config.httpProxy, "proxy.example.com:3128");
+      expect(config.httpProxy, "http://proxy.example.com:3128");
     });
 
     test("manual mode without any usable host/port returns null", () {
@@ -127,14 +148,14 @@ void main() {
 
   group("systemProxyWithExtraBypass", () {
     test("appends extra bypass entries, keeping the proxies", () {
-      const gnome = SystemProxyConfig(httpProxy: "127.0.0.1:7890", bypass: ["localhost"]);
+      const gnome = SystemProxyConfig(httpProxy: "http://127.0.0.1:7890", bypass: ["localhost"]);
       final merged = systemProxyWithExtraBypass(gnome, const ["internal.example.com"]);
-      expect(merged.httpProxy, "127.0.0.1:7890");
+      expect(merged.httpProxy, "http://127.0.0.1:7890");
       expect(merged.bypass, ["localhost", "internal.example.com"]);
     });
 
     test("returns the config unchanged without extra entries", () {
-      const gnome = SystemProxyConfig(httpProxy: "127.0.0.1:7890", bypass: ["localhost"]);
+      const gnome = SystemProxyConfig(httpProxy: "http://127.0.0.1:7890", bypass: ["localhost"]);
       expect(systemProxyWithExtraBypass(gnome, const []), same(gnome));
     });
   });
@@ -175,16 +196,35 @@ void main() {
 
   group("proxyUrlFor", () {
     test("returns a full URL for proxied targets, null for direct ones", () {
-      const config = SystemProxyConfig(httpsProxy: "127.0.0.1:7890", bypass: ["localhost"]);
+      const config = SystemProxyConfig(
+        httpsProxy: "http://127.0.0.1:7890",
+        bypass: ["localhost"],
+      );
       expect(proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")), "http://127.0.0.1:7890");
       expect(proxyUrlFor(config, Uri.parse("https://localhost/v1")), isNull);
     });
 
     test("keeps embedded credentials for both transports", () {
-      const config = SystemProxyConfig(httpsProxy: "alice:s3cret@127.0.0.1:7890");
+      const config = SystemProxyConfig(httpsProxy: "http://alice:s3cret@127.0.0.1:7890");
       final url = Uri.parse("https://api.openai.com/v1");
       expect(findProxyForUrl(config, url), "PROXY alice:s3cret@127.0.0.1:7890");
       expect(proxyUrlFor(config, url), "http://alice:s3cret@127.0.0.1:7890");
+    });
+
+    test("preserves an https proxy scheme and credentials for native chat", () {
+      // The resolved URL is handed to the efa-chat reqwest client
+      // (build_http_client); downgrading it to http:// would expose the proxy
+      // credentials in cleartext to an on-path actor.
+      const config = SystemProxyConfig(httpsProxy: "https://user:password@proxy.example:443");
+      final url = Uri.parse("https://api.openai.com/v1");
+      // dart:io's PROXY directive carries no scheme; the reqwest path does.
+      expect(findProxyForUrl(config, url), "PROXY user:password@proxy.example:443");
+      expect(proxyUrlFor(config, url), "https://user:password@proxy.example:443");
+    });
+
+    test("treats scheme-less values as plain http proxies", () {
+      const config = SystemProxyConfig(httpsProxy: "127.0.0.1:7890");
+      expect(proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")), "http://127.0.0.1:7890");
     });
   });
 }

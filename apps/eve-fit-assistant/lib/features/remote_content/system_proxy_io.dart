@@ -103,7 +103,7 @@ String Function(Uri)? systemProxyFindProxy() {
   return (url) => findProxyForUrl(config, url);
 }
 
-/// The proxy URL (`http://[user:password@]host:port`) applying to [url], or
+/// The proxy URL (`scheme://[user:password@]host:port`) applying to [url], or
 /// `null` when the URL is reached directly. Used to hand the resolved proxy
 /// to the efa-chat reqwest client.
 String? systemProxyUrlFor(Uri url) {

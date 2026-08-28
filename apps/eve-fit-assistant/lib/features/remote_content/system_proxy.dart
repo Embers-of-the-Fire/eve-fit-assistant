@@ -11,21 +11,24 @@ library;
 
 /// A resolved system proxy configuration.
 ///
-/// Proxy values are normalized to `host:port` (optionally with a
-/// `user:password@` prefix); [bypass] holds the `no_proxy`/ignore-hosts
-/// entries. Only HTTP (CONNECT) proxies are representable: `dart:io`'s
-/// `HttpClient.findProxy` supports `PROXY host:port` and `DIRECT` only, so
-/// SOCKS proxies are dropped during parsing.
+/// Proxy values are normalized proxy URLs: an `http://` or `https://` scheme,
+/// optional `user:password@` userinfo, and an explicit port. [bypass] holds
+/// the `no_proxy`/ignore-hosts entries. Only HTTP (CONNECT) proxies are
+/// representable: `dart:io`'s `HttpClient.findProxy` supports
+/// `PROXY host:port` and `DIRECT` only, so SOCKS proxies are dropped during
+/// parsing and the scheme is stripped again for the dart:io transport. The
+/// full URL is kept for native chat, where reqwest honors an `https://`
+/// proxy scheme (TLS to the proxy) instead of downgrading the connection.
 class SystemProxyConfig {
   const SystemProxyConfig({this.httpProxy, this.httpsProxy, this.allProxy, this.bypass = const []});
 
-  /// Proxy for `http://` URLs, as `host:port`.
+  /// Proxy for `http://` URLs, as a proxy URL (`scheme://[user:password@]host:port`).
   final String? httpProxy;
 
-  /// Proxy for `https://` URLs, as `host:port`.
+  /// Proxy for `https://` URLs, as a proxy URL (`scheme://[user:password@]host:port`).
   final String? httpsProxy;
 
-  /// Fallback proxy for any scheme, as `host:port`.
+  /// Fallback proxy for any scheme, as a proxy URL (`scheme://[user:password@]host:port`).
   final String? allProxy;
 
   /// Hosts that must be reached directly (`no_proxy` / GNOME ignore-hosts).
@@ -39,15 +42,22 @@ class SystemProxyConfig {
 /// `dart:io`'s `HttpClient.findProxyFromEnvironment` convention.
 const int _defaultProxyPort = 1080;
 
-/// Normalize an environment/gsettings proxy value to `host:port` (keeping an
-/// optional `user:password@` prefix). Returns `null` for empty values and
-/// for non-HTTP schemes such as `socks5://`, which `dart:io` cannot use.
+/// Normalize an environment/gsettings proxy value to a proxy URL with an
+/// `http://` or `https://` scheme (keeping an optional `user:password@`
+/// prefix). Values without a scheme are treated as plain HTTP proxies.
+/// Returns `null` for empty values and for non-HTTP schemes such as
+/// `socks5://`, which neither `dart:io` nor the chat client uses here.
+///
+/// The scheme is preserved so native consumers (the efa-chat reqwest client)
+/// can keep a TLS connection to an `https://` proxy instead of silently
+/// downgrading it — and its embedded credentials — to cleartext HTTP.
 String? normalizeHttpProxy(String? value) {
   var v = value?.trim() ?? "";
   if (v.isEmpty) return null;
+  var scheme = "http";
   final schemeEnd = v.indexOf("://");
   if (schemeEnd >= 0) {
-    final scheme = v.substring(0, schemeEnd).toLowerCase();
+    scheme = v.substring(0, schemeEnd).toLowerCase();
     if (scheme != "http" && scheme != "https") return null;
     v = v.substring(schemeEnd + 3);
   }
@@ -64,7 +74,7 @@ String? normalizeHttpProxy(String? value) {
   } else if (!authority.contains(":")) {
     v = "$v:$_defaultProxyPort";
   }
-  return v;
+  return "$scheme://$v";
 }
 
 /// Whether [host] matches one bypass entry. Supports `*` (match everything)
@@ -112,6 +122,8 @@ SystemProxyConfig systemProxyFromEnvironment(Map<String, String> env) {
 /// credentials for the HTTP proxy. Both transports pick credentials up from
 /// the userinfo part — `dart:io` parses them out of the
 /// `PROXY user:password@host:port` directive, reqwest out of the proxy URL.
+/// GNOME models plain HTTP CONNECT proxies only (host/port, no scheme), so
+/// the emitted values carry an `http://` scheme.
 SystemProxyConfig? systemProxyFromGnome({
   required String mode,
   String httpHost = "",
@@ -130,7 +142,7 @@ SystemProxyConfig? systemProxyFromGnome({
   String? proxy(String host, int port, {bool authenticated = false}) {
     final h = host.trim();
     if (h.isEmpty || port <= 0) return null;
-    return "${authenticated ? auth : ""}$h:$port";
+    return "http://${authenticated ? auth : ""}$h:$port";
   }
 
   final http = proxy(httpHost, httpPort, authenticated: true);
@@ -153,24 +165,43 @@ SystemProxyConfig systemProxyWithExtraBypass(SystemProxyConfig config, List<Stri
   );
 }
 
-/// Resolve the `HttpClient.findProxy` directive for [url]:
-/// `PROXY host:port` when a proxy applies, `DIRECT` otherwise.
-String findProxyForUrl(SystemProxyConfig config, Uri url) {
-  if (_isBypassed(config.bypass, url.host)) return "DIRECT";
-  final proxy = switch (url.scheme.toLowerCase()) {
+/// The normalized proxy value applying to [url], or `null` when the URL is
+/// reached directly.
+String? _proxyForUrl(SystemProxyConfig config, Uri url) {
+  if (_isBypassed(config.bypass, url.host)) return null;
+  return switch (url.scheme.toLowerCase()) {
     "http" => config.httpProxy ?? config.allProxy,
     "https" => config.httpsProxy ?? config.allProxy,
     _ => null,
   };
-  return proxy == null ? "DIRECT" : "PROXY $proxy";
 }
 
-/// The proxy URL (`http://[user:password@]host:port`) that applies to [url],
-/// or `null` when the URL is reached directly. Used to hand the resolved
-/// proxy to native code (the efa-chat reqwest client), which takes a full
-/// URL; reqwest applies the userinfo as basic proxy credentials.
+/// The `host:port` authority (with optional userinfo) of a normalized proxy
+/// value. `dart:io`'s `PROXY` directive carries no scheme.
+String _proxyAuthority(String proxy) {
+  final schemeEnd = proxy.indexOf("://");
+  return schemeEnd >= 0 ? proxy.substring(schemeEnd + 3) : proxy;
+}
+
+/// Resolve the `HttpClient.findProxy` directive for [url]:
+/// `PROXY host:port` when a proxy applies, `DIRECT` otherwise.
+///
+/// dart:io can only speak cleartext HTTP CONNECT to a proxy, so an
+/// `https://` proxy scheme is dropped here; the scheme is honored on the
+/// native chat path via [proxyUrlFor].
+String findProxyForUrl(SystemProxyConfig config, Uri url) {
+  final proxy = _proxyForUrl(config, url);
+  return proxy == null ? "DIRECT" : "PROXY ${_proxyAuthority(proxy)}";
+}
+
+/// The proxy URL (`scheme://[user:password@]host:port`) that applies to
+/// [url], or `null` when the URL is reached directly. Used to hand the
+/// resolved proxy to native code (the efa-chat reqwest client), which takes
+/// a full URL; reqwest applies the userinfo as basic proxy credentials and
+/// honors an `https://` scheme as TLS to the proxy, so the configured scheme
+/// must be preserved here rather than downgraded to cleartext HTTP.
 String? proxyUrlFor(SystemProxyConfig config, Uri url) {
-  final directive = findProxyForUrl(config, url);
-  if (!directive.startsWith("PROXY ")) return null;
-  return "http://${directive.substring("PROXY ".length)}";
+  final proxy = _proxyForUrl(config, url);
+  if (proxy == null) return null;
+  return proxy.contains("://") ? proxy : "http://$proxy";
 }
