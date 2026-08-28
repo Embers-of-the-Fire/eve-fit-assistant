@@ -1,6 +1,6 @@
 ---
 title: Fit List
-summary: View, open, export, and delete your saved fits.
+summary: View, open, export, share, and delete your saved fits.
 ---
 
 # Fit List
@@ -13,7 +13,7 @@ Each item shows the ship's icon, the fit name, the ship type, and the last-modif
 
 - **Tap** a fit to open it in the fitting page. See [The Fitting Page](efa://manual/pages/fitting/fit).
 - **Long-press** a fit to view the details of its ship. See [Item Detail](efa://manual/pages/fitting/item-detail).
-- **Swipe right** on an item to reveal the **Export** action, which opens the export dialog. See [Exporting Fits](efa://manual/sharing/exporting-fits).
+- **Swipe right** on an item to reveal the **Export** action, which opens the export dialog (see [Exporting Fits](efa://manual/sharing/exporting-fits)). When you are signed in to a platform account with publish permission, a **Share** action appears next to it; it publishes the fit to the EFA Platform (see [Publishing Fits](efa://manual/sharing/publishing-fits)).
 - **Swipe left** on an item to reveal the **Delete** action; deletion always asks for confirmation first.
 
 ## Compatibility Warning

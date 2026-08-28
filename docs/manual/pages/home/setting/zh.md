@@ -1,12 +1,13 @@
 ---
 title: 设置
-summary: 设置标签页的入口列表：应用设置、远程内容、数据存储、报告与反馈、赞助与版本信息。
+summary: 设置标签页的入口列表：账号、应用设置、远程内容、数据存储、报告与反馈、赞助与版本信息。
 ---
 
 # 设置
 
 设置标签页集中了应用各项设置的入口，以列表形式提供以下项目：
 
+- **账号** — 登录或管理 EFA Platform 账号。详见[账号](efa://manual/pages/settings/account)。
 - **设置** — 常规偏好与行为选项，如语言、列表行为与更新策略。详见[应用设置](efa://manual/pages/settings/app-settings)。
 - **远程内容** — 管理远程内容频道与数据（仅当远程内容在设置中可见时显示）。详见[远程内容](efa://manual/pages/settings/remote-content)。
 - **数据存储** — 管理本地数据存储与已下载的数据。详见[数据存储](efa://manual/pages/data/storage)。

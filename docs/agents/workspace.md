@@ -34,6 +34,7 @@ the app's `pubspec.yaml`; it is not the main Rust source tree.
 | Path | Role |
 | ---- | ---- |
 | `packages/acl/` | ACL token DSL library (`{domain}:{action}[:{qualifier}]`): Dart runtime in `dart/`, TypeScript runtime in `ts/`, and the YAML-driven codegen CLI in `tool/`; fixtures regenerate via `./x generate acl` or `melos run acl:gen`. |
+| `packages/efa_acl/` | Product ACL bindings for the EFA platform: the `acl.yaml` schema (domains/actions/qualifiers plus placeholder permission roles) is the source of truth for the generated Dart and TypeScript bindings; regenerate via `./x generate acl`. |
 | `packages/efa_proto/` | Dart protobuf bindings generated from `data/schema/` by `./x generate protobuf`; imported as `package:efa_proto/<name>.pb.dart`. Generated files are gitignored. |
 | `packages/efa_constant/` | Dependency-free EVE constants exposed as `package:efa_constant/eve.dart`; `eve_dogma_unit_generated.dart` is tracked and `eve_attr_generated.dart` is generated/gitignored. |
 | `packages/efa_fit/` | Pure-Dart fit formats: EFA(n) payload codecs, EFT import/export, and fit-link URI construction/parsing. |

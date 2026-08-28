@@ -15,13 +15,17 @@ automatically on the next launch, so a failed download never leaves broken
 data behind. See [Updating Data](efa://manual/data/updating-data).
 
 **Where are my fits stored?**
-Fits are stored locally on your device. There is no account, and nothing is
-uploaded to a server.
+Fits are stored locally on your device. Nothing is uploaded to a server unless
+you choose to publish a fit to the EFA Platform, which requires signing in on
+the [Account](efa://manual/pages/settings/account) page. See
+[Publishing Fits](efa://manual/sharing/publishing-fits).
 
 **How do I move fits between devices?**
 Export the fit as text on one device and import it on the other. See
 [Exporting Fits](efa://manual/sharing/exporting-fits) and
-[Importing Fits](efa://manual/sharing/importing-fits).
+[Importing Fits](efa://manual/sharing/importing-fits). You can also publish
+the fit and open its post page on the other device — see
+[Publishing Fits](efa://manual/sharing/publishing-fits).
 
 **The app asked to migrate old data — what is that?**
 A one-time migration that upgrades fits and characters saved by older app

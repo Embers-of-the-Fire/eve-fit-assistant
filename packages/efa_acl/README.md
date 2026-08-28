@@ -19,9 +19,9 @@ the generated `aclForRoles`/`tokensForRoles` helpers:
 
 | Role | Tokens |
 | ---- | ------ |
-| `user` (default) | `post:create`, `post:delete:own` |
-| `moderator` | `user` + `post:delete:all` |
-| `admin` | `post:create`, `post:delete:all`, `admin:manage_roles` |
+| `user` (default) | `post:create`, `post:delete:own`, `comment:create`, `comment:delete:own` |
+| `moderator` | `user` + `post:delete:all`, `comment:delete:all` |
+| `admin` | `post:create`, `post:delete:all`, `comment:create`, `comment:delete:all`, `admin:manage_roles` |
 
 ## Quickstart (TypeScript)
 
