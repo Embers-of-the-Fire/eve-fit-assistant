@@ -13,7 +13,10 @@ void main() {
     test("strips the scheme and path, keeps userinfo", () {
       expect(normalizeHttpProxy("http://127.0.0.1:7890"), "127.0.0.1:7890");
       expect(normalizeHttpProxy("https://proxy.example.com:8080/"), "proxy.example.com:8080");
-      expect(normalizeHttpProxy("http://user:pass@proxy.example.com:3128"), "user:pass@proxy.example.com:3128");
+      expect(
+        normalizeHttpProxy("http://user:pass@proxy.example.com:3128"),
+        "user:pass@proxy.example.com:3128",
+      );
     });
 
     test("adds the default port when missing", () {
@@ -76,9 +79,63 @@ void main() {
       expect(config.httpsProxy, "127.0.0.1:7890");
     });
 
+    test("authentication credentials are embedded into the http proxy", () {
+      final config = systemProxyFromGnome(
+        mode: "manual",
+        httpHost: "proxy.example.com",
+        httpPort: 3128,
+        httpsHost: "https-proxy.example.com",
+        httpsPort: 3129,
+        useAuthentication: true,
+        authenticationUser: "alice",
+        authenticationPassword: "s3cret",
+      )!;
+      expect(config.httpProxy, "alice:s3cret@proxy.example.com:3128");
+      // GNOME stores credentials for the HTTP proxy only.
+      expect(config.httpsProxy, "https-proxy.example.com:3129");
+    });
+
+    test("use-same-proxy carries the credentials over to https", () {
+      final config = systemProxyFromGnome(
+        mode: "manual",
+        httpHost: "proxy.example.com",
+        httpPort: 3128,
+        useSameProxy: true,
+        useAuthentication: true,
+        authenticationUser: "alice",
+        authenticationPassword: "s3cret",
+      )!;
+      expect(config.httpsProxy, "alice:s3cret@proxy.example.com:3128");
+    });
+
+    test("authentication without a user is ignored", () {
+      final config = systemProxyFromGnome(
+        mode: "manual",
+        httpHost: "proxy.example.com",
+        httpPort: 3128,
+        useAuthentication: true,
+        authenticationPassword: "s3cret",
+      )!;
+      expect(config.httpProxy, "proxy.example.com:3128");
+    });
+
     test("manual mode without any usable host/port returns null", () {
       expect(systemProxyFromGnome(mode: "manual"), isNull);
       expect(systemProxyFromGnome(mode: "manual", httpHost: "127.0.0.1"), isNull);
+    });
+  });
+
+  group("systemProxyWithExtraBypass", () {
+    test("appends extra bypass entries, keeping the proxies", () {
+      const gnome = SystemProxyConfig(httpProxy: "127.0.0.1:7890", bypass: ["localhost"]);
+      final merged = systemProxyWithExtraBypass(gnome, const ["internal.example.com"]);
+      expect(merged.httpProxy, "127.0.0.1:7890");
+      expect(merged.bypass, ["localhost", "internal.example.com"]);
+    });
+
+    test("returns the config unchanged without extra entries", () {
+      const gnome = SystemProxyConfig(httpProxy: "127.0.0.1:7890", bypass: ["localhost"]);
+      expect(systemProxyWithExtraBypass(gnome, const []), same(gnome));
     });
   });
 
@@ -101,7 +158,10 @@ void main() {
       expect(findProxyForUrl(config, Uri.parse("https://localhost/")), "DIRECT");
       expect(findProxyForUrl(config, Uri.parse("https://api.example.com/")), "DIRECT");
       expect(findProxyForUrl(config, Uri.parse("https://example.com/")), "DIRECT");
-      expect(findProxyForUrl(config, Uri.parse("https://notexample.com/")), "PROXY https-proxy:8081");
+      expect(
+        findProxyForUrl(config, Uri.parse("https://notexample.com/")),
+        "PROXY https-proxy:8081",
+      );
       const star = SystemProxyConfig(allProxy: "p:1", bypass: ["*"]);
       expect(findProxyForUrl(star, Uri.parse("https://foo.bar/")), "DIRECT");
     });
@@ -118,6 +178,13 @@ void main() {
       const config = SystemProxyConfig(httpsProxy: "127.0.0.1:7890", bypass: ["localhost"]);
       expect(proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")), "http://127.0.0.1:7890");
       expect(proxyUrlFor(config, Uri.parse("https://localhost/v1")), isNull);
+    });
+
+    test("keeps embedded credentials for both transports", () {
+      const config = SystemProxyConfig(httpsProxy: "alice:s3cret@127.0.0.1:7890");
+      final url = Uri.parse("https://api.openai.com/v1");
+      expect(findProxyForUrl(config, url), "PROXY alice:s3cret@127.0.0.1:7890");
+      expect(proxyUrlFor(config, url), "http://alice:s3cret@127.0.0.1:7890");
     });
   });
 }

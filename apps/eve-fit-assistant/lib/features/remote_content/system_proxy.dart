@@ -106,6 +106,12 @@ SystemProxyConfig systemProxyFromEnvironment(Map<String, String> env) {
 /// Returns `null` unless [mode] is `manual` (GNOME's `auto` mode points at a
 /// PAC script, which cannot be evaluated without a JS engine). When
 /// [useSameProxy] is set, the HTTP proxy also covers HTTPS URLs.
+///
+/// When [useAuthentication] is set, `user:password@` is embedded into the
+/// HTTP proxy (and the HTTPS one via `use-same-proxy`): GNOME only stores
+/// credentials for the HTTP proxy. Both transports pick credentials up from
+/// the userinfo part — `dart:io` parses them out of the
+/// `PROXY user:password@host:port` directive, reqwest out of the proxy URL.
 SystemProxyConfig? systemProxyFromGnome({
   required String mode,
   String httpHost = "",
@@ -113,19 +119,38 @@ SystemProxyConfig? systemProxyFromGnome({
   String httpsHost = "",
   int httpsPort = 0,
   bool useSameProxy = false,
+  bool useAuthentication = false,
+  String authenticationUser = "",
+  String authenticationPassword = "",
   List<String> ignoreHosts = const [],
 }) {
   if (mode.trim() != "manual") return null;
-  String? proxy(String host, int port) {
+  final user = authenticationUser.trim();
+  final auth = useAuthentication && user.isNotEmpty ? "$user:$authenticationPassword@" : "";
+  String? proxy(String host, int port, {bool authenticated = false}) {
     final h = host.trim();
     if (h.isEmpty || port <= 0) return null;
-    return "$h:$port";
+    return "${authenticated ? auth : ""}$h:$port";
   }
 
-  final http = proxy(httpHost, httpPort);
+  final http = proxy(httpHost, httpPort, authenticated: true);
   final https = useSameProxy ? http : proxy(httpsHost, httpsPort);
   if (http == null && https == null) return null;
   return SystemProxyConfig(httpProxy: http, httpsProxy: https, bypass: ignoreHosts);
+}
+
+/// Return [config] with [extraBypass] entries appended to its bypass list.
+///
+/// Used to keep a lone `no_proxy` environment variable effective when the
+/// actual proxies come from the GNOME desktop settings.
+SystemProxyConfig systemProxyWithExtraBypass(SystemProxyConfig config, List<String> extraBypass) {
+  if (extraBypass.isEmpty) return config;
+  return SystemProxyConfig(
+    httpProxy: config.httpProxy,
+    httpsProxy: config.httpsProxy,
+    allProxy: config.allProxy,
+    bypass: [...config.bypass, ...extraBypass],
+  );
 }
 
 /// Resolve the `HttpClient.findProxy` directive for [url]:
@@ -140,9 +165,10 @@ String findProxyForUrl(SystemProxyConfig config, Uri url) {
   return proxy == null ? "DIRECT" : "PROXY $proxy";
 }
 
-/// The proxy URL (`http://host:port`) that applies to [url], or `null` when
-/// the URL is reached directly. Used to hand the resolved proxy to native
-/// code (the efa-chat reqwest client), which takes a full URL.
+/// The proxy URL (`http://[user:password@]host:port`) that applies to [url],
+/// or `null` when the URL is reached directly. Used to hand the resolved
+/// proxy to native code (the efa-chat reqwest client), which takes a full
+/// URL; reqwest applies the userinfo as basic proxy credentials.
 String? proxyUrlFor(SystemProxyConfig config, Uri url) {
   final directive = findProxyForUrl(config, url);
   if (!directive.startsWith("PROXY ")) return null;

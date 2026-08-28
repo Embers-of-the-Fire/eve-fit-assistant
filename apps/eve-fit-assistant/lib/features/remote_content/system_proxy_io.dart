@@ -27,7 +27,10 @@ SystemProxyConfig? get systemProxyConfig {
 SystemProxyConfig? _resolve() {
   final fromEnv = systemProxyFromEnvironment(Platform.environment);
   if (!fromEnv.isEmpty) return fromEnv;
-  return _readGnomeProxy();
+  final gnome = _readGnomeProxy();
+  // A lone `no_proxy` does not count as an env proxy, but its bypass entries
+  // must stay effective when the desktop proxy settings take over.
+  return gnome == null ? null : systemProxyWithExtraBypass(gnome, fromEnv.bypass);
 }
 
 String? _gsettings(List<String> args) {
@@ -68,14 +71,12 @@ List<String> _gsettingsStringList(String? raw) {
 SystemProxyConfig? _readGnomeProxy() {
   final mode = _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy", "mode"]));
   if (mode.isEmpty) return null;
+  String ghttp(String key) =>
+      _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy.http", key]));
   return systemProxyFromGnome(
     mode: mode,
-    httpHost: _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy.http", "host"])),
-    httpPort:
-        int.tryParse(
-          _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy.http", "port"])),
-        ) ??
-        0,
+    httpHost: ghttp("host"),
+    httpPort: int.tryParse(ghttp("port")) ?? 0,
     httpsHost: _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy.https", "host"])),
     httpsPort:
         int.tryParse(
@@ -84,6 +85,9 @@ SystemProxyConfig? _readGnomeProxy() {
         0,
     useSameProxy:
         _gsettingsScalar(_gsettings(["get", "org.gnome.system.proxy", "use-same-proxy"])) == "true",
+    useAuthentication: ghttp("use-authentication") == "true",
+    authenticationUser: ghttp("authentication-user"),
+    authenticationPassword: ghttp("authentication-password"),
     ignoreHosts: _gsettingsStringList(
       _gsettings(["get", "org.gnome.system.proxy", "ignore-hosts"]),
     ),
@@ -99,9 +103,9 @@ String Function(Uri)? systemProxyFindProxy() {
   return (url) => findProxyForUrl(config, url);
 }
 
-/// The proxy URL (`http://host:port`) applying to [url], or `null` when the
-/// URL is reached directly. Used to hand the resolved proxy to the efa-chat
-/// reqwest client.
+/// The proxy URL (`http://[user:password@]host:port`) applying to [url], or
+/// `null` when the URL is reached directly. Used to hand the resolved proxy
+/// to the efa-chat reqwest client.
 String? systemProxyUrlFor(Uri url) {
   final config = systemProxyConfig;
   return config == null ? null : proxyUrlFor(config, url);
