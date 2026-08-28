@@ -38,6 +38,17 @@ def test_all_suites_on_infra_change():
     assert names == set(ALL_SUITES)
 
 
+def test_all_suites_on_selection_source_change():
+    # The registry/graph and the scope resolver decide what CI runs; a defect
+    # there must not merge with the dart, site, worker, or l10n suites unrun.
+    for path in [
+        "bootstrap/monorepo/packages.py",
+        "bootstrap/monorepo/graph.py",
+        "bootstrap/cli/runtime.py",
+    ]:
+        assert _suite_names([path]) == set(ALL_SUITES), path
+
+
 def test_infra_matrix_is_unscoped():
     for entry in calculate_ci_matrix(["flake.nix"]):
         assert "--packages" not in entry["lint_command"]

@@ -208,10 +208,19 @@ class MetaEntry:
 
 
 META_ENTRIES: tuple[MetaEntry, ...] = (
-    # Infrastructure changes fail safe: run everything.
+    # Infrastructure changes fail safe: run everything. This includes the
+    # selection sources themselves (the monorepo registry/graph and the CLI
+    # scope resolver): a defect in the code that decides what CI runs must
+    # not merge with suites unrun.
     MetaEntry(
         id="infra-ci",
-        patterns=("bootstrap/ci/**", "flake.nix", ".github/workflows/**"),
+        patterns=(
+            "bootstrap/ci/**",
+            "bootstrap/monorepo/**",
+            "bootstrap/cli/runtime.py",
+            "flake.nix",
+            ".github/workflows/**",
+        ),
         full=True,
     ),
     # Python tooling feeds the codegen pipeline that produces the web bundle.

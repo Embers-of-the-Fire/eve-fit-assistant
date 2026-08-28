@@ -12,7 +12,8 @@ Selection is driven by the monorepo dependency graph in `bootstrap/monorepo/`: c
 map to packages, the affected set is closed over dependents, and each affected CI suite emits
 fully-resolved commands scoped via `--packages` (for example
 `uv run x.py test dart --packages efa_fit,eve_fit_assistant`). Changes to `bootstrap/ci/**`,
-`flake.nix`, or `.github/workflows/**` escalate to the full, unscoped matrix as a fail-safe.
+`bootstrap/monorepo/**`, `bootstrap/cli/runtime.py`, `flake.nix`, or `.github/workflows/**`
+escalate to the full, unscoped matrix as a fail-safe.
 
 The registry in `bootstrap/monorepo/packages.py` is the single source of truth for package
 paths, intra-repo dependency edges, and suite attribution; it is validated against the real
