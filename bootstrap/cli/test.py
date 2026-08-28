@@ -12,13 +12,43 @@ from colorama import Style
 from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.constant import EFA_APP_ROOT
+from bootstrap.monorepo import PACKAGES
 from bootstrap.utils import get_command
+from bootstrap.utils import get_melos_command
 
 
 _TEST_ON = re.compile(r"@TestOn\(\s*[\"']([^\"']*)[\"']\s*\)")
 _PLATFORM_IMPORT = re.compile(r"""^import\s+["']dart:(?:io|ffi)["']""", re.MULTILINE)
 
 _WEB_SQLITE_ASSETS = ("db_worker.js", "sqlite3.wasm")
+
+_PACKAGES_BY_ID = {p.id: p for p in PACKAGES}
+
+# Shared click options for change-aware test selection.
+_SCOPE_OPTIONS = [
+    click.option(
+        "--changed",
+        is_flag=True,
+        default=False,
+        help="Only test packages affected by changes since the base ref.",
+    ),
+    click.option(
+        "--base-ref",
+        default=None,
+        help="Git ref to diff against (default: merge-base with origin/dev).",
+    ),
+    click.option(
+        "--packages",
+        default=None,
+        help="Comma-separated monorepo package ids to restrict testing to.",
+    ),
+]
+
+
+def _with_scope_options(func):
+    for option in _SCOPE_OPTIONS:
+        func = option(func)
+    return func
 
 
 def _is_vm_only_expression(expr: str) -> bool:
@@ -90,13 +120,42 @@ def register_test_commands(cli_group: click.Group) -> None:
         runtime.execute([uv, "run", "pytest", "bootstrap/tests/"], "PYTEST OUTPUT")
 
     @test.command("dart")
-    def test_dart():
-        """Run Flutter/Dart tests."""
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:test")
-        runtime.run_melos("app:test", "FLUTTER TEST OUTPUT")
+    @_with_scope_options
+    def test_dart(changed: bool, base_ref: str | None, packages: str | None):
+        """Run Flutter/Dart tests.
+
+        With ``--changed``/``--packages``, runs ``flutter test`` only in the
+        affected workspace packages that have test suites.
+        """
+        package_ids, _ = runtime.resolve_change_scope(changed, base_ref, packages)
+        scope = (
+            None
+            if package_ids is None
+            else sorted(p for p in package_ids if _PACKAGES_BY_ID[p].ecosystem == "dart")
+        )
+        if scope is None:
+            click.echo(
+                styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "melos run app:test"
+            )
+            runtime.run_melos("app:test", "FLUTTER TEST OUTPUT")
+            return
+        testable = [p for p in scope if _PACKAGES_BY_ID[p].tests]
+        if not testable:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "No affected Dart packages with tests."))
+            return
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + f"melos exec --scope=<{len(testable)} affected> -- flutter test"
+        )
+        scopes = [f"--scope={p}" for p in testable]
+        runtime.execute(
+            [*get_melos_command(), "exec", *scopes, "--", "flutter", "test"],
+            "FLUTTER TEST OUTPUT",
+        )
 
     @test.command("web")
-    def test_web():
+    @_with_scope_options
+    def test_web(changed: bool, base_ref: str | None, packages: str | None):
         """Run Flutter/Dart tests on the web platform in headless Chrome.
 
         Suites are compiled to JS (no ``--wasm``): the flutter web test harness
@@ -106,7 +165,20 @@ def register_test_commands(cli_group: click.Group) -> None:
         excluded from the selection because the web test pipeline compiles
         every selected suite regardless of ``@TestOn``, and those suites import
         ``dart:ffi``-only libraries.
+
+        With ``--changed``/``--packages``, the run is skipped unless the app
+        package itself is affected.
         """
+        package_ids, _ = runtime.resolve_change_scope(changed, base_ref, packages)
+        if package_ids is not None and "eve_fit_assistant" not in package_ids:
+            click.echo(
+                styled(
+                    [Style.BRIGHT, Fore.YELLOW],
+                    "App package not affected; skipping web tests.",
+                )
+            )
+            return
+
         chrome = os.environ.get("CHROME_EXECUTABLE")
         if not chrome:
             for candidate in ("google-chrome", "chromium", "chrome"):
@@ -134,20 +206,47 @@ def register_test_commands(cli_group: click.Group) -> None:
         )
 
     @test.command("js")
-    def test_js():
-        """Run JS/TS tests (Vitest, incl. the Cloudflare Workers suites)."""
+    @_with_scope_options
+    def test_js(changed: bool, base_ref: str | None, packages: str | None):
+        """Run JS/TS tests (Vitest, incl. the Cloudflare Workers suites).
+
+        With ``--changed``/``--packages``, runs ``pnpm --filter <id> test``
+        only for the affected packages that define a test script.
+        """
+        package_ids, _ = runtime.resolve_change_scope(changed, base_ref, packages)
         pnpm = get_command("pnpm")
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm test:js")
-        runtime.execute([pnpm, "test:js"], "VITEST OUTPUT")
+        if package_ids is None:
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "pnpm test:js")
+            runtime.execute([pnpm, "test:js"], "VITEST OUTPUT")
+            return
+        testable = [
+            p
+            for p in package_ids
+            if p in _PACKAGES_BY_ID
+            and _PACKAGES_BY_ID[p].ecosystem == "ts"
+            and _PACKAGES_BY_ID[p].tests
+        ]
+        if not testable:
+            click.echo(styled([Style.BRIGHT, Fore.YELLOW], "No affected TS packages with tests."))
+            return
+        cmd = [pnpm]
+        for package_id in sorted(testable):
+            cmd += ["--filter", package_id]
+        cmd.append("test")
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + " ".join(cmd[1:]))
+        runtime.execute(cmd, "VITEST OUTPUT")
 
     @test.command("all")
-    def test_all():
+    @_with_scope_options
+    @click.pass_context
+    def test_all(ctx: click.Context, changed: bool, base_ref: str | None, packages: str | None):
         """Run all test suites (Python + Dart + Web + JS)."""
-        ctx = click.get_current_context()
+        package_ids, _ = runtime.resolve_change_scope(changed, base_ref, packages)
+        scope = ",".join(package_ids) if package_ids is not None else None
         ctx.invoke(test_python)
         click.echo()
-        ctx.invoke(test_dart)
+        ctx.invoke(test_dart, changed=False, base_ref=None, packages=scope)
         click.echo()
-        ctx.invoke(test_web)
+        ctx.invoke(test_web, changed=False, base_ref=None, packages=scope)
         click.echo()
-        ctx.invoke(test_js)
+        ctx.invoke(test_js, changed=False, base_ref=None, packages=scope)

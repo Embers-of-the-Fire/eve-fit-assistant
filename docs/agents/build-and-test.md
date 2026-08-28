@@ -11,6 +11,23 @@ Run commands from the repository root unless a command explicitly says otherwise
 ./x generate -f all      # generate all code, then format
 ```
 
+`lint`, `format`, and the `test` subcommands are change-aware; they restrict their work to
+the packages affected by your changes (mapped through the `bootstrap/monorepo/` dependency
+graph and closed over dependents):
+
+```sh
+./x lint --changed                       # lint only packages changed vs origin/dev
+./x lint --changed --base-ref main       # diff against a different ref
+./x lint --packages efa_fit,eve_fit_assistant   # explicit package scope
+./x format --changed
+./x test dart --changed
+./x test all --changed
+```
+
+Uncommitted (staged, unstaged, and untracked) changes are included in `--changed`.
+Infrastructure changes (`bootstrap/ci/**`, `flake.nix`, `.github/workflows/**`) escalate to
+the full pass. Use `uv run x.py ci affected --base-ref <ref>` to inspect the resolution.
+
 Focused generators:
 
 ```sh

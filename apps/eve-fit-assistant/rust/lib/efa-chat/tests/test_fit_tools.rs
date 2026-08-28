@@ -11,7 +11,11 @@ use eve_fit_os::fit::{
 use eve_fit_os::protobuf::Database;
 
 fn test_database() -> Database {
-    dotenvy::from_filename(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../../packages/eve-fit-os/.env")).ok();
+    dotenvy::from_filename(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../../packages/eve-fit-os/.env"
+    ))
+    .ok();
     let output_dir =
         std::env::var("OUTPUT_DIR").expect("OUTPUT_DIR must be set (see eve-fit-os/.env)");
     Database::init_from_root(format!("{output_dir}/pb2")).unwrap()
