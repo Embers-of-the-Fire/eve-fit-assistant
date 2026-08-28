@@ -194,12 +194,66 @@ void main() {
     });
   });
 
+  group("GNOME ignore-hosts formats", () {
+    String find(String url, List<String> bypass) =>
+        findProxyForUrl(SystemProxyConfig(allProxy: "proxy:8080", bypass: bypass), Uri.parse(url));
+
+    test("'*.example.com' matches the host itself and any subdomain", () {
+      expect(find("https://example.com/", ["*.example.com"]), "DIRECT");
+      expect(find("https://api.example.com/", ["*.example.com"]), "DIRECT");
+      expect(find("https://deep.api.example.com/", ["*.example.com"]), "DIRECT");
+      expect(find("https://notexample.com/", ["*.example.com"]), "PROXY proxy:8080");
+    });
+
+    test("port-qualified hostnames match only URLs on that port", () {
+      expect(find("http://example.com/", ["example.com:80"]), "DIRECT");
+      expect(find("http://example.com:80/", ["example.com:80"]), "DIRECT");
+      expect(find("http://example.com:8080/", ["example.com:80"]), "PROXY proxy:8080");
+      expect(find("https://example.com/", ["example.com:80"]), "PROXY proxy:8080");
+      expect(find("https://example.com/", ["example.com:443"]), "DIRECT");
+    });
+
+    test("port-qualified entries keep subdomain matching", () {
+      expect(find("https://api.example.com/", ["example.com:443"]), "DIRECT");
+      expect(find("https://api.example.com/", ["*.example.com:443"]), "DIRECT");
+    });
+
+    test("IPv6 literals with a port require brackets", () {
+      expect(find("https://[::1]/", ["[::1]:443"]), "DIRECT");
+      expect(find("https://[::1]:8443/", ["[::1]:443"]), "PROXY proxy:8080");
+      expect(find("https://[::1]/", ["::1"]), "DIRECT");
+    });
+
+    test("IPv4 CIDR ranges match addresses within the prefix", () {
+      expect(find("http://127.0.0.1/", ["127.0.0.0/8"]), "DIRECT");
+      expect(find("http://127.1.2.3/", ["127.0.0.0/8"]), "DIRECT");
+      expect(find("http://128.0.0.1/", ["127.0.0.0/8"]), "PROXY proxy:8080");
+      expect(find("http://127.0.0.1/", ["127.0.0.0/33"]), "PROXY proxy:8080");
+    });
+
+    test("IPv6 CIDR ranges match addresses within the prefix", () {
+      expect(find("http://[fe80::1]/", ["fe80::/10"]), "DIRECT");
+      expect(find("http://[febf:ffff::1]/", ["fe80::/10"]), "DIRECT");
+      expect(find("http://[fec0::1]/", ["fe80::/10"]), "PROXY proxy:8080");
+    });
+
+    test("IP entries never match hostnames and vice versa", () {
+      expect(find("http://example.com/", ["192.168.1.1"]), "PROXY proxy:8080");
+      expect(find("http://192.168.1.1/", ["example.com"]), "PROXY proxy:8080");
+      expect(find("http://192.168.1.1/", ["192.168.1.1"]), "DIRECT");
+      expect(find("http://192.168.1.2/", ["192.168.1.1"]), "PROXY proxy:8080");
+    });
+
+    test("malformed entries never match", () {
+      expect(find("http://example.com/", ["example.com:http"]), "PROXY proxy:8080");
+      expect(find("http://[::1]/", ["[::1"]), "PROXY proxy:8080");
+      expect(find("http://127.0.0.1/", ["127.0.0.0/"]), "PROXY proxy:8080");
+    });
+  });
+
   group("proxyUrlFor", () {
     test("returns a full URL for proxied targets, null for direct ones", () {
-      const config = SystemProxyConfig(
-        httpsProxy: "http://127.0.0.1:7890",
-        bypass: ["localhost"],
-      );
+      const config = SystemProxyConfig(httpsProxy: "http://127.0.0.1:7890", bypass: ["localhost"]);
       expect(proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")), "http://127.0.0.1:7890");
       expect(proxyUrlFor(config, Uri.parse("https://localhost/v1")), isNull);
     });

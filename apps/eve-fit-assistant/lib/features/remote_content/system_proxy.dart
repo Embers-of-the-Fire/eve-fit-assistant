@@ -77,20 +77,151 @@ String? normalizeHttpProxy(String? value) {
   return "$scheme://$v";
 }
 
-/// Whether [host] matches one bypass entry. Supports `*` (match everything)
-/// and suffix matching (`example.com` also covers `www.example.com`),
-/// mirroring `dart:io`'s no-proxy semantics.
-bool _isBypassed(List<String> bypass, String host) {
-  final h = host.toLowerCase();
+/// Whether [url] matches one bypass entry. Supports the GNOME `ignore-hosts`
+/// formats (a superset of `dart:io`'s no-proxy semantics), see
+/// https://docs.gtk.org/gio/property.SimpleProxyResolver.ignore-hosts.html:
+///
+/// - `*` matches everything.
+/// - A hostname (`example.com`, `.example.com`, or `*.example.com`) matches
+///   the host itself and any subdomain of it.
+/// - An IPv4 or IPv6 address matches only that exact address; hostname
+///   entries never match IP-literal hosts and vice versa.
+/// - Any entry may carry a `:port` qualifier (`example.com:80`,
+///   `[::1]:443`), restricting the match to URLs using that port.
+/// - An IP range in CIDR notation (`127.0.0.0/8`, `fe80::/10`) matches any
+///   address within the range.
+bool _isBypassed(List<String> bypass, Uri url) {
+  var host = url.host.toLowerCase();
+  if (host.startsWith("[") && host.endsWith("]")) host = host.substring(1, host.length - 1);
+  final hostIp = _parseIpBytes(host);
+  final port = url.port;
   for (final raw in bypass) {
     var entry = raw.trim().toLowerCase();
     if (entry.isEmpty) continue;
+
+    // Strip an optional :port qualifier; it restricts the entry to that
+    // port. IPv6 literals keep their brackets for the qualifier (`[::1]:443`).
+    if (entry.startsWith("[")) {
+      final closing = entry.indexOf("]");
+      if (closing < 0) continue;
+      if (entry.length > closing + 1) {
+        final entryPort = int.tryParse(entry.substring(closing + 2));
+        if (entry[closing + 1] != ":" || entryPort == null || entryPort != port) continue;
+      }
+      entry = entry.substring(1, closing);
+    } else if (entry.contains(":") && entry.indexOf(":") == entry.lastIndexOf(":")) {
+      final colon = entry.lastIndexOf(":");
+      final entryPort = int.tryParse(entry.substring(colon + 1));
+      if (entryPort != null) {
+        if (entryPort != port) continue;
+        entry = entry.substring(0, colon);
+      }
+    }
     if (entry == "*") return true;
-    if (entry.startsWith("[") && entry.endsWith("]") && "[$h]" == entry) return true;
-    if (entry.startsWith(".")) entry = entry.substring(1);
-    if (h == entry || h.endsWith(".$entry")) return true;
+
+    // CIDR range: base address plus prefix length (`127.0.0.0/8`).
+    final slash = entry.indexOf("/");
+    if (slash >= 0) {
+      final base = _parseIpBytes(entry.substring(0, slash));
+      final prefix = int.tryParse(entry.substring(slash + 1));
+      if (base != null && prefix != null && hostIp != null && _ipInPrefix(hostIp, base, prefix)) {
+        return true;
+      }
+      continue;
+    }
+
+    final entryIp = _parseIpBytes(entry);
+    if (hostIp != null || entryIp != null) {
+      // IP entries match only IP-literal hosts, and only exactly; hostname
+      // entries never match IP-literal hosts.
+      if (hostIp != null && entryIp != null && _ipEquals(hostIp, entryIp)) return true;
+      continue;
+    }
+
+    if (entry.startsWith("*.")) {
+      entry = entry.substring(2);
+    } else if (entry.startsWith(".")) {
+      entry = entry.substring(1);
+    }
+    if (host == entry || host.endsWith(".$entry")) return true;
   }
   return false;
+}
+
+/// Parse an IPv4 or IPv6 literal into its bytes (4 for IPv4, 16 for IPv6),
+/// or `null` when [value] is not an IP literal. IPv6 addresses with an
+/// embedded IPv4 tail (`::ffff:127.0.0.1`) are not recognized.
+List<int>? _parseIpBytes(String value) => _parseIpv4Bytes(value) ?? _parseIpv6Bytes(value);
+
+List<int>? _parseIpv4Bytes(String value) {
+  final parts = value.split(".");
+  if (parts.length != 4) return null;
+  final bytes = <int>[];
+  for (final part in parts) {
+    final n = int.tryParse(part);
+    if (n == null || n > 255 || n.toString() != part) return null;
+    bytes.add(n);
+  }
+  return bytes;
+}
+
+List<int>? _parseIpv6Bytes(String value) {
+  final dc = value.indexOf("::");
+  if (dc >= 0 && value.indexOf("::", dc + 2) >= 0) return null; // at most one "::"
+  final head = dc >= 0 ? value.substring(0, dc) : value;
+  final tail = dc >= 0 ? value.substring(dc + 2) : "";
+  final headGroups = head.isEmpty ? <String>[] : head.split(":");
+  final tailGroups = tail.isEmpty ? <String>[] : tail.split(":");
+  if (headGroups.any((g) => g.isEmpty) || tailGroups.any((g) => g.isEmpty)) return null;
+  if (dc < 0 && headGroups.length != 8) return null;
+  if (dc >= 0 && headGroups.length + tailGroups.length > 8) return null;
+
+  int? group(String g) {
+    if (g.isEmpty || g.length > 4) return null;
+    return int.tryParse(g, radix: 16);
+  }
+
+  final groups = <int>[];
+  for (final g in headGroups) {
+    final n = group(g);
+    if (n == null) return null;
+    groups.add(n);
+  }
+  if (dc >= 0) {
+    for (var i = headGroups.length + tailGroups.length; i < 8; i++) {
+      groups.add(0);
+    }
+  }
+  for (final g in tailGroups) {
+    final n = group(g);
+    if (n == null) return null;
+    groups.add(n);
+  }
+  if (groups.length != 8) return null;
+  return [
+    for (final n in groups) ...[n >> 8, n & 0xff],
+  ];
+}
+
+bool _ipEquals(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Whether the IP [host] lies within [base]/[prefixLength] (CIDR).
+bool _ipInPrefix(List<int> host, List<int> base, int prefixLength) {
+  if (host.length != base.length || prefixLength < 0 || prefixLength > host.length * 8) {
+    return false;
+  }
+  var bits = prefixLength;
+  for (var i = 0; i < host.length && bits > 0; i++, bits -= 8) {
+    final mask = bits >= 8 ? 0xff : (0xff << (8 - bits)) & 0xff;
+    if ((host[i] & mask) != (base[i] & mask)) return false;
+  }
+  return true;
 }
 
 /// Parse the conventional proxy environment variables
@@ -168,7 +299,7 @@ SystemProxyConfig systemProxyWithExtraBypass(SystemProxyConfig config, List<Stri
 /// The normalized proxy value applying to [url], or `null` when the URL is
 /// reached directly.
 String? _proxyForUrl(SystemProxyConfig config, Uri url) {
-  if (_isBypassed(config.bypass, url.host)) return null;
+  if (_isBypassed(config.bypass, url)) return null;
   return switch (url.scheme.toLowerCase()) {
     "http" => config.httpProxy ?? config.allProxy,
     "https" => config.httpsProxy ?? config.allProxy,
