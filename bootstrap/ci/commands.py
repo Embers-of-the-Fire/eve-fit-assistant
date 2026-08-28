@@ -128,7 +128,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
     )
     def ci_lint(lang: str, packages: str | None):
         """Check formatting and linting without modifying files."""
-        package_ids = tuple(p.strip() for p in packages.split(",") if p.strip()) or None
+        package_ids = None
+        if packages:
+            package_ids = tuple(p.strip() for p in packages.split(",") if p.strip()) or None
         run_lint(lang, no_check=False, check_only=True, dry_run=False, packages=package_ids)
 
     @ci.command("codegen")
