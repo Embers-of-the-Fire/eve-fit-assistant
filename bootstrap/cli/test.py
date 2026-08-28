@@ -24,6 +24,18 @@ _WEB_SQLITE_ASSETS = ("db_worker.js", "sqlite3.wasm")
 
 _PACKAGES_BY_ID = {p.id: p for p in PACKAGES}
 
+# Paths whose changes make the Python test suite relevant (mirrors the
+# ``suites=("python",)`` meta entries in ``bootstrap.monorepo.packages``;
+# there is no Python package in the registry to scope by).
+_PYTHON_SCOPE_PREFIXES = ("bootstrap/", "data/")
+_PYTHON_SCOPE_FILES = ("x.py", "pyproject.toml", "uv.lock")
+
+
+def _python_scope_hit(files: tuple[str, ...]) -> bool:
+    """Whether any changed file affects the Python tooling/test suite."""
+    return any(f.startswith(_PYTHON_SCOPE_PREFIXES) or f in _PYTHON_SCOPE_FILES for f in files)
+
+
 # Shared click options for change-aware test selection.
 _SCOPE_OPTIONS = [
     click.option(
@@ -240,11 +252,17 @@ def register_test_commands(cli_group: click.Group) -> None:
     @_with_scope_options
     @click.pass_context
     def test_all(ctx: click.Context, changed: bool, base_ref: str | None, packages: str | None):
-        """Run all test suites (Python + Dart + Web + JS)."""
-        package_ids, _ = runtime.resolve_change_scope(changed, base_ref, packages)
+        """Run all test suites (Python + Dart + Web + JS).
+
+        With ``--changed``/``--packages``, the Dart/Web/JS runs are restricted
+        to the affected packages and the Python suite runs only when the
+        resolved scope is unscoped or includes Python-relevant changes.
+        """
+        package_ids, files = runtime.resolve_change_scope(changed, base_ref, packages)
         scope = ",".join(package_ids) if package_ids is not None else None
-        ctx.invoke(test_python)
-        click.echo()
+        if package_ids is None or (files is not None and _python_scope_hit(files)):
+            ctx.invoke(test_python)
+            click.echo()
         ctx.invoke(test_dart, changed=False, base_ref=None, packages=scope)
         click.echo()
         ctx.invoke(test_web, changed=False, base_ref=None, packages=scope)
