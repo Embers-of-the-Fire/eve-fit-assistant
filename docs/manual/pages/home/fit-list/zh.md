@@ -1,6 +1,6 @@
 ---
 title: 配置列表
-summary: 查看、打开、导出与删除本机保存的舰船配置。
+summary: 查看、打开、导出、分享与删除本机保存的舰船配置。
 ---
 
 # 配置列表
@@ -13,7 +13,7 @@ summary: 查看、打开、导出与删除本机保存的舰船配置。
 
 - **点按**配置以打开装配页面。详见[装配页面](efa://manual/pages/fitting/fit)。
 - **长按**配置可查看该舰船的详细信息。详见[物品详情](efa://manual/pages/fitting/item-detail)。
-- **向右滑动**条目显示**导出**按钮，点按后打开导出对话框。详见[导出配置](efa://manual/sharing/exporting-fits)。
+- **向右滑动**条目显示**导出**按钮，点按后打开导出对话框（详见[导出配置](efa://manual/sharing/exporting-fits)）。当你已登录具有发布权限的平台账号时，旁边还会出现**分享**按钮，点按后将配置发布到 EFA Platform（详见[发布配置](efa://manual/sharing/publishing-fits)）。
 - **向左滑动**条目显示**删除**按钮；删除前会弹出确认对话框，防止误操作。
 
 ## 兼容性警告

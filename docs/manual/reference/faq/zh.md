@@ -14,12 +14,14 @@ summary: 关于数据、配装与迁移的常见问题解答。
 不会留下损坏的数据。见[更新数据](efa://manual/data/updating-data)。
 
 **我的配装保存在哪里？**
-配装保存在你的设备本地。应用没有账号系统，也不会向服务器上传任何
-内容。
+配装保存在你的设备本地。除非你主动将配装发布到 EFA Platform，否则应用
+不会向服务器上传任何内容；发布需要在[账号](efa://manual/pages/settings/account)
+页面登录。见[发布配置](efa://manual/sharing/publishing-fits)。
 
 **如何在设备之间转移配装？**
 在一台设备上将配装导出为文本，再在另一台设备上导入即可。见[导出配装](efa://manual/sharing/exporting-fits)
-与[导入配装](efa://manual/sharing/importing-fits)。
+与[导入配装](efa://manual/sharing/importing-fits)。也可以将配装发布到平台，
+然后在另一台设备上打开帖子页面——见[发布配置](efa://manual/sharing/publishing-fits)。
 
 **应用提示要迁移旧数据，这是什么？**
 这是一次性迁移，会把旧版本应用保存的配装和角色升级到当前的存储格式。

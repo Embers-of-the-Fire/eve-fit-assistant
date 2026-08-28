@@ -6,6 +6,7 @@ description:
   zh: 应用设置、反馈与开发者页面。
   en: App settings, feedback, and developer pages.
 children:
+  - account
   - app-settings
   - remote-content
   - collect-logs

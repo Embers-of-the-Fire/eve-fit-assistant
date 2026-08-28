@@ -1,12 +1,13 @@
 ---
 title: Settings
-summary: The Settings tab's list of entry points — app settings, remote content, data storage, report & feedback, sponsorship, and version info.
+summary: The Settings tab's list of entry points — account, app settings, remote content, data storage, report & feedback, sponsorship, and version info.
 ---
 
 # Settings
 
 The Settings tab gathers the app's settings entry points in a list:
 
+- **Account** — sign in or manage your EFA Platform account. See [Account](efa://manual/pages/settings/account).
 - **Settings** — general preferences and behavior options such as language, list behavior, and update strategy. See [App Settings](efa://manual/pages/settings/app-settings).
 - **Remote Content** — manage remote content channels and data (shown only when remote content is visible in settings). See [Remote Content](efa://manual/pages/settings/remote-content).
 - **Data Storage** — manage local data storage and downloaded data. See [Data Storage](efa://manual/pages/data/storage).
