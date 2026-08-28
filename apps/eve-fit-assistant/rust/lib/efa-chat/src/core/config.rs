@@ -210,7 +210,9 @@ impl ChatProviderConfig {
         self
     }
 
-    /// Route requests through the given proxy URL (`http://host:port`).
+    /// Route requests through the given proxy URL
+    /// (`http://`/`https://[user:password@]host:port`); an `https://` scheme
+    /// keeps the connection to the proxy itself under TLS.
     /// Empty or whitespace-only values are ignored.
     pub fn with_proxy(mut self, proxy: impl Into<String>) -> Self {
         let proxy = proxy.into();
@@ -247,7 +249,8 @@ impl ChatProviderConfig {
     }
 }
 
-/// Build a reqwest client routed through [proxy] (`http://host:port`), or
+/// Build a reqwest client routed through [proxy] (a full proxy URL, e.g.
+/// `http://host:port` or `https://user:password@proxy.example:443`), or
 /// `None` when no proxy is configured so the caller can keep rig's default
 /// client. On wasm the proxy is ignored: reqwest goes through browser fetch,
 /// which already applies the browser's proxy settings.
@@ -314,5 +317,23 @@ mod tests {
             config.http_client(),
             Err(ChatError::InvalidConfig(_))
         ));
+    }
+
+    /// Regression test for CWE-319: an `https://` proxy URL resolved by the
+    /// Dart host must reach `build_http_client` (and thus `reqwest::Proxy::all`)
+    /// unchanged — scheme and embedded credentials included — so reqwest keeps
+    /// the TLS connection to the proxy instead of a downgraded cleartext one.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn http_client_accepts_https_proxy_with_credentials_unchanged() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap()
+                .with_proxy("https://user:password@proxy.example:443");
+        assert_eq!(
+            config.proxy.as_deref(),
+            Some("https://user:password@proxy.example:443")
+        );
+        assert!(config.http_client().unwrap().is_some());
     }
 }
