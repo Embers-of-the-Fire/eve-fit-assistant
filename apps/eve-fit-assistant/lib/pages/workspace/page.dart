@@ -52,6 +52,11 @@ class WorkspacePage extends ConsumerWidget {
           onTap: () => context.router.push(AnnouncementFeedRoute()),
           isUpdatesCard: true,
         ),
+      _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabPlatformTitle,
+        icon: Icons.groups_outlined,
+        onTap: () => context.router.push(const PlatformFeedRoute()),
+      ),
       if (NativeEngineAvailability.available)
         _WorkspaceShortcutItem(
           title: context.l10n.workspaceTabAiChatTitle,

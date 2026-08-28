@@ -24,6 +24,7 @@ resource snapshots, channel discovery, checkout lifecycle handling, and Riverpod
 | Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit and character storage schemas; fits support storage version 3 with `CheckoutRef`. |
 | Settings | `lib/storage/setting/` | User settings, including remote content and platform account configuration. |
 | Account/Auth | `lib/features/account/` | `PlatformSession` providers (from `packages/efa_platform_client`), the secure-storage `SecurePlatformSessionStore` adapter, and settings UI. |
+| Platform | `lib/features/platform/` | Riverpod state for the platform community pages (`lib/pages/platform/`): the cursor-paginated post feed, post detail (record + `FitSnapshot` rendered by `packages/efa_fit_snapshot`), and comment listing/creation. Comment deletion/editing is deferred. |
 | Storage FS | `lib/storage/fs/` | `DocStore`/`BlobStore` abstraction with File (native) and Hive/OPFS (web) backends; `createUserDocStore` and `createRepoBlobStore` route settings, fits, characters, announcements, feedback, and version state to the right backend. |
 
 ## Concurrency And Startup

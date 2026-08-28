@@ -10,6 +10,8 @@ import "package:eve_fit_assistant/pages/fit/page.dart";
 import "package:eve_fit_assistant/pages/manual/browser_page.dart";
 import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
+import "package:eve_fit_assistant/pages/platform/feed_page.dart";
+import "package:eve_fit_assistant/pages/platform/post_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
 import "package:eve_fit_assistant/pages/setting/account/login_page.dart";
@@ -131,6 +133,27 @@ class AppRouter extends RootStackRouter {
     AutoRoute(path: "/setting/report-feedback", page: ReportFeedbackRoute.page),
     AutoRoute(path: "/setting/report-feedback/external", page: ReportExternalLinksRoute.page),
     AutoRoute(path: "/announcements", page: AnnouncementFeedRoute.page),
+    AutoRoute(
+      path: "/platform",
+      page: PlatformFeedRoute.page,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Platform",
+          usage: "the platform community feed of shared fits",
+        ),
+      },
+    ),
+    AutoRoute(
+      path: "/platform/post/:postId",
+      page: PlatformPostRoute.page,
+      usesPathAsKey: true,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Platform post",
+          usage: "a shared-fit post on the platform, with its snapshot and comments",
+        ),
+      },
+    ),
     AutoRoute(
       path: "/manual",
       page: ManualBrowserRoute.page,

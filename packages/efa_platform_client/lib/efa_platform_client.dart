@@ -7,7 +7,14 @@ export "package:efa_platform_client/src/auth_client.dart"
     show AccountApiException, PlatformAccountInfo;
 export "package:efa_platform_client/src/jwt.dart" show decodeJwtSubject;
 export "package:efa_platform_client/src/platform_client.dart"
-    show PlatformApiException, PostListPage, PostRecord, PostSummary, ThreadSummary;
+    show
+        Comment,
+        CommentListPage,
+        PlatformApiException,
+        PostListPage,
+        PostRecord,
+        PostSummary,
+        ThreadSummary;
 export "package:efa_platform_client/src/session.dart"
     show
         PlatformAuthRequiredException,

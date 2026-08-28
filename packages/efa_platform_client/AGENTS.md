@@ -9,8 +9,9 @@ The package provides:
   (signup, verification, login, password reset, logout, deregistration), the
   whole token lifecycle (storage via the app-implemented
   `PlatformSessionStore`, expiry tracking, mutex-serialized refresh,
-  cold-start rotation, 401 retry, session clearing), and the public
-  `/platform/internal` read endpoints;
+  cold-start rotation, 401 retry, session clearing), the public
+  `/platform/internal` read endpoints, and authenticated writes built on the
+  `authed` escape hatch (currently `createComment`);
 - `PlatformIdentity`/`identity`/`me` for the signed-in profile (derived
   locally: JWT subject + cached email), and
   `PlatformAccountInfo`/`accountInfo()` for the server-side account record
@@ -20,8 +21,8 @@ The package provides:
   "interactive login required" signal (throttled to once per signed-out
   stretch);
 - the public read models (`PostSummary`, `PostListPage`, `PostRecord`,
-  `ThreadSummary`) and the API exceptions (`AccountApiException`,
-  `PlatformApiException`);
+  `ThreadSummary`) and the comment models (`Comment`, `CommentListPage`),
+  plus the API exceptions (`AccountApiException`, `PlatformApiException`);
 - `platformApiProductionOrigin`, the single production-origin constant.
 
 Only the entrypoint is public API; `src/` clients (`AccountApiClient`,

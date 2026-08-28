@@ -120,12 +120,14 @@ void main() {
           "authorDeleted": false,
           "fitHash": "abc",
           "createdAt": "2026-08-19T00:00:00.000Z",
+          "commentCount": 3,
         }),
       );
       final record = await client.getPost("p");
       expect(record?.fitHash, "abc");
       expect(record?.authorId, "u-1");
       expect(record?.authorDeleted, isFalse);
+      expect(record?.commentCount, 3);
     });
 
     test("decodes the record of a tombstone author", () async {
@@ -136,6 +138,7 @@ void main() {
           "authorDeleted": true,
           "fitHash": "abc",
           "createdAt": "2026-08-19T00:00:00.000Z",
+          "commentCount": 0,
         }),
       );
       final record = await client.getPost("p");
@@ -230,6 +233,63 @@ void main() {
     test("decodes the stub response", () async {
       final client = _clientWith((options) async => _json({"threads": <Object?>[]}));
       expect(await client.getThreads("p"), isEmpty);
+    });
+  });
+
+  group("listComments", () {
+    final commentJson = {
+      "commentId": "c-1",
+      "authorId": "u-1",
+      "authorDeleted": false,
+      "body": "**hello**",
+      "createdAt": "2026-08-19T00:00:00.000Z",
+    };
+
+    test("decodes a page and forwards cursor/limit", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({
+          "comments": [commentJson],
+          "nextCursor": "cursor-2",
+        });
+      });
+
+      final page = await client.listComments("p", cursor: "cursor-1", limit: 30);
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/posts/p/comments");
+      expect(captured?.queryParameters, {"cursor": "cursor-1", "limit": "30"});
+      expect(page.nextCursor, "cursor-2");
+      expect(page.comments, hasLength(1));
+      final comment = page.comments.single;
+      expect(comment.commentId, "c-1");
+      expect(comment.authorId, "u-1");
+      expect(comment.authorDeleted, isFalse);
+      expect(comment.body, "**hello**");
+      expect(comment.createdAt, "2026-08-19T00:00:00.000Z");
+    });
+
+    test("decodes a null-author tombstone", () async {
+      final client = _clientWith(
+        (options) async => _json({
+          "comments": [
+            {...commentJson, "authorId": null, "authorDeleted": true},
+          ],
+          "nextCursor": null,
+        }),
+      );
+      final page = await client.listComments("p");
+      expect(page.comments.single.authorId, isNull);
+      expect(page.comments.single.authorDeleted, isTrue);
+    });
+
+    test("decodes the last page with a null cursor", () async {
+      final client = _clientWith(
+        (options) async => _json({"comments": <Object?>[], "nextCursor": null}),
+      );
+      final page = await client.listComments("p");
+      expect(page.comments, isEmpty);
+      expect(page.nextCursor, isNull);
     });
   });
 
