@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::core::agent::ChatAgent;
-use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
+use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage, ProxyRouting};
 use efa_chat::core::event::ChatEvent;
 use efa_chat::tools::fit::{ActiveFit, FitCallbacks, FitToolFuture};
 use efa_chat::tools::manual::{ManualCorpus, ManualDocText};
@@ -36,6 +36,32 @@ impl From<ChatProvider> for ChatProviderKind {
     }
 }
 
+/// How the chat endpoint is reached, resolved by the Dart host from the
+/// desktop system proxy settings (see `chatProxyRoutingFor` in
+/// `lib/features/chat/provider.dart`). Ignored on web, where the browser
+/// applies its own proxy.
+pub enum ChatProxyRouting {
+    /// No host-side routing decision: keep reqwest's default client, which
+    /// honors the standard proxy environment variables.
+    SystemDefault,
+    /// The host resolved a proxy bypass for the endpoint: connect directly,
+    /// ignoring any proxy environment variables the default client would
+    /// otherwise pick up.
+    Direct,
+    /// Route requests through this proxy URL (`http://host:port`).
+    Proxy { url: String },
+}
+
+impl From<ChatProxyRouting> for ProxyRouting {
+    fn from(routing: ChatProxyRouting) -> Self {
+        match routing {
+            ChatProxyRouting::SystemDefault => ProxyRouting::Default,
+            ChatProxyRouting::Direct => ProxyRouting::Direct,
+            ChatProxyRouting::Proxy { url } => ProxyRouting::Proxy(url),
+        }
+    }
+}
+
 /// User-facing configuration for the chat provider. A blank `base_url`
 /// selects the provider's default endpoint.
 pub struct ChatConfig {
@@ -49,10 +75,11 @@ pub struct ChatConfig {
     /// Locale tag ("en", "zh", ...) selecting the language of the bundled
     /// prompt files; unrecognized tags fall back to English.
     pub language: String,
-    /// Proxy URL (`http://host:port`) resolved by the Dart host from the
-    /// desktop system proxy settings; `None` keeps reqwest's default
-    /// proxy-env handling. Ignored on web.
-    pub proxy: Option<String>,
+    /// Proxy routing resolved by the Dart host from the desktop system proxy
+    /// settings. A bypassed endpoint must arrive as
+    /// [`ChatProxyRouting::Direct`] (not `SystemDefault`) so reqwest does not
+    /// fall back to the proxy environment variables. Ignored on web.
+    pub proxy: ChatProxyRouting,
 }
 
 pub enum ChatRole {
@@ -288,18 +315,18 @@ async fn drive_turn<F: Future>(future: F) -> F::Output {
 
 /// Fetch the model list exposed by the provider, used to populate the
 /// predefined model choices. A blank `base_url` selects the provider's
-/// default endpoint. [proxy] is the system-proxy URL resolved by the Dart
-/// host (see [`ChatConfig::proxy`]).
+/// default endpoint. [proxy] is the proxy routing resolved by the Dart host
+/// (see [`ChatConfig::proxy`]).
 #[frb]
 pub async fn list_available_models(
     provider: ChatProvider,
     api_key: String,
     base_url: String,
-    proxy: Option<String>,
+    proxy: ChatProxyRouting,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
+    let routing = ProxyRouting::from(proxy);
     let models = drive_turn(async move {
-        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url, proxy.as_deref())
-            .await
+        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url, &routing).await
     })
     .await?;
     Ok(models
@@ -331,9 +358,11 @@ impl ChatSession {
         )?
         .with_system_prompt(config.system_prompt)
         .with_language(PromptLanguage::from_locale(&config.language));
-        if let Some(proxy) = config.proxy {
-            provider_config = provider_config.with_proxy(proxy);
-        }
+        provider_config = match config.proxy {
+            ChatProxyRouting::SystemDefault => provider_config,
+            ChatProxyRouting::Direct => provider_config.with_direct_routing(),
+            ChatProxyRouting::Proxy { url } => provider_config.with_proxy(url),
+        };
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(provider_config)?),
             callbacks: Arc::new(CallbackRegistry::new()),

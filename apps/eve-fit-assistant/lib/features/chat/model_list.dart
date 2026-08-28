@@ -42,7 +42,7 @@ Future<List<AiChatModel>> refreshAvailableModels(WidgetRef ref) async {
       provider: toNativeChatProvider(aiChat.provider),
       apiKey: apiKey,
       baseUrl: aiChat.baseUrl,
-      proxy: chatProxyUrlFor(aiChat.baseUrl),
+      proxy: chatProxyRoutingFor(aiChat.baseUrl),
     );
     models = [for (final m in fetched) AiChatModel(id: m.id, ownedBy: m.ownedBy)];
   } on Object catch (e, st) {

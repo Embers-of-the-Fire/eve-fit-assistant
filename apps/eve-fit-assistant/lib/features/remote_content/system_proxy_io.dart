@@ -103,10 +103,13 @@ String Function(Uri)? systemProxyFindProxy() {
   return (url) => findProxyForUrl(config, url);
 }
 
-/// The proxy URL (`scheme://[user:password@]host:port`) applying to [url], or
-/// `null` when the URL is reached directly. Used to hand the resolved proxy
+/// The routing decision for [url] under the Linux desktop proxy settings, or
+/// `null` off Linux / when no proxy is configured (in which case the client's
+/// default env-var proxy handling applies). An explicit
+/// [SystemProxyRouting.direct] means the endpoint matched a proxy bypass and
+/// must not fall back to proxy env vars. Used to hand the resolved routing
 /// to the efa-chat reqwest client.
-String? systemProxyUrlFor(Uri url) {
+SystemProxyRouting? systemProxyRoutingForUrl(Uri url) {
   final config = systemProxyConfig;
-  return config == null ? null : proxyUrlFor(config, url);
+  return config == null ? null : systemProxyRoutingFor(config, url);
 }

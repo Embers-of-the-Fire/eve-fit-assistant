@@ -10,10 +10,29 @@ native_chat.ChatProvider toNativeChatProvider(ChatProvider provider) => switch (
   ChatProvider.deepSeek => native_chat.ChatProvider.deepSeek,
 };
 
-/// The desktop system proxy URL (`http://host:port`) applying to the chat
-/// endpoint at [baseUrl], or `null` when the endpoint is reached directly
-/// (or on web, where the browser handles proxying).
-String? chatProxyUrlFor(String baseUrl) {
+/// The proxy routing for the chat endpoint at [baseUrl], resolved from the
+/// desktop system proxy settings.
+///
+/// `systemDefault` applies off Linux, when no system proxy is configured, or
+/// when [baseUrl] does not parse: reqwest then keeps its default env-var
+/// proxy handling. `direct` applies when a resolved proxy config bypasses
+/// the endpoint — reqwest must NOT fall back to the proxy env vars there, so
+/// the native client disables proxying entirely (`ClientBuilder::no_proxy`).
+/// On web the browser handles proxying and `systemDefault` is returned.
+native_chat.ChatProxyRouting chatProxyRoutingFor(String baseUrl) {
   final uri = Uri.tryParse(baseUrl);
-  return uri == null ? null : systemProxyUrlFor(uri);
+  final routing = uri == null ? null : systemProxyRoutingForUrl(uri);
+  if (routing == null) return const native_chat.ChatProxyRouting.systemDefault();
+  final proxyUrl = routing.proxyUrl;
+  return proxyUrl == null
+      ? const native_chat.ChatProxyRouting.direct()
+      : native_chat.ChatProxyRouting.proxy(url: proxyUrl);
 }
+
+/// A stable string key for [routing], used in the session config fingerprint
+/// to detect routing changes across session reuse.
+String chatProxyRoutingKey(native_chat.ChatProxyRouting routing) => switch (routing) {
+  native_chat.ChatProxyRouting_SystemDefault() => "default",
+  native_chat.ChatProxyRouting_Direct() => "direct",
+  native_chat.ChatProxyRouting_Proxy(:final url) => url,
+};

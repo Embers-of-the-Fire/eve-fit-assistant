@@ -307,6 +307,35 @@ String? _proxyForUrl(SystemProxyConfig config, Uri url) {
   };
 }
 
+/// The routing decision for a URL under a resolved [SystemProxyConfig]:
+/// either a proxy URL to route through, or an explicit direct connection (a
+/// bypass matched, or no proxy covers the URL's scheme).
+///
+/// This is distinct from "no system proxy configured at all", where callers
+/// keep the HTTP client's own default (env-var) handling: an explicit direct
+/// decision lets native code disable env-var proxying, which the default
+/// client would otherwise apply to a bypassed endpoint.
+class SystemProxyRouting {
+  /// The URL is reached directly.
+  const SystemProxyRouting.direct() : proxyUrl = null;
+
+  /// Route through [proxyUrl].
+  const SystemProxyRouting.proxy(this.proxyUrl);
+
+  /// The proxy URL to route through, or `null` for an explicit direct
+  /// connection.
+  final String? proxyUrl;
+
+  /// Whether the URL is reached directly.
+  bool get isDirect => proxyUrl == null;
+}
+
+/// Resolve the routing for [url] under [config].
+SystemProxyRouting systemProxyRoutingFor(SystemProxyConfig config, Uri url) {
+  final proxy = proxyUrlFor(config, url);
+  return proxy == null ? const SystemProxyRouting.direct() : SystemProxyRouting.proxy(proxy);
+}
+
 /// The `host:port` authority (with optional userinfo) of a normalized proxy
 /// value. `dart:io`'s `PROXY` directive carries no scheme.
 String _proxyAuthority(String proxy) {

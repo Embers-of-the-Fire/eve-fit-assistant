@@ -2,7 +2,7 @@ use rig::client::ModelListingClient;
 use rig::model::ModelList;
 use rig::providers::{anthropic, deepseek, openai};
 
-use crate::core::config::ChatProviderKind;
+use crate::core::config::{ChatProviderKind, ProxyRouting};
 use crate::core::error::ChatError;
 
 /// A model exposed by a provider's list endpoint.
@@ -15,14 +15,15 @@ pub struct ListedModel {
 
 /// List the models available for [provider] via rig's native model listing
 /// (auth headers and pagination handled by the provider client). A blank
-/// `base_url` selects the provider's default endpoint. [proxy] is the
-/// system-proxy URL resolved by the host app (`None` keeps reqwest's default
-/// env-var handling).
+/// `base_url` selects the provider's default endpoint. [routing] is the
+/// proxy routing resolved by the host app ([`ProxyRouting::Default`] keeps
+/// reqwest's default env-var handling; [`ProxyRouting::Direct`] disables
+/// proxying for host-bypassed endpoints).
 pub async fn list_models(
     provider: ChatProviderKind,
     api_key: &str,
     base_url: &str,
-    proxy: Option<&str>,
+    routing: &ProxyRouting,
 ) -> Result<Vec<ListedModel>, ChatError> {
     if api_key.trim().is_empty() {
         return Err(ChatError::InvalidConfig("api key is empty".into()));
@@ -32,7 +33,7 @@ pub async fn list_models(
     } else {
         base_url.trim_end_matches('/').to_string()
     };
-    let http = crate::core::config::build_http_client(proxy)?;
+    let http = crate::core::config::build_http_client(routing)?;
     let list: ModelList = match provider {
         ChatProviderKind::OpenAiCompatible => {
             let builder = openai::Client::builder()
@@ -98,7 +99,7 @@ mod tests {
                 ChatProviderKind::OpenAiCompatible,
                 "",
                 "https://api.openai.com/v1",
-                None,
+                &ProxyRouting::Default,
             ))
             .unwrap_err();
         assert!(matches!(err, ChatError::InvalidConfig(_)));

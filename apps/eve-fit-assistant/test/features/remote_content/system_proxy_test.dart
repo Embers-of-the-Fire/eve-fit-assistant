@@ -281,4 +281,32 @@ void main() {
       expect(proxyUrlFor(config, Uri.parse("https://api.openai.com/v1")), "http://127.0.0.1:7890");
     });
   });
+
+  group("systemProxyRoutingFor", () {
+    test("carries the proxy URL for proxied targets", () {
+      const config = SystemProxyConfig(allProxy: "http://127.0.0.1:7890");
+      final routing = systemProxyRoutingFor(config, Uri.parse("https://api.openai.com/v1"));
+      expect(routing.isDirect, isFalse);
+      expect(routing.proxyUrl, "http://127.0.0.1:7890");
+    });
+
+    test("marks bypassed targets as an explicit direct route", () {
+      // A bypassed endpoint must stay distinguishable from "no proxy
+      // configured": the native chat client disables env-var proxying for an
+      // explicit direct route, while the default route keeps it.
+      const config = SystemProxyConfig(
+        allProxy: "http://127.0.0.1:7890",
+        bypass: ["localhost"],
+      );
+      final routing = systemProxyRoutingFor(config, Uri.parse("https://localhost/v1"));
+      expect(routing.isDirect, isTrue);
+      expect(routing.proxyUrl, isNull);
+    });
+
+    test("marks targets no proxy covers as an explicit direct route", () {
+      const config = SystemProxyConfig(httpProxy: "http://127.0.0.1:7890");
+      final routing = systemProxyRoutingFor(config, Uri.parse("https://api.openai.com/v1"));
+      expect(routing.isDirect, isTrue);
+    });
+  });
 }

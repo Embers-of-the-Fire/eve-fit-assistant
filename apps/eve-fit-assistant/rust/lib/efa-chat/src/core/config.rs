@@ -135,6 +135,24 @@ impl ChatProviderKind {
     }
 }
 
+/// How requests to the provider endpoint are routed, resolved by the host
+/// app from the desktop system proxy settings. Ignored on wasm (the browser
+/// applies its own proxy).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ProxyRouting {
+    /// No host-side routing decision: the caller keeps the default reqwest
+    /// client, which honors the standard proxy environment variables.
+    #[default]
+    Default,
+    /// The host resolved a proxy bypass for the endpoint: connect directly,
+    /// ignoring any proxy environment variables.
+    Direct,
+    /// Route requests through this proxy URL
+    /// (`http://`/`https://[user:password@]host:port`); an `https://` scheme
+    /// keeps the connection to the proxy itself under TLS.
+    Proxy(String),
+}
+
 #[derive(Debug, Clone)]
 pub struct ChatProviderConfig {
     pub provider: ChatProviderKind,
@@ -149,11 +167,9 @@ pub struct ChatProviderConfig {
     /// Multi-turn depth (tool-call roundtrips per turn); see
     /// [`DEFAULT_MAX_TURNS`].
     pub max_turns: usize,
-    /// Proxy URL (`http://host:port`) resolved by the host app from the
-    /// desktop system proxy settings; `None` keeps rig's default reqwest
-    /// client, which already honors the standard proxy environment
-    /// variables. Ignored on wasm (the browser applies its own proxy).
-    pub proxy: Option<String>,
+    /// Proxy routing resolved by the host app from the desktop system proxy
+    /// settings; see [`ProxyRouting`].
+    pub proxy: ProxyRouting,
 }
 
 impl ChatProviderConfig {
@@ -172,7 +188,7 @@ impl ChatProviderConfig {
             language: PromptLanguage::default(),
             system_prompt: String::new(),
             max_turns: DEFAULT_MAX_TURNS,
-            proxy: None,
+            proxy: ProxyRouting::default(),
         };
         config.validate()?;
         Ok(config)
@@ -217,16 +233,26 @@ impl ChatProviderConfig {
     pub fn with_proxy(mut self, proxy: impl Into<String>) -> Self {
         let proxy = proxy.into();
         if !proxy.trim().is_empty() {
-            self.proxy = Some(proxy.trim().to_string());
+            self.proxy = ProxyRouting::Proxy(proxy.trim().to_string());
         }
+        self
+    }
+
+    /// Connect to the provider endpoint directly, ignoring any proxy
+    /// environment variables. Use when the host resolved a proxy bypass for
+    /// the endpoint: the default client would re-read `HTTP_PROXY` /
+    /// `HTTPS_PROXY` and route a bypassed endpoint through them.
+    pub fn with_direct_routing(mut self) -> Self {
+        self.proxy = ProxyRouting::Direct;
         self
     }
 
     /// Build a reqwest client honoring [`Self::proxy`]; `None` means the
     /// caller should keep rig's default client (which reads the standard
-    /// proxy environment variables itself).
+    /// proxy environment variables itself). [`ProxyRouting::Direct`] yields
+    /// a client with proxying fully disabled.
     pub fn http_client(&self) -> Result<Option<reqwest::Client>, ChatError> {
-        build_http_client(self.proxy.as_deref())
+        build_http_client(&self.proxy)
     }
 
     /// The configured base URL, or the provider default when blank.
@@ -249,23 +275,36 @@ impl ChatProviderConfig {
     }
 }
 
-/// Build a reqwest client routed through [proxy] (a full proxy URL, e.g.
-/// `http://host:port` or `https://user:password@proxy.example:443`), or
-/// `None` when no proxy is configured so the caller can keep rig's default
-/// client. On wasm the proxy is ignored: reqwest goes through browser fetch,
-/// which already applies the browser's proxy settings.
-pub(crate) fn build_http_client(proxy: Option<&str>) -> Result<Option<reqwest::Client>, ChatError> {
-    let Some(proxy) = proxy.map(str::trim).filter(|p| !p.is_empty()) else {
-        return Ok(None);
-    };
+/// Build a reqwest client for the given [`ProxyRouting`], or `None` for
+/// [`ProxyRouting::Default`] so the caller can keep rig's default client.
+/// [`ProxyRouting::Direct`] disables proxying entirely
+/// ([`reqwest::ClientBuilder::no_proxy`]): without it the client would fall
+/// back to the proxy environment variables, routing a host-bypassed endpoint
+/// through a proxy the host explicitly excluded. On wasm the routing is
+/// ignored: reqwest goes through browser fetch, which already applies the
+/// browser's proxy settings.
+pub(crate) fn build_http_client(
+    routing: &ProxyRouting,
+) -> Result<Option<reqwest::Client>, ChatError> {
     let builder = reqwest::Client::builder();
     #[cfg(not(target_arch = "wasm32"))]
-    let builder = builder.proxy(
-        reqwest::Proxy::all(proxy)
-            .map_err(|e| ChatError::InvalidConfig(format!("invalid proxy url {proxy:?}: {e}")))?,
-    );
+    let builder = match routing {
+        ProxyRouting::Default => return Ok(None),
+        ProxyRouting::Direct => builder.no_proxy(),
+        ProxyRouting::Proxy(proxy) => {
+            let proxy = proxy.trim();
+            if proxy.is_empty() {
+                return Ok(None);
+            }
+            builder.proxy(
+                reqwest::Proxy::all(proxy).map_err(|e| {
+                    ChatError::InvalidConfig(format!("invalid proxy url {proxy:?}: {e}"))
+                })?,
+            )
+        }
+    };
     #[cfg(target_arch = "wasm32")]
-    let _ = proxy;
+    let _ = routing;
     builder
         .build()
         .map(Some)
@@ -281,9 +320,9 @@ mod tests {
         let config =
             ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
                 .unwrap();
-        assert!(config.proxy.is_none());
+        assert_eq!(config.proxy, ProxyRouting::Default);
         let config = config.with_proxy("   ");
-        assert!(config.proxy.is_none());
+        assert_eq!(config.proxy, ProxyRouting::Default);
     }
 
     #[test]
@@ -292,7 +331,10 @@ mod tests {
             ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
                 .unwrap()
                 .with_proxy(" http://127.0.0.1:7890 ");
-        assert_eq!(config.proxy.as_deref(), Some("http://127.0.0.1:7890"));
+        assert_eq!(
+            config.proxy,
+            ProxyRouting::Proxy("http://127.0.0.1:7890".into())
+        );
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -303,6 +345,21 @@ mod tests {
                 .unwrap();
         assert!(config.http_client().unwrap().is_none());
         let config = config.with_proxy("http://127.0.0.1:7890");
+        assert!(config.http_client().unwrap().is_some());
+    }
+
+    /// A host-resolved proxy bypass must yield an explicit client (with
+    /// proxying disabled via `no_proxy`), not `None`: `None` would keep the
+    /// default client, which re-reads the proxy environment variables and
+    /// could route the bypassed endpoint through them.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn http_client_builds_proxy_free_client_for_direct_routing() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap()
+                .with_direct_routing();
+        assert_eq!(config.proxy, ProxyRouting::Direct);
         assert!(config.http_client().unwrap().is_some());
     }
 
@@ -331,8 +388,8 @@ mod tests {
                 .unwrap()
                 .with_proxy("https://user:password@proxy.example:443");
         assert_eq!(
-            config.proxy.as_deref(),
-            Some("https://user:password@proxy.example:443")
+            config.proxy,
+            ProxyRouting::Proxy("https://user:password@proxy.example:443".into())
         );
         assert!(config.http_client().unwrap().is_some());
     }

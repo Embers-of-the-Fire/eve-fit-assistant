@@ -2,8 +2,10 @@
 /// system proxy to resolve. See `system_proxy_io.dart`.
 library;
 
+import "package:eve_fit_assistant/features/remote_content/system_proxy.dart";
+
 /// Always `null` on web.
 String Function(Uri)? systemProxyFindProxy() => null;
 
 /// Always `null` on web.
-String? systemProxyUrlFor(Uri url) => null;
+SystemProxyRouting? systemProxyRoutingForUrl(Uri url) => null;
