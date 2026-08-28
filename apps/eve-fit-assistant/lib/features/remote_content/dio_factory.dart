@@ -6,6 +6,9 @@ import "package:eve_fit_assistant/features/remote_content/dio_adapter_io.dart"
 import "package:flutter/foundation.dart";
 import "package:package_info_plus/package_info_plus.dart";
 
+export "package:eve_fit_assistant/features/remote_content/dio_adapter_io.dart"
+    if (dart.library.js_interop) "dio_adapter_stub.dart";
+
 String _userAgentVersion = "0.0.0";
 Future<void>? _versionLoadFuture;
 

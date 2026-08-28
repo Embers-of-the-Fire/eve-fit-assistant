@@ -49,6 +49,10 @@ pub struct ChatConfig {
     /// Locale tag ("en", "zh", ...) selecting the language of the bundled
     /// prompt files; unrecognized tags fall back to English.
     pub language: String,
+    /// Proxy URL (`http://host:port`) resolved by the Dart host from the
+    /// desktop system proxy settings; `None` keeps reqwest's default
+    /// proxy-env handling. Ignored on web.
+    pub proxy: Option<String>,
 }
 
 pub enum ChatRole {
@@ -284,15 +288,18 @@ async fn drive_turn<F: Future>(future: F) -> F::Output {
 
 /// Fetch the model list exposed by the provider, used to populate the
 /// predefined model choices. A blank `base_url` selects the provider's
-/// default endpoint.
+/// default endpoint. [proxy] is the system-proxy URL resolved by the Dart
+/// host (see [`ChatConfig::proxy`]).
 #[frb]
 pub async fn list_available_models(
     provider: ChatProvider,
     api_key: String,
     base_url: String,
+    proxy: Option<String>,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
     let models = drive_turn(async move {
-        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url).await
+        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url, proxy.as_deref())
+            .await
     })
     .await?;
     Ok(models
@@ -316,7 +323,7 @@ impl ChatSession {
 
     #[frb(sync)]
     pub fn create(config: ChatConfig) -> anyhow::Result<Self> {
-        let config = ChatProviderConfig::new(
+        let mut provider_config = ChatProviderConfig::new(
             config.provider.into(),
             config.api_key,
             config.base_url,
@@ -324,8 +331,11 @@ impl ChatSession {
         )?
         .with_system_prompt(config.system_prompt)
         .with_language(PromptLanguage::from_locale(&config.language));
+        if let Some(proxy) = config.proxy {
+            provider_config = provider_config.with_proxy(proxy);
+        }
         Ok(Self {
-            agent: Mutex::new(ChatAgent::new(config)?),
+            agent: Mutex::new(ChatAgent::new(provider_config)?),
             callbacks: Arc::new(CallbackRegistry::new()),
         })
     }

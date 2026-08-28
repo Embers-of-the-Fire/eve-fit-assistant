@@ -7,6 +7,7 @@ import "package:efa_compat/io.dart";
 import "package:efa_proto/release_index.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
+import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:flutter/services.dart";
@@ -435,14 +436,18 @@ class _DefaultPlatform extends AppUpdatePlatform {
   }
 }
 
-Dio _createDownloadDio() => Dio(
-  BaseOptions(
-    connectTimeout: const Duration(seconds: 30),
-    sendTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(minutes: 10),
-    headers: <String, dynamic>{"Accept-Encoding": "identity"},
-  ),
-);
+Dio _createDownloadDio() {
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 10),
+      headers: <String, dynamic>{"Accept-Encoding": "identity"},
+    ),
+  );
+  configureSystemProxy(dio);
+  return dio;
+}
 
 class _AbiCandidate {
   _AbiCandidate({required this.abi, required this.variant, required this.artifact});

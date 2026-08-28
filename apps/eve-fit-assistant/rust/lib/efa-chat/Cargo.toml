@@ -12,6 +12,9 @@ serde_json = "1"
 eve-fit-os = { path = "../../../../../packages/eve-fit-os" }
 log = "0.4"
 web-time = "1"
+# Direct dependency for building proxy-configured clients; the feature set
+# (TLS etc.) is unified with rig's own reqwest requirement.
+reqwest = { version = "0.13", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }

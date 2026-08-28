@@ -395,6 +395,7 @@ class _TestConnectionTileState extends ConsumerState<_TestConnectionTile> {
           model: aiChat.model,
           systemPrompt: ref.read(chatSystemPromptProvider),
           language: ref.read(localeProvider).name,
+          proxy: chatProxyUrlFor(aiChat.baseUrl),
         ),
       );
       await session.prompt(text: "Hello");

@@ -149,6 +149,11 @@ pub struct ChatProviderConfig {
     /// Multi-turn depth (tool-call roundtrips per turn); see
     /// [`DEFAULT_MAX_TURNS`].
     pub max_turns: usize,
+    /// Proxy URL (`http://host:port`) resolved by the host app from the
+    /// desktop system proxy settings; `None` keeps rig's default reqwest
+    /// client, which already honors the standard proxy environment
+    /// variables. Ignored on wasm (the browser applies its own proxy).
+    pub proxy: Option<String>,
 }
 
 impl ChatProviderConfig {
@@ -167,6 +172,7 @@ impl ChatProviderConfig {
             language: PromptLanguage::default(),
             system_prompt: String::new(),
             max_turns: DEFAULT_MAX_TURNS,
+            proxy: None,
         };
         config.validate()?;
         Ok(config)
@@ -204,6 +210,23 @@ impl ChatProviderConfig {
         self
     }
 
+    /// Route requests through the given proxy URL (`http://host:port`).
+    /// Empty or whitespace-only values are ignored.
+    pub fn with_proxy(mut self, proxy: impl Into<String>) -> Self {
+        let proxy = proxy.into();
+        if !proxy.trim().is_empty() {
+            self.proxy = Some(proxy.trim().to_string());
+        }
+        self
+    }
+
+    /// Build a reqwest client honoring [`Self::proxy`]; `None` means the
+    /// caller should keep rig's default client (which reads the standard
+    /// proxy environment variables itself).
+    pub fn http_client(&self) -> Result<Option<reqwest::Client>, ChatError> {
+        build_http_client(self.proxy.as_deref())
+    }
+
     /// The configured base URL, or the provider default when blank.
     pub fn resolved_base_url(&self) -> &str {
         if self.base_url.trim().is_empty() {
@@ -221,5 +244,75 @@ impl ChatProviderConfig {
             return Err(ChatError::InvalidConfig("model must not be empty".into()));
         }
         Ok(())
+    }
+}
+
+/// Build a reqwest client routed through [proxy] (`http://host:port`), or
+/// `None` when no proxy is configured so the caller can keep rig's default
+/// client. On wasm the proxy is ignored: reqwest goes through browser fetch,
+/// which already applies the browser's proxy settings.
+pub(crate) fn build_http_client(proxy: Option<&str>) -> Result<Option<reqwest::Client>, ChatError> {
+    let Some(proxy) = proxy.map(str::trim).filter(|p| !p.is_empty()) else {
+        return Ok(None);
+    };
+    let builder = reqwest::Client::builder();
+    #[cfg(not(target_arch = "wasm32"))]
+    let builder = builder.proxy(
+        reqwest::Proxy::all(proxy)
+            .map_err(|e| ChatError::InvalidConfig(format!("invalid proxy url {proxy:?}: {e}")))?,
+    );
+    #[cfg(target_arch = "wasm32")]
+    let _ = proxy;
+    builder
+        .build()
+        .map(Some)
+        .map_err(|e| ChatError::Client(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn with_proxy_ignores_blank_values() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap();
+        assert!(config.proxy.is_none());
+        let config = config.with_proxy("   ");
+        assert!(config.proxy.is_none());
+    }
+
+    #[test]
+    fn with_proxy_trims_and_stores() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap()
+                .with_proxy(" http://127.0.0.1:7890 ");
+        assert_eq!(config.proxy.as_deref(), Some("http://127.0.0.1:7890"));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn http_client_builds_only_with_proxy() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap();
+        assert!(config.http_client().unwrap().is_none());
+        let config = config.with_proxy("http://127.0.0.1:7890");
+        assert!(config.http_client().unwrap().is_some());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn http_client_rejects_invalid_proxy_url() {
+        let config =
+            ChatProviderConfig::new(ChatProviderKind::OpenAiCompatible, "key", "", "model")
+                .unwrap()
+                .with_proxy("not a url");
+        assert!(matches!(
+            config.http_client(),
+            Err(ChatError::InvalidConfig(_))
+        ));
     }
 }
