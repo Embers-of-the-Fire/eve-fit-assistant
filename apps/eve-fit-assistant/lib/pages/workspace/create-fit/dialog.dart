@@ -91,6 +91,14 @@ class _ShipCreateDialogState extends ConsumerState<_ShipCreateDialog> {
         ],
       ),
       actions: [
+        TextButton(
+          onPressed: () {
+            debug("Open ship ${widget.shipId} in platform");
+            context.nav.pop();
+            unawaited(context.router.push(PlatformShipRoute(shipTypeId: widget.shipId)));
+          },
+          child: Text(context.l10n.fitCreationPageDialogOpenInPlatform),
+        ),
         TextButton(onPressed: () => context.nav.pop(), child: Text(context.l10n.cancel)),
         ElevatedButton(
           onPressed: () {

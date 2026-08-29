@@ -518,6 +518,7 @@
       }
     }
   },
+  "fitCreationPageDialogOpenInPlatform": "在平台中打开",
   "@@@_FIT_PAGE": {},
   "fitPageTitle": "{fitName} - {shipName}",
   "@fitPageTitle": {
