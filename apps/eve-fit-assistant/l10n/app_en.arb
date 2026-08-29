@@ -208,6 +208,7 @@
   "platformFeedClearFilter": "Clear filter",
   "platformFeedLoadError": "Failed to load content",
   "platformFeedLoadMore": "Load more",
+  "platformFeedUploadAction": "Upload a fit",
   "platformStatsFits": "Shared fits",
   "platformStatsShips": "Ships",
   "platformStatsWeek": "New this week",

@@ -346,6 +346,7 @@
   "platformFeedClearFilter": "清除筛选",
   "platformFeedLoadError": "内容加载失败",
   "platformFeedLoadMore": "加载更多",
+  "platformFeedUploadAction": "上传配置",
   "platformStatsFits": "分享配置",
   "platformStatsShips": "舰船",
   "platformStatsWeek": "本周新增",

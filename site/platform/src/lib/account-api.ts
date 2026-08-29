@@ -62,10 +62,9 @@ export async function createComment(
 /** Deletes a comment the session's account is allowed to delete (own, or any
  * with the `all` qualifier). Throws Error("forbidden") on a 403. */
 export async function deleteComment(session: PlatformSession, commentId: string): Promise<void> {
-    const res = await session.authedFetch(
-        `${API_ORIGIN}/platform/internal/comments/${commentId}`,
-        { method: "DELETE" },
-    );
+    const res = await session.authedFetch(`${API_ORIGIN}/platform/internal/comments/${commentId}`, {
+        method: "DELETE",
+    });
     if (res.status === 403) throw new Error("forbidden");
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
 }

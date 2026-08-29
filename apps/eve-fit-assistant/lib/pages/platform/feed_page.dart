@@ -3,10 +3,12 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/platform/providers.dart";
 import "package:eve_fit_assistant/pages/platform/common.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -54,6 +56,17 @@ class _PlatformFeedPageState extends ConsumerState<PlatformFeedPage> {
     }
   }
 
+  /// The platform only accepts fit uploads from the app; the button opens the
+  /// manual page that explains publishing. Platforms without the in-app
+  /// manual (web) open the online manual site instead.
+  void _openUploadManual() {
+    if (kIsWeb) {
+      unawaited(openWebManualPage(context, docPath: publishingManualDocPath));
+    } else {
+      unawaited(context.router.pushPath("/manual/$publishingManualDocPath"));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final feedAsync = ref.watch(platformFeedProvider(_filter));
@@ -70,6 +83,7 @@ class _PlatformFeedPageState extends ConsumerState<PlatformFeedPage> {
             onSelectShip: _selectShip,
             onClearFilter: _clearFilter,
             onLoadMore: _loadMore,
+            onUpload: _openUploadManual,
           ),
         ),
         loading: () => RefreshIndicator(
@@ -95,6 +109,7 @@ class _PlatformFeedBody extends ConsumerWidget {
     required this.onSelectShip,
     required this.onClearFilter,
     required this.onLoadMore,
+    required this.onUpload,
   });
 
   final PlatformFeedState feed;
@@ -102,6 +117,7 @@ class _PlatformFeedBody extends ConsumerWidget {
   final ValueChanged<TopShip> onSelectShip;
   final VoidCallback onClearFilter;
   final VoidCallback onLoadMore;
+  final VoidCallback onUpload;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -112,8 +128,14 @@ class _PlatformFeedBody extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       children: [
+        Row(
+          children: [
+            if (stats != null) Expanded(child: _PlatformStatsRow(stats: stats)) else const Spacer(),
+            const SizedBox(width: 8),
+            _PlatformUploadCard(onUpload: onUpload),
+          ],
+        ),
         if (stats != null) ...[
-          _PlatformStatsRow(stats: stats),
           if (stats.topShips.isNotEmpty) ...[
             const SizedBox(height: 16),
             _PlatformPopularShips(
@@ -169,6 +191,34 @@ class _PlatformStatsRow extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// The upload entry card at the right end of the stats row; opens the manual
+/// page that explains publishing a fit.
+class _PlatformUploadCard extends StatelessWidget {
+  const _PlatformUploadCard({required this.onUpload});
+
+  final VoidCallback onUpload;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.theme.colorScheme;
+    return Tooltip(
+      message: context.l10n.platformFeedUploadAction,
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: colorScheme.surfaceContainer,
+        child: InkWell(
+          onTap: onUpload,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Icon(Icons.upload_outlined, size: 32, color: colorScheme.primary),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PlatformStatCard extends StatelessWidget {
