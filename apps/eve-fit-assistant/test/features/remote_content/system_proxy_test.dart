@@ -230,6 +230,21 @@ void main() {
       expect(findProxyForUrl(star, Uri.parse("https://foo.bar/")), "DIRECT");
     });
 
+    test("rejects https proxies rather than downgrading them to cleartext", () {
+      // dart:io can only speak cleartext HTTP CONNECT to a proxy: it would
+      // open a plain socket and send the proxy credentials before any TLS.
+      // An https:// proxy (TLS to the proxy) is therefore rejected on the
+      // dart:io path — DIRECT, not a silent downgrade.
+      const config = SystemProxyConfig(
+        httpsProxy: "https://user:password@proxy.example:443",
+        allProxy: "https://all-proxy.example:8443",
+      );
+      expect(findProxyForUrl(config, Uri.parse("https://foo.bar/")), "DIRECT");
+      const onlyAll = SystemProxyConfig(allProxy: "https://all-proxy.example:8443");
+      expect(findProxyForUrl(onlyAll, Uri.parse("https://foo.bar/")), "DIRECT");
+      expect(findProxyForUrl(onlyAll, Uri.parse("http://foo.bar/")), "DIRECT");
+    });
+
     test("unknown schemes and empty configs go direct", () {
       expect(findProxyForUrl(config, Uri.parse("ftp://foo.bar/")), "DIRECT");
       const empty = SystemProxyConfig();
@@ -329,9 +344,10 @@ void main() {
       // credentials in cleartext to an on-path actor.
       const config = SystemProxyConfig(httpsProxy: "https://user:password@proxy.example:443");
       final url = Uri.parse("https://api.openai.com/v1");
-      // dart:io's PROXY directive carries neither the scheme nor the
-      // userinfo; the reqwest path keeps both.
-      expect(findProxyForUrl(config, url), "PROXY proxy.example:443");
+      // The dart:io transport cannot do TLS to the proxy, so the https
+      // proxy is rejected there instead of being downgraded; the reqwest
+      // path keeps both the scheme and the userinfo.
+      expect(findProxyForUrl(config, url), "DIRECT");
       expect(proxyUrlFor(config, url), "https://user:password@proxy.example:443");
     });
 

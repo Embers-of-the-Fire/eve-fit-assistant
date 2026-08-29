@@ -16,12 +16,15 @@ library;
 /// the `no_proxy`/ignore-hosts entries. Only HTTP (CONNECT) proxies are
 /// representable: `dart:io`'s `HttpClient.findProxy` supports
 /// `PROXY host:port` and `DIRECT` only, so SOCKS proxies are dropped during
-/// parsing and the scheme is stripped again for the dart:io transport. The
-/// directive carries no userinfo either — dart:io does not percent-decode
-/// credentials embedded in it — so the dart:io transport takes the decoded
-/// credentials from [systemProxyCredentials] instead. The full URL is kept
-/// for native chat, where reqwest honors an `https://` proxy scheme (TLS to
-/// the proxy) instead of downgrading the connection.
+/// parsing. dart:io can only speak cleartext HTTP CONNECT to a proxy, so an
+/// `https://` proxy (TLS to the proxy) is rejected on the dart:io transport
+/// — the URL goes direct rather than downgrading the connection, and its
+/// credentials, to cleartext. The directive carries no userinfo either —
+/// dart:io does not percent-decode credentials embedded in it — so the
+/// dart:io transport takes the decoded credentials from
+/// [systemProxyCredentials] instead. The full URL is kept for native chat,
+/// where reqwest honors an `https://` proxy scheme (TLS to the proxy)
+/// instead of downgrading the connection.
 class SystemProxyConfig {
   const SystemProxyConfig({this.httpProxy, this.httpsProxy, this.allProxy, this.bypass = const []});
 
@@ -357,15 +360,20 @@ String _proxyAuthority(String proxy) {
 /// Resolve the `HttpClient.findProxy` directive for [url]:
 /// `PROXY host:port` when a proxy applies, `DIRECT` otherwise.
 ///
-/// dart:io can only speak cleartext HTTP CONNECT to a proxy, so an
-/// `https://` proxy scheme is dropped here; the scheme is honored on the
-/// native chat path via [proxyUrlFor]. The directive likewise drops the
-/// userinfo: dart:io does not percent-decode credentials embedded in it,
-/// so they are registered with `HttpClient.addProxyCredentials` instead —
-/// see [systemProxyCredentials].
+/// dart:io can only speak cleartext HTTP CONNECT to a proxy (TLS, if any,
+/// starts only inside the destination tunnel), so an `https://` proxy — TLS
+/// to the proxy — cannot be honored: returning its authority here would make
+/// dart:io open a plain socket to the proxy and send the proxy credentials
+/// in cleartext. Such proxies are rejected (`DIRECT`) rather than silently
+/// downgraded; the `https://` scheme is honored on the native chat path via
+/// [proxyUrlFor]. The directive likewise drops the userinfo: dart:io does
+/// not percent-decode credentials embedded in it, so they are registered
+/// with `HttpClient.addProxyCredentials` instead — see
+/// [systemProxyCredentials].
 String findProxyForUrl(SystemProxyConfig config, Uri url) {
   final proxy = _proxyForUrl(config, url);
-  return proxy == null ? "DIRECT" : "PROXY ${_proxyAuthority(proxy)}";
+  if (proxy == null || proxy.toLowerCase().startsWith("https://")) return "DIRECT";
+  return "PROXY ${_proxyAuthority(proxy)}";
 }
 
 /// The proxy URL (`scheme://[user:password@]host:port`) that applies to
