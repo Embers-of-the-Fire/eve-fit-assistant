@@ -252,9 +252,10 @@ def test_empty_change_list_affects_nothing():
 
 def test_web_gate_follows_app_dependency_closure():
     assert resolve_affected(["packages/efa_fit/lib/fit.dart"]).web
+    assert resolve_affected(["packages/efa_fit_snapshot/lib/snapshot.dart"]).web
     assert resolve_affected(["packages/eve-fit-os/src/lib.rs"]).web
     assert not resolve_affected(["site/home/src/routes/+page.svelte"]).web
-    assert not resolve_affected(["packages/efa_fit_snapshot/lib/snapshot.dart"]).web
+    assert not resolve_affected(["packages/efa_fit_snapshot_ts/src/index.ts"]).web
 
 
 def test_web_relevant_packages_are_app_closure():
@@ -262,4 +263,5 @@ def test_web_relevant_packages_are_app_closure():
     assert "eve_fit_assistant" in relevant
     assert "rust_lib_eve_fit_assistant" in relevant
     assert "eve-fit-os" in relevant
-    assert "efa_fit_snapshot" not in relevant  # not an app dependency
+    assert "efa_fit_snapshot" in relevant  # app dependency since the platform community section
+    assert "efa-fit-snapshot-ts" not in relevant  # TS package, not part of the app closure

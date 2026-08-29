@@ -56,6 +56,7 @@ PACKAGES: tuple[Package, ...] = (
             "efa_component",
             "efa_constant",
             "efa_fit",
+            "efa_fit_snapshot",
             "efa_platform_client",
             "efa_proto",
             "rust_lib_eve_fit_assistant",
