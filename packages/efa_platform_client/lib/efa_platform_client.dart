@@ -11,10 +11,16 @@ export "package:efa_platform_client/src/platform_client.dart"
         Comment,
         CommentListPage,
         PlatformApiException,
+        PlatformStats,
+        PlatformTimeWindow,
         PostListPage,
         PostRecord,
         PostSummary,
-        ThreadSummary;
+        ShipDetail,
+        ShipListPage,
+        ShipSummary,
+        ThreadSummary,
+        TopShip;
 export "package:efa_platform_client/src/session.dart"
     show
         PlatformAuthRequiredException,

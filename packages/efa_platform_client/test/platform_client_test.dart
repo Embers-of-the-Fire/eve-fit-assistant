@@ -110,6 +110,30 @@ void main() {
       expect(page.posts, isEmpty);
       expect(page.nextCursor, isNull);
     });
+
+    test("forwards the ship and window filters", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({"posts": <Object?>[], "nextCursor": null});
+      });
+
+      await client.listPosts(shipTypeId: 605, window: PlatformTimeWindow.d7);
+
+      expect(captured?.queryParameters, {"shipTypeId": "605", "window": "7d"});
+    });
+
+    test("omits the window parameter for PlatformTimeWindow.all", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({"posts": <Object?>[], "nextCursor": null});
+      });
+
+      await client.listPosts(window: PlatformTimeWindow.all);
+
+      expect(captured?.queryParameters, isNot(contains("window")));
+    });
   });
 
   group("getPost", () {
@@ -291,6 +315,120 @@ void main() {
       final page = await client.listComments("p");
       expect(page.comments, isEmpty);
       expect(page.nextCursor, isNull);
+    });
+  });
+
+  group("listShips", () {
+    final shipJson = {
+      "shipTypeId": 605,
+      "shipName": "Heron",
+      "postCount": 12,
+      "lastPostAt": "2026-08-19T00:00:00.000Z",
+    };
+
+    test("decodes a page and forwards q/window/cursor/limit/locale", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({
+          "ships": [shipJson],
+          "nextCursor": "cursor-2",
+        });
+      });
+
+      final page = await client.listShips(
+        q: "heron",
+        window: PlatformTimeWindow.h24,
+        cursor: "cursor-1",
+        limit: 24,
+        locale: "zh",
+      );
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/ships");
+      expect(captured?.queryParameters, {
+        "q": "heron",
+        "window": "24h",
+        "cursor": "cursor-1",
+        "limit": "24",
+        "locale": "zh",
+      });
+      expect(page.nextCursor, "cursor-2");
+      final ship = page.ships.single;
+      expect(ship.shipTypeId, 605);
+      expect(ship.shipName, "Heron");
+      expect(ship.postCount, 12);
+      expect(ship.lastPostAt, "2026-08-19T00:00:00.000Z");
+    });
+
+    test("omits the window parameter for PlatformTimeWindow.all", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({"ships": <Object?>[], "nextCursor": null});
+      });
+
+      await client.listShips(window: PlatformTimeWindow.all);
+
+      expect(captured?.queryParameters, isNot(contains("window")));
+    });
+  });
+
+  group("getShip", () {
+    test("decodes the detail and forwards the locale", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({
+          "shipTypeId": 605,
+          "shipName": "Heron",
+          "postCount": 12,
+          "firstPostAt": "2026-08-01T00:00:00.000Z",
+          "lastPostAt": "2026-08-19T00:00:00.000Z",
+        });
+      });
+
+      final detail = await client.getShip(605, locale: "zh");
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/ships/605");
+      expect(captured?.queryParameters, {"locale": "zh"});
+      expect(detail?.shipName, "Heron");
+      expect(detail?.postCount, 12);
+      expect(detail?.firstPostAt, "2026-08-01T00:00:00.000Z");
+      expect(detail?.lastPostAt, "2026-08-19T00:00:00.000Z");
+    });
+
+    test("returns null on 404", () async {
+      final client = _clientWith(
+        (options) async => _json({"error": "not_found", "message": "unknown ship"}, 404),
+      );
+      expect(await client.getShip(0), isNull);
+    });
+  });
+
+  group("getStats", () {
+    test("decodes the totals and top ships", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({
+          "totalPosts": 42,
+          "distinctShips": 7,
+          "postsLast7d": 5,
+          "topShips": [
+            {"shipTypeId": 605, "shipName": "Heron", "postCount": 12},
+          ],
+        });
+      });
+
+      final stats = await client.getStats(locale: "zh");
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/stats");
+      expect(captured?.queryParameters, {"locale": "zh"});
+      expect(stats.totalPosts, 42);
+      expect(stats.distinctShips, 7);
+      expect(stats.postsLast7d, 5);
+      expect(stats.topShips.single.shipName, "Heron");
+      expect(stats.topShips.single.postCount, 12);
     });
   });
 

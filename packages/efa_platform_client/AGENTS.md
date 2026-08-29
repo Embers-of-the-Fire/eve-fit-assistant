@@ -21,8 +21,11 @@ The package provides:
   "interactive login required" signal (throttled to once per signed-out
   stretch);
 - the public read models (`PostSummary`, `PostListPage`, `PostRecord`,
-  `ThreadSummary`) and the comment models (`Comment`, `CommentListPage`),
-  plus the API exceptions (`AccountApiException`, `PlatformApiException`);
+  `ThreadSummary`), the comment models (`Comment`, `CommentListPage`), the
+  ship directory models (`ShipSummary`, `ShipListPage`, `ShipDetail`), the
+  stats models (`PlatformStats`, `TopShip`), the shared `PlatformTimeWindow`
+  listing filter, plus the API exceptions (`AccountApiException`,
+  `PlatformApiException`);
 - `platformApiProductionOrigin`, the single production-origin constant.
 
 Only the entrypoint is public API; `src/` clients (`AccountApiClient`,

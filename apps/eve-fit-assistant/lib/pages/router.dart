@@ -12,6 +12,8 @@ import "package:eve_fit_assistant/pages/manual/feedback_page.dart";
 import "package:eve_fit_assistant/pages/manual/node_page.dart";
 import "package:eve_fit_assistant/pages/platform/feed_page.dart";
 import "package:eve_fit_assistant/pages/platform/post_page.dart";
+import "package:eve_fit_assistant/pages/platform/ship_page.dart";
+import "package:eve_fit_assistant/pages/platform/ships_page.dart";
 import "package:eve_fit_assistant/pages/report/external_links_page.dart";
 import "package:eve_fit_assistant/pages/report/page.dart";
 import "package:eve_fit_assistant/pages/setting/account/login_page.dart";
@@ -151,6 +153,27 @@ class AppRouter extends RootStackRouter {
         DeepLinkMeta.key: DeepLinkMeta(
           title: "Platform post",
           usage: "a shared-fit post on the platform, with its snapshot and comments",
+        ),
+      },
+    ),
+    AutoRoute(
+      path: "/platform/ships",
+      page: PlatformShipsRoute.page,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Platform ships",
+          usage: "the platform ship directory: ships with shared fits, searchable",
+        ),
+      },
+    ),
+    AutoRoute(
+      path: "/platform/ship/:shipTypeId",
+      page: PlatformShipRoute.page,
+      usesPathAsKey: true,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Platform ship",
+          usage: "a ship's page on the platform, with its shared-fit feed",
         ),
       },
     ),

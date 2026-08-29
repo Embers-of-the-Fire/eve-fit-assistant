@@ -236,9 +236,37 @@ class PlatformSession {
   // ---- public reads (no auth involved) ----
 
   /// Cursor-paginated post list. [limit] is clamped server-side to 1..50
-  /// (default 20).
-  Future<PostListPage> listPosts({String? cursor, int? limit, String? locale}) =>
-      _publicClient.listPosts(cursor: cursor, limit: limit, locale: locale);
+  /// (default 20). [shipTypeId] and [window] filter the listing.
+  Future<PostListPage> listPosts({
+    String? cursor,
+    int? limit,
+    String? locale,
+    int? shipTypeId,
+    PlatformTimeWindow? window,
+  }) => _publicClient.listPosts(
+    cursor: cursor,
+    limit: limit,
+    locale: locale,
+    shipTypeId: shipTypeId,
+    window: window,
+  );
+
+  /// Cursor-paginated ship directory; [q] filters by ship name and [window]
+  /// by post recency.
+  Future<ShipListPage> listShips({
+    String? q,
+    PlatformTimeWindow? window,
+    String? cursor,
+    int? limit,
+    String? locale,
+  }) => _publicClient.listShips(q: q, window: window, cursor: cursor, limit: limit, locale: locale);
+
+  /// The ship detail; null when no posts exist for the ship.
+  Future<ShipDetail?> getShip(int shipTypeId, {String? locale}) =>
+      _publicClient.getShip(shipTypeId, locale: locale);
+
+  /// The platform-wide totals and popular ships.
+  Future<PlatformStats> getStats({String? locale}) => _publicClient.getStats(locale: locale);
 
   /// The post record; null when the post does not exist.
   Future<PostRecord?> getPost(String postId) => _publicClient.getPost(postId);

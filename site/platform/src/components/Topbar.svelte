@@ -42,5 +42,15 @@ onMount(initLocale);
         >
             {t("nav.account")}
         </a>
+        <a
+            href={locale.current === "zh"
+                ? "https://docs.efa-tech.dev/zh/sharing/publishing-fits/"
+                : "https://docs.efa-tech.dev/sharing/publishing-fits/"}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded bg-console-primary px-3 py-1 text-sm font-semibold text-console-deep transition-colors hover:bg-console-highlight"
+        >
+            {t("nav.upload")}
+        </a>
     </div>
 </header>

@@ -5,6 +5,7 @@ export const en = {
     "nav.ships": "Ships",
     "nav.account": "Account",
     "nav.feedback": "Feedback",
+    "nav.upload": "Upload",
     "home.pageTitle": "Home",
     "home.eyebrow": "Community Platform",
     "home.title": "Share fits. Discuss doctrine.",
@@ -158,7 +159,7 @@ export const en = {
     "share.notFoundTitle": "Link not found",
     "share.notFoundDesc": "This link is not a valid fit link. Ask the sender for a new one.",
     "legal.securityNotice":
-        "EFA Platform is an unofficial, community-run service provided \"as is\", without warranty of any kind. Staff will never ask for your password or verification codes. Report security issues to security@efa-tech.dev.",
+        'EFA Platform is an unofficial, community-run service provided "as is", without warranty of any kind. Staff will never ask for your password or verification codes. Report security issues to security@efa-tech.dev.',
     "legal.trademarkNotice":
         "EVE Online and the EVE logo are the registered trademarks of CCP hf. All rights are reserved worldwide. All other trademarks are the property of their respective owners. EFA Platform is a third-party service and is not endorsed by CCP hf.",
     "legal.secretsNotice":
@@ -175,6 +176,7 @@ export const zh: Record<TranslationKey, string> = {
     "nav.ships": "舰船",
     "nav.account": "账号",
     "nav.feedback": "反馈",
+    "nav.upload": "上传",
     "home.pageTitle": "首页",
     "home.eyebrow": "社区平台",
     "home.title": "分享配置，共研战术。",

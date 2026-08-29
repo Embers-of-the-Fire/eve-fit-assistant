@@ -42,9 +42,7 @@ $effect(() => {
 });
 
 const identity = $derived(authState.identity);
-const canCreate = $derived(
-    identity !== null && accountAclState.acl.can("comment:create") === true,
-);
+const canCreate = $derived(identity !== null && accountAclState.acl.can("comment:create") === true);
 
 // Client-side gate mirroring the API's qualifier check: `all` covers any
 // comment, `own` only the account's own (matching is exact).

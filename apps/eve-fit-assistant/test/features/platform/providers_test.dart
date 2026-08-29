@@ -81,11 +81,19 @@ Map<String, Object?> _commentJson(String commentId) => {
   "createdAt": "2026-08-19T00:00:00.000Z",
 };
 
+Map<String, Object?> _shipSummaryJson(int shipTypeId) => {
+  "shipTypeId": shipTypeId,
+  "shipName": "Ship $shipTypeId",
+  "postCount": 12,
+  "lastPostAt": "2026-08-19T00:00:00.000Z",
+};
+
 /// Scriptable platform API: pages of posts and comments keyed by cursor,
 /// plus comment creation. Signed-out only (no auth endpoints).
 class _PlatformServer {
   final Map<String?, ({List<Map<String, Object?>> posts, String? next})> postPages = {};
   final Map<String?, ({List<Map<String, Object?>> comments, String? next})> commentPages = {};
+  final Map<String?, ({List<Map<String, Object?>> ships, String? next})> shipPages = {};
   final List<Map<String, Object?>> createdComments = [];
   int commentCount = 2;
 
@@ -93,6 +101,32 @@ class _PlatformServer {
     final path = options.path;
     if (path.endsWith("/platform/auth/refresh")) {
       return _json({"accessToken": _jwt("user-1"), "refreshToken": "refresh-2", "expiresIn": 900});
+    }
+    if (path == "$_origin/platform/internal/stats") {
+      return _json({
+        "totalPosts": 42,
+        "distinctShips": 7,
+        "postsLast7d": 5,
+        "topShips": [
+          {"shipTypeId": 605, "shipName": "Heron", "postCount": 12},
+        ],
+      });
+    }
+    if (path == "$_origin/platform/internal/ships") {
+      final page =
+          shipPages[options.queryParameters["cursor"]] ??
+          const (ships: <Map<String, Object?>>[], next: null);
+      return _json({"ships": page.ships, "nextCursor": page.next});
+    }
+    final shipMatch = RegExp(
+      r"^/platform/internal/ships/(\d+)$",
+    ).firstMatch(Uri.parse(path).path);
+    if (shipMatch != null) {
+      final shipTypeId = int.parse(shipMatch.group(1)!);
+      if (shipTypeId == 0) {
+        return _json({"error": "not_found", "message": "unknown ship"}, 404);
+      }
+      return _json({..._shipSummaryJson(shipTypeId), "firstPostAt": "2026-08-01T00:00:00.000Z"});
     }
     if (path == "$_origin/platform/internal/posts") {
       final page =
@@ -182,26 +216,68 @@ void main() {
   });
 
   group("platformFeed", () {
+    const filter = PlatformFeedFilter();
+
+    ProviderSubscription<AsyncValue<PlatformFeedState>> keepAlive() {
+      final sub = container.listen(platformFeedProvider(filter), (_, _) {});
+      addTearDown(sub.close);
+      return sub;
+    }
+
     test("builds the first page and loadMore appends the next", () async {
+      keepAlive();
       server.postPages[null] = (posts: [_postSummaryJson("p-1")], next: "cursor-2");
       server.postPages["cursor-2"] = (posts: [_postSummaryJson("p-2")], next: null);
 
-      final feed = await container.read(platformFeedProvider.future);
+      final feed = await container.read(platformFeedProvider(filter).future);
       expect(feed.posts.map((p) => p.postId), ["p-1"]);
       expect(feed.nextCursor, "cursor-2");
 
-      await container.read(platformFeedProvider.notifier).loadMore();
-      final updated = container.read(platformFeedProvider).value;
+      await container.read(platformFeedProvider(filter).notifier).loadMore();
+      final updated = container.read(platformFeedProvider(filter)).value;
       expect(updated?.posts.map((p) => p.postId), ["p-1", "p-2"]);
       expect(updated?.nextCursor, isNull);
     });
 
     test("loadMore is a no-op when the feed is exhausted", () async {
+      keepAlive();
       server.postPages[null] = (posts: [_postSummaryJson("p-1")], next: null);
-      await container.read(platformFeedProvider.future);
+      await container.read(platformFeedProvider(filter).future);
 
-      await container.read(platformFeedProvider.notifier).loadMore();
-      expect(container.read(platformFeedProvider).value?.posts, hasLength(1));
+      await container.read(platformFeedProvider(filter).notifier).loadMore();
+      expect(container.read(platformFeedProvider(filter)).value?.posts, hasLength(1));
+    });
+
+    test("forwards the filter to the post list", () async {
+      Map<String, dynamic>? seenQuery;
+      final session = PlatformSession(
+        origin: _origin,
+        store: _MemoryStore(),
+        dioFactory: () => Dio(BaseOptions())
+          ..httpClientAdapter = _FakeAdapter((options) async {
+            seenQuery = options.queryParameters;
+            return _json({"posts": <Object?>[], "nextCursor": null});
+          }),
+      );
+      final scoped = ProviderContainer(
+        overrides: [
+          platformSessionProvider.overrideWith((ref) async => session),
+          localeProvider.overrideWithValue(Locale.en),
+        ],
+      );
+      addTearDown(scoped.dispose);
+
+      await scoped.read(
+        platformFeedProvider(
+          const PlatformFeedFilter(shipTypeId: 605, window: PlatformTimeWindow.d30),
+        ).future,
+      );
+      expect(seenQuery?["shipTypeId"], "605");
+      expect(seenQuery?["window"], "30d");
+
+      await scoped.read(platformFeedProvider(const PlatformFeedFilter()).future);
+      expect(seenQuery, isNot(contains("shipTypeId")));
+      expect(seenQuery, isNot(contains("window")));
     });
 
     test("forwards the app locale to the post list", () async {
@@ -223,8 +299,82 @@ void main() {
       );
       addTearDown(scoped.dispose);
 
-      await scoped.read(platformFeedProvider.future);
+      await scoped.read(platformFeedProvider(filter).future);
       expect(seenLocale, "zh");
+    });
+  });
+
+  group("platformStats", () {
+    test("resolves the totals and top ships", () async {
+      final stats = await container.read(platformStatsProvider.future);
+      expect(stats.totalPosts, 42);
+      expect(stats.distinctShips, 7);
+      expect(stats.postsLast7d, 5);
+      expect(stats.topShips.single.shipName, "Heron");
+    });
+  });
+
+  group("platformShipDirectory", () {
+    test("builds the first page and loadMore appends the next", () async {
+      const query = PlatformShipQuery();
+      final sub = container.listen(platformShipDirectoryProvider(query), (_, _) {});
+      addTearDown(sub.close);
+      server.shipPages[null] = (ships: [_shipSummaryJson(605)], next: "cursor-2");
+      server.shipPages["cursor-2"] = (ships: [_shipSummaryJson(624)], next: null);
+
+      final directory = await container.read(platformShipDirectoryProvider(query).future);
+      expect(directory.ships.map((s) => s.shipTypeId), [605]);
+      expect(directory.nextCursor, "cursor-2");
+
+      await container.read(platformShipDirectoryProvider(query).notifier).loadMore();
+      final updated = container.read(platformShipDirectoryProvider(query)).value;
+      expect(updated?.ships.map((s) => s.shipTypeId), [605, 624]);
+      expect(updated?.nextCursor, isNull);
+    });
+
+    test("forwards the query and window to the ship list", () async {
+      Map<String, dynamic>? seenQuery;
+      final session = PlatformSession(
+        origin: _origin,
+        store: _MemoryStore(),
+        dioFactory: () => Dio(BaseOptions())
+          ..httpClientAdapter = _FakeAdapter((options) async {
+            seenQuery = options.queryParameters;
+            return _json({"ships": <Object?>[], "nextCursor": null});
+          }),
+      );
+      final scoped = ProviderContainer(
+        overrides: [
+          platformSessionProvider.overrideWith((ref) async => session),
+          localeProvider.overrideWithValue(Locale.en),
+        ],
+      );
+      addTearDown(scoped.dispose);
+
+      await scoped.read(
+        platformShipDirectoryProvider(
+          const PlatformShipQuery(query: " heron ", window: PlatformTimeWindow.h24),
+        ).future,
+      );
+      expect(seenQuery?["q"], "heron");
+      expect(seenQuery?["window"], "24h");
+
+      await scoped.read(platformShipDirectoryProvider(const PlatformShipQuery()).future);
+      expect(seenQuery, isNot(contains("q")));
+      expect(seenQuery, isNot(contains("window")));
+    });
+  });
+
+  group("platformShip", () {
+    test("resolves the ship detail", () async {
+      final detail = await container.read(platformShipProvider(605).future);
+      expect(detail?.shipName, "Ship 605");
+      expect(detail?.postCount, 12);
+    });
+
+    test("resolves to null for an unknown ship", () async {
+      final detail = await container.read(platformShipProvider(0).future);
+      expect(detail, isNull);
     });
   });
 
