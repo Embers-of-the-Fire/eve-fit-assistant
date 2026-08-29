@@ -257,6 +257,36 @@ class PlatformSession {
   /// The thread list of a post (stub; currently always empty).
   Future<List<ThreadSummary>> getThreads(String postId) => _publicClient.getThreads(postId);
 
+  /// Cursor-paginated comment list of a post, ascending (oldest first).
+  /// [limit] is clamped server-side to 1..100 (default 50).
+  Future<CommentListPage> listComments(String postId, {String? cursor, int? limit}) =>
+      _publicClient.listComments(postId, cursor: cursor, limit: limit);
+
+  // ---- authenticated writes ----
+
+  /// `POST /posts/:id/comments` with a fresh access token: creates a
+  /// discussion comment authored by the signed-in account. [body] is raw
+  /// markdown (trimmed server-side; empty or oversized bodies are rejected,
+  /// never silently truncated). Requires the `comment:create` permission;
+  /// a rejected request throws [PlatformApiException] (`forbidden` on 403).
+  Future<Comment> createComment({required String postId, required String body}) async {
+    try {
+      final response = await authed(
+        (dio) async => dio.post<Map<String, dynamic>>(
+          "$origin/platform/internal/posts/$postId/comments",
+          data: {"body": body},
+        ),
+      );
+      final data = response.data;
+      if (data == null) {
+        throw const PlatformApiException(null, null, "empty response body");
+      }
+      return Comment.fromJson(data);
+    } on DioException catch (e) {
+      throw mapPlatformDioException(e);
+    }
+  }
+
   // ---- escape hatch for future authenticated endpoints ----
 
   /// Runs [call] with a Dio that transparently attaches a valid access

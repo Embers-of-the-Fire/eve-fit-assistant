@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:eve_fit_assistant/config/provider_observer.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
@@ -25,6 +26,9 @@ void main() async {
   final stores = await initSingletons();
   runApp(
     ProviderScope(
+      // Provider errors are captured into AsyncError and never reach the
+      // platform error boundary; log them so silent failures stay visible.
+      observers: const [LoggingProviderObserver()],
       overrides: [
         announcementStateStoreProvider.overrideWithValue(stores.announcementStateStore),
         appVersionStateStoreProvider.overrideWithValue(stores.appVersionStateStore),

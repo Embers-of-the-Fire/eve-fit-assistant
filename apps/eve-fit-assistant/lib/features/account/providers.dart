@@ -36,7 +36,11 @@ Future<PlatformSession> platformSession(Ref ref) async {
   return PlatformSession(
     origin: origin,
     store: store,
-    dioFactory: createRemoteDio,
+    // The platform API is dynamic and interactive (feed, comments, writes):
+    // bypass the shared HTTP response cache, whose store failures surfaced
+    // as request failures and whose entries served stale, server-side-gone
+    // posts.
+    dioFactory: () => createRemoteDio(useCache: false),
     cfAccessClientId: clientId.isEmpty ? null : clientId,
     cfAccessClientSecret: clientSecret.isEmpty ? null : clientSecret,
     emailLocale: () => ref.read(localeProvider).name,

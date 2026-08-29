@@ -416,6 +416,65 @@ void main() {
     });
   });
 
+  group("createComment", () {
+    test("posts the body with a valid access token and decodes the comment", () async {
+      seedSignedIn();
+      RequestOptions? captured;
+      server.authedHandler = (options) async {
+        captured = options;
+        return _json({
+          "commentId": "c-1",
+          "postId": "p-1",
+          "authorId": "user-old",
+          "authorDeleted": false,
+          "body": "**hello**",
+          "createdAt": "2026-08-28T00:00:00.000Z",
+        }, 201);
+      };
+      final s = session();
+      await s.ready;
+
+      final comment = await s.createComment(postId: "p-1", body: "**hello**");
+
+      expect(captured?.path, "$origin/platform/internal/posts/p-1/comments");
+      expect(captured?.method, "POST");
+      expect(captured?.headers["Authorization"], "Bearer ${_jwt("user-old")}");
+      expect((captured?.data as Map<String, dynamic>)["body"], "**hello**");
+      expect(comment.commentId, "c-1");
+      expect(comment.authorId, "user-old");
+      expect(comment.authorDeleted, isFalse);
+      expect(comment.body, "**hello**");
+    });
+
+    test("maps a 403 to a PlatformApiException with the envelope code", () async {
+      seedSignedIn();
+      server.authedHandler = (options) async =>
+          _json({"error": "forbidden", "message": "missing permission: comment:create"}, 403);
+      final s = session();
+      await s.ready;
+
+      await expectLater(
+        () => s.createComment(postId: "p-1", body: "hi"),
+        throwsA(
+          isA<PlatformApiException>()
+              .having((e) => e.statusCode, "statusCode", 403)
+              .having((e) => e.code, "code", "forbidden"),
+        ),
+      );
+    });
+
+    test("without a session throws PlatformAuthRequiredException", () async {
+      final s = session();
+      await s.ready;
+
+      await expectLater(
+        () => s.createComment(postId: "p-1", body: "hi"),
+        throwsA(isA<PlatformAuthRequiredException>()),
+      );
+      expect(authRequiredCalls, 1);
+    });
+  });
+
   group("authed", () {
     const authedPath = "$origin/platform/internal/authed";
 
@@ -559,6 +618,7 @@ void main() {
           "authorDeleted": true,
           "fitHash": "abc",
           "createdAt": "2026-08-19T00:00:00.000Z",
+          "commentCount": 0,
         });
       };
       final s = session();
@@ -585,6 +645,7 @@ void main() {
             "authorDeleted": true,
             "fitHash": "abc",
             "createdAt": "2026-08-19T00:00:00.000Z",
+            "commentCount": 0,
           });
         }
         return _json({"ok": true});

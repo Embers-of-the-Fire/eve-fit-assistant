@@ -2,6 +2,7 @@
 library;
 
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
@@ -120,12 +121,14 @@ void main() {
           "authorDeleted": false,
           "fitHash": "abc",
           "createdAt": "2026-08-19T00:00:00.000Z",
+          "commentCount": 3,
         }),
       );
       final record = await client.getPost("p");
       expect(record?.fitHash, "abc");
       expect(record?.authorId, "u-1");
       expect(record?.authorDeleted, isFalse);
+      expect(record?.commentCount, 3);
     });
 
     test("decodes the record of a tombstone author", () async {
@@ -136,6 +139,7 @@ void main() {
           "authorDeleted": true,
           "fitHash": "abc",
           "createdAt": "2026-08-19T00:00:00.000Z",
+          "commentCount": 0,
         }),
       );
       final record = await client.getPost("p");
@@ -233,6 +237,63 @@ void main() {
     });
   });
 
+  group("listComments", () {
+    final commentJson = {
+      "commentId": "c-1",
+      "authorId": "u-1",
+      "authorDeleted": false,
+      "body": "**hello**",
+      "createdAt": "2026-08-19T00:00:00.000Z",
+    };
+
+    test("decodes a page and forwards cursor/limit", () async {
+      RequestOptions? captured;
+      final client = _clientWith((options) async {
+        captured = options;
+        return _json({
+          "comments": [commentJson],
+          "nextCursor": "cursor-2",
+        });
+      });
+
+      final page = await client.listComments("p", cursor: "cursor-1", limit: 30);
+
+      expect(captured?.path, "https://api.efa-tech.dev/platform/internal/posts/p/comments");
+      expect(captured?.queryParameters, {"cursor": "cursor-1", "limit": "30"});
+      expect(page.nextCursor, "cursor-2");
+      expect(page.comments, hasLength(1));
+      final comment = page.comments.single;
+      expect(comment.commentId, "c-1");
+      expect(comment.authorId, "u-1");
+      expect(comment.authorDeleted, isFalse);
+      expect(comment.body, "**hello**");
+      expect(comment.createdAt, "2026-08-19T00:00:00.000Z");
+    });
+
+    test("decodes a null-author tombstone", () async {
+      final client = _clientWith(
+        (options) async => _json({
+          "comments": [
+            {...commentJson, "authorId": null, "authorDeleted": true},
+          ],
+          "nextCursor": null,
+        }),
+      );
+      final page = await client.listComments("p");
+      expect(page.comments.single.authorId, isNull);
+      expect(page.comments.single.authorDeleted, isTrue);
+    });
+
+    test("decodes the last page with a null cursor", () async {
+      final client = _clientWith(
+        (options) async => _json({"comments": <Object?>[], "nextCursor": null}),
+      );
+      final page = await client.listComments("p");
+      expect(page.comments, isEmpty);
+      expect(page.nextCursor, isNull);
+    });
+  });
+
   group("errors", () {
     test("non-404 failures throw with the envelope code", () async {
       final client = _clientWith(
@@ -245,6 +306,28 @@ void main() {
               .having((e) => e.statusCode, "statusCode", 400)
               .having((e) => e.code, "code", "bad_request")
               .having((e) => e.message, "message", "malformed cursor"),
+        ),
+      );
+    });
+
+    test("connection failures keep the underlying error as the message", () async {
+      final client = _clientWith(
+        (options) async => throw DioException(
+          requestOptions: options,
+          error: const HandshakeException("Connection terminated during handshake"),
+        ),
+      );
+      await expectLater(
+        client.listPosts,
+        throwsA(
+          isA<PlatformApiException>()
+              .having((e) => e.statusCode, "statusCode", isNull)
+              .having((e) => e.code, "code", isNull)
+              .having(
+                (e) => e.message,
+                "message",
+                contains("Connection terminated during handshake"),
+              ),
         ),
       );
     });
