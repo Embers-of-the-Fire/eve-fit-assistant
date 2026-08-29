@@ -308,6 +308,16 @@ SystemProxyConfig systemProxyWithExtraBypass(SystemProxyConfig config, List<Stri
   );
 }
 
+/// Whether [url] matches [config]'s bypass list (`no_proxy` / GNOME
+/// ignore-hosts) and so must be reached directly.
+///
+/// This is distinct from "no proxy covers the URL's scheme", though both
+/// make [proxyUrlFor] return `null`. Callers that hand a routing decision to
+/// the native chat client must keep the two apart: a bypass disables
+/// proxying entirely, while an uncovered scheme still takes the full proxy
+/// config so a cross-scheme redirect can pick up that scheme's proxy.
+bool systemProxyBypasses(SystemProxyConfig config, Uri url) => _isBypassed(config.bypass, url);
+
 /// The normalized proxy value applying to [url], or `null` when the URL is
 /// reached directly.
 String? _proxyForUrl(SystemProxyConfig config, Uri url) {

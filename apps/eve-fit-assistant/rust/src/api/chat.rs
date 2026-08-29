@@ -50,12 +50,14 @@ pub enum ChatProxyRouting {
     /// ignoring any proxy environment variables the default client would
     /// otherwise pick up.
     Direct,
-    /// A system proxy covers the endpoint. Carries the full per-scheme
-    /// proxy URLs and the bypass list (not just the proxy resolved for the
-    /// initial URL) so the reqwest client re-resolves the routing for every
-    /// request: reqwest follows redirects inside the client, and a redirect
-    /// to a bypassed host must go direct while a cross-scheme redirect must
-    /// pick up that scheme's proxy.
+    /// A system proxy is configured and the endpoint is not bypassed.
+    /// Carries the full per-scheme proxy URLs and the bypass list (not just
+    /// the proxy resolved for the initial URL — which may not cover the
+    /// endpoint's own scheme, e.g. an HTTPS endpoint with only an HTTP
+    /// proxy configured) so the reqwest client re-resolves the routing for
+    /// every request: reqwest follows redirects inside the client, and a
+    /// redirect to a bypassed host must go direct while a cross-scheme
+    /// redirect must pick up that scheme's proxy.
     Proxy {
         /// Proxy URL for `http://` request URLs
         /// (`http://`/`https://[user:password@]host:port`), if configured.
