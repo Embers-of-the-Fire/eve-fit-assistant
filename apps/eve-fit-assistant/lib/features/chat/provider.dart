@@ -10,17 +10,27 @@ native_chat.ChatProvider toNativeChatProvider(ChatProvider provider) => switch (
   ChatProvider.deepSeek => native_chat.ChatProvider.deepSeek,
 };
 
-/// The proxy routing for the chat endpoint at [baseUrl], resolved from the
-/// desktop system proxy settings.
+/// The proxy routing for [provider]'s chat endpoint at [baseUrl], resolved
+/// from the desktop system proxy settings.
+///
+/// A blank [baseUrl] means the provider's default endpoint — the same
+/// fallback the native client applies (`ChatConfig::resolved_base_url`). The
+/// default must be resolved here too: parsing the blank string directly
+/// yields a hostless, scheme-less URI that the routing layer treats as an
+/// explicit direct connection, disabling proxying for an endpoint that the
+/// configured system proxy would otherwise cover.
 ///
 /// `systemDefault` applies off Linux, when no system proxy is configured, or
-/// when [baseUrl] does not parse: reqwest then keeps its default env-var
-/// proxy handling. `direct` applies when a resolved proxy config bypasses
-/// the endpoint — reqwest must NOT fall back to the proxy env vars there, so
-/// the native client disables proxying entirely (`ClientBuilder::no_proxy`).
-/// On web the browser handles proxying and `systemDefault` is returned.
-native_chat.ChatProxyRouting chatProxyRoutingFor(String baseUrl) {
-  final uri = Uri.tryParse(baseUrl);
+/// when the effective URL does not parse: reqwest then keeps its default
+/// env-var proxy handling. `direct` applies when a resolved proxy config
+/// bypasses the endpoint — reqwest must NOT fall back to the proxy env vars
+/// there, so the native client disables proxying entirely
+/// (`ClientBuilder::no_proxy`). On web the browser handles proxying and
+/// `systemDefault` is returned.
+native_chat.ChatProxyRouting chatProxyRoutingFor(ChatProvider provider, String baseUrl) {
+  final stored = baseUrl.trim();
+  final effectiveUrl = stored.isEmpty ? provider.defaultBaseUrl : stored;
+  final uri = Uri.tryParse(effectiveUrl);
   final routing = uri == null ? null : systemProxyRoutingForUrl(uri);
   if (routing == null) return const native_chat.ChatProxyRouting.systemDefault();
   final proxyUrl = routing.proxyUrl;

@@ -222,7 +222,7 @@ class ChatController extends _$ChatController {
   native_chat.ChatSession? _ensureSession(String apiKey) {
     final settings = ref.read(appSettingServiceProvider).aiChat;
     final locale = ref.read(localeProvider).name;
-    final proxy = chatProxyRoutingFor(settings.baseUrl);
+    final proxy = chatProxyRoutingFor(settings.provider, settings.baseUrl);
     final fingerprint =
         "${settings.provider.name}|${settings.baseUrl}|${settings.model}|$apiKey|$locale|${chatProxyRoutingKey(proxy)}";
     final existing = _session;
