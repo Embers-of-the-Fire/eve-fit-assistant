@@ -249,6 +249,19 @@ void main() {
       expect(find("http://[::1]/", ["[::1"]), "PROXY proxy:8080");
       expect(find("http://127.0.0.1/", ["127.0.0.0/"]), "PROXY proxy:8080");
     });
+
+    test("malformed IPv4 bypass entries never match", () {
+      // A negative component must not be masked into the prefix range.
+      expect(find("http://255.0.0.1/", ["-1.0.0.0/8"]), "PROXY proxy:8080");
+      expect(find("http://1.0.0.1/", ["1.0.-1.0/16"]), "PROXY proxy:8080");
+      expect(find("http://255.0.0.1/", ["-1.0.0.0/0"]), "PROXY proxy:8080");
+    });
+
+    test("malformed IPv6 bypass entries never match", () {
+      expect(find("http://[fe80::1]/", ["-1::/16"]), "PROXY proxy:8080");
+      expect(find("http://[fe80::1]/", ["fe80::-1"]), "PROXY proxy:8080");
+      expect(find("http://[fe80::1]/", ["fe80::10000"]), "PROXY proxy:8080");
+    });
   });
 
   group("proxyUrlFor", () {

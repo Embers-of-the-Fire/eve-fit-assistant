@@ -159,7 +159,7 @@ List<int>? _parseIpv4Bytes(String value) {
   final bytes = <int>[];
   for (final part in parts) {
     final n = int.tryParse(part);
-    if (n == null || n > 255 || n.toString() != part) return null;
+    if (n == null || n < 0 || n > 255 || n.toString() != part) return null;
     bytes.add(n);
   }
   return bytes;
@@ -178,7 +178,9 @@ List<int>? _parseIpv6Bytes(String value) {
 
   int? group(String g) {
     if (g.isEmpty || g.length > 4) return null;
-    return int.tryParse(g, radix: 16);
+    final n = int.tryParse(g, radix: 16);
+    // tryParse accepts a leading sign; negative groups are not valid.
+    return n != null && n < 0 ? null : n;
   }
 
   final groups = <int>[];
