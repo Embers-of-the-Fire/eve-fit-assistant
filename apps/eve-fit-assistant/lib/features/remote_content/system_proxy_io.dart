@@ -135,14 +135,3 @@ bool configureSystemProxyHttpClient(HttpClient client) {
   }
   return true;
 }
-
-/// The routing decision for [url] under the Linux desktop proxy settings, or
-/// `null` off Linux / when no proxy is configured (in which case the client's
-/// default env-var proxy handling applies). An explicit
-/// [SystemProxyRouting.direct] means the endpoint matched a proxy bypass and
-/// must not fall back to proxy env vars. Used to hand the resolved routing
-/// to the efa-chat reqwest client.
-SystemProxyRouting? systemProxyRoutingForUrl(Uri url) {
-  final config = systemProxyConfig;
-  return config == null ? null : systemProxyRoutingFor(config, url);
-}

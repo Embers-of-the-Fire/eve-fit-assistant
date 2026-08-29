@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::core::agent::ChatAgent;
-use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage, ProxyRouting};
+use efa_chat::core::config::{
+    ChatProviderConfig, ChatProviderKind, PromptLanguage, ProxyConfig, ProxyRouting,
+};
 use efa_chat::core::event::ChatEvent;
 use efa_chat::tools::fit::{ActiveFit, FitCallbacks, FitToolFuture};
 use efa_chat::tools::manual::{ManualCorpus, ManualDocText};
@@ -48,8 +50,23 @@ pub enum ChatProxyRouting {
     /// ignoring any proxy environment variables the default client would
     /// otherwise pick up.
     Direct,
-    /// Route requests through this proxy URL (`http://host:port`).
-    Proxy { url: String },
+    /// A system proxy covers the endpoint. Carries the full per-scheme
+    /// proxy URLs and the bypass list (not just the proxy resolved for the
+    /// initial URL) so the reqwest client re-resolves the routing for every
+    /// request: reqwest follows redirects inside the client, and a redirect
+    /// to a bypassed host must go direct while a cross-scheme redirect must
+    /// pick up that scheme's proxy.
+    Proxy {
+        /// Proxy URL for `http://` request URLs, if configured.
+        http_url: Option<String>,
+        /// Proxy URL for `https://` request URLs, if configured.
+        https_url: Option<String>,
+        /// Fallback proxy URL covering both schemes, if configured.
+        all_url: Option<String>,
+        /// Hosts reached directly (`no_proxy` / GNOME `ignore-hosts`
+        /// formats).
+        bypass: Vec<String>,
+    },
 }
 
 impl From<ChatProxyRouting> for ProxyRouting {
@@ -57,7 +74,17 @@ impl From<ChatProxyRouting> for ProxyRouting {
         match routing {
             ChatProxyRouting::SystemDefault => ProxyRouting::Default,
             ChatProxyRouting::Direct => ProxyRouting::Direct,
-            ChatProxyRouting::Proxy { url } => ProxyRouting::Proxy(url),
+            ChatProxyRouting::Proxy {
+                http_url,
+                https_url,
+                all_url,
+                bypass,
+            } => ProxyRouting::Proxy(ProxyConfig {
+                http: http_url,
+                https: https_url,
+                all: all_url,
+                bypass,
+            }),
         }
     }
 }
@@ -358,11 +385,7 @@ impl ChatSession {
         )?
         .with_system_prompt(config.system_prompt)
         .with_language(PromptLanguage::from_locale(&config.language));
-        provider_config = match config.proxy {
-            ChatProxyRouting::SystemDefault => provider_config,
-            ChatProxyRouting::Direct => provider_config.with_direct_routing(),
-            ChatProxyRouting::Proxy { url } => provider_config.with_proxy(url),
-        };
+        provider_config.proxy = ProxyRouting::from(config.proxy);
         Ok(Self {
             agent: Mutex::new(ChatAgent::new(provider_config)?),
             callbacks: Arc::new(CallbackRegistry::new()),

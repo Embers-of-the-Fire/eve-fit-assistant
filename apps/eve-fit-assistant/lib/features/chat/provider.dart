@@ -1,3 +1,4 @@
+import "package:eve_fit_assistant/features/remote_content/system_proxy.dart";
 import "package:eve_fit_assistant/features/remote_content/system_proxy_io.dart"
     if (dart.library.js_interop) "package:eve_fit_assistant/features/remote_content/system_proxy_stub.dart";
 import "package:eve_fit_assistant/native/api/chat.dart" as native_chat;
@@ -25,18 +26,28 @@ native_chat.ChatProvider toNativeChatProvider(ChatProvider provider) => switch (
 /// env-var proxy handling. `direct` applies when a resolved proxy config
 /// bypasses the endpoint — reqwest must NOT fall back to the proxy env vars
 /// there, so the native client disables proxying entirely
-/// (`ClientBuilder::no_proxy`). On web the browser handles proxying and
-/// `systemDefault` is returned.
+/// (`ClientBuilder::no_proxy`). Otherwise `proxy` carries the full
+/// per-scheme proxy URLs and the bypass list (not just the proxy resolved
+/// for the endpoint): reqwest follows redirects inside the client, so the
+/// native client re-resolves the routing for every request — a redirect to
+/// a bypassed host goes direct, and a cross-scheme redirect picks up that
+/// scheme's proxy. On web the browser handles proxying and `systemDefault`
+/// is returned.
 native_chat.ChatProxyRouting chatProxyRoutingFor(ChatProvider provider, String baseUrl) {
   final stored = baseUrl.trim();
   final effectiveUrl = stored.isEmpty ? provider.defaultBaseUrl : stored;
   final uri = Uri.tryParse(effectiveUrl);
-  final routing = uri == null ? null : systemProxyRoutingForUrl(uri);
-  if (routing == null) return const native_chat.ChatProxyRouting.systemDefault();
-  final proxyUrl = routing.proxyUrl;
-  return proxyUrl == null
+  if (uri == null) return const native_chat.ChatProxyRouting.systemDefault();
+  final config = systemProxyConfig;
+  if (config == null) return const native_chat.ChatProxyRouting.systemDefault();
+  return proxyUrlFor(config, uri) == null
       ? const native_chat.ChatProxyRouting.direct()
-      : native_chat.ChatProxyRouting.proxy(url: proxyUrl);
+      : native_chat.ChatProxyRouting.proxy(
+          httpUrl: config.httpProxy,
+          httpsUrl: config.httpsProxy,
+          allUrl: config.allProxy,
+          bypass: config.bypass,
+        );
 }
 
 /// A stable string key for [routing], used in the session config fingerprint
@@ -44,5 +55,11 @@ native_chat.ChatProxyRouting chatProxyRoutingFor(ChatProvider provider, String b
 String chatProxyRoutingKey(native_chat.ChatProxyRouting routing) => switch (routing) {
   native_chat.ChatProxyRouting_SystemDefault() => "default",
   native_chat.ChatProxyRouting_Direct() => "direct",
-  native_chat.ChatProxyRouting_Proxy(:final url) => url,
+  native_chat.ChatProxyRouting_Proxy(
+    :final httpUrl,
+    :final httpsUrl,
+    :final allUrl,
+    :final bypass,
+  ) =>
+    "proxy|${httpUrl ?? ""}|${httpsUrl ?? ""}|${allUrl ?? ""}|${bypass.join(",")}",
 };

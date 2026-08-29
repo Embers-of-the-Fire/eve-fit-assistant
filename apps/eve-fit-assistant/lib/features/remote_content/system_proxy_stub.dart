@@ -5,4 +5,4 @@ library;
 import "package:eve_fit_assistant/features/remote_content/system_proxy.dart";
 
 /// Always `null` on web.
-SystemProxyRouting? systemProxyRoutingForUrl(Uri url) => null;
+SystemProxyConfig? get systemProxyConfig => null;
