@@ -171,6 +171,10 @@ class _CommentSection extends ConsumerWidget {
                   ),
                 ),
               ),
+              OutlinedButton(
+                onPressed: () => ref.invalidate(platformCommentsProvider(postId)),
+                child: Text(context.l10n.announcementBodyLoadRetry),
+              ),
             ],
           ),
           const SizedBox(height: 12),
