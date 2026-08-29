@@ -10,15 +10,14 @@ void configureConnectionPool(
   required int maxConnectionsPerHost,
   required Duration idleTimeout,
 }) {
-  final findProxy = systemProxyFindProxy();
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
       final client = HttpClient()
         ..maxConnectionsPerHost = maxConnectionsPerHost
         ..idleTimeout = idleTimeout;
-      // null off Linux / when no proxy is configured: dart:io's default
+      // No-op off Linux / when no proxy is configured: dart:io's default
       // env-var handling (http_proxy/https_proxy) applies then.
-      if (findProxy != null) client.findProxy = findProxy;
+      configureSystemProxyHttpClient(client);
       return client;
     },
   );
@@ -27,9 +26,12 @@ void configureConnectionPool(
 /// Applies only the Linux desktop proxy resolution to [dio], leaving the
 /// connection pool at dart:io defaults (for one-off download clients).
 void configureSystemProxy(Dio dio) {
-  final findProxy = systemProxyFindProxy();
-  if (findProxy == null) return;
+  if (systemProxyConfig == null) return;
   dio.httpClientAdapter = IOHttpClientAdapter(
-    createHttpClient: () => HttpClient()..findProxy = findProxy,
+    createHttpClient: () {
+      final client = HttpClient();
+      configureSystemProxyHttpClient(client);
+      return client;
+    },
   );
 }

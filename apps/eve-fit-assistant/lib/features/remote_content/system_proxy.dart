@@ -17,8 +17,11 @@ library;
 /// representable: `dart:io`'s `HttpClient.findProxy` supports
 /// `PROXY host:port` and `DIRECT` only, so SOCKS proxies are dropped during
 /// parsing and the scheme is stripped again for the dart:io transport. The
-/// full URL is kept for native chat, where reqwest honors an `https://`
-/// proxy scheme (TLS to the proxy) instead of downgrading the connection.
+/// directive carries no userinfo either — dart:io does not percent-decode
+/// credentials embedded in it — so the dart:io transport takes the decoded
+/// credentials from [systemProxyCredentials] instead. The full URL is kept
+/// for native chat, where reqwest honors an `https://` proxy scheme (TLS to
+/// the proxy) instead of downgrading the connection.
 class SystemProxyConfig {
   const SystemProxyConfig({this.httpProxy, this.httpsProxy, this.allProxy, this.bypass = const []});
 
@@ -252,11 +255,13 @@ SystemProxyConfig systemProxyFromEnvironment(Map<String, String> env) {
 ///
 /// When [useAuthentication] is set, `user:password@` is embedded into the
 /// HTTP proxy (and the HTTPS one via `use-same-proxy`): GNOME only stores
-/// credentials for the HTTP proxy. Both transports pick credentials up from
-/// the userinfo part — `dart:io` parses them out of the
-/// `PROXY user:password@host:port` directive, reqwest out of the proxy URL.
-/// GNOME models plain HTTP CONNECT proxies only (host/port, no scheme), so
-/// the emitted values carry an `http://` scheme.
+/// credentials for the HTTP proxy. User and password are percent-encoded
+/// separately, so reserved characters (`/`, `?`, `#`, ...) in either cannot
+/// corrupt the proxy URL handed to reqwest on the native chat path; the
+/// dart:io transport takes the decoded credentials from
+/// [systemProxyCredentials] instead, as its `PROXY` directive carries no
+/// userinfo. GNOME models plain HTTP CONNECT proxies only (host/port, no
+/// scheme), so the emitted values carry an `http://` scheme.
 SystemProxyConfig? systemProxyFromGnome({
   required String mode,
   String httpHost = "",
@@ -271,7 +276,9 @@ SystemProxyConfig? systemProxyFromGnome({
 }) {
   if (mode.trim() != "manual") return null;
   final user = authenticationUser.trim();
-  final auth = useAuthentication && user.isNotEmpty ? "$user:$authenticationPassword@" : "";
+  final auth = useAuthentication && user.isNotEmpty
+      ? "${Uri.encodeComponent(user)}:${Uri.encodeComponent(authenticationPassword)}@"
+      : "";
   String? proxy(String host, int port, {bool authenticated = false}) {
     final h = host.trim();
     if (h.isEmpty || port <= 0) return null;
@@ -338,11 +345,13 @@ SystemProxyRouting systemProxyRoutingFor(SystemProxyConfig config, Uri url) {
   return proxy == null ? const SystemProxyRouting.direct() : SystemProxyRouting.proxy(proxy);
 }
 
-/// The `host:port` authority (with optional userinfo) of a normalized proxy
-/// value. `dart:io`'s `PROXY` directive carries no scheme.
+/// The `host:port` authority of a normalized proxy value. `dart:io`'s
+/// `PROXY` directive carries neither the scheme nor the userinfo.
 String _proxyAuthority(String proxy) {
   final schemeEnd = proxy.indexOf("://");
-  return schemeEnd >= 0 ? proxy.substring(schemeEnd + 3) : proxy;
+  final authority = schemeEnd >= 0 ? proxy.substring(schemeEnd + 3) : proxy;
+  final at = authority.lastIndexOf("@");
+  return at >= 0 ? authority.substring(at + 1) : authority;
 }
 
 /// Resolve the `HttpClient.findProxy` directive for [url]:
@@ -350,7 +359,10 @@ String _proxyAuthority(String proxy) {
 ///
 /// dart:io can only speak cleartext HTTP CONNECT to a proxy, so an
 /// `https://` proxy scheme is dropped here; the scheme is honored on the
-/// native chat path via [proxyUrlFor].
+/// native chat path via [proxyUrlFor]. The directive likewise drops the
+/// userinfo: dart:io does not percent-decode credentials embedded in it,
+/// so they are registered with `HttpClient.addProxyCredentials` instead —
+/// see [systemProxyCredentials].
 String findProxyForUrl(SystemProxyConfig config, Uri url) {
   final proxy = _proxyForUrl(config, url);
   return proxy == null ? "DIRECT" : "PROXY ${_proxyAuthority(proxy)}";
@@ -366,4 +378,59 @@ String? proxyUrlFor(SystemProxyConfig config, Uri url) {
   final proxy = _proxyForUrl(config, url);
   if (proxy == null) return null;
   return proxy.contains("://") ? proxy : "http://$proxy";
+}
+
+/// The decoded credentials of one authenticated proxy, for
+/// `HttpClient.addProxyCredentials` / `HttpClient.authenticateProxy`.
+class SystemProxyCredentials {
+  const SystemProxyCredentials({
+    required this.host,
+    required this.port,
+    required this.username,
+    required this.password,
+  });
+
+  /// The proxy host the credentials apply to.
+  final String host;
+
+  /// The proxy port the credentials apply to.
+  final int port;
+
+  /// The percent-decoded username.
+  final String username;
+
+  /// The percent-decoded password (possibly empty).
+  final String password;
+}
+
+/// The credentials of every authenticated proxy in [config], one entry per
+/// distinct proxy value carrying userinfo.
+///
+/// The `HttpClient.findProxy` directive carries no userinfo (and dart:io
+/// would not percent-decode it anyway), so credentials embedded in the
+/// proxy values — percent-encoded when they come from the GNOME settings —
+/// must be registered with `HttpClient.addProxyCredentials` and served from
+/// `HttpClient.authenticateProxy` instead. On the native chat path reqwest
+/// keeps reading them straight out of the proxy URL.
+List<SystemProxyCredentials> systemProxyCredentials(SystemProxyConfig config) {
+  final credentials = <SystemProxyCredentials>[];
+  final seen = <String>{};
+  for (final proxy in [config.httpProxy, config.httpsProxy, config.allProxy]) {
+    if (proxy == null || !seen.add(proxy)) continue;
+    final parsed = Uri.tryParse(proxy.contains("://") ? proxy : "http://$proxy");
+    if (parsed == null || parsed.userInfo.isEmpty) continue;
+    // Uri.userInfo is not percent-decoded; decode each part separately so a
+    // colon inside an encoded password cannot split the pair early.
+    final userinfo = parsed.userInfo;
+    final colon = userinfo.indexOf(":");
+    credentials.add(
+      SystemProxyCredentials(
+        host: parsed.host,
+        port: parsed.port,
+        username: Uri.decodeComponent(colon < 0 ? userinfo : userinfo.substring(0, colon)),
+        password: colon < 0 ? "" : Uri.decodeComponent(userinfo.substring(colon + 1)),
+      ),
+    );
+  }
+  return credentials;
 }

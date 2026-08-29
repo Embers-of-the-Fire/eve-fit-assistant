@@ -94,13 +94,46 @@ SystemProxyConfig? _readGnomeProxy() {
   );
 }
 
-/// The `HttpClient.findProxy` function honoring the Linux desktop proxy
-/// settings, or `null` off Linux / when no proxy is configured (in which
-/// case dart:io's default env-var handling applies).
-String Function(Uri)? systemProxyFindProxy() {
+/// Configures [client] for the Linux desktop proxy settings, returning
+/// whether a proxy config was applied. Off Linux / when no proxy is
+/// configured [client] is left untouched and dart:io's default env-var
+/// handling (http_proxy/https_proxy) applies.
+///
+/// The `findProxy` directive carries no userinfo (and dart:io would not
+/// percent-decode it anyway), so credentials carried by the resolved
+/// proxies are registered via [HttpClient.addProxyCredentials] up front and
+/// re-served from [HttpClient.authenticateProxy] for realms that did not
+/// match the empty realm registered initially.
+bool configureSystemProxyHttpClient(HttpClient client) {
   final config = systemProxyConfig;
-  if (config == null) return null;
-  return (url) => findProxyForUrl(config, url);
+  if (config == null) return false;
+  client.findProxy = (url) => findProxyForUrl(config, url);
+  final credentials = systemProxyCredentials(config);
+  for (final c in credentials) {
+    client.addProxyCredentials(
+      c.host,
+      c.port,
+      "",
+      HttpClientBasicCredentials(c.username, c.password),
+    );
+  }
+  if (credentials.isNotEmpty) {
+    client.authenticateProxy = (host, port, scheme, realm) {
+      for (final c in credentials) {
+        if (c.host == host && c.port == port) {
+          client.addProxyCredentials(
+            host,
+            port,
+            realm ?? "",
+            HttpClientBasicCredentials(c.username, c.password),
+          );
+          return Future.value(true);
+        }
+      }
+      return Future.value(false);
+    };
+  }
+  return true;
 }
 
 /// The routing decision for [url] under the Linux desktop proxy settings, or

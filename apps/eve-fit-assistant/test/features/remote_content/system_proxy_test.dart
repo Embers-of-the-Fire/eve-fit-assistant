@@ -140,6 +140,49 @@ void main() {
       expect(config.httpProxy, "http://proxy.example.com:3128");
     });
 
+    test("reserved characters in credentials are percent-encoded separately", () {
+      // Raw interpolation would corrupt the proxy URL (`/` starts the path,
+      // `?` the query, `#` the fragment), and reqwest::Proxy::all rejects it
+      // with ChatError::InvalidConfig.
+      final config = systemProxyFromGnome(
+        mode: "manual",
+        httpHost: "proxy.example.com",
+        httpPort: 3128,
+        useAuthentication: true,
+        authenticationUser: "al@ce",
+        authenticationPassword: "p/a?ss#w:ord 100%",
+      )!;
+      final proxy = config.httpProxy!;
+      final uri = Uri.tryParse(proxy);
+      expect(uri, isNotNull);
+      expect(uri!.host, "proxy.example.com");
+      expect(uri.port, 3128);
+      // Uri.userInfo is not percent-decoded; the raw parts are encoded.
+      expect(uri.userInfo, "al%40ce:p%2Fa%3Fss%23w%3Aord%20100%25");
+    });
+
+    test("encoded GNOME credentials survive findProxy and decode back for dart:io", () {
+      final config = systemProxyFromGnome(
+        mode: "manual",
+        httpHost: "proxy.example.com",
+        httpPort: 3128,
+        useSameProxy: true,
+        useAuthentication: true,
+        authenticationUser: "al@ce",
+        authenticationPassword: "p/a?ss#w:ord 100%",
+      )!;
+      final url = Uri.parse("https://api.openai.com/v1");
+      // The findProxy directive carries no userinfo, so the percent-encoded
+      // credentials can never reach dart:io's undecoded directive parsing.
+      expect(findProxyForUrl(config, url), "PROXY proxy.example.com:3128");
+      final credentials = systemProxyCredentials(config);
+      expect(credentials, hasLength(1));
+      expect(credentials.single.host, "proxy.example.com");
+      expect(credentials.single.port, 3128);
+      expect(credentials.single.username, "al@ce");
+      expect(credentials.single.password, "p/a?ss#w:ord 100%");
+    });
+
     test("manual mode without any usable host/port returns null", () {
       expect(systemProxyFromGnome(mode: "manual"), isNull);
       expect(systemProxyFromGnome(mode: "manual", httpHost: "127.0.0.1"), isNull);
@@ -271,10 +314,12 @@ void main() {
       expect(proxyUrlFor(config, Uri.parse("https://localhost/v1")), isNull);
     });
 
-    test("keeps embedded credentials for both transports", () {
+    test("keeps embedded credentials for the native chat transport only", () {
       const config = SystemProxyConfig(httpsProxy: "http://alice:s3cret@127.0.0.1:7890");
       final url = Uri.parse("https://api.openai.com/v1");
-      expect(findProxyForUrl(config, url), "PROXY alice:s3cret@127.0.0.1:7890");
+      // The findProxy directive carries no userinfo; dart:io takes the
+      // credentials from systemProxyCredentials instead.
+      expect(findProxyForUrl(config, url), "PROXY 127.0.0.1:7890");
       expect(proxyUrlFor(config, url), "http://alice:s3cret@127.0.0.1:7890");
     });
 
@@ -284,8 +329,9 @@ void main() {
       // credentials in cleartext to an on-path actor.
       const config = SystemProxyConfig(httpsProxy: "https://user:password@proxy.example:443");
       final url = Uri.parse("https://api.openai.com/v1");
-      // dart:io's PROXY directive carries no scheme; the reqwest path does.
-      expect(findProxyForUrl(config, url), "PROXY user:password@proxy.example:443");
+      // dart:io's PROXY directive carries neither the scheme nor the
+      // userinfo; the reqwest path keeps both.
+      expect(findProxyForUrl(config, url), "PROXY proxy.example:443");
       expect(proxyUrlFor(config, url), "https://user:password@proxy.example:443");
     });
 
@@ -307,10 +353,7 @@ void main() {
       // A bypassed endpoint must stay distinguishable from "no proxy
       // configured": the native chat client disables env-var proxying for an
       // explicit direct route, while the default route keeps it.
-      const config = SystemProxyConfig(
-        allProxy: "http://127.0.0.1:7890",
-        bypass: ["localhost"],
-      );
+      const config = SystemProxyConfig(allProxy: "http://127.0.0.1:7890", bypass: ["localhost"]);
       final routing = systemProxyRoutingFor(config, Uri.parse("https://localhost/v1"));
       expect(routing.isDirect, isTrue);
       expect(routing.proxyUrl, isNull);
@@ -320,6 +363,43 @@ void main() {
       const config = SystemProxyConfig(httpProxy: "http://127.0.0.1:7890");
       final routing = systemProxyRoutingFor(config, Uri.parse("https://api.openai.com/v1"));
       expect(routing.isDirect, isTrue);
+    });
+  });
+
+  group("systemProxyCredentials", () {
+    test("returns nothing without userinfo", () {
+      const config = SystemProxyConfig(
+        httpProxy: "http://127.0.0.1:7890",
+        httpsProxy: "https://proxy.example.com:443",
+      );
+      expect(systemProxyCredentials(config), isEmpty);
+    });
+
+    test("decodes the userinfo of each distinct authenticated proxy", () {
+      const config = SystemProxyConfig(
+        httpProxy: "http://alice:s3cret@127.0.0.1:7890",
+        httpsProxy: "http://bob:h%3Am%40hn@proxy.example.com:3128",
+        allProxy: "http://alice:s3cret@127.0.0.1:7890", // duplicate of http
+      );
+      final credentials = systemProxyCredentials(config);
+      expect(credentials, hasLength(2));
+      expect(credentials[0].host, "127.0.0.1");
+      expect(credentials[0].port, 7890);
+      expect(credentials[0].username, "alice");
+      expect(credentials[0].password, "s3cret");
+      expect(credentials[1].host, "proxy.example.com");
+      expect(credentials[1].port, 3128);
+      expect(credentials[1].username, "bob");
+      expect(credentials[1].password, "h:m@hn");
+    });
+
+    test("a password may be empty or contain an encoded colon", () {
+      const config = SystemProxyConfig(httpProxy: "http://alice@127.0.0.1:7890");
+      final credentials = systemProxyCredentials(config);
+      expect(credentials.single.username, "alice");
+      expect(credentials.single.password, "");
+      const colon = SystemProxyConfig(httpProxy: "http://alice:s%3Acret@127.0.0.1:7890");
+      expect(systemProxyCredentials(colon).single.password, "s:cret");
     });
   });
 }
