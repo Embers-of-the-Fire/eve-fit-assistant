@@ -160,5 +160,8 @@ class PlatformComments extends _$PlatformComments {
     }
     _generation++;
     state = AsyncData(PlatformCommentState(comments: comments, nextCursor: null));
+    // Refresh the post record so the displayed comment count picks up the
+    // new comment.
+    ref.invalidate(platformPostProvider(postId));
   }
 }

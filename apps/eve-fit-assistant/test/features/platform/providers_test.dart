@@ -87,6 +87,7 @@ class _PlatformServer {
   final Map<String?, ({List<Map<String, Object?>> posts, String? next})> postPages = {};
   final Map<String?, ({List<Map<String, Object?>> comments, String? next})> commentPages = {};
   final List<Map<String, Object?>> createdComments = [];
+  int commentCount = 2;
 
   Future<ResponseBody> fetch(RequestOptions options) async {
     final path = options.path;
@@ -94,7 +95,8 @@ class _PlatformServer {
       return _json({"accessToken": _jwt("user-1"), "refreshToken": "refresh-2", "expiresIn": 900});
     }
     if (path == "$_origin/platform/internal/posts") {
-      final page = postPages[options.queryParameters["cursor"]] ??
+      final page =
+          postPages[options.queryParameters["cursor"]] ??
           const (posts: <Map<String, Object?>>[], next: null);
       return _json({"posts": page.posts, "nextCursor": page.next});
     }
@@ -102,7 +104,8 @@ class _PlatformServer {
       r"^/platform/internal/posts/([^/]+)/comments$",
     ).firstMatch(Uri.parse(path).path);
     if (commentsMatch != null && options.method == "GET") {
-      final page = commentPages[options.queryParameters["cursor"]] ??
+      final page =
+          commentPages[options.queryParameters["cursor"]] ??
           const (comments: <Map<String, Object?>>[], next: null);
       return _json({"comments": page.comments, "nextCursor": page.next});
     }
@@ -111,6 +114,7 @@ class _PlatformServer {
       final body = (options.data as Map<String, dynamic>)["body"] as String;
       final comment = {..._commentJson(commentId), "body": body};
       createdComments.add(comment);
+      commentCount++;
       return _json(comment, 201);
     }
     if (path.endsWith("/snapshot")) {
@@ -125,7 +129,9 @@ class _PlatformServer {
         },
       );
     }
-    final postMatch = RegExp(r"^/platform/internal/posts/([^/]+)$").firstMatch(Uri.parse(path).path);
+    final postMatch = RegExp(
+      r"^/platform/internal/posts/([^/]+)$",
+    ).firstMatch(Uri.parse(path).path);
     if (postMatch != null) {
       return _json({
         "postId": postMatch.group(1),
@@ -133,7 +139,7 @@ class _PlatformServer {
         "authorDeleted": false,
         "fitHash": "abc123",
         "createdAt": "2026-08-19T00:00:00.000Z",
-        "commentCount": 2,
+        "commentCount": commentCount,
       });
     }
     throw StateError("unexpected request: ${options.method} $path");
@@ -291,6 +297,29 @@ void main() {
       expect(state?.comments.map((c) => c.commentId), ["c-1", "c-2", "c-created-1"]);
       expect(state?.comments.last.body, "hello there");
       expect(state?.nextCursor, isNull);
+    });
+
+    test("submit refreshes the post comment count", () async {
+      final session = _signedInSession();
+      final scoped = ProviderContainer(
+        overrides: [
+          platformSessionProvider.overrideWith((ref) async => session),
+          localeProvider.overrideWithValue(Locale.en),
+        ],
+      );
+      addTearDown(scoped.dispose);
+      final postSub = scoped.listen(platformPostProvider("p-1"), (_, _) {});
+      addTearDown(postSub.close);
+      final commentSub = scoped.listen(platformCommentsProvider("p-1"), (_, _) {});
+      addTearDown(commentSub.close);
+
+      final before = await scoped.read(platformPostProvider("p-1").future);
+      expect(before?.record.commentCount, 2);
+
+      await scoped.read(platformCommentsProvider("p-1").notifier).submit("hello there");
+
+      final after = await scoped.read(platformPostProvider("p-1").future);
+      expect(after?.record.commentCount, 3);
     });
   });
 }
