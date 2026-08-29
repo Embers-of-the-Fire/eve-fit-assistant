@@ -302,6 +302,7 @@
   "fitCreationPageDialogErrorText": "Please enter fit name.",
   "fitCreationPageDialogDeleteFitTitle": "Delete Fit",
   "fitCreationPageDialogDeleteFitContent": "Are you sure you want to delete fit {fitName}?",
+  "fitCreationPageDialogOpenInPlatform": "Open in Platform",
   "fitPageTitle": "{fitName} - {shipName}",
   "fitPageUnavailableTitle": "Fit unavailable",
   "fitPageMissingMessage": "This fit could not be found.",
