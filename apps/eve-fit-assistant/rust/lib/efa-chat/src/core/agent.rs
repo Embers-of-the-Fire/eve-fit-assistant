@@ -187,29 +187,41 @@ impl ChatAgent {
     fn build_agent(&self) -> Result<TurnAgent, ChatError> {
         let base_url = self.config.resolved_base_url();
         let model = self.config.model.clone();
+        let http = self.config.http_client()?;
         let agent = match self.config.provider {
             ChatProviderKind::OpenAiCompatible => {
-                let client = openai::CompletionsClient::builder()
+                let builder = openai::CompletionsClient::builder()
                     .api_key(self.config.api_key.clone())
-                    .base_url(base_url)
-                    .build()
-                    .map_err(|e| ChatError::Client(e.to_string()))?;
+                    .base_url(base_url);
+                // Both build paths yield `Client<_, reqwest::Client>`: the
+                // custom client only adds the system-proxy configuration.
+                let client = match http {
+                    Some(http) => builder.http_client(http).build(),
+                    None => builder.build(),
+                }
+                .map_err(|e| ChatError::Client(e.to_string()))?;
                 TurnAgent::OpenAiCompatible(self.attach_tools(client.agent(model)))
             }
             ChatProviderKind::Anthropic => {
-                let client = anthropic::Client::builder()
+                let builder = anthropic::Client::builder()
                     .api_key(self.config.api_key.clone())
-                    .base_url(base_url)
-                    .build()
-                    .map_err(|e| ChatError::Client(e.to_string()))?;
+                    .base_url(base_url);
+                let client = match http {
+                    Some(http) => builder.http_client(http).build(),
+                    None => builder.build(),
+                }
+                .map_err(|e| ChatError::Client(e.to_string()))?;
                 TurnAgent::Anthropic(self.attach_tools(client.agent(model)))
             }
             ChatProviderKind::DeepSeek => {
-                let client = deepseek::Client::builder()
+                let builder = deepseek::Client::builder()
                     .api_key(self.config.api_key.clone())
-                    .base_url(base_url)
-                    .build()
-                    .map_err(|e| ChatError::Client(e.to_string()))?;
+                    .base_url(base_url);
+                let client = match http {
+                    Some(http) => builder.http_client(http).build(),
+                    None => builder.build(),
+                }
+                .map_err(|e| ChatError::Client(e.to_string()))?;
                 TurnAgent::DeepSeek(self.attach_tools(client.agent(model)))
             }
         };

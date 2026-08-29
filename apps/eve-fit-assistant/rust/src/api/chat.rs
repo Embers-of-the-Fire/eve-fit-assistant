@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use efa_chat::Message;
 use efa_chat::core::agent::ChatAgent;
-use efa_chat::core::config::{ChatProviderConfig, ChatProviderKind, PromptLanguage};
+use efa_chat::core::config::{
+    ChatProviderConfig, ChatProviderKind, PromptLanguage, ProxyConfig, ProxyRouting,
+};
 use efa_chat::core::event::ChatEvent;
 use efa_chat::tools::fit::{ActiveFit, FitCallbacks, FitToolFuture};
 use efa_chat::tools::manual::{ManualCorpus, ManualDocText};
@@ -36,6 +38,62 @@ impl From<ChatProvider> for ChatProviderKind {
     }
 }
 
+/// How the chat endpoint is reached, resolved by the Dart host from the
+/// desktop system proxy settings (see `chatProxyRoutingFor` in
+/// `lib/features/chat/provider.dart`). Ignored on web, where the browser
+/// applies its own proxy.
+pub enum ChatProxyRouting {
+    /// No host-side routing decision: keep reqwest's default client, which
+    /// honors the standard proxy environment variables.
+    SystemDefault,
+    /// The host resolved a proxy bypass for the endpoint: connect directly,
+    /// ignoring any proxy environment variables the default client would
+    /// otherwise pick up.
+    Direct,
+    /// A system proxy is configured and the endpoint is not bypassed.
+    /// Carries the full per-scheme proxy URLs and the bypass list (not just
+    /// the proxy resolved for the initial URL — which may not cover the
+    /// endpoint's own scheme, e.g. an HTTPS endpoint with only an HTTP
+    /// proxy configured) so the reqwest client re-resolves the routing for
+    /// every request: reqwest follows redirects inside the client, and a
+    /// redirect to a bypassed host must go direct while a cross-scheme
+    /// redirect must pick up that scheme's proxy.
+    Proxy {
+        /// Proxy URL for `http://` request URLs
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
+        http_url: Option<String>,
+        /// Proxy URL for `https://` request URLs
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
+        https_url: Option<String>,
+        /// Fallback proxy URL covering both schemes
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
+        all_url: Option<String>,
+        /// Hosts reached directly (`no_proxy` / GNOME `ignore-hosts`
+        /// formats).
+        bypass: Vec<String>,
+    },
+}
+
+impl From<ChatProxyRouting> for ProxyRouting {
+    fn from(routing: ChatProxyRouting) -> Self {
+        match routing {
+            ChatProxyRouting::SystemDefault => ProxyRouting::Default,
+            ChatProxyRouting::Direct => ProxyRouting::Direct,
+            ChatProxyRouting::Proxy {
+                http_url,
+                https_url,
+                all_url,
+                bypass,
+            } => ProxyRouting::Proxy(ProxyConfig {
+                http: http_url,
+                https: https_url,
+                all: all_url,
+                bypass,
+            }),
+        }
+    }
+}
+
 /// User-facing configuration for the chat provider. A blank `base_url`
 /// selects the provider's default endpoint.
 pub struct ChatConfig {
@@ -49,6 +107,11 @@ pub struct ChatConfig {
     /// Locale tag ("en", "zh", ...) selecting the language of the bundled
     /// prompt files; unrecognized tags fall back to English.
     pub language: String,
+    /// Proxy routing resolved by the Dart host from the desktop system proxy
+    /// settings. A bypassed endpoint must arrive as
+    /// [`ChatProxyRouting::Direct`] (not `SystemDefault`) so reqwest does not
+    /// fall back to the proxy environment variables. Ignored on web.
+    pub proxy: ChatProxyRouting,
 }
 
 pub enum ChatRole {
@@ -284,15 +347,18 @@ async fn drive_turn<F: Future>(future: F) -> F::Output {
 
 /// Fetch the model list exposed by the provider, used to populate the
 /// predefined model choices. A blank `base_url` selects the provider's
-/// default endpoint.
+/// default endpoint. [proxy] is the proxy routing resolved by the Dart host
+/// (see [`ChatConfig::proxy`]).
 #[frb]
 pub async fn list_available_models(
     provider: ChatProvider,
     api_key: String,
     base_url: String,
+    proxy: ChatProxyRouting,
 ) -> anyhow::Result<Vec<ChatModelInfo>> {
+    let routing = ProxyRouting::from(proxy);
     let models = drive_turn(async move {
-        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url).await
+        efa_chat::core::models::list_models(provider.into(), &api_key, &base_url, &routing).await
     })
     .await?;
     Ok(models
@@ -316,7 +382,7 @@ impl ChatSession {
 
     #[frb(sync)]
     pub fn create(config: ChatConfig) -> anyhow::Result<Self> {
-        let config = ChatProviderConfig::new(
+        let mut provider_config = ChatProviderConfig::new(
             config.provider.into(),
             config.api_key,
             config.base_url,
@@ -324,8 +390,9 @@ impl ChatSession {
         )?
         .with_system_prompt(config.system_prompt)
         .with_language(PromptLanguage::from_locale(&config.language));
+        provider_config.proxy = ProxyRouting::from(config.proxy);
         Ok(Self {
-            agent: Mutex::new(ChatAgent::new(config)?),
+            agent: Mutex::new(ChatAgent::new(provider_config)?),
             callbacks: Arc::new(CallbackRegistry::new()),
         })
     }
