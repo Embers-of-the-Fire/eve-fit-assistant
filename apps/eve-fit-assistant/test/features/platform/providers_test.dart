@@ -299,6 +299,34 @@ void main() {
       expect(state?.nextCursor, isNull);
     });
 
+    test("concurrent submits keep both created comments", () async {
+      // A non-null first-page cursor forces each submit to page forward
+      // before appending, so both calls snapshot the same state at entry.
+      server.commentPages[null] = (comments: [_commentJson("c-1")], next: "cursor-2");
+      server.commentPages["cursor-2"] = (comments: [_commentJson("c-2")], next: null);
+      final session = _signedInSession();
+      final scoped = ProviderContainer(
+        overrides: [
+          platformSessionProvider.overrideWith((ref) async => session),
+          localeProvider.overrideWithValue(Locale.en),
+        ],
+      );
+      addTearDown(scoped.dispose);
+      final sub = scoped.listen(platformCommentsProvider("p-1"), (_, _) {});
+      addTearDown(sub.close);
+      await scoped.read(platformCommentsProvider("p-1").future);
+
+      // Fire both creations without awaiting so their runs overlap.
+      final first = scoped.read(platformCommentsProvider("p-1").notifier).submit("first");
+      final second = scoped.read(platformCommentsProvider("p-1").notifier).submit("second");
+      await Future.wait([first, second]);
+
+      expect(server.createdComments.map((c) => c["body"]), ["first", "second"]);
+      final state = scoped.read(platformCommentsProvider("p-1")).value;
+      expect(state?.comments.map((c) => c.commentId), ["c-1", "c-2", "c-created-1", "c-created-2"]);
+      expect(state?.nextCursor, isNull);
+    });
+
     test("submit refreshes the post comment count", () async {
       final session = _signedInSession();
       final scoped = ProviderContainer(

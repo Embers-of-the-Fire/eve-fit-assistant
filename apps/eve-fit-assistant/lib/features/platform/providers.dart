@@ -138,13 +138,25 @@ class PlatformComments extends _$PlatformComments {
     }
   }
 
+  /// Tail of the in-flight [submit] chain. Each submission waits for the
+  /// previous one to settle so two concurrent creations cannot snapshot the
+  /// same state and have the later write drop the earlier comment.
+  Future<void> _submitTail = Future<void>.value();
+
   /// Creates a comment authored by the signed-in account. New comments land
   /// at the end of the ascending list: after a successful creation the
   /// remaining pages are paged forward so the new comment is visible, then it
-  /// is appended when the server-side ordering has not caught up yet. Throws
+  /// is appended when the server-side ordering has not caught up yet.
+  /// Concurrent submissions are serialized (see [_submitTail]). Throws
   /// [PlatformApiException] (`forbidden` on 403) or
   /// [PlatformAuthRequiredException] on failure.
-  Future<void> submit(String body) async {
+  Future<void> submit(String body) {
+    final run = _submitTail.then((_) => _submitNow(body));
+    _submitTail = run.catchError((_) {});
+    return run;
+  }
+
+  Future<void> _submitNow(String body) async {
     final session = await ref.read(platformSessionProvider.future);
     final created = await session.createComment(postId: postId, body: body);
     final current = state.value ?? const PlatformCommentState(comments: [], nextCursor: null);
