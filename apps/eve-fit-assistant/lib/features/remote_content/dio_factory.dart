@@ -54,6 +54,9 @@ Map<String, String> _baseHeaders({Map<String, String>? extraHeaders}) => {
 ///
 /// All remote content HTTP clients should use this factory to ensure
 /// consistent headers, timeout behavior, and shared HTTP response caching.
+/// Pass `useCache: false` for dynamic, interactive APIs (e.g. the platform
+/// feed and writes): the shared cache adds nothing there, and a failing or
+/// stale cache store turns into request failures / outdated reads.
 ///
 /// On web the default browser adapter is used; downloads are plain small
 /// requests (one GET per resource), so no connection-pool tuning applies.
@@ -62,6 +65,7 @@ Dio createRemoteDio({
   Duration sendTimeout = const Duration(seconds: 30),
   Duration receiveTimeout = const Duration(minutes: 2),
   Map<String, String>? extraHeaders,
+  bool useCache = true,
 }) {
   final dio = Dio(
     BaseOptions(
@@ -72,7 +76,9 @@ Dio createRemoteDio({
     ),
   );
 
-  dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
+  if (useCache) {
+    dio.interceptors.add(DioCacheInterceptor(options: RemoteCache.options));
+  }
   configureConnectionPool(
     dio,
     maxConnectionsPerHost: _remoteMaxConnectionsPerHost,
