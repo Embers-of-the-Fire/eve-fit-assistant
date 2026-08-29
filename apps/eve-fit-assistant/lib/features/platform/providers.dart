@@ -96,6 +96,11 @@ class PlatformCommentState {
 /// listing and creation are supported here.
 @riverpod
 class PlatformComments extends _$PlatformComments {
+  /// Incremented on every state mutation so overlapping async work can reject
+  /// stale writes: [loadMore] and [submit] may run concurrently, and the one
+  /// finishing last must not replace a newer state with its stale snapshot.
+  int _generation = 0;
+
   @override
   Future<PlatformCommentState> build(String postId) async {
     final session = await ref.watch(platformSessionProvider.future);
@@ -104,17 +109,23 @@ class PlatformComments extends _$PlatformComments {
   }
 
   /// Appends the next page; a no-op when the list is exhausted or a page is
-  /// already in flight. Errors restore the previous state and rethrow.
+  /// already in flight. If [submit] mutated the state while the page was in
+  /// flight, the stale page is discarded instead of overwriting the newer
+  /// state. Errors restore the previous state (unless it is stale) and
+  /// rethrow.
   Future<void> loadMore() async {
     final current = state.value;
     final cursor = current?.nextCursor;
     if (current == null || cursor == null || current.isLoadingMore) return;
+    final generation = _generation;
     state = AsyncData(
       PlatformCommentState(comments: current.comments, nextCursor: cursor, isLoadingMore: true),
     );
     try {
       final session = await ref.read(platformSessionProvider.future);
       final page = await session.listComments(postId, cursor: cursor);
+      if (generation != _generation) return;
+      _generation++;
       state = AsyncData(
         PlatformCommentState(
           comments: [...current.comments, ...page.comments],
@@ -122,7 +133,7 @@ class PlatformComments extends _$PlatformComments {
         ),
       );
     } on Object {
-      state = AsyncData(current);
+      if (generation == _generation) state = AsyncData(current);
       rethrow;
     }
   }
@@ -147,6 +158,7 @@ class PlatformComments extends _$PlatformComments {
     if (!comments.any((comment) => comment.commentId == created.commentId)) {
       comments = [...comments, created];
     }
+    _generation++;
     state = AsyncData(PlatformCommentState(comments: comments, nextCursor: null));
   }
 }
