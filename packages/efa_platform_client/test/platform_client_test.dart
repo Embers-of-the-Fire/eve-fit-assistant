@@ -2,6 +2,7 @@
 library;
 
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
@@ -305,6 +306,28 @@ void main() {
               .having((e) => e.statusCode, "statusCode", 400)
               .having((e) => e.code, "code", "bad_request")
               .having((e) => e.message, "message", "malformed cursor"),
+        ),
+      );
+    });
+
+    test("connection failures keep the underlying error as the message", () async {
+      final client = _clientWith(
+        (options) async => throw DioException(
+          requestOptions: options,
+          error: const HandshakeException("Connection terminated during handshake"),
+        ),
+      );
+      await expectLater(
+        client.listPosts,
+        throwsA(
+          isA<PlatformApiException>()
+              .having((e) => e.statusCode, "statusCode", isNull)
+              .having((e) => e.code, "code", isNull)
+              .having(
+                (e) => e.message,
+                "message",
+                contains("Connection terminated during handshake"),
+              ),
         ),
       );
     });

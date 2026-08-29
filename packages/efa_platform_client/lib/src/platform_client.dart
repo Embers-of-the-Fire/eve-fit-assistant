@@ -321,11 +321,18 @@ class PlatformApiClient {
 }
 
 /// Maps a Dio failure to a [PlatformApiException], decoding the worker's
-/// error envelope (`{error, message}`) when present. Package-internal:
+/// error envelope (`{error, message}`) when present. Connection-level
+/// failures carry no Dio message; the real cause (SocketException,
+/// HandshakeException, ...) lives in `e.error`, so it is kept as the
+/// message to keep the exception diagnosable. Package-internal:
 /// shared by [PlatformApiClient] and the session's authenticated writes.
 PlatformApiException mapPlatformDioException(DioException e) {
   final body = _decodeErrorBody(e.response?.data);
-  return PlatformApiException(e.response?.statusCode, body?.error, body?.message ?? e.message);
+  return PlatformApiException(
+    e.response?.statusCode,
+    body?.error,
+    body?.message ?? e.message ?? e.error?.toString(),
+  );
 }
 
 ({String? error, String? message})? _decodeErrorBody(Object? data) {
