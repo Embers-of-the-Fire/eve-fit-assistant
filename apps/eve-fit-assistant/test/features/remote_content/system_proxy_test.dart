@@ -233,16 +233,31 @@ void main() {
     test("rejects https proxies rather than downgrading them to cleartext", () {
       // dart:io can only speak cleartext HTTP CONNECT to a proxy: it would
       // open a plain socket and send the proxy credentials before any TLS.
-      // An https:// proxy (TLS to the proxy) is therefore rejected on the
-      // dart:io path — DIRECT, not a silent downgrade.
+      // An https:// proxy (TLS to the proxy) therefore fails closed on the
+      // dart:io path: the request errors before it is opened, rather than
+      // silently bypassing the configured egress policy with DIRECT.
       const config = SystemProxyConfig(
         httpsProxy: "https://user:password@proxy.example:443",
         allProxy: "https://all-proxy.example:8443",
       );
-      expect(findProxyForUrl(config, Uri.parse("https://foo.bar/")), "DIRECT");
+      expect(
+        () => findProxyForUrl(config, Uri.parse("https://foo.bar/")),
+        throwsA(
+          isA<UnsupportedProxyException>()
+              .having((e) => e.proxyAuthority, "proxyAuthority", "proxy.example:443")
+              // The error must not leak the proxy credentials into logs.
+              .having((e) => e.toString(), "toString", isNot(contains("password"))),
+        ),
+      );
       const onlyAll = SystemProxyConfig(allProxy: "https://all-proxy.example:8443");
-      expect(findProxyForUrl(onlyAll, Uri.parse("https://foo.bar/")), "DIRECT");
-      expect(findProxyForUrl(onlyAll, Uri.parse("http://foo.bar/")), "DIRECT");
+      expect(
+        () => findProxyForUrl(onlyAll, Uri.parse("https://foo.bar/")),
+        throwsA(isA<UnsupportedProxyException>()),
+      );
+      expect(
+        () => findProxyForUrl(onlyAll, Uri.parse("http://foo.bar/")),
+        throwsA(isA<UnsupportedProxyException>()),
+      );
     });
 
     test("unknown schemes and empty configs go direct", () {
@@ -345,9 +360,9 @@ void main() {
       const config = SystemProxyConfig(httpsProxy: "https://user:password@proxy.example:443");
       final url = Uri.parse("https://api.openai.com/v1");
       // The dart:io transport cannot do TLS to the proxy, so the https
-      // proxy is rejected there instead of being downgraded; the reqwest
-      // path keeps both the scheme and the userinfo.
-      expect(findProxyForUrl(config, url), "DIRECT");
+      // proxy fails closed there instead of being downgraded or silently
+      // bypassed; the reqwest path keeps both the scheme and the userinfo.
+      expect(() => findProxyForUrl(config, url), throwsA(isA<UnsupportedProxyException>()));
       expect(proxyUrlFor(config, url), "https://user:password@proxy.example:443");
     });
 

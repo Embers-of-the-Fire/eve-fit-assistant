@@ -17,9 +17,10 @@ library;
 /// representable: `dart:io`'s `HttpClient.findProxy` supports
 /// `PROXY host:port` and `DIRECT` only, so SOCKS proxies are dropped during
 /// parsing. dart:io can only speak cleartext HTTP CONNECT to a proxy, so an
-/// `https://` proxy (TLS to the proxy) is rejected on the dart:io transport
-/// — the URL goes direct rather than downgrading the connection, and its
-/// credentials, to cleartext. The directive carries no userinfo either —
+/// `https://` proxy (TLS to the proxy) fails closed on the dart:io
+/// transport: [findProxyForUrl] throws [UnsupportedProxyException] rather
+/// than silently bypassing the configured egress policy with `DIRECT` or
+/// downgrading the connection — and its credentials — to cleartext. The directive carries no userinfo either —
 /// dart:io does not percent-decode credentials embedded in it — so the
 /// dart:io transport takes the decoded credentials from
 /// [systemProxyCredentials] instead. The full URL is kept for native chat,
@@ -367,6 +368,32 @@ String _proxyAuthority(String proxy) {
   return at >= 0 ? authority.substring(at + 1) : authority;
 }
 
+/// Thrown by [findProxyForUrl] when the proxy applying to a URL uses an
+/// `https://` scheme (TLS to the proxy), which dart:io cannot speak.
+///
+/// dart:io can only speak cleartext HTTP CONNECT to a proxy, so the
+/// alternatives are both insecure: returning the proxy authority would make
+/// dart:io open a plain socket to the proxy and send the CONNECT request —
+/// and the proxy credentials — in cleartext, while returning `DIRECT` would
+/// silently bypass the configured egress policy. Throwing fails the request
+/// closed instead: dart:io surfaces the error to the caller of
+/// `HttpClient.openUrl` before any connection is opened. The exception
+/// carries only the proxy `host:port` authority, never the userinfo, so
+/// credentials cannot leak into logs. The `https://` scheme remains honored
+/// on the native chat path via [proxyUrlFor], where reqwest supports TLS to
+/// the proxy.
+class UnsupportedProxyException implements Exception {
+  const UnsupportedProxyException(this.proxyAuthority);
+
+  /// The `host:port` of the unsupported `https://` proxy (no userinfo).
+  final String proxyAuthority;
+
+  @override
+  String toString() =>
+      "UnsupportedProxyException: dart:io cannot use https:// proxy $proxyAuthority "
+      "(TLS to the proxy is not supported)";
+}
+
 /// Resolve the `HttpClient.findProxy` directive for [url]:
 /// `PROXY host:port` when a proxy applies, `DIRECT` otherwise.
 ///
@@ -374,15 +401,21 @@ String _proxyAuthority(String proxy) {
 /// starts only inside the destination tunnel), so an `https://` proxy — TLS
 /// to the proxy — cannot be honored: returning its authority here would make
 /// dart:io open a plain socket to the proxy and send the proxy credentials
-/// in cleartext. Such proxies are rejected (`DIRECT`) rather than silently
-/// downgraded; the `https://` scheme is honored on the native chat path via
-/// [proxyUrlFor]. The directive likewise drops the userinfo: dart:io does
-/// not percent-decode credentials embedded in it, so they are registered
+/// in cleartext, while returning `DIRECT` would silently bypass the
+/// configured egress policy. Such proxies therefore fail closed: the
+/// function throws [UnsupportedProxyException], which dart:io surfaces to
+/// the caller of `HttpClient.openUrl` before any connection is opened. The
+/// `https://` scheme is honored on the native chat path via [proxyUrlFor].
+/// The directive likewise drops the userinfo: dart:io does not
+/// percent-decode credentials embedded in it, so they are registered
 /// with `HttpClient.addProxyCredentials` instead — see
 /// [systemProxyCredentials].
 String findProxyForUrl(SystemProxyConfig config, Uri url) {
   final proxy = _proxyForUrl(config, url);
-  if (proxy == null || proxy.toLowerCase().startsWith("https://")) return "DIRECT";
+  if (proxy == null) return "DIRECT";
+  if (proxy.toLowerCase().startsWith("https://")) {
+    throw UnsupportedProxyException(_proxyAuthority(proxy));
+  }
   return "PROXY ${_proxyAuthority(proxy)}";
 }
 
