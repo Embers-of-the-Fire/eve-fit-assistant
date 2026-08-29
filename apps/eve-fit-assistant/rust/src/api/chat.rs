@@ -57,11 +57,14 @@ pub enum ChatProxyRouting {
     /// to a bypassed host must go direct while a cross-scheme redirect must
     /// pick up that scheme's proxy.
     Proxy {
-        /// Proxy URL for `http://` request URLs, if configured.
+        /// Proxy URL for `http://` request URLs
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
         http_url: Option<String>,
-        /// Proxy URL for `https://` request URLs, if configured.
+        /// Proxy URL for `https://` request URLs
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
         https_url: Option<String>,
-        /// Fallback proxy URL covering both schemes, if configured.
+        /// Fallback proxy URL covering both schemes
+        /// (`http://`/`https://[user:password@]host:port`), if configured.
         all_url: Option<String>,
         /// Hosts reached directly (`no_proxy` / GNOME `ignore-hosts`
         /// formats).
