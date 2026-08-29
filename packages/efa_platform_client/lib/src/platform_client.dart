@@ -66,6 +66,119 @@ class PostListPage {
   final String? nextCursor;
 }
 
+/// Time-window filter shared by the post and ship listings. [all] is the
+/// server default and sends no query parameter (matching the site's
+/// behavior); the others map to the `window` query values.
+enum PlatformTimeWindow {
+  h24("24h"),
+  d7("7d"),
+  d30("30d"),
+  all("all");
+
+  const PlatformTimeWindow(this.queryValue);
+
+  /// The `window` query value; null for [all], which is omitted instead.
+  final String queryValue;
+}
+
+/// A popular-ship entry of `GET /platform/internal/stats`.
+class TopShip {
+  const TopShip({required this.shipTypeId, required this.shipName, required this.postCount});
+
+  factory TopShip.fromJson(Map<String, dynamic> json) => TopShip(
+    shipTypeId: json["shipTypeId"] as int,
+    shipName: json["shipName"] as String,
+    postCount: json["postCount"] as int,
+  );
+
+  final int shipTypeId;
+  final String shipName;
+  final int postCount;
+}
+
+/// The platform-wide totals of `GET /platform/internal/stats`.
+class PlatformStats {
+  const PlatformStats({
+    required this.totalPosts,
+    required this.distinctShips,
+    required this.postsLast7d,
+    required this.topShips,
+  });
+
+  factory PlatformStats.fromJson(Map<String, dynamic> json) => PlatformStats(
+    totalPosts: json["totalPosts"] as int,
+    distinctShips: json["distinctShips"] as int,
+    postsLast7d: json["postsLast7d"] as int,
+    topShips: [
+      for (final entry in json["topShips"] as List<dynamic>)
+        TopShip.fromJson(entry as Map<String, dynamic>),
+    ],
+  );
+
+  final int totalPosts;
+  final int distinctShips;
+  final int postsLast7d;
+
+  /// The ships with the most posts, ordered by post count descending.
+  final List<TopShip> topShips;
+}
+
+/// A single entry of `GET /platform/internal/ships`.
+class ShipSummary {
+  const ShipSummary({
+    required this.shipTypeId,
+    required this.shipName,
+    required this.postCount,
+    required this.lastPostAt,
+  });
+
+  factory ShipSummary.fromJson(Map<String, dynamic> json) => ShipSummary(
+    shipTypeId: json["shipTypeId"] as int,
+    shipName: json["shipName"] as String,
+    postCount: json["postCount"] as int,
+    lastPostAt: json["lastPostAt"] as String,
+  );
+
+  final int shipTypeId;
+  final String shipName;
+  final int postCount;
+  final String lastPostAt;
+}
+
+/// One page of the cursor-paginated ship directory; [nextCursor] is null on
+/// the last page.
+class ShipListPage {
+  const ShipListPage({required this.ships, required this.nextCursor});
+
+  final List<ShipSummary> ships;
+  final String? nextCursor;
+}
+
+/// The ship detail of `GET /platform/internal/ships/:id`.
+class ShipDetail {
+  const ShipDetail({
+    required this.shipTypeId,
+    required this.shipName,
+    required this.postCount,
+    required this.firstPostAt,
+    required this.lastPostAt,
+  });
+
+  factory ShipDetail.fromJson(Map<String, dynamic> json) => ShipDetail(
+    shipTypeId: json["shipTypeId"] as int,
+    shipName: json["shipName"] as String,
+    postCount: json["postCount"] as int,
+    firstPostAt: json["firstPostAt"] as String,
+    lastPostAt: json["lastPostAt"] as String,
+  );
+
+  final int shipTypeId;
+  final String shipName;
+  final int postCount;
+  final String firstPostAt;
+  final String lastPostAt;
+}
+
 /// The post record of `GET /platform/internal/posts/:id` (spec §6.2).
 class PostRecord {
   const PostRecord({
@@ -202,12 +315,21 @@ class PlatformApiClient {
   final Dio _dio;
 
   /// Cursor-paginated post list (§6.3). [limit] is clamped server-side to
-  /// 1..50 (default 20).
-  Future<PostListPage> listPosts({String? cursor, int? limit, String? locale}) async {
+  /// 1..50 (default 20). [shipTypeId] and [window] filter the listing;
+  /// [PlatformTimeWindow.all] sends no `window` parameter.
+  Future<PostListPage> listPosts({
+    String? cursor,
+    int? limit,
+    String? locale,
+    int? shipTypeId,
+    PlatformTimeWindow? window,
+  }) async {
     final json = await _getJson("/platform/internal/posts", {
       "cursor": ?cursor,
       "limit": ?limit?.toString(),
       "locale": ?locale,
+      "shipTypeId": ?shipTypeId?.toString(),
+      if (window != null && window != PlatformTimeWindow.all) "window": window.queryValue,
     });
     return PostListPage(
       posts: [
@@ -217,6 +339,48 @@ class PlatformApiClient {
       nextCursor: json["nextCursor"] as String?,
     );
   }
+
+  /// Cursor-paginated ship directory. [q] filters by ship name; [window]
+  /// restricts to ships with posts inside the time window
+  /// ([PlatformTimeWindow.all] sends no `window` parameter).
+  Future<ShipListPage> listShips({
+    String? q,
+    PlatformTimeWindow? window,
+    String? cursor,
+    int? limit,
+    String? locale,
+  }) async {
+    final json = await _getJson("/platform/internal/ships", {
+      "q": ?q,
+      "cursor": ?cursor,
+      "limit": ?limit?.toString(),
+      "locale": ?locale,
+      if (window != null && window != PlatformTimeWindow.all) "window": window.queryValue,
+    });
+    return ShipListPage(
+      ships: [
+        for (final entry in json["ships"] as List<dynamic>)
+          ShipSummary.fromJson(entry as Map<String, dynamic>),
+      ],
+      nextCursor: json["nextCursor"] as String?,
+    );
+  }
+
+  /// The ship detail; null when no posts exist for the ship.
+  Future<ShipDetail?> getShip(int shipTypeId, {String? locale}) async {
+    try {
+      return ShipDetail.fromJson(
+        await _getJson("/platform/internal/ships/$shipTypeId", {"locale": ?locale}),
+      );
+    } on PlatformApiException catch (e) {
+      if (e.isNotFound) return null;
+      rethrow;
+    }
+  }
+
+  /// The platform-wide totals and popular ships.
+  Future<PlatformStats> getStats({String? locale}) async =>
+      PlatformStats.fromJson(await _getJson("/platform/internal/stats", {"locale": ?locale}));
 
   /// The post record (§6.2); null when the post does not exist.
   Future<PostRecord?> getPost(String postId) async {

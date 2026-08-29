@@ -2,10 +2,25 @@ import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
-import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:riverpod_annotation/riverpod_annotation.dart";
 
 part "providers.g.dart";
+
+/// The filter behind the platform post feed: an optional ship plus a time
+/// window ([PlatformTimeWindow.all] by default, matching the site's feed).
+class PlatformFeedFilter {
+  const PlatformFeedFilter({this.shipTypeId, this.window = PlatformTimeWindow.all});
+
+  final int? shipTypeId;
+  final PlatformTimeWindow window;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlatformFeedFilter && other.shipTypeId == shipTypeId && other.window == window;
+
+  @override
+  int get hashCode => Object.hash(shipTypeId, window);
+}
 
 /// The platform post-feed list state: the accumulated pages plus the cursor
 /// for the next page (null when the feed is exhausted).
@@ -22,14 +37,19 @@ class PlatformFeedState {
 }
 
 /// The platform post feed: a cursor-paginated, descending list of shared-fit
-/// posts. Pull-to-refresh re-runs [build] via `ref.invalidate`.
-@riverpodSingleton
+/// posts behind [PlatformFeedFilter]. Pull-to-refresh re-runs [build] via
+/// `ref.invalidate`.
+@riverpod
 class PlatformFeed extends _$PlatformFeed {
   @override
-  Future<PlatformFeedState> build() async {
+  Future<PlatformFeedState> build(PlatformFeedFilter filter) async {
     final session = await ref.watch(platformSessionProvider.future);
     final locale = ref.watch(localeProvider).name;
-    final page = await session.listPosts(locale: locale);
+    final page = await session.listPosts(
+      locale: locale,
+      shipTypeId: filter.shipTypeId,
+      window: filter.window,
+    );
     return PlatformFeedState(posts: page.posts, nextCursor: page.nextCursor);
   }
 
@@ -46,7 +66,12 @@ class PlatformFeed extends _$PlatformFeed {
     try {
       final session = await ref.read(platformSessionProvider.future);
       final locale = ref.read(localeProvider).name;
-      final page = await session.listPosts(cursor: cursor, locale: locale);
+      final page = await session.listPosts(
+        cursor: cursor,
+        locale: locale,
+        shipTypeId: filter.shipTypeId,
+        window: filter.window,
+      );
       state = AsyncData(
         PlatformFeedState(posts: [...current.posts, ...page.posts], nextCursor: page.nextCursor),
       );
@@ -55,6 +80,104 @@ class PlatformFeed extends _$PlatformFeed {
       rethrow;
     }
   }
+}
+
+/// The platform-wide totals and popular ships behind the feed header.
+@riverpod
+Future<PlatformStats> platformStats(Ref ref) async {
+  final session = await ref.watch(platformSessionProvider.future);
+  final locale = ref.watch(localeProvider).name;
+  return session.getStats(locale: locale);
+}
+
+/// The query behind the platform ship directory: a name search plus a time
+/// window ([PlatformTimeWindow.all] by default, matching the site's
+/// directory).
+class PlatformShipQuery {
+  const PlatformShipQuery({this.query = "", this.window = PlatformTimeWindow.all});
+
+  final String query;
+  final PlatformTimeWindow window;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlatformShipQuery && other.query == query && other.window == window;
+
+  @override
+  int get hashCode => Object.hash(query, window);
+}
+
+/// The ship-directory list state: the accumulated pages plus the cursor for
+/// the next page (null when the directory is exhausted).
+class PlatformShipDirectoryState {
+  const PlatformShipDirectoryState({
+    required this.ships,
+    required this.nextCursor,
+    this.isLoadingMore = false,
+  });
+
+  final List<ShipSummary> ships;
+  final String? nextCursor;
+  final bool isLoadingMore;
+}
+
+/// The platform ship directory: a cursor-paginated list of ships with shared
+/// fits behind [PlatformShipQuery].
+@riverpod
+class PlatformShipDirectory extends _$PlatformShipDirectory {
+  @override
+  Future<PlatformShipDirectoryState> build(PlatformShipQuery query) async {
+    final session = await ref.watch(platformSessionProvider.future);
+    final locale = ref.watch(localeProvider).name;
+    final trimmed = query.query.trim();
+    final page = await session.listShips(
+      q: trimmed.isEmpty ? null : trimmed,
+      window: query.window,
+      locale: locale,
+    );
+    return PlatformShipDirectoryState(ships: page.ships, nextCursor: page.nextCursor);
+  }
+
+  /// Appends the next page; a no-op when the directory is exhausted or a
+  /// page is already in flight. Errors restore the previous state and
+  /// rethrow so the UI can surface a message.
+  Future<void> loadMore() async {
+    final current = state.value;
+    final cursor = current?.nextCursor;
+    if (current == null || cursor == null || current.isLoadingMore) return;
+    state = AsyncData(
+      PlatformShipDirectoryState(ships: current.ships, nextCursor: cursor, isLoadingMore: true),
+    );
+    try {
+      final session = await ref.read(platformSessionProvider.future);
+      final locale = ref.read(localeProvider).name;
+      final trimmed = query.query.trim();
+      final page = await session.listShips(
+        q: trimmed.isEmpty ? null : trimmed,
+        window: query.window,
+        cursor: cursor,
+        locale: locale,
+      );
+      state = AsyncData(
+        PlatformShipDirectoryState(
+          ships: [...current.ships, ...page.ships],
+          nextCursor: page.nextCursor,
+        ),
+      );
+    } on Object {
+      state = AsyncData(current);
+      rethrow;
+    }
+  }
+}
+
+/// The ship detail behind [shipTypeId]; null when no posts exist for the
+/// ship.
+@riverpod
+Future<ShipDetail?> platformShip(Ref ref, int shipTypeId) async {
+  final session = await ref.watch(platformSessionProvider.future);
+  final locale = ref.watch(localeProvider).name;
+  return session.getShip(shipTypeId, locale: locale);
 }
 
 /// The platform post detail: the post record plus its stored snapshot.
