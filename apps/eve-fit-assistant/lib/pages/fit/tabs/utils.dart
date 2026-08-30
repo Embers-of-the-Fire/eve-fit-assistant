@@ -83,11 +83,17 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
                 ),
                 if (canShare)
                   OutlinedButton.icon(
-                    onPressed: () => showFitShareDialog(
-                      context,
-                      fitId: widget.fitContext.fitId,
-                      initialFit: widget.fitContext.fit,
-                    ),
+                    // The share dialog uploads the persisted fit
+                    // (widget.fitContext.fit), not the controller values, so
+                    // sharing must wait until pending metadata edits are saved
+                    // or discarded.
+                    onPressed: _editable
+                        ? null
+                        : () => showFitShareDialog(
+                            context,
+                            fitId: widget.fitContext.fitId,
+                            initialFit: widget.fitContext.fit,
+                          ),
                     icon: const Icon(Icons.share_outlined),
                     label: Text(context.l10n.fitUtilsShareButton),
                   ),
