@@ -225,6 +225,7 @@
   "platformWindow30d": "30 days",
   "platformWindowAll": "All time",
   "platformPostNotFound": "Post not found",
+  "platformPostOpenInApp": "Open in app",
   "platformCommentsTitle": "Comments ({count})",
   "platformCommentsEmpty": "No comments yet",
   "platformCommentDeletedAuthor": "Deleted account",

@@ -2,15 +2,21 @@
 library;
 
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:dio/dio.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 import "package:eve_fit_assistant/components/icon/efa_icon_resolver.dart";
 import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
+import "package:eve_fit_assistant/features/fit_link/importer.dart";
+import "package:eve_fit_assistant/features/fit_link/providers.dart";
 import "package:eve_fit_assistant/pages/platform/post_page.dart";
+import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter/material.dart";
@@ -44,6 +50,16 @@ class _MemoryStore implements PlatformSessionStore {
 
   @override
   Future<void> clear() async {}
+}
+
+/// An importer whose registered-fit import always misses, so the open-in-app
+/// failure path can be exercised without storage or a router.
+class _MissingFitImporter extends FitLinkImporter {
+  const _MissingFitImporter(super.ref);
+
+  @override
+  Future<FitMetadata> importRegistered(String fitHash) =>
+      throw FitLinkNotFoundException(buildFitLinkRegisteredAppUri(fitHash));
 }
 
 ResponseBody _json(Object body, [int status = 200]) => ResponseBody.fromString(
@@ -102,6 +118,11 @@ PlatformSession _session() => PlatformSession(
 );
 
 void main() {
+  setUpAll(() {
+    final logDir = Directory.systemTemp.createTempSync("efa_post_page_log_");
+    GlobalLogger.init(logDir.path, enableDebugLog: false);
+  });
+
   testWidgets("renders the snapshot, the comments, and the sign-in prompt when signed out", (
     tester,
   ) async {
@@ -123,8 +144,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining("测试配置"), findsOneWidget);
+    expect(find.text("在应用中打开"), findsOneWidget);
     expect(find.text("评论（1）"), findsOneWidget);
     expect(find.text("不错的配置"), findsOneWidget);
     expect(find.text("登录后即可参与讨论"), findsOneWidget);
+  });
+
+  testWidgets("open-in-app shows an error snackbar when the registered fit is missing", (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 3200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          platformSessionProvider.overrideWith((ref) async => _session()),
+          localeProvider.overrideWithValue(Locale.zh),
+          appEfaIconResolverProvider.overrideWith((ref) => const AppEfaIconResolver(null, null)),
+          fitLinkImporterProvider.overrideWith(_MissingFitImporter.new),
+        ],
+        child: testApp(const PlatformPostPage(postId: "p-1")),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("在应用中打开"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("无法导入该配置。"), findsOneWidget);
   });
 }

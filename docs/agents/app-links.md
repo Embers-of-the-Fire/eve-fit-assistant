@@ -18,6 +18,9 @@ The app-side feature lives in `apps/eve-fit-assistant/lib/features/fit_link/`:
 - `native_intake.dart` receives OS links through `app_links`.
 - `intake_gate.dart` is wired in `main.dart` with the other gates; it awaits repository
   readiness, imports the fit, then pushes `FitRoute`.
+- The platform post page (`pages/platform/post_page.dart`) has an open-in-app action that
+  imports the post's registered fit by hash through `FitLinkImporter.importRegistered` (the
+  in-app counterpart of the site's post-header "Open in app" button) and pushes `FitRoute`.
 
 Web keeps the hash URL strategy. `web/_redirects` serves the SPA at `/fit/*`, and the boot
 probe reads `Uri.base`.

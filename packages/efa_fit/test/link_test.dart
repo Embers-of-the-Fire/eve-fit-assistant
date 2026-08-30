@@ -267,5 +267,13 @@ void main() {
         ),
       );
     });
+
+    test("built registered app URI round-trips through the parser", () {
+      final uri = buildFitLinkRegisteredAppUri(fitHash);
+      expect(uri.toString(), "efa://fit/registered?hash=$fitHash");
+      final result = parseFitLinkUri(uri);
+      expect(result, isA<FitLinkRegistered>());
+      expect((result! as FitLinkRegistered).fitHash, fitHash);
+    });
   });
 }
