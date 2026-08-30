@@ -986,6 +986,7 @@
   "fitUtilsNameRequired": "请输入配置名。",
   "fitUtilsExportButton": "导出配置",
   "fitUtilsExportImageButton": "导出图片",
+  "fitUtilsShareButton": "分享到平台",
   "fitUtilsNameLabel": "配置名称",
   "fitUtilsDescriptionLabel": "配置备注",
   "fitExportDialogTitle": "导出配置",

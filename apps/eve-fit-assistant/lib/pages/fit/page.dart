@@ -26,6 +26,8 @@ import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/chat/fit_context.dart";
 import "package:eve_fit_assistant/features/fit_io/export_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/share_dialog.dart";
+import "package:eve_fit_assistant/features/fit_io/share_operation.dart";
 import "package:eve_fit_assistant/features/market_price/ui/fit_price_tile.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
