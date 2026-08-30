@@ -46,37 +46,52 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
   Widget build(BuildContext context) {
     super.build(context);
 
+    // Mirror the fit-list swipe action: only accounts holding the platform
+    // post:create permission may publish fits (fail-closed while resolving).
+    final canShare = ref.watch(fitShareEligibilityProvider);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Form(
         key: _formKey,
         child: Column(
           children: [
-            Align(
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
+            // Stretch each action across the tab width: a wrapping row sends
+            // later buttons to a second line with mismatched alignment, while
+            // full-width buttons line up with the form fields below.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 12,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => showFitExportDialog(
+                    context,
+                    fitId: widget.fitContext.fitId,
+                    initialFit: widget.fitContext.fit,
+                  ),
+                  icon: const Icon(Icons.ios_share_outlined),
+                  label: Text(context.l10n.fitUtilsExportButton),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => FitScreenshotPage(fitId: widget.fitContext.fitId),
+                    ),
+                  ),
+                  icon: const Icon(Icons.image_outlined),
+                  label: Text(context.l10n.fitUtilsExportImageButton),
+                ),
+                if (canShare)
                   OutlinedButton.icon(
-                    onPressed: () => showFitExportDialog(
+                    onPressed: () => showFitShareDialog(
                       context,
                       fitId: widget.fitContext.fitId,
                       initialFit: widget.fitContext.fit,
                     ),
-                    icon: const Icon(Icons.ios_share_outlined),
-                    label: Text(context.l10n.fitUtilsExportButton),
+                    icon: const Icon(Icons.share_outlined),
+                    label: Text(context.l10n.fitUtilsShareButton),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (context) => FitScreenshotPage(fitId: widget.fitContext.fitId),
-                      ),
-                    ),
-                    icon: const Icon(Icons.image_outlined),
-                    label: Text(context.l10n.fitUtilsExportImageButton),
-                  ),
-                ],
-              ),
+              ],
             ),
             const SizedBox(height: 16),
             TextFormField(
