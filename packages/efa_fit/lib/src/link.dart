@@ -73,8 +73,12 @@ String buildFitLinkRegisteredShareUrl(String fitHash) {
 /// The `efa://` registered fit link for [fitHash]: the in-app counterpart of
 /// [buildFitLinkRegisteredShareUrl], used when the consumer is already the
 /// app (e.g. the platform post page's open-in-app action).
-Uri buildFitLinkRegisteredAppUri(String fitHash) =>
-    Uri.parse("$efaScheme://fit/registered?$fitLinkHashParam=$fitHash");
+Uri buildFitLinkRegisteredAppUri(String fitHash) => Uri(
+  scheme: efaScheme,
+  host: "fit",
+  path: "registered",
+  queryParameters: {fitLinkHashParam: fitHash},
+);
 
 /// The canonical fit path of [uri] (`/fit/raw` or `/fit/registered`),
 /// null when [uri] is not a recognized fit link.
