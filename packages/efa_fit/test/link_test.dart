@@ -267,5 +267,20 @@ void main() {
         ),
       );
     });
+
+    test("built registered app URI round-trips through the parser", () {
+      final uri = buildFitLinkRegisteredAppUri(fitHash);
+      expect(uri.toString(), "efa://fit/registered?hash=$fitHash");
+      final result = parseFitLinkUri(uri);
+      expect(result, isA<FitLinkRegistered>());
+      expect((result! as FitLinkRegistered).fitHash, fitHash);
+    });
+
+    test("buildFitLinkRegisteredAppUri encodes the hash as a query parameter", () {
+      final malicious = "${'a' * 62}&hash=${'b' * 64}";
+      final uri = buildFitLinkRegisteredAppUri(malicious);
+      expect(uri.queryParameters.length, 1);
+      expect(uri.queryParameters[fitLinkHashParam], malicious);
+    });
   });
 }

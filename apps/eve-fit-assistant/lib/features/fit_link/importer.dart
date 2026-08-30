@@ -21,6 +21,13 @@ class FitLinkImporter {
 
   Future<FitMetadata> importBootUri(Uri uri) => _importParsed(uri, parseFitLinkBootUri(uri));
 
+  /// Imports a registered fit directly by its content-addressed hash — the
+  /// in-app counterpart of following an `efa://fit/registered` link, used by
+  /// the platform post page's open-in-app action. The hash is validated by
+  /// the same link grammar as external links.
+  Future<FitMetadata> importRegistered(String fitHash) =>
+      import(buildFitLinkRegisteredAppUri(fitHash));
+
   Future<FitMetadata> _importParsed(Uri uri, FitLinkParseResult? parsed) async => switch (parsed) {
     FitLinkRaw(:final payload) => _importRaw(payload),
     FitLinkRegistered(:final fitHash) => _importRegistered(uri, fitHash),

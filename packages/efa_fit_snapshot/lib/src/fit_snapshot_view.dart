@@ -20,6 +20,7 @@ class FitSnapshotView extends StatelessWidget {
     this.locale,
     this.iconResolver,
     this.showHeader = true,
+    this.headerAction,
   });
 
   static const double _columnWidth = 420;
@@ -31,10 +32,89 @@ class FitSnapshotView extends StatelessWidget {
   /// Whether to show the fit name/description header above the columns.
   final bool showHeader;
 
+  /// An optional trailing widget for the header row (e.g. a caller-provided
+  /// action button); ignored when [showHeader] is false. The view stays
+  /// read-only — any behavior belongs to the widget the caller supplies.
+  final Widget? headerAction;
+
   @override
   Widget build(BuildContext context) {
     final effectiveLocale = locale ?? Localizations.maybeLocaleOf(context) ?? const Locale("en");
 
+    final child = SnapshotDisplay(
+      resolver: iconResolver,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columnCount = width >= _columnWidth * 3 + 48
+              ? 3
+              : width >= _columnWidth * 2 + 36
+              ? 2
+              : 1;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showHeader) _SnapshotHeader(snapshot: snapshot, action: headerAction),
+                switch (columnCount) {
+                  3 => Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 12,
+                    children: [
+                      _column(SnapshotCharacterColumn(snapshot: snapshot)),
+                      _column(SnapshotEquipmentColumn(snapshot: snapshot)),
+                      _column(SnapshotStatisticsColumn(snapshot: snapshot)),
+                    ],
+                  ),
+                  2 => Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 12,
+                    children: [
+                      _column(SnapshotEquipmentColumn(snapshot: snapshot)),
+                      _column(
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SnapshotCharacterColumn(snapshot: snapshot),
+                            const SizedBox(height: 12),
+                            SnapshotStatisticsColumn(snapshot: snapshot),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  _ => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 12,
+                    children: [
+                      SnapshotEquipmentColumn(snapshot: snapshot),
+                      SnapshotCharacterColumn(snapshot: snapshot),
+                      SnapshotStatisticsColumn(snapshot: snapshot),
+                    ],
+                  ),
+                },
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    // With a surrounding localization scope, layer the snapshot delegate over
+    // it (the first delegate of a type wins) so caller-supplied widgets (e.g.
+    // [headerAction]) keep access to the app's delegates; standalone, install
+    // the minimal delegates the view needs on its own.
+    if (Localizations.maybeLocaleOf(context) != null) {
+      return Localizations.override(
+        context: context,
+        locale: effectiveLocale,
+        delegates: const [SnapshotLocalizations.delegate],
+        child: child,
+      );
+    }
     return Localizations(
       locale: effectiveLocale,
       delegates: const [
@@ -42,67 +122,7 @@ class FitSnapshotView extends StatelessWidget {
         DefaultMaterialLocalizations.delegate,
         DefaultWidgetsLocalizations.delegate,
       ],
-      child: SnapshotDisplay(
-        resolver: iconResolver,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final columnCount = width >= _columnWidth * 3 + 48
-                ? 3
-                : width >= _columnWidth * 2 + 36
-                ? 2
-                : 1;
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (showHeader) _SnapshotHeader(snapshot: snapshot),
-                  switch (columnCount) {
-                    3 => Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 12,
-                      children: [
-                        _column(SnapshotCharacterColumn(snapshot: snapshot)),
-                        _column(SnapshotEquipmentColumn(snapshot: snapshot)),
-                        _column(SnapshotStatisticsColumn(snapshot: snapshot)),
-                      ],
-                    ),
-                    2 => Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 12,
-                      children: [
-                        _column(SnapshotEquipmentColumn(snapshot: snapshot)),
-                        _column(
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SnapshotCharacterColumn(snapshot: snapshot),
-                              const SizedBox(height: 12),
-                              SnapshotStatisticsColumn(snapshot: snapshot),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    _ => Column(
-                      mainAxisSize: MainAxisSize.min,
-                      spacing: 12,
-                      children: [
-                        SnapshotEquipmentColumn(snapshot: snapshot),
-                        SnapshotCharacterColumn(snapshot: snapshot),
-                        SnapshotStatisticsColumn(snapshot: snapshot),
-                      ],
-                    ),
-                  },
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+      child: child,
     );
   }
 
@@ -127,9 +147,10 @@ class _SnapshotColumnFrame extends StatelessWidget {
 }
 
 class _SnapshotHeader extends StatelessWidget {
-  const _SnapshotHeader({required this.snapshot});
+  const _SnapshotHeader({required this.snapshot, this.action});
 
   final FitSnapshot snapshot;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +162,7 @@ class _SnapshotHeader extends StatelessWidget {
       subtitle: header.hasDescription() && header.description.isNotEmpty
           ? Text(header.description)
           : null,
+      trailing: action,
     );
   }
 }

@@ -301,5 +301,24 @@ void main() {
       );
       expect(fitManager.imported, isEmpty);
     });
+
+    test("importRegistered imports by hash without a link URI", () async {
+      overrideSession(_fakeSession(_makeFitState(), _makeSnapshot()));
+
+      final result = await importer.importRegistered(_fitHash);
+
+      expect(result.fitId, "imported-id");
+      expect(fitManager.imported.single.metadata.name, "Registered Fit");
+    });
+
+    test("importRegistered rejects a malformed hash before any request", () async {
+      overrideSession(_fakeSession(_makeFitState(), _makeSnapshot()));
+
+      await expectLater(
+        importer.importRegistered("abc"),
+        throwsA(isA<FitLinkNotFoundException>()),
+      );
+      expect(fitManager.imported, isEmpty);
+    });
   });
 }

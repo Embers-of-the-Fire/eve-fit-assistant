@@ -23,11 +23,18 @@ Future<void> _pumpView(
   FitSnapshot snapshot, {
   Locale locale = const Locale("en"),
   Size size = const Size(1400, 2400),
+  bool showHeader = true,
+  Widget? headerAction,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(_wrap(FitSnapshotView(snapshot: snapshot), locale: locale));
+  await tester.pumpWidget(
+    _wrap(
+      FitSnapshotView(snapshot: snapshot, showHeader: showHeader, headerAction: headerAction),
+      locale: locale,
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -66,6 +73,30 @@ void main() {
 
     expect(find.text("High Slot"), findsOneWidget);
     expect(find.textContaining("Stable"), findsNothing);
+  });
+
+  testWidgets("renders the header action on the header row, beside the title", (tester) async {
+    await _pumpView(tester, buildFixtureSnapshot(), headerAction: const Text("ACTION"));
+
+    final title = tester.getRect(find.text("Test Rokh - Rokh"));
+    final action = tester.getRect(find.text("ACTION"));
+
+    expect(action.left, greaterThan(title.right));
+    // Same row: the action's vertical center overlaps the title's.
+    expect(action.center.dy, greaterThan(title.top));
+    expect(action.center.dy, lessThan(title.bottom + 24));
+  });
+
+  testWidgets("omits the header action when the header is hidden", (tester) async {
+    await _pumpView(
+      tester,
+      buildFixtureSnapshot(),
+      showHeader: false,
+      headerAction: const Text("ACTION"),
+    );
+
+    expect(find.text("Test Rokh - Rokh"), findsNothing);
+    expect(find.text("ACTION"), findsNothing);
   });
 
   testWidgets("stacks into a single column on narrow layouts", (tester) async {

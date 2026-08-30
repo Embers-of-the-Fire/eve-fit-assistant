@@ -1,10 +1,13 @@
 import "package:auto_route/auto_route.dart";
 import "package:efa_acl/efa_acl.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:efa_fit_snapshot/efa_fit_snapshot.dart";
 import "package:efa_platform_client/efa_platform_client.dart";
 import "package:eve_fit_assistant/components/icon/efa_icon_resolver.dart";
 import "package:eve_fit_assistant/components/layout.dart";
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
+import "package:eve_fit_assistant/features/fit_link/providers.dart";
 import "package:eve_fit_assistant/features/platform/providers.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -89,10 +92,65 @@ class _PlatformPostContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => ListView(
     padding: const EdgeInsets.symmetric(vertical: 10),
     children: [
-      FitSnapshotView(snapshot: post.snapshot, iconResolver: ref.watch(appEfaIconResolverProvider)),
+      FitSnapshotView(
+        snapshot: post.snapshot,
+        iconResolver: ref.watch(appEfaIconResolverProvider),
+        headerAction: _OpenInAppButton(fitHash: post.record.fitHash),
+      ),
       const Divider(height: 32),
       _CommentSection(postId: postId, commentCount: post.record.commentCount),
     ],
+  );
+}
+
+/// The open-in-app action of a platform post: imports the registered fit
+/// addressed by [fitHash] into local storage and opens it, mirroring the
+/// site's post header (`FitShareLanding` forwards to the same registered
+/// link for browsers).
+class _OpenInAppButton extends ConsumerStatefulWidget {
+  const _OpenInAppButton({required this.fitHash});
+
+  final String fitHash;
+
+  @override
+  ConsumerState<_OpenInAppButton> createState() => _OpenInAppButtonState();
+}
+
+class _OpenInAppButtonState extends ConsumerState<_OpenInAppButton> {
+  bool _busy = false;
+
+  void _showError(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openInApp() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final metadata = await ref.read(fitLinkImporterProvider).importRegistered(widget.fitHash);
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.fitImportSuccess(fitName: metadata.name))),
+      );
+      await context.router.push(FitRoute(fitId: metadata.fitId));
+    } on FitLinkNotFoundException {
+      debug("Open-in-app: registered fit ${widget.fitHash} not found on the platform");
+      if (mounted) _showError(context.l10n.fitImportUnknownError);
+    } on Object catch (e, st) {
+      warning("Open-in-app import failed for ${widget.fitHash}: $e", stackTrace: st);
+      if (mounted) _showError(context.l10n.fitImportUnknownError);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FilledButton.tonalIcon(
+    onPressed: _busy ? null : _openInApp,
+    icon: _busy
+        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+        : const Icon(Icons.rocket_launch_outlined),
+    label: Text(context.l10n.platformPostOpenInApp),
   );
 }
 

@@ -363,6 +363,7 @@
   "platformWindow30d": "30 天",
   "platformWindowAll": "全部",
   "platformPostNotFound": "未找到该分享",
+  "platformPostOpenInApp": "在应用中打开",
   "platformCommentsTitle": "评论（{count}）",
   "@platformCommentsTitle": {
     "placeholders": { "count": { "type": "int" } }
