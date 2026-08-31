@@ -75,6 +75,21 @@ void main() {
     expect(find.textContaining("Stable"), findsNothing);
   });
 
+  testWidgets("hides the subsystem section when no subsystem is equipped", (tester) async {
+    await _pumpView(tester, buildFixtureSnapshot(subsystemSlots: 4));
+
+    expect(find.text("Subsystem"), findsNothing);
+    expect(find.text("Subsystem (Empty)"), findsNothing);
+  });
+
+  testWidgets("renders the subsystem section when a subsystem is equipped", (tester) async {
+    await _pumpView(tester, buildFixtureSnapshot(subsystemSlots: 4, withSubsystem: true));
+
+    expect(find.text("Subsystem"), findsOneWidget);
+    expect(find.text("Tengu Defensive - Amplification Node"), findsOneWidget);
+    expect(find.text("Subsystem (Empty)"), findsNWidgets(3));
+  });
+
   testWidgets("renders the header action on the header row, beside the title", (tester) async {
     await _pumpView(tester, buildFixtureSnapshot(), headerAction: const Text("ACTION"));
 

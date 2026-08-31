@@ -159,7 +159,7 @@ class FitSnapshotExporter {
         mediumSlots: max(ship?.mediumSlots ?? 0, fit.body.slots.medium.length),
         lowSlots: max(ship?.lowSlots ?? 0, fit.body.slots.low.length),
         rigSlots: max(ship?.rigSlots ?? 0, fit.body.slots.rig.length),
-        subsystemSlots: max(ship?.subsystemSlots ?? 0, fit.body.slots.subsystem.length),
+        subsystemSlots: exportSubsystemSlotCount(ship?.subsystemSlots, fit.body.slots.subsystem),
         serviceSlots: max(ship?.serviceSlots ?? 0, fit.body.slots.service.length),
         turretHardpoints: turretHardpoints,
         launcherHardpoints: launcherHardpoints,

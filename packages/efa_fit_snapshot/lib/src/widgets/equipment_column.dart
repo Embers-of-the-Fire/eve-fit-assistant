@@ -120,7 +120,9 @@ class SnapshotEquipmentColumn extends StatelessWidget {
           slots: snapshot.rigSlots,
           placeholder: EfaAssets.slotRig,
         ),
-        if (snapshot.subsystemSlots.isNotEmpty) ...[
+        // Subsystem slots are only meaningful as a full set (T3 cruisers); with
+        // zero equipped subsystems the section is nothing but empty placeholders.
+        if (snapshot.subsystemSlots.any((slot) => slot.hasItem())) ...[
           EfaSectionHeader(title: l10n.subsystemSlot),
           for (final slot in snapshot.subsystemSlots)
             slot.hasItem()

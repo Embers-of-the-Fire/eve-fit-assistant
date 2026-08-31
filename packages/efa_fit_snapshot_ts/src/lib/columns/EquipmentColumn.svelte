@@ -43,6 +43,12 @@ function subsystemPlaceholder(type: Subsystem_SubsystemType): EfaIconName {
 
 const layout = $derived(snapshot.ship?.layout);
 
+// Subsystem slots are only meaningful as a full set (T3 cruisers); with zero
+// equipped subsystems the section renders nothing but empty placeholders.
+const hasEquippedSubsystem = $derived(
+    snapshot.subsystemSlots.some((slot) => slot.item !== undefined),
+);
+
 const usedTurret = $derived(
     snapshot.highSlots.filter((slot) => slot.item?.isTurret === true).length,
 );
@@ -100,7 +106,7 @@ const fighterBay = $derived(
     <Rack title={ctx.t("lowSlot")} slots={snapshot.lowSlots} placeholder="slot-low" />
     <Rack title={ctx.t("rigSlot")} slots={snapshot.rigSlots} placeholder="slot-rig" />
 
-    {#if snapshot.subsystemSlots.length > 0}
+    {#if hasEquippedSubsystem}
         <SectionHeader title={ctx.t("subsystemSlot")} />
         {#each snapshot.subsystemSlots as slot (slot.index)}
             {#if slot.item}

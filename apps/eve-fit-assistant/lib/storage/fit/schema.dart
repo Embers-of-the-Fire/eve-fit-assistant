@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:efa_constant/eve.dart";
 import "package:efa_proto/fit.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
@@ -244,6 +246,21 @@ abstract class FitDynamicRegistry with _$FitDynamicRegistry {
 
   factory FitDynamicRegistry.fromJson(Map<String, dynamic> json) =>
       _$FitDynamicRegistryFromJson(json);
+}
+
+/// Layout subsystem slot count for exported representations of a fit.
+///
+/// [FitStorageSlots.subsystem] is always [EveConstGeneric.subsystemSize] long
+/// regardless of the ship, so unlike the other racks its raw length must not
+/// serve as a layout fallback: ships without subsystem slots would otherwise
+/// export a phantom subsystem section. When the ship definition is
+/// unavailable, fall back to covering every fitted subsystem.
+int exportSubsystemSlotCount(int? shipSubsystemSlots, IList<Option<FitModuleItem>> subsystem) {
+  var fitted = 0;
+  for (var index = 0; index < subsystem.length; index++) {
+    if (subsystem[index].isSome()) fitted = index + 1;
+  }
+  return max(shipSubsystemSlots ?? 0, fitted);
 }
 
 Set<int> collectReferencedDynamicItemIds(FitStorage fit) {
