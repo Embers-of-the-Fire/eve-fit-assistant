@@ -59,8 +59,8 @@ const _result = FitPostSubmitResult(
 );
 
 void main() {
-  // The operation logs a warning when the redirect fails; initialize the
-  // global logger once (it is `late final`) with a throwaway file target.
+  // The operation logs a warning when opening the post page fails; initialize
+  // the global logger once (it is `late final`) with a throwaway file target.
   setUpAll(() {
     GlobalLogger.init(
       Directory.systemTemp.createTempSync("efa-share-test").path,
@@ -94,7 +94,7 @@ void main() {
       return captured;
     }
 
-    testWidgets("uploads and redirects to the worker-provided post page", (tester) async {
+    testWidgets("uploads and returns the result without opening the post page", (tester) async {
       final launched = <Uri>[];
       final ref = await pumpRef(
         tester,
@@ -111,34 +111,9 @@ void main() {
       );
 
       expect(outcome, _result);
-      expect(launched, [Uri.parse(_result.postUrl)]);
-    });
-
-    testWidgets("a failed redirect still resolves the upload result", (tester) async {
-      final ref = await pumpRef(tester, launcher: (uri) async => false);
-
-      final outcome = await const FitShareOperation().share(
-        ref,
-        fitId: "test-fit-1",
-        fit: _makeFit(),
-      );
-
-      expect(outcome, _result);
-    });
-
-    testWidgets("a throwing launcher still resolves the upload result", (tester) async {
-      final ref = await pumpRef(
-        tester,
-        launcher: (uri) async => throw StateError("no browser available"),
-      );
-
-      final outcome = await const FitShareOperation().share(
-        ref,
-        fitId: "test-fit-1",
-        fit: _makeFit(),
-      );
-
-      expect(outcome, _result);
+      // The post page is only opened on explicit user request: the site may
+      // still be processing the upload right after submission.
+      expect(launched, isEmpty);
     });
 
     testWidgets("upload failures propagate without launching anything", (tester) async {
@@ -158,6 +133,62 @@ void main() {
         throwsA(isA<FitUploadException>()),
       );
       expect(launched, isEmpty);
+    });
+  });
+
+  group("FitShareOperation.openPost", () {
+    Future<WidgetRef> pumpRef(
+      WidgetTester tester, {
+      required Future<bool> Function(Uri) launcher,
+    }) async {
+      late WidgetRef captured;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            fitSnapshotUploadFnProvider.overrideWithValue(
+              (ref, {required fitId, required fit}) async => _result,
+            ),
+            fitShareUrlLauncherProvider.overrideWithValue(launcher),
+          ],
+          child: Consumer(
+            builder: (context, ref, _) {
+              captured = ref;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      return captured;
+    }
+
+    testWidgets("launches the post page URL", (tester) async {
+      final launched = <Uri>[];
+      final ref = await pumpRef(
+        tester,
+        launcher: (uri) async {
+          launched.add(uri);
+          return true;
+        },
+      );
+
+      await const FitShareOperation().openPost(ref, _result.postUrl);
+
+      expect(launched, [Uri.parse(_result.postUrl)]);
+    });
+
+    testWidgets("a failed launch is non-fatal", (tester) async {
+      final ref = await pumpRef(tester, launcher: (uri) async => false);
+
+      await const FitShareOperation().openPost(ref, _result.postUrl);
+    });
+
+    testWidgets("a throwing launcher is non-fatal", (tester) async {
+      final ref = await pumpRef(
+        tester,
+        launcher: (uri) async => throw StateError("no browser available"),
+      );
+
+      await const FitShareOperation().openPost(ref, _result.postUrl);
     });
   });
 

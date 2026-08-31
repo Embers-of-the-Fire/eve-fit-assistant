@@ -32,23 +32,19 @@ final fitShareEligibilityProvider = Provider<bool>((Ref ref) {
 });
 
 /// The dedicated "share" operation: uploads the fit to the platform and
-/// redirects the user to the resulting post page (the worker-provided
-/// [FitPostSubmitResult.postUrl]) instead of listing a raw snapshot URL.
+/// returns the resulting [FitPostSubmitResult]. The post page is only opened
+/// on explicit user request ([openPost]), because the site may still be
+/// processing the upload right after submission.
 class FitShareOperation {
   const FitShareOperation();
 
-  /// Uploads the fit via [fitSnapshotUploadFnProvider] and opens the post
-  /// page in the external browser. A failed redirect is non-fatal (logged):
-  /// the caller still receives the result and can offer a manual retry.
+  /// Uploads the fit via [fitSnapshotUploadFnProvider]. Does not open the
+  /// post page; callers decide when to offer that action.
   Future<FitPostSubmitResult> share(
     WidgetRef ref, {
     required String fitId,
     required FitStorage fit,
-  }) async {
-    final result = await ref.read(fitSnapshotUploadFnProvider)(ref, fitId: fitId, fit: fit);
-    await openPost(ref, result.postUrl);
-    return result;
-  }
+  }) async => ref.read(fitSnapshotUploadFnProvider)(ref, fitId: fitId, fit: fit);
 
   /// Opens a post page URL through [fitShareUrlLauncherProvider]. Launcher
   /// failures (a `false` return or a thrown exception) are non-fatal: they
