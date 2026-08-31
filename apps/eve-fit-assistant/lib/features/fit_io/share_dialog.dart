@@ -23,7 +23,9 @@ Future<void> showFitShareDialog(
 );
 
 /// The dedicated "share" dialog: publishes the fit to the platform via
-/// [FitShareOperation] and redirects the user to the resulting post page.
+/// [FitShareOperation], then lets the user open the post page, copy its link,
+/// or dismiss the dialog. The post page is not opened automatically because
+/// the site may still be processing the upload right after submission.
 /// Entry points are gated by [fitShareEligibilityProvider], so this dialog
 /// assumes the account is allowed to publish.
 class FitShareDialog extends ConsumerStatefulWidget {

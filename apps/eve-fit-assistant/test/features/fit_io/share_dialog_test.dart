@@ -127,25 +127,25 @@ void main() {
 
     expect(find.text("分享配置"), findsOneWidget);
     expect(find.text("Test Fit"), findsOneWidget);
-    expect(find.text("将该配置发布到平台，并在浏览器中打开帖子页面。"), findsOneWidget);
+    expect(find.text("将该配置发布到平台。"), findsOneWidget);
     expect(find.text("分享"), findsOneWidget);
   });
 
-  testWidgets("share redirects to the post page and offers copy/open actions", (tester) async {
+  testWidgets("share uploads without jumping and offers copy/open actions", (tester) async {
     await tester.pumpWidget(buildDialog(_makeFit()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text("分享"));
     await tester.pumpAndSettle();
 
-    // Success view; the share operation already redirected to the
-    // worker-provided post page URL.
-    expect(find.text("配置已发布至平台，帖子页面已在浏览器中打开。"), findsOneWidget);
-    expect(launchedUrls, [Uri.parse(_postUrl)]);
+    // Success view; the share operation does not open the post page
+    // automatically because the site may still be processing the upload.
+    expect(find.text("配置已发布至平台，帖子页面可能需要片刻才能访问。"), findsOneWidget);
+    expect(launchedUrls, isEmpty);
 
     await tester.tap(find.text("查看帖子"));
     await tester.pumpAndSettle();
-    expect(launchedUrls, [Uri.parse(_postUrl), Uri.parse(_postUrl)]);
+    expect(launchedUrls, [Uri.parse(_postUrl)]);
 
     await tester.tap(find.text("复制链接"));
     await tester.pumpAndSettle();
@@ -170,7 +170,7 @@ void main() {
     await tester.tap(find.text("分享"));
     await tester.pumpAndSettle();
 
-    expect(find.text("平台已存在相同配置，帖子页面已在浏览器中打开。"), findsOneWidget);
+    expect(find.text("平台已存在相同配置。"), findsOneWidget);
   });
 
   testWidgets("shows the mapped error inline when the platform rejects the fit", (tester) async {
