@@ -1,15 +1,20 @@
 import "package:efa_fit/efa_fit.dart";
 
-FitSnapshot buildFixtureSnapshot({bool withStatistics = true}) {
+FitSnapshot buildFixtureSnapshot({
+  bool withStatistics = true,
+  int subsystemSlots = 0,
+  bool withSubsystem = false,
+}) {
   final builder = FitSnapshotBuilder(
     fitName: "Test Rokh",
     description: "A snapshot fixture",
     ship: const SnapshotTypeData(typeId: 24688, names: {"en": "Rokh", "zh": "罗克级"}),
-    layout: const SnapshotShipLayoutData(
+    layout: SnapshotShipLayoutData(
       highSlots: 8,
       mediumSlots: 5,
       lowSlots: 6,
       rigSlots: 3,
+      subsystemSlots: subsystemSlots,
       turretHardpoints: 8,
       launcherHardpoints: 0,
     ),
@@ -41,6 +46,20 @@ FitSnapshot buildFixtureSnapshot({bool withStatistics = true}) {
       state: Slots_SlotState.ACTIVE,
     ),
   );
+
+  if (withSubsystem) {
+    builder.setSubsystem(
+      0,
+      Subsystem_SubsystemType.DEFENSIVE,
+      const SnapshotModuleData(
+        type: SnapshotTypeData(
+          typeId: 30078,
+          names: {"en": "Tengu Defensive - Amplification Node"},
+        ),
+        state: Slots_SlotState.ACTIVE,
+      ),
+    );
+  }
 
   builder.addDrone(
     const SnapshotDroneData(

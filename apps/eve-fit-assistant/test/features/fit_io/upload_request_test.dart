@@ -144,6 +144,22 @@ void main() {
       expect(fit.layout.fighterTubes, 0);
     });
 
+    test("layout subsystem slots cover only fitted subsystems without a collection", () {
+      // The stored subsystem list is always `subsystemSize` long, so its raw
+      // length must not leak into the exported layout.
+      expect(_build(_makeFit()).fit.layout.subsystemSlots, 1);
+
+      final fit = _makeFit();
+      final emptySubsystem = fit.copyWith(
+        body: fit.body.copyWith(
+          slots: fit.body.slots.copyWith(
+            subsystem: IList(List<Option<FitModuleItem>>.filled(4, const None())),
+          ),
+        ),
+      );
+      expect(_build(emptySubsystem).fit.layout.subsystemSlots, 0);
+    });
+
     test("maps rack modules with charges and dynamic ids", () {
       final modules = _build(_makeFit()).fit.modules;
       expect(modules, hasLength(2));
