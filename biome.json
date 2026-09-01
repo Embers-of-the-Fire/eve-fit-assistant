@@ -11,6 +11,8 @@
             "worker/**/*",
             "packages/acl/ts/**/*",
             "packages/acl/tool/**/*",
+            "packages/efa_acl/ts/**/*",
+            "packages/efa_proto_ts/**/*",
             "packages/efa_fit_snapshot_ts/**/*",
             "packages/efa_platform_client_ts/**/*"
         ],

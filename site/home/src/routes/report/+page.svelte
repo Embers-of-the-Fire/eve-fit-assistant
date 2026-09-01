@@ -6,12 +6,7 @@ import { t } from "$lib/i18n/index.svelte";
 $effect(() => {
     const params = page.url.searchParams;
     const variant = params.get("variant");
-    if (
-        variant !== "bug" &&
-        variant !== "feature" &&
-        variant !== "agent" &&
-        variant !== "platform"
-    )
+    if (variant !== "bug" && variant !== "feature" && variant !== "agent" && variant !== "platform")
         return;
 
     const forward = new URLSearchParams(params);

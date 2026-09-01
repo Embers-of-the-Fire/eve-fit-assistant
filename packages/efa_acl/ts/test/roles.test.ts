@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-    aclDefaultRoles,
-    aclForRoles,
-    aclRoles,
-    isAclRole,
-    tokensForRoles,
-} from "../src/index";
+import { aclDefaultRoles, aclForRoles, aclRoles, isAclRole, tokensForRoles } from "../src/index";
 
 describe("roles", () => {
     it("grants fresh accounts the default user role", () => {

@@ -27,6 +27,7 @@ from colorama import Style
 
 from bootstrap.color import styled
 from bootstrap.constant import EFA_APP_ROOT
+from bootstrap.constant import PROJECT_ROOT
 from bootstrap.constant import PROTOBUF_DART_OUT_PATH
 from bootstrap.constant import PROTOBUF_PYTHON_OUT_PATH
 from bootstrap.constant import PROTOBUF_SCHEMA_PATH
@@ -144,6 +145,77 @@ def _run_build_runner() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
 
 
+def _format_dart(*paths: str) -> None:
+    """Format generated Dart outputs so the lint phase's format check passes."""
+    runtime = _runtime()
+    dart = get_command("dart")
+    existing = [p for p in paths if (PROJECT_ROOT / p).exists()]
+    if not existing:
+        return
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+        + f"dart format {' '.join(existing)}"
+    )
+    runtime.execute([dart, "format", *existing], "DART FORMAT OUTPUT", cwd=PROJECT_ROOT)
+
+
+def _format_protobuf() -> None:
+    _format_dart("packages/efa_proto/lib")
+
+
+def _format_frb() -> None:
+    _format_dart("apps/eve-fit-assistant/lib/native")
+    runtime = _runtime()
+    cargo = get_command("cargo")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+        + "cargo fmt --package rust_lib_eve_fit_assistant"
+    )
+    runtime.execute(
+        [cargo, "fmt", "--package", "rust_lib_eve_fit_assistant"],
+        "CARGO FMT OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
+
+
+def _format_dart_tools() -> None:
+    _format_dart(
+        "apps/eve-fit-assistant/lib/constant",
+        "apps/eve-fit-assistant/lib/config",
+        "apps/eve-fit-assistant/lib/storage",
+        "packages/efa_constant/lib",
+    )
+
+
+def _format_l10n() -> None:
+    _format_dart(
+        "apps/eve-fit-assistant/lib/data/l10n",
+        "packages/efa_fit_snapshot/lib/src/l10n/generated",
+    )
+
+
+def _format_acl() -> None:
+    """Format the tracked, generated ACL product bindings.
+
+    The generators emit unformatted output; the bindings are tracked files
+    that must stay dart/biome-clean.
+    """
+    _format_dart("packages/efa_acl/dart/lib")
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        return
+    runtime = _runtime()
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+        + "pnpm biome check --write packages/efa_acl/ts/"
+    )
+    runtime.execute(
+        [pnpm, "biome", "check", "--write", "packages/efa_acl/ts/"],
+        "BIOME FORMAT OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
+
+
 def _run_l10n() -> None:
     """Generate localization files for the app and the snapshot package."""
     runtime = _runtime()
@@ -202,25 +274,88 @@ def _run_dogma_units() -> None:
 
 @dataclass(frozen=True)
 class Step:
-    """A named codegen step with its step-level dependencies."""
+    """A named codegen step with its step-level dependencies.
+
+    ``format`` runs right after ``run`` and formats exactly the outputs this
+    step produced — scoped codegen jobs must never format artifacts that do
+    not exist in their scope. ``outputs`` declares the repository-relative
+    globs the step produces (used by the generated-output coverage tests).
+    """
 
     name: str
     run: Callable[[], None]
     requires: tuple[str, ...] = ()
+    format: Callable[[], None] | None = None
+    outputs: tuple[str, ...] = ()
     # Local-only steps are excluded from `all_steps()`: they depend on a
     # selected data workspace and are never part of CI or release codegen.
     local_only: bool = False
 
 
 STEPS: tuple[Step, ...] = (
-    Step("protobuf", _run_protobuf),
-    Step("protobuf_ts", _run_protobuf_ts),
-    Step("frb", _run_frb),
-    Step("dart_tools", _run_dart_tools),
-    Step("build_runner", _run_build_runner, requires=("frb", "protobuf")),
-    Step("l10n", _run_l10n),
-    Step("acl", _run_acl),
-    Step("dogma_units", _run_dogma_units, local_only=True),
+    Step(
+        "protobuf",
+        _run_protobuf,
+        format=_format_protobuf,
+        outputs=("packages/efa_proto/lib/**", "bootstrap/data/schema/**"),
+    ),
+    Step("protobuf_ts", _run_protobuf_ts, outputs=("packages/efa_proto_ts/src/**",)),
+    Step(
+        "frb",
+        _run_frb,
+        format=_format_frb,
+        outputs=(
+            "apps/eve-fit-assistant/lib/native/**",
+            "apps/eve-fit-assistant/rust/src/frb_generated.rs",
+        ),
+    ),
+    Step(
+        "dart_tools",
+        _run_dart_tools,
+        format=_format_dart_tools,
+        outputs=(
+            "apps/eve-fit-assistant/lib/constant/assets_generated.dart",
+            "apps/eve-fit-assistant/lib/config/locale.dart",
+            "apps/eve-fit-assistant/lib/storage/repo/repo_version.dart",
+            "packages/efa_constant/lib/eve_attr_generated.dart",
+        ),
+    ),
+    Step(
+        "build_runner",
+        _run_build_runner,
+        requires=("frb", "protobuf"),
+        outputs=(
+            "apps/eve-fit-assistant/lib/**/*.g.dart",
+            "apps/eve-fit-assistant/lib/**/*.freezed.dart",
+            "apps/eve-fit-assistant/lib/**/*.gr.dart",
+        ),
+    ),
+    Step(
+        "l10n",
+        _run_l10n,
+        format=_format_l10n,
+        outputs=(
+            "apps/eve-fit-assistant/lib/data/l10n/**",
+            "packages/efa_fit_snapshot/lib/src/l10n/generated/**",
+        ),
+    ),
+    Step(
+        "acl",
+        _run_acl,
+        format=_format_acl,
+        outputs=(
+            "packages/acl/dart/test/fixtures/generated/**",
+            "packages/acl/ts/test/fixtures/generated/**",
+            "packages/efa_acl/dart/lib/acl.generated.dart",
+            "packages/efa_acl/ts/src/acl.generated.ts",
+        ),
+    ),
+    Step(
+        "dogma_units",
+        _run_dogma_units,
+        outputs=("packages/efa_constant/lib/eve_dogma_unit_generated.dart",),
+        local_only=True,
+    ),
 )
 
 _STEPS_BY_NAME = {step.name: step for step in STEPS}
@@ -296,9 +431,16 @@ def steps_for_packages(package_ids: Iterable[str]) -> list[str]:
     return resolve_steps(names)
 
 
-def run_steps(names: Iterable[str]) -> None:
-    """Execute the given steps (with transitive dependencies) in order."""
+def run_steps(names: Iterable[str], *, format_outputs: bool = True) -> None:
+    """Execute the given steps (with transitive dependencies) in order.
+
+    Each step's scoped format hook runs right after the step itself, so a
+    job only ever formats artifacts its own steps produced.
+    """
     for name in resolve_steps(names):
+        step = _STEPS_BY_NAME[name]
         click.echo(styled([Style.BRIGHT, Fore.CYAN], f"--- codegen step: {name} ---"))
-        _STEPS_BY_NAME[name].run()
+        step.run()
+        if format_outputs and step.format is not None:
+            step.format()
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "All code generation completed successfully."))

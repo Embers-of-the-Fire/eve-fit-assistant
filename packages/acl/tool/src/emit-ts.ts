@@ -153,9 +153,7 @@ function emitRoles(roles: AclRole[]): string[] {
     const roleDoc = tsDoc([
         "Roles defined by this schema.",
         "",
-        ...roles.map(
-            (role) => `- \`${role.name}\`: ${role.description.replaceAll("\n", " ")}`,
-        ),
+        ...roles.map((role) => `- \`${role.name}\`: ${role.description.replaceAll("\n", " ")}`),
     ]);
     const roleList = roles.map((role) => `    "${role.name}",`).join("\n");
     const defaults = roles.filter((role) => role.isDefault);

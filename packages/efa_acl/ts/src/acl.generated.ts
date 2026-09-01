@@ -85,16 +85,10 @@ export function createAcl(tokens: Iterable<AclToken>): Acl<AclActionMap, AclToke
 export type AclRole = "user" | "moderator" | "admin";
 
 /** All roles in declaration order. */
-export const aclRoles = [
-    "user",
-    "moderator",
-    "admin",
-] as const;
+export const aclRoles = ["user", "moderator", "admin"] as const;
 
 /** Roles granted to fresh accounts by default. */
-export const aclDefaultRoles = [
-    "user",
-] as const;
+export const aclDefaultRoles = ["user"] as const;
 
 /** Schema-level guard: whether `role` is defined by this schema. */
 export function isAclRole(role: string): role is AclRole {
@@ -104,8 +98,21 @@ export function isAclRole(role: string): role is AclRole {
 /** The ACL tokens each role grants. */
 const roleTokens = {
     user: ["post:create", "post:delete:own", "comment:create", "comment:delete:own"],
-    moderator: ["post:create", "post:delete:own", "post:delete:all", "comment:create", "comment:delete:own", "comment:delete:all"],
-    admin: ["post:create", "post:delete:all", "comment:create", "comment:delete:all", "admin:manage_roles"],
+    moderator: [
+        "post:create",
+        "post:delete:own",
+        "post:delete:all",
+        "comment:create",
+        "comment:delete:own",
+        "comment:delete:all",
+    ],
+    admin: [
+        "post:create",
+        "post:delete:all",
+        "comment:create",
+        "comment:delete:all",
+        "admin:manage_roles",
+    ],
 } as const satisfies Record<AclRole, readonly AclToken[]>;
 
 /**

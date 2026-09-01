@@ -15,6 +15,9 @@
 from __future__ import annotations
 
 import ast
+import posixpath
+import re
+import subprocess
 
 from pathlib import Path
 
@@ -23,7 +26,10 @@ import bootstrap.ci.resolve as resolver
 from bootstrap.ci.catalog import STANDALONE_KINDS
 from bootstrap.ci.catalog import TASK_KINDS
 from bootstrap.ci.catalog import applicable_kinds
+from bootstrap.ci.codegen import STEPS
+from bootstrap.ci.codegen import steps_for_packages
 from bootstrap.ci.registry import PACKAGES
+from bootstrap.ci.resolve import match_any_pattern
 from bootstrap.constant import PROJECT_ROOT
 
 
@@ -63,6 +69,72 @@ def test_every_package_is_covered_or_opaque():
 
 def test_opaque_packages_are_explicit():
     assert {p.id for p in PACKAGES if p.opaque} == {"eve-fit-os", "release"}
+
+
+# 3. Referential integrity (extended) ----------------------------------------
+
+_DART_REF = re.compile(r"""(?:import|part|export)\s+['"]([^'"]+)['"]""")
+
+
+def _git_tracked_files() -> set[str]:
+    out = subprocess.run(
+        ["git", "ls-files"],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return set(out.stdout.splitlines())
+
+
+def test_untracked_dart_references_are_produced_by_the_codegen_closure():
+    """Every generated Dart file a package references must be produced by a
+    codegen step in that package's dependency closure.
+
+    A missing codegen fact fails ``dart analyze`` in CI (gitignored generated
+    files never exist there); this test fails locally instead.
+    """
+    tracked = _git_tracked_files()
+    steps_by_name = {s.name: s for s in STEPS}
+    by_id = {p.id: p for p in PACKAGES}
+
+    for package in PACKAGES:
+        if package.ecosystem != "dart":
+            continue
+        package_dir = PROJECT_ROOT / package.path
+        closure_steps = steps_for_packages([package.id])
+        dart_sources = sorted(
+            p
+            for subdir in ("lib", "test")
+            if package_dir.joinpath(subdir).is_dir()
+            for p in package_dir.joinpath(subdir).rglob("*.dart")
+        )
+        for dart_file in dart_sources:
+            rel_dir = posixpath.dirname(dart_file.relative_to(PROJECT_ROOT).as_posix())
+            for match in _DART_REF.finditer(dart_file.read_text(encoding="utf-8")):
+                uri = match.group(1)
+                if uri.startswith("dart:"):
+                    continue
+                if uri.startswith("package:"):
+                    pkg_name, _, path_rest = uri.removeprefix("package:").partition("/")
+                    target = by_id.get(pkg_name)
+                    if target is None or target.ecosystem != "dart":
+                        continue
+                    resolved = posixpath.normpath(f"{target.path}/lib/{path_rest}")
+                else:
+                    resolved = posixpath.normpath(f"{rel_dir}/{uri}")
+                if resolved in tracked:
+                    continue
+                producing = [
+                    step
+                    for step in closure_steps
+                    if match_any_pattern(resolved, steps_by_name[step].outputs)
+                ]
+                assert producing, (
+                    f"{dart_file.relative_to(PROJECT_ROOT)} references {resolved!r}, "
+                    f"which is not tracked by git and is not produced by any codegen "
+                    f"step in {package.id}'s closure {closure_steps}"
+                )
 
 
 # 5. Separation --------------------------------------------------------------

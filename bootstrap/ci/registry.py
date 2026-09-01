@@ -95,7 +95,14 @@ PACKAGES: tuple[Package, ...] = (
         ecosystem="dart",
         tests=True,
     ),
-    Package(id="efa_constant", path="packages/efa_constant", ecosystem="dart"),
+    Package(
+        id="efa_constant",
+        path="packages/efa_constant",
+        ecosystem="dart",
+        # `lib/eve_attr_generated.dart` (from the `attr_id` generator in
+        # `dart_tools`) is gitignored and imported by `lib/eve.dart`.
+        codegen=("dart_tools",),
+    ),
     Package(
         id="efa_fit",
         path="packages/efa_fit",

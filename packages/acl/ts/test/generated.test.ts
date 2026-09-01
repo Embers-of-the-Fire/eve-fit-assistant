@@ -3,11 +3,11 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Acl } from "../src/index";
 import {
     type AclActionMap,
+    type AclRole,
+    type AclToken,
     aclDefaultRoles,
     aclForRoles,
-    type AclRole,
     aclRoles,
-    type AclToken,
     aclTokens,
     type CommentDeleteQualifier,
     createAcl,

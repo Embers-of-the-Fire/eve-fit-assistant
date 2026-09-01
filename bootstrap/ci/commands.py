@@ -18,7 +18,6 @@ from bootstrap.ci.codegen import all_step_names
 from bootstrap.ci.codegen import run_steps
 from bootstrap.ci.codegen import steps_for_packages
 from bootstrap.ci.diagnostics import register_ci_diagnostics_commands
-from bootstrap.ci.lint import run_lint
 from bootstrap.ci.release import register_ci_release_commands
 from bootstrap.ci.release_github import register_github_release_command
 from bootstrap.cli import runtime
@@ -106,7 +105,11 @@ def register_ci_commands(cli_group: click.Group) -> None:
     )
     @click.option("--steps", default=None, help="Comma-separated codegen step names.")
     @click.option("--all", "all_steps", is_flag=True, default=False, help="Run every step.")
-    @click.option("--format/--no-format", default=True, help="Format after generation.")
+    @click.option(
+        "--format/--no-format",
+        default=True,
+        help="Format each step's outputs right after it runs (default: on).",
+    )
     def ci_codegen(packages: str | None, steps: str | None, all_steps: bool, format: bool):
         """Generate code through the step graph (CI-aware)."""
         selected = [name for name in (packages, steps) if name] + ([True] if all_steps else [])
@@ -124,11 +127,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
             assert steps is not None
             names = [s.strip() for s in steps.split(",") if s.strip()]
         try:
-            run_steps(names)
+            run_steps(names, format_outputs=format)
         except ValueError as exception:
             raise click.ClickException(str(exception)) from exception
-        if format:
-            run_lint("all", no_check=True, dry_run=False)
 
     @ci.command("zizmor")
     def ci_zizmor():

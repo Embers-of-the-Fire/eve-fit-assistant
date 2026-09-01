@@ -19,6 +19,12 @@ def test_protobuf_consumer_generates_exactly_protobuf():
     assert steps_for_packages(["efa_fit"]) == ["protobuf"]
 
 
+def test_efa_constant_generates_dart_tools():
+    # lib/eve.dart imports the gitignored eve_attr_generated.dart produced by
+    # the attr_id generator.
+    assert steps_for_packages(["efa_constant"]) == ["dart_tools"]
+
+
 def test_app_closure_resolves_full_step_set():
     steps = set(steps_for_packages(["eve_fit_assistant"]))
     assert steps == {"protobuf", "frb", "dart_tools", "build_runner", "l10n", "acl"}

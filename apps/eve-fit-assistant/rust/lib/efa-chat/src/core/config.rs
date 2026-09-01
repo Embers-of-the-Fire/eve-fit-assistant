@@ -363,7 +363,9 @@ impl ProxyMatcher {
                 Some(proxy) => reqwest::Url::parse(proxy)
                     .or_else(|_| reqwest::Url::parse(&format!("http://{proxy}")))
                     .map(Some)
-                    .map_err(|e| ChatError::InvalidConfig(format!("invalid proxy url {proxy:?}: {e}"))),
+                    .map_err(|e| {
+                        ChatError::InvalidConfig(format!("invalid proxy url {proxy:?}: {e}"))
+                    }),
             }
         }
         Ok(Self {
@@ -495,11 +497,19 @@ fn ip_in_prefix(host: std::net::IpAddr, base: std::net::IpAddr, prefix: u32) -> 
     use std::net::IpAddr;
     match (host, base) {
         (IpAddr::V4(host), IpAddr::V4(base)) if prefix <= 32 => {
-            let mask = if prefix == 0 { 0 } else { u32::MAX << (32 - prefix) };
+            let mask = if prefix == 0 {
+                0
+            } else {
+                u32::MAX << (32 - prefix)
+            };
             u32::from(host) & mask == u32::from(base) & mask
         }
         (IpAddr::V6(host), IpAddr::V6(base)) if prefix <= 128 => {
-            let mask = if prefix == 0 { 0 } else { u128::MAX << (128 - prefix) };
+            let mask = if prefix == 0 {
+                0
+            } else {
+                u128::MAX << (128 - prefix)
+            };
             u128::from(host) & mask == u128::from(base) & mask
         }
         _ => false,
@@ -674,7 +684,10 @@ mod tests {
         assert_eq!(proxy_for(&matcher, "http://127.0.0.2/").as_deref(), proxied);
         // A port-qualified entry matches only that port.
         assert_eq!(proxy_for(&matcher, "http://127.0.0.1:8080/"), None);
-        assert_eq!(proxy_for(&matcher, "http://127.0.0.1:9090/").as_deref(), proxied);
+        assert_eq!(
+            proxy_for(&matcher, "http://127.0.0.1:9090/").as_deref(),
+            proxied
+        );
 
         let matcher = ProxyMatcher::new(&ProxyConfig {
             all: Some("http://127.0.0.1:7890".into()),

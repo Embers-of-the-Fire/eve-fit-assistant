@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <title>EFA</title>
   <rect width="128" height="128" rx="12" fill="#05080f"/>
   <rect x="4" y="4" width="120" height="120" rx="10" fill="none" stroke="#1a2744" stroke-width="2"/>
   <path d="M28 96V32l72 32-72 32z" fill="#c8a951" opacity="0.8"/>

@@ -39,10 +39,7 @@ async function connect(): Promise<WebSocket> {
 
 // Synchronous request/reply helper: tests never pipeline frames on one
 // socket, so the next message event after send() is this frame's reply.
-function call(
-    ws: WebSocket,
-    message: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+function call(ws: WebSocket, message: Record<string, unknown>): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
         const onMessage = (event: MessageEvent) => {
             ws.removeEventListener("message", onMessage);
@@ -134,7 +131,9 @@ describe("lookup", () => {
         await call(ws, {
             id: 2,
             type: "content",
-            entries: [{ family: "types", content_hash: contentHash, content_b64: toBase64(content) }],
+            entries: [
+                { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
+            ],
         });
 
         const after = await call(ws, {
@@ -161,7 +160,9 @@ describe("snapshot freeze", () => {
         let reply = await call(ws, {
             id: 1,
             type: "content",
-            entries: [{ family: "types", content_hash: contentHash, content_b64: toBase64(content) }],
+            entries: [
+                { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
+            ],
         });
         expect(reply).toEqual({ id: 1, ok: true, inserted: 1 });
 

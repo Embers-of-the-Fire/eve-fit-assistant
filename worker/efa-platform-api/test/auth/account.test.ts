@@ -88,9 +88,10 @@ describe("account endpoint", () => {
             permissions: tokensForRoles(aclDefaultRoles),
         });
         // The SQL column default must match the schema's declared defaults.
-        const user = await getUserById(testEnv.FIT_DB, (
-            await (await setup().account(pair.accessToken)).json() as AccountInfo
-        ).userId);
+        const user = await getUserById(
+            testEnv.FIT_DB,
+            ((await (await setup().account(pair.accessToken)).json()) as AccountInfo).userId,
+        );
         expect(user?.acl_roles).toBe(JSON.stringify(aclDefaultRoles));
     });
 

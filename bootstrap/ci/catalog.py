@@ -129,10 +129,9 @@ class TsTask:
         return Setup(shell="js", pnpm_install=True)
 
     def commands(self, package: Package) -> Commands:
-        lint = [
-            f"pnpm biome format {package.path}/",
-            f"pnpm biome check {package.path}/",
-        ]
+        # `biome check` verifies format + lint + assist; a separate
+        # `biome format` invocation would exit 0 without verifying anything.
+        lint = [f"pnpm biome check {package.path}/"]
         if _has_pnpm_script(package, "check"):
             lint.append(f"pnpm --filter {package.id} check")
         test = []
