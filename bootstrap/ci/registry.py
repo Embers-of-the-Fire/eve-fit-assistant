@@ -266,9 +266,9 @@ class BlastRadius:
 
 
 BLAST_RADIUS: tuple[BlastRadius, ...] = (
-    # Fail-safe: the selection system itself, the workflow definitions, and
-    # the environment flake. A defect in the code that decides what CI runs
-    # must never merge with work unrun.
+    # Fail-safe: the selection system itself, repository automation under
+    # ``.github/``, and the environment flake. A defect in the code that
+    # decides what CI runs must never merge with work unrun.
     BlastRadius(
         id="selection",
         patterns=(
@@ -277,11 +277,7 @@ BLAST_RADIUS: tuple[BlastRadius, ...] = (
         ),
         everything=True,
     ),
-    BlastRadius(
-        id="workflows",
-        patterns=(".github/workflows/**", ".github/actions/**"),
-        everything=True,
-    ),
+    BlastRadius(id="github", patterns=(".github/**",), everything=True),
     BlastRadius(id="flake", patterns=("flake.nix", "flake.lock"), everything=True),
     # Workspace-level manifests affect their whole ecosystem.
     BlastRadius(

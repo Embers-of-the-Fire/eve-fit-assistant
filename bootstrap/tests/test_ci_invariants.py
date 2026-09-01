@@ -44,8 +44,10 @@ def test_selection_system_changes_escalate():
         assert resolver.resolve([path]).escalated, path
     for path in (
         "flake.nix",
+        "flake.lock",
         ".github/workflows/ci.yml",
         ".github/actions/build-web/action.yml",
+        ".github/AGENTS.md",
     ):
         assert resolver.resolve([path]).escalated, path
 
