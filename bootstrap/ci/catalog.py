@@ -136,7 +136,8 @@ class TsTask:
 
     def commands(self, package: Package) -> Commands:
         # `biome check` verifies format + lint + assist; a separate
-        # `biome format` invocation would exit 0 without verifying anything.
+        # `biome format` run (which checks formatting without `--write`)
+        # would be redundant here.
         lint = [f"pnpm biome check {package.path}/"]
         if _has_pnpm_script(package, "check"):
             lint.append(f"pnpm --filter {package.id} check")
