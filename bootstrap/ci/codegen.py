@@ -145,6 +145,22 @@ def _run_build_runner() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dart build runner completed successfully."))
 
 
+def _format_build_runner() -> None:
+    """Format the app's build_runner outputs with the CLI formatter.
+
+    build_runner emits code formatted with the pub-resolved ``dart_style``,
+    while the lint phase checks with the Flutter SDK's ``dart format``; the
+    two formatters differ, so the generated files must be reformatted with
+    the CLI for the format check to pass.
+    """
+    generated: list[str] = []
+    for pattern in ("*.g.dart", "*.freezed.dart", "*.gr.dart"):
+        generated.extend(
+            str(path.relative_to(PROJECT_ROOT)) for path in (EFA_APP_ROOT / "lib").rglob(pattern)
+        )
+    _format_dart(*sorted(generated))
+
+
 def _format_dart(*paths: str) -> None:
     """Format generated Dart outputs so the lint phase's format check passes."""
     runtime = _runtime()
@@ -272,6 +288,27 @@ def _run_dogma_units() -> None:
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Dogma unit ID generation completed."))
 
 
+def _run_app_assets() -> None:
+    """Build the app's bundled content assets (announcements + manual).
+
+    The app bundles gitignored generated assets declared in its pubspec;
+    building the asset bundle (``flutter test``/``flutter build``) fails
+    without them.
+    """
+    from bootstrap.docs import build_bundled_docs
+    from bootstrap.docs import build_manual
+
+    if _runtime().is_dry_run():
+        info("[Dry-Run] Skipping bundled docs/manual asset build")
+        return
+    try:
+        build_bundled_docs()
+        build_manual()
+    except (ValueError, TypeError, FileNotFoundError) as exception:
+        raise click.ClickException(str(exception)) from exception
+    click.echo(styled([Style.BRIGHT, Fore.GREEN], "Bundled content assets generated."))
+
+
 @dataclass(frozen=True)
 class Step:
     """A named codegen step with its step-level dependencies.
@@ -327,6 +364,7 @@ STEPS: tuple[Step, ...] = (
         # sources (e.g. lib/config/locale.dart) whose types appear in
         # serialized/freezed models — analyzing without them fails codegen.
         requires=("frb", "protobuf", "dart_tools"),
+        format=_format_build_runner,
         outputs=(
             "apps/eve-fit-assistant/lib/**/*.g.dart",
             "apps/eve-fit-assistant/lib/**/*.freezed.dart",
@@ -343,6 +381,16 @@ STEPS: tuple[Step, ...] = (
         ),
     ),
     Step(
+        "app_assets",
+        _run_app_assets,
+        # build_manual imports the generated Python protobuf bindings.
+        requires=("protobuf",),
+        outputs=(
+            "apps/eve-fit-assistant/assets/content/announcements/generated/**",
+            "apps/eve-fit-assistant/assets/content/manual/generated/**",
+        ),
+    ),
+    Step(
         "acl",
         _run_acl,
         format=_format_acl,
@@ -356,6 +404,7 @@ STEPS: tuple[Step, ...] = (
     Step(
         "dogma_units",
         _run_dogma_units,
+        format=lambda: _format_dart("packages/efa_constant/lib/eve_dogma_unit_generated.dart"),
         outputs=("packages/efa_constant/lib/eve_dogma_unit_generated.dart",),
         local_only=True,
     ),

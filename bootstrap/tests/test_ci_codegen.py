@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from bootstrap.ci.codegen import STEPS
 from bootstrap.ci.codegen import all_step_names
 from bootstrap.ci.codegen import resolve_steps
 from bootstrap.ci.codegen import steps_for_packages
@@ -27,7 +28,7 @@ def test_efa_constant_generates_dart_tools():
 
 def test_app_closure_resolves_full_step_set():
     steps = set(steps_for_packages(["eve_fit_assistant"]))
-    assert steps == {"protobuf", "frb", "dart_tools", "build_runner", "l10n", "acl"}
+    assert steps == {"protobuf", "frb", "dart_tools", "build_runner", "l10n", "acl", "app_assets"}
 
 
 def test_build_runner_runs_after_dart_tools():
@@ -36,6 +37,22 @@ def test_build_runner_runs_after_dart_tools():
     # codegen with InvalidType errors.
     steps = steps_for_packages(["eve_fit_assistant"])
     assert steps.index("build_runner") > steps.index("dart_tools")
+
+
+def test_app_assets_runs_after_protobuf():
+    # build_manual imports the generated Python protobuf bindings.
+    steps = steps_for_packages(["eve_fit_assistant"])
+    assert steps.index("app_assets") > steps.index("protobuf")
+
+
+def test_every_step_with_dart_outputs_has_a_format_hook():
+    # The lint phase checks formatting with the CLI dart format; generators
+    # emit different styles, so a step producing Dart outputs without a
+    # format hook fails `dart format --set-exit-if-changed` in CI.
+    for step in STEPS:
+        dart_outputs = [o for o in step.outputs if o.endswith(".dart") or ".dart" in o]
+        if dart_outputs:
+            assert step.format is not None, f"{step.name} produces Dart outputs unformatted"
 
 
 def test_acl_ts_closure_generates_fixtures():
@@ -80,4 +97,5 @@ def test_all_steps_excludes_local_only_steps():
         "build_runner",
         "l10n",
         "acl",
+        "app_assets",
     }

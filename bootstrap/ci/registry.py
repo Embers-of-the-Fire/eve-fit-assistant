@@ -77,7 +77,9 @@ PACKAGES: tuple[Package, ...] = (
             "rust_lib_eve_fit_assistant",
         ),
         tests=True,
-        codegen=("dart_tools", "build_runner", "l10n"),
+        # app_assets: the pubspec bundles gitignored generated content assets;
+        # building the asset bundle (flutter test/build) fails without them.
+        codegen=("dart_tools", "build_runner", "l10n", "app_assets"),
         size="large",
     ),
     Package(
