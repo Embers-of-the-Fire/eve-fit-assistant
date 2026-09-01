@@ -1,7 +1,8 @@
 """Tests enforcing the architectural invariants of the CI selection system.
 
-1. Fail-safe — changes to the registry, the step graph, the catalog, the
-   resolver, or the workflow definitions escalate to full instantiation.
+1. Fail-safe — changes to any selection-system module (``bootstrap/ci/``),
+   the selection tests, the workflow definitions, or the environment flake
+   escalate to full instantiation.
 2. Coverage — every package is reachable by at least one applicable task
    kind, or is explicitly declared opaque.
 3. Referential integrity — every codegen step named by a package exists in
@@ -37,12 +38,11 @@ from bootstrap.constant import PROJECT_ROOT
 
 
 def test_selection_system_changes_escalate():
+    ci_dir = PROJECT_ROOT / "bootstrap/ci"
+    for module in ci_dir.rglob("*.py"):
+        path = module.relative_to(PROJECT_ROOT).as_posix()
+        assert resolver.resolve([path]).escalated, path
     for path in (
-        "bootstrap/ci/registry.py",
-        "bootstrap/ci/codegen.py",
-        "bootstrap/ci/catalog.py",
-        "bootstrap/ci/resolve.py",
-        "bootstrap/ci/commands.py",
         "flake.nix",
         ".github/workflows/ci.yml",
         ".github/actions/build-web/action.yml",

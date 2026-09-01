@@ -272,11 +272,7 @@ BLAST_RADIUS: tuple[BlastRadius, ...] = (
     BlastRadius(
         id="selection",
         patterns=(
-            "bootstrap/ci/registry.py",
-            "bootstrap/ci/codegen.py",
-            "bootstrap/ci/catalog.py",
-            "bootstrap/ci/resolve.py",
-            "bootstrap/ci/commands.py",
+            "bootstrap/ci/**",
             "bootstrap/tests/test_ci_*.py",
         ),
         everything=True,
