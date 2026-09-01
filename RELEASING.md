@@ -124,7 +124,7 @@ A force-push or new commit removes `V-Test` and `V-Tested Release` labels so the
 
 When the PR is ready, add the `V-Test` label.
 
-This triggers `release-full.yml`, which runs:
+This triggers `release-test.yml`, which runs:
 
 - `App release test` — builds the app (APK, Linux, and Windows variants) in test mode using `_release.yml`. It also builds the web bundle and deploys it to the `efa-app-nightly` Cloudflare Pages project, pinning a comment with the test deployment URL on the release PR.
 - `Data release test` — builds data snapshots in test mode using `_release-data.yml`.
@@ -163,7 +163,7 @@ environment protection rules gate which refs may do so.
 |-------------|------------|----------|-------------|
 | `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`; web deploy secrets `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`; announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases, including `site-deploy` to the `efa-app` Pages project) |
 | `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three); announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish, d1-sync, and notify-qqbot jobs (real data releases) |
-| `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `_update-raw-data.yml` upload job |
+| `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
 | `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews) and `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
 | `nightly-web` | `dev` branch only | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `site-nightly.yml` (targeting the `efa-app-nightly` Pages project) |

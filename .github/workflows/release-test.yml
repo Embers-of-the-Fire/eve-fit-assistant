@@ -1,33 +1,147 @@
-name: Release (test)
+name: Release Test
 
 permissions:
   contents: read
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
     branches: [dev]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
-  group: release-test-${{ github.ref }}
+  group: release-test-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  release:
-    name: Build and test release
+  gate:
+    name: Evaluate PR gate
+    runs-on: ubuntu-slim
+    outputs:
+      app: ${{ steps.gate.outputs.app_release }}
+      full: ${{ steps.gate.outputs.full_release_test }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Evaluate gates
+        id: gate
+        uses: ./.github/actions/pr-gate
+        with:
+          labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          repository: ${{ github.repository }}
+          head-repo-fork: ${{ github.event.pull_request.head.repo.fork }}
+
+  # Developer-triggered CI run (D-Full CI / D-CI-App Release); no web deploy.
+  app-ci-test:
+    name: App release CI test
+    needs: gate
+    if: needs.gate.outputs.app == 'true'
     permissions:
       contents: write
       # _release.yml's site-deploy job declares pull-requests: write; caller
       # grants must cover it even though deploy_web: false skips that job.
       pull-requests: write
-    if: |
-      (
-        contains(github.event.pull_request.labels.*.name, 'D-Full CI') ||
-        contains(github.event.pull_request.labels.*.name, 'D-CI-App Release')
-      ) &&
-      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
-      github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/_release.yml
     with:
       test_mode: true
       deploy_web: false
+
+  # Release validation run (V-Release + V-Test); deploys the web bundle in
+  # test mode and pairs with data-release-test for mark-tested.
+  app-release-test:
+    name: App release test
+    needs: gate
+    if: needs.gate.outputs.full == 'true'
+    permissions:
+      contents: write
+      # site-deploy pins a comment with the test deployment URL on this PR.
+      pull-requests: write
+    uses: ./.github/workflows/_release.yml
+    # Inherit so site-deploy's `environment: ci-testing-web` secrets resolve
+    # (Cloudflare Pages credentials) inside the reusable workflow.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    with:
+      test_mode: true
+
+  data-release-test:
+    name: Data release test
+    needs: gate
+    if: needs.gate.outputs.full == 'true'
+    uses: ./.github/workflows/_release-data.yml
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+    with:
+      test_mode: true
+
+  mark-tested:
+    name: Mark as tested release
+    permissions:
+      pull-requests: write
+    needs: [app-release-test, data-release-test]
+    runs-on: ubuntu-slim
+    if: |
+      always() &&
+      needs.app-release-test.result == 'success' &&
+      needs.data-release-test.result == 'success'
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const labels = pr.labels.map((l) => l.name);
+
+            if (pr.head.sha !== process.env.PR_HEAD_SHA) {
+              core.info(
+                `PR HEAD has moved (${pr.head.sha} vs ${process.env.PR_HEAD_SHA}); skipping label update.`
+              );
+              return;
+            }
+            if (!labels.includes('V-Release')) {
+              core.info('V-Release is no longer present; skipping label update.');
+              return;
+            }
+            if (!labels.includes('V-Test')) {
+              // V-Test is the retry trigger for this job. If it is removed
+              // before V-Tested Release is added, a failure in addLabels
+              // would cause a rerun to skip this step at Line 72, leaving
+              // the successful test run unmarked.
+              core.info('V-Test is no longer present; skipping label update.');
+              return;
+            }
+
+            // Add V-Tested Release before cleaning up V-Test so the tested
+            // state is persisted even if the cleanup step fails or the job
+            // needs to be retried.
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['V-Tested Release'],
+            });
+            core.info('Added label V-Tested Release');
+
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'V-Test',
+              });
+              core.info('Removed label V-Test');
+            } catch (error) {
+              const status = error.status || error.response?.status;
+              if (status === 404) {
+                core.info('V-Test was not present');
+              } else {
+                throw error;
+              }
+            }

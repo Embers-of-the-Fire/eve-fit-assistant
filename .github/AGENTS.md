@@ -9,6 +9,9 @@ templates.
   changing release behavior.
 - Keep reusable workflow boundaries intact: `_release.yml` for app releases and
   `_release-data.yml` for data snapshots.
+- The `D-*`/`V-*` PR label contract (gates for the raw-data update, data/app release tests,
+  and web preview) lives in `.github/actions/pr-gate`; extend it there instead of copying
+  `contains(labels, ...)` expressions into workflows.
 - Keep shared setup in `.github/actions/` parameterized rather than duplicating environment
   logic in callers.
 - Do not add secrets to workflow files. Publishing credentials belong in GitHub

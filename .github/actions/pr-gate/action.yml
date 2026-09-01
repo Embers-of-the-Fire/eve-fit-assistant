@@ -1,0 +1,78 @@
+name: PR gate
+
+description: >-
+  Evaluate the PR label contract (D-* CI labels, V-* release labels) together
+  with the standard guards (upstream repository, non-fork head repo), and
+  expose one boolean output per gated workflow path. Non-PR events have no
+  labels or head repo, so all outputs are "false" there.
+
+inputs:
+  labels:
+    description: "JSON array of PR label names: toJSON(github.event.pull_request.labels.*.name)"
+    required: false
+    default: "[]"
+  repository:
+    description: "github.repository of the run"
+    required: true
+  head-repo-fork:
+    description: "github.event.pull_request.head.repo.fork, as a string"
+    required: false
+    default: ""
+
+outputs:
+  raw_data_update:
+    description: "D-Full CI or D-CI-Data Update on an upstream branch PR"
+    value: ${{ steps.gate.outputs.raw_data_update }}
+  data_release:
+    description: "D-Full CI or D-CI-Data Release on an upstream branch PR"
+    value: ${{ steps.gate.outputs.data_release }}
+  app_release:
+    description: "D-Full CI or D-CI-App Release on an upstream branch PR"
+    value: ${{ steps.gate.outputs.app_release }}
+  full_release_test:
+    description: "V-Release and V-Test on an upstream branch PR"
+    value: ${{ steps.gate.outputs.full_release_test }}
+  web_preview:
+    description: "D-CI-Page Preview or D-Full CI, without V-Release, on an upstream branch PR"
+    value: ${{ steps.gate.outputs.web_preview }}
+
+runs:
+  using: composite
+  steps:
+    - name: Evaluate gates
+      id: gate
+      shell: bash
+      env:
+        LABELS: ${{ inputs.labels }}
+        REPOSITORY: ${{ inputs.repository }}
+        HEAD_REPO_FORK: ${{ inputs.head-repo-fork }}
+      run: |
+        set -euo pipefail
+
+        # Exact-match a label name inside the compact toJSON array.
+        has() { [[ "$LABELS" == *"\"$1\""* ]]; }
+        out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+
+        raw_data_update=false
+        data_release=false
+        app_release=false
+        full_release_test=false
+        web_preview=false
+
+        if [[ "$REPOSITORY" == "Embers-of-the-Fire/eve-fit-assistant" && "$HEAD_REPO_FORK" == "false" ]]; then
+          if has "D-Full CI" || has "D-CI-Data Update"; then raw_data_update=true; fi
+          if has "D-Full CI" || has "D-CI-Data Release"; then data_release=true; fi
+          if has "D-Full CI" || has "D-CI-App Release"; then app_release=true; fi
+          if has "V-Release" && has "V-Test"; then full_release_test=true; fi
+          # Release PRs (V-Release) get their web bundle built and deployed by
+          # release-test.yml's site/site-deploy jobs instead.
+          if { has "D-CI-Page Preview" || has "D-Full CI"; } && ! has "V-Release"; then
+            web_preview=true
+          fi
+        fi
+
+        out raw_data_update "$raw_data_update"
+        out data_release "$data_release"
+        out app_release "$app_release"
+        out full_release_test "$full_release_test"
+        out web_preview "$web_preview"

@@ -13,6 +13,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    name: Evaluate PR gate
+    runs-on: ubuntu-slim
+    outputs:
+      preview: ${{ steps.gate.outputs.web_preview }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Evaluate gates
+        id: gate
+        uses: ./.github/actions/pr-gate
+        with:
+          labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          repository: ${{ github.repository }}
+          head-repo-fork: ${{ github.event.pull_request.head.repo.fork }}
+
   changes:
     runs-on: ubuntu-slim
     outputs:
@@ -39,20 +56,16 @@ jobs:
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: changes
+    needs: [changes, gate]
     # Fork PRs cannot access the deployment environments, so they get no
     # preview; skip the build entirely. Release PRs (V-Release) get their web
-    # bundle built and deployed by release-full.yml's site/site-deploy jobs
-    # instead, so skip the duplicate build here. Otherwise the preview is
-    # gated on an explicit CI label.
+    # bundle built and deployed by release-test.yml's site/site-deploy jobs
+    # instead, so skip the duplicate build here. Both guards plus the
+    # D-CI-Page Preview / D-Full CI label gate live in the pr-gate action's
+    # web_preview output.
     if: >-
       needs.changes.outputs.build == 'true' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      !contains(github.event.pull_request.labels.*.name, 'V-Release') &&
-      (
-        contains(github.event.pull_request.labels.*.name, 'D-CI-Page Preview') ||
-        contains(github.event.pull_request.labels.*.name, 'D-Full CI')
-      )
+      needs.gate.outputs.preview == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
