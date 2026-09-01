@@ -14,7 +14,7 @@ This document maps the repository's major areas. Scoped operating rules live in 
 | `pyproject.toml` / `uv.lock` | Python 3.13+ project and locked `uv` environment. |
 | `flake.nix` | Primary Linux development environment and toolchain source of truth. |
 | `./x`, `./x.ps1`, `x.py` | Workspace CLI and its Python implementation. Prefer `./x --help` over copied command prose. |
-| `bootstrap/monorepo/` | Package registry + dependency graph driving change-aware lint/test/CI selection; validated against manifests by `bootstrap/tests/test_monorepo.py`. |
+| `bootstrap/ci/` | Change-aware CI selection: package registry (`registry.py`), codegen step graph (`codegen.py`), task catalog (`catalog.py`), and resolver (`resolve.py`); validated against manifests by `bootstrap/tests/test_ci_registry.py`. |
 
 ## Flutter App
 

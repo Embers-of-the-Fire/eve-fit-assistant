@@ -25,7 +25,8 @@ jobs:
       - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           python-version: "3.13"
-      - name: Get changed files
+      - name: Check web preview relevance
+        id: filter
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -34,11 +35,7 @@ jobs:
           # ref; the base/head tips may not be ancestors of it (e.g. when
           # the base branch advanced), so fetch them explicitly.
           git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/changed.txt
-      - name: Check web preview relevance
-        id: filter
-        run: |
-          BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
+          BUILD=$(uv run x.py ci web-gate --target "$BASE_SHA" --head "$HEAD_SHA")
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
 
   build:

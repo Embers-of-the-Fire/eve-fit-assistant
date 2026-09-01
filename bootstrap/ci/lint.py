@@ -9,9 +9,9 @@ import click
 from colorama import Fore
 from colorama import Style
 
+from bootstrap.ci.registry import PACKAGES
 from bootstrap.color import styled
 from bootstrap.constant import PROJECT_ROOT
-from bootstrap.monorepo import PACKAGES
 from bootstrap.utils import execute_command
 from bootstrap.utils import get_command
 
@@ -68,7 +68,7 @@ def run_lint(
     check_only=False: auto-fix mode; formatters modify in-place.
 
     ``packages`` restricts the work to the given monorepo package ids (see
-    ``bootstrap.monorepo``); ``files`` restricts the Python checks to the
+    ``bootstrap.ci.registry``); ``files`` restricts the Python checks to the
     given changed files. Both default to the legacy full behavior.
     """
 

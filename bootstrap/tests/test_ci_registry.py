@@ -1,8 +1,9 @@
-"""Consistency tests between the monorepo registry and the real manifests.
+"""Consistency tests between the Layer 1 package registry and the manifests.
 
-The registry in ``bootstrap/monorepo/packages.py`` is the single source of
-truth for change-aware CI selection; these tests make sure it cannot drift
-from the actual ``pubspec.yaml``/``package.json``/``Cargo.toml`` manifests.
+The registry in ``bootstrap/ci/registry.py`` is the single source of truth for
+change-aware CI selection; these tests make sure it cannot drift from the
+actual ``pubspec.yaml``/``package.json``/``Cargo.toml`` manifests. Adding or
+removing a package without updating the registry fails here.
 """
 
 from __future__ import annotations
@@ -14,13 +15,11 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from bootstrap.ci.codegen import STEPS
+from bootstrap.ci.registry import ALLOWED_EXTRA_EDGES
+from bootstrap.ci.registry import BLAST_RADIUS
+from bootstrap.ci.registry import PACKAGES
 from bootstrap.constant import PROJECT_ROOT
-from bootstrap.monorepo.graph import ALL_SUITES
-from bootstrap.monorepo.graph import resolve_affected
-from bootstrap.monorepo.graph import web_relevant_packages
-from bootstrap.monorepo.packages import ALLOWED_EXTRA_EDGES
-from bootstrap.monorepo.packages import META_ENTRIES
-from bootstrap.monorepo.packages import PACKAGES
 
 
 if TYPE_CHECKING:
@@ -28,6 +27,8 @@ if TYPE_CHECKING:
 
 
 PACKAGES_BY_ID = {p.id: p for p in PACKAGES}
+ECOSYSTEMS = {p.ecosystem for p in PACKAGES}
+STEP_NAMES = {step.name for step in STEPS}
 
 
 def _load_yaml(path: Path) -> dict:
@@ -56,21 +57,19 @@ def test_declared_edges_reference_known_packages():
             assert dep in PACKAGES_BY_ID, f"{package.id} depends on unknown {dep}"
 
 
-def test_package_suites_are_known():
-    for package in PACKAGES:
-        for suite in package.suites:
-            assert suite in ALL_SUITES, f"{package.id} feeds unknown suite {suite}"
-
-
-def test_meta_entries_reference_known_targets():
-    ecosystems = {p.ecosystem for p in PACKAGES}
-    for entry in META_ENTRIES:
+def test_blast_radius_entries_reference_known_targets():
+    for entry in BLAST_RADIUS:
         for package_id in entry.packages:
             assert package_id in PACKAGES_BY_ID, f"{entry.id} references unknown {package_id}"
         for ecosystem in entry.ecosystems:
-            assert ecosystem in ecosystems, f"{entry.id} references unknown {ecosystem}"
-        for suite in entry.suites:
-            assert suite in ALL_SUITES, f"{entry.id} references unknown suite {suite}"
+            assert ecosystem in ECOSYSTEMS, f"{entry.id} references unknown {ecosystem}"
+
+
+def test_codegen_facts_reference_known_steps():
+    """Referential integrity: every codegen step named by a package exists."""
+    for package in PACKAGES:
+        for step in package.codegen:
+            assert step in STEP_NAMES, f"{package.id} requires unknown codegen step {step}"
 
 
 # ---------------------------------------------------------------------- Dart
@@ -193,75 +192,3 @@ def test_cargo_package_names_and_edges():
         assert manifest_edges == declared, (
             f"{name}: manifest edges {sorted(manifest_edges)} != declared {sorted(declared)}"
         )
-
-
-# -------------------------------------------------------------------- graph
-
-
-def test_dependents_closure_marks_app_for_base_package_change():
-    affected = resolve_affected(["packages/efa_proto/lib/eve.pb.dart"])
-    assert "eve_fit_assistant" in affected.packages
-    assert "efa_fit" in affected.packages
-    assert affected.suites >= {"dart", "dart-web"}
-
-
-def test_leaf_ts_package_change_pulls_in_dependents():
-    affected = resolve_affected(["packages/efa_proto_ts/src/index.ts"])
-    assert "efa-fit-snapshot-ts" in affected.packages
-    assert "efa-platform" in affected.packages
-    assert "efa-platform-api" in affected.packages
-    assert affected.suites >= {"snapshot-ts", "site", "worker"}
-
-
-def test_nested_rust_crate_matches_most_specific_package():
-    affected = resolve_affected(["apps/eve-fit-assistant/rust/lib/efa-chat/src/lib.rs"])
-    assert "efa-chat" in affected.packages
-    assert "rust_lib_eve_fit_assistant" in affected.packages  # dependent
-    assert "eve_fit_assistant" in affected.packages  # dependent of dependent
-
-
-def test_submodule_gitlink_path_matches_package():
-    affected = resolve_affected(["packages/eve-fit-os"])
-    assert "eve-fit-os" in affected.packages
-    assert "efa-platform-fit-storage" in affected.packages
-
-
-def test_infra_change_escalates_to_full_run():
-    for path in ["bootstrap/ci/suites.py", "flake.nix", ".github/workflows/ci.yml"]:
-        affected = resolve_affected([path])
-        assert affected.full, path
-        assert affected.suites == set(ALL_SUITES)
-        assert affected.web
-
-
-def test_unrelated_files_affect_nothing():
-    affected = resolve_affected(["README.md", "docs/agents/README.md", "AGENTS.md"])
-    assert not affected.full
-    assert not affected.packages
-    assert not affected.suites
-    assert not affected.web
-
-
-def test_empty_change_list_affects_nothing():
-    affected = resolve_affected([])
-    assert not affected.full
-    assert not affected.packages
-    assert not affected.suites
-    assert not affected.web
-
-
-def test_web_gate_follows_app_dependency_closure():
-    assert resolve_affected(["packages/efa_fit/lib/fit.dart"]).web
-    assert resolve_affected(["packages/efa_fit_snapshot/lib/snapshot.dart"]).web
-    assert resolve_affected(["packages/eve-fit-os/src/lib.rs"]).web
-    assert not resolve_affected(["site/home/src/routes/+page.svelte"]).web
-    assert not resolve_affected(["packages/efa_fit_snapshot_ts/src/index.ts"]).web
-
-
-def test_web_relevant_packages_are_app_closure():
-    relevant = web_relevant_packages()
-    assert "eve_fit_assistant" in relevant
-    assert "rust_lib_eve_fit_assistant" in relevant
-    assert "eve-fit-os" in relevant
-    assert "efa_fit_snapshot" in relevant  # app dependency since the platform community section
-    assert "efa-fit-snapshot-ts" not in relevant  # TS package, not part of the app closure

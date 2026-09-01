@@ -363,8 +363,10 @@
           };
 
           # Minimal Rust shell: linting, formatting, and tests
+          # (protobuf/nativeBuildPackages: workspace crates compile protobuf
+          # schemas via prost-build in their build scripts)
           rust = pkgs.mkShell {
-            packages = pythonPackages ++ rustPackages;
+            packages = pythonPackages ++ rustPackages ++ protobufPackages ++ nativeBuildPackages;
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON = "${python3}/bin/python3";

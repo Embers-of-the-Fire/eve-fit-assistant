@@ -57,7 +57,7 @@ runs:
 
     - name: Generate code
       shell: bash
-      run: nix develop .#codegen --command bash -c 'uv run x.py ci codegen --lang dart'
+      run: nix develop .#codegen --command bash -c 'uv run x.py ci codegen --packages eve_fit_assistant'
 
     - name: Build web bundle
       shell: bash

@@ -9,10 +9,10 @@ import click
 from colorama import Fore
 from colorama import Style
 
+from bootstrap.ci.registry import PACKAGES
 from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.constant import EFA_APP_ROOT
-from bootstrap.monorepo import PACKAGES
 from bootstrap.utils import get_command
 from bootstrap.utils import get_melos_command
 
@@ -24,9 +24,9 @@ _WEB_SQLITE_ASSETS = ("db_worker.js", "sqlite3.wasm")
 
 _PACKAGES_BY_ID = {p.id: p for p in PACKAGES}
 
-# Paths whose changes make the Python test suite relevant (mirrors the
-# ``suites=("python",)`` meta entries in ``bootstrap.monorepo.packages``;
-# there is no Python package in the registry to scope by).
+# Paths whose changes make the Python test suite relevant (there is no Python
+# package in the registry to scope by; mirrors the standalone ``python`` task
+# kind's trigger patterns in ``bootstrap.ci.catalog``).
 _PYTHON_SCOPE_PREFIXES = ("bootstrap/", "data/")
 _PYTHON_SCOPE_FILES = ("x.py", "pyproject.toml", "uv.lock")
 
