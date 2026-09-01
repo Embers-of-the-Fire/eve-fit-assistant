@@ -138,14 +138,14 @@ Entry points:
 
 - `web-preview.yml` — PRs to `dev` whose change set instantiates the Flutter app's tasks
   (the web-bundle gate: a query over the same resolver output as test selection, checked
-  through `x.py ci web-gate` with the same merge-base diff) get a branch preview on
+  through `uv run x.py ci web-gate` with the same merge-base diff) get a branch preview on
   `efa-app-nightly` plus a pinned PR comment. This is gated on the `D-CI-Page Preview` label,
   which `D-Full CI` also enables. Release PRs labeled `V-Release` skip this build because
   `release-full.yml`'s `site`/`site-deploy` jobs build and deploy the web bundle instead.
   Fork PRs get no preview.
 - `site-nightly.yml` — daily cron on `dev`; fetches the last nightly production deployment's
   commit hash from the Pages API and only rebuilds/deploys to
-  `efa-app-nightly` when `x.py ci web-gate --target <sha> --head HEAD` says the bundle
+  `efa-app-nightly` when `uv run x.py ci web-gate --target <sha> --head HEAD` says the bundle
   changed. It does not comment on a PR.
 - `_release.yml` — `site` build job plus `site-deploy`; test mode deploys to
   `efa-app-nightly` with a pinned comment on the release PR, while real releases deploy to
