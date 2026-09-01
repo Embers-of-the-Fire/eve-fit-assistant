@@ -236,7 +236,7 @@ def resolve_change_scope(
                 "Infrastructure files changed; running the full pass.",
             )
         )
-        return None, resolution.files
+        return None, None
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Affected packages: ")
         + (", ".join(sorted(resolution.packages)) or "(none)")

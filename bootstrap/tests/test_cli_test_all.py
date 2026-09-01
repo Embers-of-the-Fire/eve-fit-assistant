@@ -50,7 +50,7 @@ def test_all_runs_python_for_python_relevant_changes(monkeypatch):
 
 
 def test_all_runs_python_on_infra_escalation(monkeypatch):
-    # Infrastructure changes escalate to an unscoped run, which includes Python.
-    scope = (None, ("flake.nix",))
+    # Infrastructure changes escalate to a fully unscoped run, which includes Python.
+    scope = (None, None)
     executed = _run_test_all(monkeypatch, scope, ["--changed"])
     assert _ran_pytest(executed)
