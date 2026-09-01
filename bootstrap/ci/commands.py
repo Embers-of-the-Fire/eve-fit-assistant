@@ -61,7 +61,10 @@ def register_ci_commands(cli_group: click.Group) -> None:
         ),
         click.option("--head", default=None, help="Head ref (default: HEAD)."),
         click.option(
-            "--from-file", type=click.Path(exists=True), default=None, help="Changed-file list."
+            "--from-file",
+            type=click.Path(exists=True, dir_okay=False),
+            default=None,
+            help="Changed-file list.",
         ),
         click.option(
             "--full",
