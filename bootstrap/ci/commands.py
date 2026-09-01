@@ -122,6 +122,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
             names = all_step_names()
         elif packages:
             ids = [p.strip() for p in packages.split(",") if p.strip()]
+            if not ids:
+                raise click.ClickException("--packages must contain at least one package id.")
             try:
                 names = steps_for_packages(ids)
             except ValueError as exception:
@@ -129,6 +131,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
         else:
             assert steps is not None
             names = [s.strip() for s in steps.split(",") if s.strip()]
+            if not names:
+                raise click.ClickException("--steps must contain at least one step name.")
         try:
             run_steps(names, format_outputs=format)
         except ValueError as exception:
