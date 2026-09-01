@@ -14,6 +14,7 @@ JOB_SPEC_KEYS = {
     "id",
     "slug",
     "shell",
+    "uv_sync",
     "pub_get",
     "pnpm_install",
     "native_data",
@@ -27,6 +28,7 @@ JOB_SPEC_KEYS = {
 def test_task_instance_ids():
     assert TaskInstance(kind="dart", package="efa_fit").id == "dart:efa_fit"
     assert TaskInstance(kind="python", package=None).id == "python"
+    assert TaskInstance(kind="dart", package=None, batch=("acl", "efa_acl")).id == "dart:small"
 
 
 def test_dart_kind_commands_are_scoped_to_the_package():
@@ -89,6 +91,55 @@ def test_instantiate_names_every_selected_work_item():
     instances = instantiate({"efa-chat"}, {"python", "l10n"})
     ids = {i.id for i in instances}
     assert ids == {"rust:efa-chat", "python", "l10n"}
+
+
+# Batched small-package instances -----------------------------------------------
+
+
+def test_small_packages_of_one_kind_collapse_into_a_batch():
+    instances = instantiate({"acl", "efa_acl", "efa_fit"}, set())
+    assert [i.id for i in instances] == ["dart:small"]
+    batch = instances[0]
+    assert batch.batch == ("acl", "efa_acl", "efa_fit")
+
+
+def test_large_packages_keep_dedicated_instances():
+    instances = instantiate({"efa_fit", "eve_fit_assistant"}, set())
+    ids = {i.id for i in instances}
+    assert ids == {"dart:small", "dart:eve_fit_assistant", "dart-web:eve_fit_assistant"}
+
+
+def test_batch_spec_aggregates_member_commands():
+    (batch,) = instantiate({"acl", "efa_fit"}, set())
+    spec = batch.job_spec()
+    assert set(spec) == JOB_SPEC_KEYS
+    assert spec["shell"] == "dart"
+    # Member commands run per package, in batch order.
+    assert "dart analyze" in spec["lint"]
+    assert spec["lint"].index("--scope=acl ") < spec["lint"].index("--scope=efa_fit ")
+    # acl and efa_fit both have tests; they run in batch order.
+    assert spec["test"] == (
+        "dart run melos exec --scope=acl -- flutter test"
+        " && dart run melos exec --scope=efa_fit -- flutter test"
+    )
+
+
+def test_batch_codegen_is_the_deduped_union_of_member_closures():
+    # efa_fit pulls protobuf; acl pulls the acl step; the union runs once.
+    (batch,) = instantiate({"acl", "efa_fit", "efa_proto"}, set())
+    spec = batch.job_spec()
+    assert spec["codegen"] == "uv run x.py ci codegen --steps acl,protobuf"
+
+
+def test_batch_setup_flags_are_the_member_union():
+    (batch,) = instantiate({"acl-tool", "manual"}, set())
+    spec = batch.job_spec()
+    assert spec["shell"] == "js"
+    assert spec["pnpm_install"] is True
+    # Neither member has codegen: no Python environment is needed at all.
+    assert spec["uv_sync"] is False
+    (with_codegen,) = instantiate({"acl-ts", "manual"}, set())
+    assert with_codegen.job_spec()["uv_sync"] is True
 
 
 def test_standalone_kinds_have_triggers_and_work():

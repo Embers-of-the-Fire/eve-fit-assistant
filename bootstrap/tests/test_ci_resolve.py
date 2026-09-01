@@ -87,11 +87,15 @@ def test_escalation_instantiates_the_entire_catalog():
     assert set(resolution.packages) == ALL_PACKAGE_IDS
     assert set(resolution.standalone) == ALL_STANDALONE_IDS
     # Full coverage is defined by escalation itself: every package x every
-    # applicable kind, plus all standalone kinds.
+    # applicable kind, plus all standalone kinds. Small packages of one kind
+    # run together as the kind's batched instance.
     expected = set(ALL_STANDALONE_IDS)
-    for package in PACKAGES:
-        for kind in TASK_KINDS:
-            if kind.applies(package):
+    for kind in TASK_KINDS:
+        small = [p for p in PACKAGES if kind.applies(p) and p.size == "small"]
+        if small:
+            expected.add(f"{kind.id}:small")
+        for package in PACKAGES:
+            if kind.applies(package) and package.size != "small":
                 expected.add(f"{kind.id}:{package.id}")
     assert {i.id for i in resolution.instances} == expected
 
@@ -114,7 +118,8 @@ def test_affected_report_shape():
     report = resolver.affected_report(resolver.resolve(["worker/email-filter/src/index.ts"]))
     assert report["escalated"] is False
     assert report["packages"] == ["email-filter"]
-    assert report["tasks"] == ["ts:email-filter"]
+    # Small packages run in their kind's batched instance.
+    assert report["tasks"] == ["ts:small"]
 
 
 def test_job_matrix_renders_specs_for_every_instance():

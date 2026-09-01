@@ -11,6 +11,11 @@ that is not attributable to a single package; they are selected by their own
 blast-radius trigger patterns or by escalation rather than by package
 matching.
 
+Small packages (``Package.size``) do not instantiate alone: all selected
+small packages of one kind run together in a single batched instance
+(``<kind>:small``) that shares its runner setup across members. Large
+packages always get a dedicated instance.
+
 Task names are unstable identifiers: they name work, and branch protection
 must never enumerate them.
 """
@@ -33,6 +38,7 @@ class Setup:
     """Declarative job needs for a task instance."""
 
     shell: str  # nix dev shell suffix (`.#<shell>`)
+    uv_sync: bool = True  # uv sync (Python environment for `uv run` commands)
     pub_get: bool = False  # flutter pub get
     pnpm_install: bool = False  # pnpm install
     native_data: bool = False  # fetch ci-native-data.tar.gz
@@ -126,7 +132,9 @@ class TsTask:
         return package.ecosystem == "ts" and not package.opaque
 
     def setup(self, package: Package) -> Setup:
-        return Setup(shell="js", pnpm_install=True)
+        # Only the codegen phase invokes `uv`; pure lint/test packages skip
+        # the Python environment entirely.
+        return Setup(shell="js", pnpm_install=True, uv_sync=bool(_codegen_commands(package)))
 
     def commands(self, package: Package) -> Commands:
         # `biome check` verifies format + lint + assist; a separate
@@ -213,20 +221,31 @@ STANDALONE_KINDS: tuple[StandaloneTask, ...] = (
 
 @dataclass(frozen=True)
 class TaskInstance:
-    """A task kind bound to one package (``None`` for standalone kinds)."""
+    """A task kind bound to one package (``None`` for standalone kinds).
+
+    A batched instance (``batch`` non-empty) runs the selected small packages
+    of one kind together on a single runner: setup phases run once, codegen
+    is the union of the members' closures, and lint/test commands run per
+    member in sequence.
+    """
 
     kind: str
     package: str | None
+    batch: tuple[str, ...] = ()
 
     @property
     def id(self) -> str:
+        if self.batch:
+            return f"{self.kind}:small"
         return self.kind if self.package is None else f"{self.kind}:{self.package}"
 
     def job_spec(self) -> dict:
         """Render this instance as a fully self-describing job specification."""
         setup: Setup
         commands: Commands
-        if self.package is None:
+        if self.batch:
+            setup, commands = self._batch_job()
+        elif self.package is None:
             standalone = next(k for k in STANDALONE_KINDS if k.id == self.kind)
             setup = standalone.job_setup
             commands = standalone.job_commands
@@ -243,6 +262,7 @@ class TaskInstance:
             "id": self.id,
             "slug": self.id.replace(":", "-"),
             "shell": setup.shell,
+            "uv_sync": setup.uv_sync,
             "pub_get": setup.pub_get,
             "pnpm_install": setup.pnpm_install,
             "native_data": setup.native_data,
@@ -251,6 +271,33 @@ class TaskInstance:
             "lint": join(commands.lint),
             "test": join(commands.test),
         }
+
+    def _batch_job(self) -> tuple[Setup, Commands]:
+        """Aggregate the batched members into one setup and command list."""
+        by_id = {p.id: p for p in PACKAGES}
+        members = [by_id[member] for member in self.batch]
+        kind = next(k for k in TASK_KINDS if k.id == self.kind)
+
+        member_setups = [kind.setup(member) for member in members]
+        if len({s.shell for s in member_setups}) != 1:
+            raise ValueError(f"Batched {self.kind} members disagree on the dev shell")
+        setup = Setup(
+            shell=member_setups[0].shell,
+            uv_sync=any(s.uv_sync for s in member_setups),
+            pub_get=any(s.pub_get for s in member_setups),
+            pnpm_install=any(s.pnpm_install for s in member_setups),
+            native_data=any(s.native_data for s in member_setups),
+            dev_env=any(s.dev_env for s in member_setups),
+        )
+
+        steps = steps_for_packages(self.batch)
+        codegen = (f"uv run x.py ci codegen --steps {','.join(steps)}",) if steps else ()
+        member_commands = [kind.commands(member) for member in members]
+        return setup, Commands(
+            codegen=codegen,
+            lint=tuple(cmd for c in member_commands for cmd in c.lint),
+            test=tuple(cmd for c in member_commands for cmd in c.test),
+        )
 
 
 def applicable_kinds(package: Package) -> list[TaskKind]:
@@ -261,13 +308,18 @@ def applicable_kinds(package: Package) -> list[TaskKind]:
 def instantiate(
     packages: set[str] | frozenset[str], standalone: set[str] | frozenset[str]
 ) -> list[TaskInstance]:
-    """Instantiate task kinds for the affected packages and standalone kinds."""
+    """Instantiate task kinds for the affected packages and standalone kinds.
+
+    Selected small packages of one kind collapse into a single batched
+    instance; large packages always instantiate dedicated tasks.
+    """
     by_id = {p.id: p for p in PACKAGES}
     instances: list[TaskInstance] = []
-    for package_id in sorted(packages):
-        package = by_id[package_id]
-        instances.extend(
-            TaskInstance(kind=kind.id, package=package_id) for kind in applicable_kinds(package)
-        )
+    for kind in TASK_KINDS:
+        members = sorted(p for p in packages if kind.applies(by_id[p]))
+        small = [p for p in members if by_id[p].size == "small"]
+        instances.extend(TaskInstance(kind=kind.id, package=p) for p in members if p not in small)
+        if small:
+            instances.append(TaskInstance(kind=kind.id, package=None, batch=tuple(small)))
     instances.extend(TaskInstance(kind=kind, package=None) for kind in sorted(standalone))
     return instances

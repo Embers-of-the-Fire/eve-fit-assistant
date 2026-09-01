@@ -27,6 +27,8 @@ from typing import Literal
 
 Ecosystem = Literal["dart", "ts", "rust"]
 
+Size = Literal["small", "large"]
+
 
 @dataclass(frozen=True)
 class Package:
@@ -39,6 +41,10 @@ class Package:
     tests: bool = False  # the package has its own test suite
     codegen: tuple[str, ...] = ()  # codegen step outputs required before lint/test
     opaque: bool = False  # covered only through its dependents' tasks
+    # Workload size: how expensive a full lint+test pass over this package is.
+    # Small packages share one runner per ecosystem; large packages get a
+    # dedicated one. A factual cost attribute, not a CI policy knob.
+    size: Size = "small"
 
 
 # Edges that are declared in the registry but intentionally absent from the
@@ -72,6 +78,7 @@ PACKAGES: tuple[Package, ...] = (
         ),
         tests=True,
         codegen=("dart_tools", "build_runner", "l10n"),
+        size="large",
     ),
     Package(
         id="acl",
@@ -141,6 +148,7 @@ PACKAGES: tuple[Package, ...] = (
         depends_on=("efa-chat", "eve-fit-os"),
         # `rust/src/frb_generated.rs` is gitignored; clippy needs it.
         codegen=("frb",),
+        size="large",
     ),
     Package(
         id="efa-chat",
@@ -148,6 +156,7 @@ PACKAGES: tuple[Package, ...] = (
         ecosystem="rust",
         depends_on=("eve-fit-os",),
         tests=True,
+        size="large",
     ),
     # The fitting engine is a Git submodule with independent history and
     # versioning; it is covered through its dependents' tasks.
@@ -161,6 +170,7 @@ PACKAGES: tuple[Package, ...] = (
         ecosystem="rust",
         depends_on=("eve-fit-os",),
         tests=True,
+        size="large",
     ),
     # ------------------------------------------------------------- TypeScript
     Package(id="efa-tech", path="site/home", ecosystem="ts"),
@@ -175,6 +185,7 @@ PACKAGES: tuple[Package, ...] = (
             "efa-platform-client-ts",
             "efa-proto-ts",
         ),
+        size="large",
     ),
     Package(
         id="efa-platform-api",
@@ -182,6 +193,7 @@ PACKAGES: tuple[Package, ...] = (
         ecosystem="ts",
         depends_on=("efa-acl-ts", "efa-proto-ts"),
         tests=True,
+        size="large",
     ),
     Package(
         id="efa-platform-data-sync",
@@ -227,6 +239,7 @@ PACKAGES: tuple[Package, ...] = (
         path="packages/efa_fit_snapshot_ts",
         ecosystem="ts",
         depends_on=("efa-proto-ts",),
+        size="large",
     ),
 )
 
