@@ -6,20 +6,28 @@ sources of truth when this document disagrees with them.
 
 ## Pull Request CI
 
-`ci.yml` runs a change-aware job matrix. The workflow diffs the PR base against its head and
-feeds the file list to `uv run x.py ci matrix --from-file` (pushes to `dev` use `--full`).
-Selection is driven by the monorepo dependency graph in `bootstrap/monorepo/`: changed files
-map to packages, the affected set is closed over dependents, and each affected CI suite emits
-fully-resolved commands scoped via `--packages` (for example
-`uv run x.py test dart --packages efa_fit,eve_fit_assistant`). Changes to `bootstrap/ci/**`,
-`bootstrap/monorepo/**`, `bootstrap/cli/runtime.py`, `flake.nix`, or `.github/workflows/**`
-escalate to the full, unscoped matrix as a fail-safe.
+`ci.yml` runs a change-aware job matrix defined by the four-layer selection system in
+`bootstrap/ci/`: the package graph (`registry.py`), the codegen step graph (`codegen.py`),
+the task catalog (`catalog.py`), and the resolver (`resolve.py`). The workflow computes the
+merge-base diff of the PR base against its head and feeds it to `uv run x.py ci matrix
+--target <base> --head <head>` (pushes to `dev` use `--full`). Changed files map to packages
+by longest-prefix match, blast-radius entries expand the set, the set is closed over
+dependents, and every affected package instantiates its applicable task kinds
+(`dart`, `dart-web`, `ts`, `rust`) plus triggered standalone kinds (`python`, `workflows`,
+`l10n`). Each task instance renders as a fully self-describing job specification (dev shell,
+setup needs, exact codegen/lint/test commands); the workflow's `test` job is a generic
+parameterized runner with no package or task-kind names in it. Changes to the selection
+system itself, `.github/**`, or `flake.nix`/`flake.lock` escalate to full instantiation as a
+fail-safe. A terminal `aggregate` job (`CI / Required`) is the single stable check name that
+branch protection references; per-task job names vary with the change set and must never be
+protection requirements.
 
-The registry in `bootstrap/monorepo/packages.py` is the single source of truth for package
-paths, intra-repo dependency edges, and suite attribution; it is validated against the real
-`pubspec.yaml`/`package.json`/`Cargo.toml` manifests by `bootstrap/tests/test_monorepo.py`.
-Use `uv run x.py ci affected [--from-file F | --base-ref REF | --full]` to inspect the
-resolved packages/suites/web-gate for a change set as JSON.
+The registry in `bootstrap/ci/registry.py` is the single source of truth for package paths,
+intra-repo dependency edges, test/codegen facts, and blast radii; it is validated against the
+real `pubspec.yaml`/`package.json`/`Cargo.toml` manifests by
+`bootstrap/tests/test_ci_registry.py`. Use `uv run x.py ci affected [--target REF [--head
+REF] | --from-file F | --full]` to inspect the resolved packages/tasks for a change set as
+JSON, and `uv run x.py ci web-gate` for the web-bundle rebuild decision.
 
 Release preflight (`ci release verify --check-all`) intentionally stays full-scope: a release
 must build and test everything regardless of what changed.
@@ -128,17 +136,17 @@ config file, then runs `wrangler pages deploy` with `--commit-hash`.
 
 Entry points:
 
-- `web-preview.yml` — PRs to `dev` that touch web bundle inputs (derived from the
-  `bootstrap/monorepo/` dependency graph: the app's forward dependency closure plus web
-  tooling meta entries, checked through `x.py ci web-affected`) get a branch preview on
+- `web-preview.yml` — PRs to `dev` whose change set instantiates the Flutter app's tasks
+  (the web-bundle gate: a query over the same resolver output as test selection, checked
+  through `uv run x.py ci web-gate` with the same merge-base diff) get a branch preview on
   `efa-app-nightly` plus a pinned PR comment. This is gated on the `D-CI-Page Preview` label,
   which `D-Full CI` also enables. Release PRs labeled `V-Release` skip this build because
   `release-full.yml`'s `site`/`site-deploy` jobs build and deploy the web bundle instead.
   Fork PRs get no preview.
 - `site-nightly.yml` — daily cron on `dev`; fetches the last nightly production deployment's
-  commit hash from the Pages API, diffs it against `HEAD`, and only rebuilds/deploys to
-  `efa-app-nightly` when `x.py ci web-affected` says the bundle changed. It does not comment
-  on a PR.
+  commit hash from the Pages API and only rebuilds/deploys to
+  `efa-app-nightly` when `uv run x.py ci web-gate --target <sha> --head HEAD` says the bundle
+  changed. It does not comment on a PR.
 - `_release.yml` — `site` build job plus `site-deploy`; test mode deploys to
   `efa-app-nightly` with a pinned comment on the release PR, while real releases deploy to
   `efa-app`.

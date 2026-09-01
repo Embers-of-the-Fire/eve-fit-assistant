@@ -172,10 +172,7 @@ function validateRoleToken(token: string, domains: AclDomain[], path: string): v
     }
     if (action.qualifiers.length === 0) {
         if (qualifier !== undefined) {
-            throw new AclSchemaError(
-                path,
-                `token "${token}" qualifies an unqualified action`,
-            );
+            throw new AclSchemaError(path, `token "${token}" qualifies an unqualified action`);
         }
         return;
     }

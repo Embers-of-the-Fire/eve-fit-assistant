@@ -12,8 +12,8 @@ Run commands from the repository root unless a command explicitly says otherwise
 ```
 
 `lint`, `format`, and the `test` subcommands are change-aware; they restrict their work to
-the packages affected by your changes (mapped through the `bootstrap/monorepo/` dependency
-graph and closed over dependents):
+the packages affected by your changes (resolved by `bootstrap/ci/resolve.py` from the
+package graph in `bootstrap/ci/registry.py`, closed over dependents):
 
 ```sh
 ./x lint --changed                       # lint only packages changed vs origin/dev
@@ -25,8 +25,9 @@ graph and closed over dependents):
 ```
 
 Uncommitted (staged, unstaged, and untracked) changes are included in `--changed`.
-Infrastructure changes (`bootstrap/ci/**`, `flake.nix`, `.github/workflows/**`) escalate to
-the full pass. Use `uv run x.py ci affected --base-ref <ref>` to inspect the resolution.
+Changes to the selection system, `flake.nix`/`flake.lock`, or `.github/**` escalate to the
+full pass.
+Use `uv run x.py ci affected --target <ref>` to inspect the resolution.
 
 Focused generators:
 

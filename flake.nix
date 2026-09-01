@@ -112,6 +112,15 @@
         ++ map (target: fenixPkgs.targets.${target}.latest.rust-std) rustCrossTargets
       );
 
+      # Host-only toolchain for CI lint/test: cargo fmt/clippy/test never
+      # cross-compile, so the five cross-target rust-std bundles are skipped.
+      rustHostToolchain = fenixPkgs.latest.withComponents [
+        "cargo"
+        "clippy"
+        "rustc"
+        "rustfmt"
+      ];
+
       nativeRustToolchainPath = pkgs.lib.makeBinPath [ rustToolchain ];
 
       inherit (pkgs)
@@ -363,8 +372,11 @@
           };
 
           # Minimal Rust shell: linting, formatting, and tests
+          # (protobuf/nativeBuildPackages: workspace crates compile protobuf
+          # schemas via prost-build in their build scripts; host-only
+          # toolchain: CI never cross-compiles)
           rust = pkgs.mkShell {
-            packages = pythonPackages ++ rustPackages;
+            packages = pythonPackages ++ [ rustHostToolchain ] ++ protobufPackages ++ nativeBuildPackages;
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON = "${python3}/bin/python3";

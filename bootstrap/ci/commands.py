@@ -12,14 +12,14 @@ import click
 from colorama import Fore
 from colorama import Style
 
-from bootstrap.ci.codegen import run_codegen
+import bootstrap.ci.resolve as resolver
+
+from bootstrap.ci.codegen import all_step_names
+from bootstrap.ci.codegen import run_steps
+from bootstrap.ci.codegen import steps_for_packages
 from bootstrap.ci.diagnostics import register_ci_diagnostics_commands
-from bootstrap.ci.lint import run_lint
 from bootstrap.ci.release import register_ci_release_commands
 from bootstrap.ci.release_github import register_github_release_command
-from bootstrap.ci.suites import calculate_ci_matrix
-from bootstrap.ci.suites import full_matrix
-from bootstrap.ci.suites import web_preview_affected
 from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
@@ -38,112 +38,105 @@ def register_ci_commands(cli_group: click.Group) -> None:
     register_github_release_command(ci)
     register_ci_diagnostics_commands(ci)
 
-    @ci.command("matrix")
-    @click.option("--from-file", type=click.Path(exists=True), default=None)
-    @click.option("--full", is_flag=True, default=False)
-    def ci_matrix(from_file, full):
-        """Calculate CI job matrix from changed files. Outputs JSON to stdout."""
+    def _resolve_change_set(target, head, from_file, full):
+        """Resolve CLI options into a Resolution via the single resolver."""
         if full:
-            suites = full_matrix()
-        elif from_file:
+            return resolver.escalated_resolution()
+        if from_file:
             with open(from_file) as f:
-                files = [line.strip() for line in f if line.strip()]
-            suites = calculate_ci_matrix(files)
-        else:
-            suites = []
+                return resolver.resolve(line.strip() for line in f if line.strip())
+        if target:
+            try:
+                files = resolver.changed_files(target, head or "HEAD")
+            except RuntimeError as exception:
+                raise click.ClickException(str(exception)) from exception
+            return resolver.resolve(files)
+        return resolver.resolve([])
 
-        print(json.dumps(suites))
+    change_set_options = [
+        click.option(
+            "--target",
+            default=None,
+            help="Target branch/ref; the change set is the merge-base diff to the head.",
+        ),
+        click.option("--head", default=None, help="Head ref (default: HEAD)."),
+        click.option(
+            "--from-file",
+            type=click.Path(exists=True, dir_okay=False),
+            default=None,
+            help="Changed-file list.",
+        ),
+        click.option(
+            "--full",
+            is_flag=True,
+            default=False,
+            help="Escalate: instantiate the entire catalog (no diff).",
+        ),
+    ]
+
+    def _with_change_set_options(func):
+        for option in change_set_options:
+            func = option(func)
+        return func
+
+    @ci.command("matrix")
+    @_with_change_set_options
+    def ci_matrix(target, head, from_file, full):
+        """Resolve the change set into the CI job matrix. Outputs JSON to stdout."""
+        resolution = _resolve_change_set(target, head, from_file, full)
+        print(json.dumps(resolver.job_matrix(resolution)))
 
     @ci.command("affected")
-    @click.option("--from-file", type=click.Path(exists=True), default=None)
-    @click.option("--base-ref", default=None, help="Diff against this git ref instead of a file.")
-    @click.option("--full", is_flag=True, default=False)
-    def ci_affected(from_file, base_ref, full):
-        """Resolve changed files to affected packages/suites. Outputs JSON to stdout."""
-        from bootstrap.monorepo import ALL_SUITES
-        from bootstrap.monorepo import changed_files_from_git
-        from bootstrap.monorepo import resolve_affected
+    @_with_change_set_options
+    def ci_affected(target, head, from_file, full):
+        """Report the resolved packages and tasks for a change set (JSON)."""
+        resolution = _resolve_change_set(target, head, from_file, full)
+        print(json.dumps(resolver.affected_report(resolution)))
 
-        if full:
-            affected = resolve_affected([])
-            payload = {
-                "full": True,
-                "files": [],
-                "packages": [],
-                "suites": list(ALL_SUITES),
-                "web": True,
-            }
-        else:
-            if from_file:
-                with open(from_file) as f:
-                    files = [line.strip() for line in f if line.strip()]
-            elif base_ref:
-                try:
-                    files = changed_files_from_git(base_ref)
-                except RuntimeError as exception:
-                    raise click.ClickException(str(exception)) from exception
-            else:
-                files = []
-            affected = resolve_affected(files)
-            payload = {
-                "full": affected.full,
-                "files": list(affected.files),
-                "packages": sorted(affected.packages),
-                "suites": sorted(affected.suites),
-                "web": affected.web,
-            }
-
-        print(json.dumps(payload))
-
-    @ci.command("web-affected")
-    @click.option("--from-file", type=click.Path(exists=True), default=None)
-    @click.option("--full", is_flag=True, default=False)
-    def ci_web_affected(from_file, full):
-        """Check whether changed files affect the Flutter web bundle.
-
-        Prints "true" or "false" to stdout.
-        """
-        if full:
-            affected = True
-        elif from_file:
-            with open(from_file) as f:
-                files = [line.strip() for line in f if line.strip()]
-            affected = web_preview_affected(files)
-        else:
-            affected = False
-
-        print("true" if affected else "false")
-
-    @ci.command("lint")
-    @click.option(
-        "--lang",
-        type=click.Choice(["all", "python", "dart", "rust", "site", "snapshot-ts", "l10n"]),
-        default="all",
-        help="Limit linting to a specific language (default: all).",
-    )
-    @click.option(
-        "--packages",
-        default=None,
-        help="Comma-separated monorepo package ids to restrict linting to.",
-    )
-    def ci_lint(lang: str, packages: str | None):
-        """Check formatting and linting without modifying files."""
-        package_ids = None
-        if packages:
-            package_ids = tuple(p.strip() for p in packages.split(",") if p.strip()) or None
-        run_lint(lang, no_check=False, check_only=True, dry_run=False, packages=package_ids)
+    @ci.command("web-gate")
+    @_with_change_set_options
+    def ci_web_gate(target, head, from_file, full):
+        """Whether the Flutter web bundle must be rebuilt. Prints true/false."""
+        resolution = _resolve_change_set(target, head, from_file, full)
+        print("true" if resolver.web_bundle_gate(resolution) else "false")
 
     @ci.command("codegen")
     @click.option(
-        "--lang",
-        type=click.Choice(["all", "python", "dart", "site", "snapshot-ts"]),
-        default="all",
-        help="Generate code for specific language (default: all).",
+        "--packages",
+        default=None,
+        help="Comma-separated package ids; generates what their dependency closure requires.",
     )
-    def ci_codegen(lang: str):
-        """Generate code and auto-format (CI-aware)."""
-        run_codegen(lang)
-        run_lint(lang, no_check=True, dry_run=False)
+    @click.option("--steps", default=None, help="Comma-separated codegen step names.")
+    @click.option("--all", "all_steps", is_flag=True, default=False, help="Run every step.")
+    @click.option(
+        "--format/--no-format",
+        default=True,
+        help="Format each step's outputs right after it runs (default: on).",
+    )
+    def ci_codegen(packages: str | None, steps: str | None, all_steps: bool, format: bool):
+        """Generate code through the step graph (CI-aware)."""
+        selected = [name for name in (packages, steps) if name] + ([True] if all_steps else [])
+        if len(selected) != 1:
+            raise click.ClickException("Pass exactly one of --packages, --steps, or --all.")
+        if all_steps:
+            names = all_step_names()
+        elif packages:
+            ids = [p.strip() for p in packages.split(",") if p.strip()]
+            if not ids:
+                raise click.ClickException("--packages must contain at least one package id.")
+            try:
+                names = steps_for_packages(ids)
+            except ValueError as exception:
+                raise click.ClickException(str(exception)) from exception
+        else:
+            assert steps is not None
+            names = [s.strip() for s in steps.split(",") if s.strip()]
+            if not names:
+                raise click.ClickException("--steps must contain at least one step name.")
+        try:
+            run_steps(names, format_outputs=format)
+        except ValueError as exception:
+            raise click.ClickException(str(exception)) from exception
 
     @ci.command("zizmor")
     def ci_zizmor():

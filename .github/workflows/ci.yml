@@ -13,8 +13,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# This workflow is a generic parameterized runner: it resolves the job matrix
+# from the change set (merge-base diff) and hands each self-describing job
+# specification to the `test` job, which executes setup phases and commands in
+# order. It contains no package names, no task-kind names, and no per-kind
+# conditional logic; bootstrap/tests/test_ci_invariants.py enforces this.
+
 jobs:
-  calculate_matrix:
+  resolve:
     runs-on: ubuntu-slim
     outputs:
       jobs: ${{ steps.matrix.outputs.jobs }}
@@ -24,36 +30,36 @@ jobs:
           fetch-depth: 0
           submodules: true
           persist-credentials: false
-      - name: Get changed files
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git diff --name-only "${{ github.event.pull_request.base.sha }}" \
-              "${{ github.event.pull_request.head.sha }}" > /tmp/changed.txt
-          else
-            echo "FULL" > /tmp/changed.txt
-          fi
       - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           python-version: "3.13"
-      - name: Calculate job matrix
+      - name: Resolve job matrix
         id: matrix
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if grep -q "^FULL$" /tmp/changed.txt; then
-            JOBS=$(uv run x.py ci matrix --full)
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # The checkout only fetched history reachable from the PR merge
+            # ref; fetch the base/head tips so the merge-base diff resolves.
+            git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
+            JOBS=$(uv run x.py ci matrix --target "$BASE_SHA" --head "$HEAD_SHA")
           else
-            JOBS=$(uv run x.py ci matrix --from-file /tmp/changed.txt)
+            # Pushes to the development branch cannot meaningfully diff:
+            # escalate to the full catalog.
+            JOBS=$(uv run x.py ci matrix --full)
           fi
           echo "jobs=$JOBS" >> "$GITHUB_OUTPUT"
 
   test:
-    name: ${{ matrix.suite }}
-    needs: calculate_matrix
+    name: ${{ matrix.id }}
+    needs: resolve
     runs-on: ubuntu-latest
-    if: ${{ needs.calculate_matrix.outputs.jobs != '' && needs.calculate_matrix.outputs.jobs != '[]' }}
+    if: ${{ needs.resolve.outputs.jobs != '' && needs.resolve.outputs.jobs != '[]' }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
+        include: ${{ fromJSON(needs.resolve.outputs.jobs) }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -61,38 +67,60 @@ jobs:
           persist-credentials: false
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
       - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
+        if: matrix.uv_sync
+        run: nix develop .#${{ matrix.shell }} --command bash -c 'uv sync'
       - name: Install Dart dependencies
-        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
-        run: nix develop .#dart --command bash -c 'flutter pub get'
+        if: matrix.pub_get
+        run: nix develop .#${{ matrix.shell }} --command bash -c 'flutter pub get'
       - name: Install JS dependencies
-        if: matrix.suite == 'site' || matrix.suite == 'snapshot-ts' || matrix.suite == 'worker'
-        run: nix develop .#js --command bash -c 'pnpm install'
+        if: matrix.pnpm_install
+        run: nix develop .#${{ matrix.shell }} --command bash -c 'pnpm install'
       - name: Fetch native CI data
-        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
-        run: |
-          curl -sfLo /tmp/ci-native-data.tar.gz \
-            https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
-          mkdir -p "$GITHUB_WORKSPACE/ci-native"
-          tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
-          mkdir -p packages/eve-fit-os/data/out
-          ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" \
-            packages/eve-fit-os/data/out/pb2
+        if: matrix.native_data
+        uses: ./.github/actions/fetch-native-data
       - name: Init dev env
-        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
+        if: matrix.dev_env
         uses: ./.github/actions/init-dev-env
       - name: Setup CI dev config
-        if: matrix.suite == 'dart' || matrix.suite == 'dart-web'
-        run: nix develop .#dart --command bash -c 'uv run x.py dev env write-backend'
+        if: matrix.dev_env
+        run: nix develop .#${{ matrix.shell }} --command bash -c 'uv run x.py dev env write-backend'
       - name: Generate code
-        run: nix develop .#codegen --command bash -c '${{ matrix.codegen_command }}'
-      - name: Lint ${{ matrix.suite }}
-        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.lint_command }}'
-      - name: Test ${{ matrix.suite }}
-        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.command }}'
+        if: ${{ matrix.codegen != '' }}
+        run: nix develop .#codegen --command bash -c '${{ matrix.codegen }}'
+      - name: Lint
+        if: ${{ matrix.lint != '' }}
+        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.lint }}'
+      - name: Test
+        if: ${{ matrix.test != '' }}
+        run: nix develop .#${{ matrix.shell }} --command bash -c '${{ matrix.test }}'
 
       - name: Upload diagnostics
         if: failure()
         uses: ./.github/actions/upload-diagnostics
         with:
-          name: diagnostics-ci-${{ matrix.suite }}
+          name: diagnostics-ci-${{ matrix.slug }}
+
+  # The single terminal aggregation job: the one stable check name branch
+  # protection references. Per-task job names vary with the change set and
+  # are never protection requirements.
+  aggregate:
+    name: Required
+    needs: [resolve, test]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - name: Verify all matrix jobs succeeded
+        env:
+          RESOLVE_RESULT: ${{ needs.resolve.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          if [[ "$RESOLVE_RESULT" != "success" ]]; then
+            echo "::error::resolve job result: $RESOLVE_RESULT"
+            exit 1
+          fi
+          # The test job is legitimately absent (skipped) when the change set
+          # selected no tasks; anything else must have succeeded.
+          if [[ "$TEST_RESULT" != "success" && "$TEST_RESULT" != "skipped" ]]; then
+            echo "::error::test matrix result: $TEST_RESULT"
+            exit 1
+          fi

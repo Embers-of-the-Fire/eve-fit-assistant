@@ -14,9 +14,13 @@ templates.
 - Do not add secrets to workflow files. Publishing credentials belong in GitHub
   Environments as described by `RELEASING.md` and @docs/agents/ci-release.
 - Preserve the release-label contract: `V-Release`, `V-Test`, and `V-Tested Release`.
-- Web preview behavior depends on the monorepo dependency graph in `bootstrap/monorepo/`
-  (web-relevant package closure and meta entries) and the `x.py ci web-affected` check;
-  update both sides together when changing the trigger model.
+- Web preview behavior is a query over the change-aware resolver in `bootstrap/ci/`
+  (`uv run x.py ci web-gate`: whether the Flutter app's task set is instantiated for the change
+  set); update both sides together when changing the trigger model.
+- `ci.yml` is a generic parameterized runner: it must never contain package names, task-kind
+  names, or per-kind conditional logic. CI workload changes belong in the task catalog
+  (`bootstrap/ci/catalog.py`), not in the workflow. Branch protection references only the
+  terminal aggregation check (`CI / Required`).
 
 ## Validation
 

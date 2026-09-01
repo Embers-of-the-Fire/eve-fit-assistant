@@ -80,12 +80,7 @@ jobs:
             echo "deploy=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git diff --name-only "$LAST_SHA" HEAD > /tmp/changed.txt
-          if [[ ! -s /tmp/changed.txt ]]; then
-            echo "deploy=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          BUILD=$(uv run x.py ci web-affected --from-file /tmp/changed.txt)
+          BUILD=$(uv run x.py ci web-gate --target "$LAST_SHA" --head HEAD)
           echo "deploy=$BUILD" >> "$GITHUB_OUTPUT"
 
   build:

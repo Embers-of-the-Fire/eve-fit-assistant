@@ -54,7 +54,13 @@ async function seedFit(fitHash: string): Promise<void> {
         "INSERT INTO fits (fit_hash, server_id, snapshot_hash, fit_state, snapshot) " +
             "VALUES (?, ?, ?, ?, ?)",
     )
-        .bind(fitHash, "Tranquility", "snapshot-hash", new Uint8Array([1]), b64ToBytes(SNAPSHOT_B64))
+        .bind(
+            fitHash,
+            "Tranquility",
+            "snapshot-hash",
+            new Uint8Array([1]),
+            b64ToBytes(SNAPSHOT_B64),
+        )
         .run();
 }
 
@@ -195,16 +201,20 @@ describe("migration 0004_post_author", () => {
 
     it("creates a nullable author_id with ON DELETE SET NULL and the posts_author index", async () => {
         // beforeEach already applied the full migration set.
-        const { results: columns } = await env.FIT_DB.prepare(
-            "PRAGMA table_info(posts)",
-        ).all<{ name: string; notnull: number }>();
+        const { results: columns } = await env.FIT_DB.prepare("PRAGMA table_info(posts)").all<{
+            name: string;
+            notnull: number;
+        }>();
         const author = columns.find((c) => c.name === "author_id");
         expect(author).toBeDefined();
         expect(author!.notnull).toBe(0);
 
-        const { results: fks } = await env.FIT_DB.prepare(
-            "PRAGMA foreign_key_list(posts)",
-        ).all<{ table: string; from: string; to: string; on_delete: string }>();
+        const { results: fks } = await env.FIT_DB.prepare("PRAGMA foreign_key_list(posts)").all<{
+            table: string;
+            from: string;
+            to: string;
+            on_delete: string;
+        }>();
         expect(fks).toContainEqual(
             expect.objectContaining({ table: "users", from: "author_id", on_delete: "SET NULL" }),
         );
@@ -240,9 +250,7 @@ describe("migration 0004_post_author", () => {
 
         await env.FIT_DB.prepare("DELETE FROM users WHERE user_id = ?").bind(userId).run();
 
-        const row = await env.FIT_DB.prepare(
-            "SELECT author_id FROM posts WHERE post_id = ?",
-        )
+        const row = await env.FIT_DB.prepare("SELECT author_id FROM posts WHERE post_id = ?")
             .bind("22222222-2222-4222-8222-222222222222")
             .first<{ author_id: string | null }>();
         expect(row?.author_id).toBeNull();

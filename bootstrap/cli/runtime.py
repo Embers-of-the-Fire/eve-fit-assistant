@@ -209,11 +209,12 @@ def resolve_change_scope(
 ) -> tuple[tuple[str, ...] | None, tuple[str, ...] | None]:
     """Resolve ``--changed``/``--packages`` CLI options into a work scope.
 
-    Returns ``(package ids, changed files)``; both are ``None`` for the legacy
-    full behavior. Infrastructure changes escalate to a full (unscoped) run.
+    Returns ``(package ids, changed files)``; both are ``None`` for the
+    unscoped full behavior. Escalating changes resolve to a full (unscoped)
+    run. Change detection is the single merge-base implementation in
+    ``bootstrap.ci.resolve``.
     """
-    from bootstrap.monorepo import changed_files_from_git
-    from bootstrap.monorepo import resolve_affected
+    import bootstrap.ci.resolve as resolver
 
     if changed and packages:
         raise click.ClickException("--changed and --packages cannot be used together.")
@@ -224,20 +225,20 @@ def resolve_change_scope(
         return None, None
 
     try:
-        files = changed_files_from_git(base_ref)
+        files = resolver.changed_files_local(base_ref)
     except RuntimeError as exception:
         raise click.ClickException(str(exception)) from exception
-    affected = resolve_affected(files)
-    if affected.full:
+    resolution = resolver.resolve(files)
+    if resolution.escalated:
         click.echo(
             styled(
                 [Style.BRIGHT, Fore.YELLOW],
                 "Infrastructure files changed; running the full pass.",
             )
         )
-        return None, tuple(affected.files)
+        return None, None
     click.echo(
         styled([Style.BRIGHT, Fore.GREEN], "Affected packages: ")
-        + (", ".join(sorted(affected.packages)) or "(none)")
+        + (", ".join(sorted(resolution.packages)) or "(none)")
     )
-    return tuple(sorted(affected.packages)), tuple(affected.files)
+    return tuple(sorted(resolution.packages)), resolution.files

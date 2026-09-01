@@ -1,0 +1,20 @@
+name: Fetch native CI data
+
+description: >-
+  Downloads the native CI data tarball (dogma JSON + protobuf snapshots) from
+  CI storage and links it into the fitting-engine data directory expected by
+  build-time codegen. The caller must check out the repository first.
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch native CI data
+      shell: bash
+      run: |
+        curl -sfLo /tmp/ci-native-data.tar.gz \
+          https://ci.storage.efa-tech.dev/build-dependencies/ci-native-data.tar.gz
+        mkdir -p "$GITHUB_WORKSPACE/ci-native"
+        tar xzf /tmp/ci-native-data.tar.gz -C "$GITHUB_WORKSPACE/ci-native/"
+        mkdir -p packages/eve-fit-os/data/out
+        ln -sfn "$GITHUB_WORKSPACE/ci-native/pb2" \
+          packages/eve-fit-os/data/out/pb2

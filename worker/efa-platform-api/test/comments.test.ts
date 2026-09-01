@@ -107,16 +107,7 @@ async function seedPost(postId: string, authorId?: string): Promise<void> {
         "INSERT INTO posts (post_id, author_id, fit_hash, fit_name, description, ship_names, " +
             "ship_type_id, last_modified_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-        .bind(
-            postId,
-            authorId ?? null,
-            FIT_HASH,
-            "Test Fit",
-            "",
-            '{"en":"Merlin"}',
-            12017,
-            42,
-        )
+        .bind(postId, authorId ?? null, FIT_HASH, "Test Fit", "", '{"en":"Merlin"}', 12017, 42)
         .run();
 }
 
@@ -449,9 +440,7 @@ describe("comment lifecycle with posts and users", () => {
 
         await env.FIT_DB.prepare("DELETE FROM users WHERE user_id = ?").bind(userId).run();
 
-        const row = await env.FIT_DB.prepare(
-            "SELECT author_id FROM comments WHERE comment_id = ?",
-        )
+        const row = await env.FIT_DB.prepare("SELECT author_id FROM comments WHERE comment_id = ?")
             .bind("66666666-6666-4666-8666-666666666666")
             .first<{ author_id: string | null }>();
         expect(row?.author_id).toBeNull();
