@@ -463,13 +463,14 @@ def steps_for_packages(package_ids: Iterable[str]) -> list[str]:
     """
     from bootstrap.ci.registry import PACKAGES
 
+    requested = list(package_ids)
     by_id = {p.id: p for p in PACKAGES}
-    unknown = set(package_ids) - by_id.keys()
+    unknown = set(requested) - by_id.keys()
     if unknown:
         raise ValueError(f"Unknown package(s): {', '.join(sorted(unknown))}")
 
     closure: set[str] = set()
-    stack = list(package_ids)
+    stack = list(requested)
     while stack:
         current = stack.pop()
         if current in closure:

@@ -76,6 +76,16 @@ def test_steps_are_topologically_ordered():
         assert steps == resolve_steps(steps)
 
 
+def test_generator_input_is_consumed_once():
+    # The parameter is typed Iterable[str]; a generator must work as well as a
+    # list, so the input is materialized before both the validation and the
+    # traversal consume it.
+    assert steps_for_packages(p for p in ["efa_fit"]) == steps_for_packages(["efa_fit"])
+    assert steps_for_packages(p for p in ["eve_fit_assistant"]) == steps_for_packages(
+        ["eve_fit_assistant"]
+    )
+
+
 def test_unknown_step_raises():
     with pytest.raises(ValueError, match="Unknown codegen step"):
         resolve_steps(["does-not-exist"])
