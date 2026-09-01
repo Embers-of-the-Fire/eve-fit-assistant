@@ -192,7 +192,14 @@ PACKAGES: tuple[Package, ...] = (
     Package(id="email-filter", path="worker/email-filter", ecosystem="ts"),
     Package(id="issue-redirect", path="worker/issue-redirect", ecosystem="ts"),
     Package(
-        id="acl-ts", path="packages/acl/ts", ecosystem="ts", depends_on=("acl-tool",), tests=True
+        id="acl-ts",
+        path="packages/acl/ts",
+        ecosystem="ts",
+        depends_on=("acl-tool",),
+        tests=True,
+        # `tsc --noEmit` (the check script) type-checks test/, which imports
+        # the gitignored generated ACL fixtures.
+        codegen=("acl",),
     ),
     Package(id="acl-tool", path="packages/acl/tool", ecosystem="ts", tests=True),
     Package(

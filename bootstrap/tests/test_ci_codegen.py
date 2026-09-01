@@ -30,16 +30,31 @@ def test_app_closure_resolves_full_step_set():
     assert steps == {"protobuf", "frb", "dart_tools", "build_runner", "l10n", "acl"}
 
 
+def test_build_runner_runs_after_dart_tools():
+    # build_runner analyzes sources that use types from dart_tools outputs
+    # (e.g. Locale from lib/config/locale.dart); running it earlier fails
+    # codegen with InvalidType errors.
+    steps = steps_for_packages(["eve_fit_assistant"])
+    assert steps.index("build_runner") > steps.index("dart_tools")
+
+
+def test_acl_ts_closure_generates_fixtures():
+    # tsc --noEmit type-checks test/, which imports the generated fixtures.
+    assert steps_for_packages(["acl-ts"]) == ["acl"]
+
+
 def test_step_level_dependencies_are_included():
-    # build_runner requires the FRB bridge and protobuf outputs.
+    # build_runner requires the FRB bridge, protobuf outputs, and the custom
+    # Dart codegen outputs.
     steps = resolve_steps(["build_runner"])
-    assert set(steps) == {"build_runner", "frb", "protobuf"}
+    assert set(steps) == {"build_runner", "frb", "protobuf", "dart_tools"}
     assert steps.index("build_runner") > steps.index("frb")
     assert steps.index("build_runner") > steps.index("protobuf")
+    assert steps.index("build_runner") > steps.index("dart_tools")
 
 
 def test_steps_are_topologically_ordered():
-    for packages in (["eve_fit_assistant"], ["acl", "efa-proto-ts"], ["efa-chat"]):
+    for packages in (["eve_fit_assistant"], ["acl", "efa-proto-ts"], ["efa-chat"], ["acl-ts"]):
         steps = steps_for_packages(packages)
         assert steps == resolve_steps(steps)
 

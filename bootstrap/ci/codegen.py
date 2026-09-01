@@ -323,7 +323,10 @@ STEPS: tuple[Step, ...] = (
     Step(
         "build_runner",
         _run_build_runner,
-        requires=("frb", "protobuf"),
+        # frb/protobuf: bridge and message types; dart_tools: generated
+        # sources (e.g. lib/config/locale.dart) whose types appear in
+        # serialized/freezed models — analyzing without them fails codegen.
+        requires=("frb", "protobuf", "dart_tools"),
         outputs=(
             "apps/eve-fit-assistant/lib/**/*.g.dart",
             "apps/eve-fit-assistant/lib/**/*.freezed.dart",
