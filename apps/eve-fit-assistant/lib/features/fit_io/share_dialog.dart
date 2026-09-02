@@ -45,6 +45,12 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
   bool _isSharing = false;
   FitPostSubmitResult? _shareResult;
 
+  /// Set when the platform rejected the upload with `snapshot_incomplete`
+  /// and offered its latest snapshot as a fallback candidate: the dialog
+  /// switches to a consent prompt, and accepting re-shares with
+  /// `allowLatestSnapshotFallback`.
+  bool _fallbackOffered = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,7 +83,12 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
                 children: [
                   Text(fit.metadata.name, style: context.theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Text(context.l10n.fitShareDescription, style: context.theme.textTheme.bodyMedium),
+                  Text(
+                    _fallbackOffered
+                        ? context.l10n.fitShareFallbackOffer
+                        : context.l10n.fitShareDescription,
+                    style: context.theme.textTheme.bodyMedium,
+                  ),
                   if (_actionError != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -112,7 +123,13 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
               ),
               FilledButton(
                 onPressed: fit == null || _isSharing ? null : _handleShare,
-                child: Text(_isSharing ? context.l10n.loading : context.l10n.fitShareButton),
+                child: Text(
+                  _isSharing
+                      ? context.l10n.loading
+                      : _fallbackOffered
+                      ? context.l10n.fitShareFallbackAccept
+                      : context.l10n.fitShareButton,
+                ),
               ),
             ],
     );
@@ -128,6 +145,17 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
             : context.l10n.fitShareSuccessNew,
         style: context.theme.textTheme.bodyMedium,
       ),
+      // Acknowledge the consented fallback: the stored fit was computed with
+      // the platform's snapshot, and re-sharing later recomputes it natively.
+      if (result.snapshotFallback) ...[
+        const SizedBox(height: 12),
+        Text(
+          context.l10n.fitShareFallbackNotice,
+          style: context.theme.textTheme.bodySmall?.copyWith(
+            color: context.theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
       if (_actionError != null) ...[
         const SizedBox(height: 12),
         Text(
@@ -165,13 +193,29 @@ class _FitShareDialogState extends ConsumerState<FitShareDialog> {
       _actionError = null;
     });
     try {
-      final result = await const FitShareOperation().share(ref, fitId: widget.fitId, fit: fit);
+      final result = await const FitShareOperation().share(
+        ref,
+        fitId: widget.fitId,
+        fit: fit,
+        allowLatestSnapshotFallback: _fallbackOffered,
+      );
       if (!mounted) return;
       setState(() => _shareResult = result);
     } on Object catch (error, stackTrace) {
       logFitShareFailure(error, stackTrace);
       if (!mounted) return;
-      setState(() => _actionError = describeFitShareError(context.l10n, error));
+      // The platform offers its latest snapshot as a fallback candidate:
+      // turn the hard failure into a consent prompt instead of an error.
+      // Once offered, a repeated snapshot_incomplete (a race against data
+      // ingestion, or no completed snapshot at all) stays an error.
+      if (!_fallbackOffered &&
+          error is FitUploadException &&
+          error.code == FitUploadErrorCode.snapshotIncomplete &&
+          error.latestSnapshotHash != null) {
+        setState(() => _fallbackOffered = true);
+      } else {
+        setState(() => _actionError = describeFitShareError(context.l10n, error));
+      }
     } finally {
       if (mounted) {
         setState(() => _isSharing = false);

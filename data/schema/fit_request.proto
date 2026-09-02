@@ -28,6 +28,13 @@ message FitUploadRequest {
   optional string generator = 6;
 
   required FitState fit = 7;
+
+  /// User-consented fallback: when the requested snapshot is not (yet)
+  /// registered and complete on the platform, reproduce the fit with the
+  /// server's latest completed snapshot for `server_id` instead of failing
+  /// with `snapshot_incomplete`. Consulted only when the requested snapshot
+  /// does not resolve.
+  optional bool allow_latest_snapshot_fallback = 8;
 }
 
 message FitState {
@@ -163,4 +170,16 @@ message FitCharacter {
 message FitStoreResponse {
   required string fit_hash = 1;
   required bool already_existed = 2;
+
+  /// The snapshot the stored computation used. Differs from the request's
+  /// `snapshot_hash` iff `snapshot_fallback` is set. Fits are stored per
+  /// `(fit_hash, snapshot_hash)` variant, so a later re-upload under a
+  /// different (e.g. newly ingested) snapshot recomputes instead of
+  /// short-circuiting on this entry.
+  optional string snapshot_hash = 3;
+
+  /// True when the requested snapshot was not registered and the fit was
+  /// reproduced with the server's latest completed snapshot (requires the
+  /// request's `allow_latest_snapshot_fallback` consent).
+  optional bool snapshot_fallback = 4;
 }

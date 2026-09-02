@@ -497,6 +497,7 @@ mod tests {
             last_modified_ms: 1,
             generator: None,
             fit: state,
+            allow_latest_snapshot_fallback: None,
         }
     }
 

@@ -79,7 +79,13 @@ void main() {
         ProviderScope(
           overrides: [
             fitSnapshotUploadFnProvider.overrideWithValue(
-              uploadFn ?? (ref, {required fitId, required fit}) async => _result,
+              uploadFn ??
+                  (
+                    ref, {
+                    required fitId,
+                    required fit,
+                    allowLatestSnapshotFallback = false,
+                  }) async => _result,
             ),
             fitShareUrlLauncherProvider.overrideWithValue(launcher),
           ],
@@ -116,6 +122,28 @@ void main() {
       expect(launched, isEmpty);
     });
 
+    testWidgets("forwards the latest-snapshot fallback consent to the upload", (tester) async {
+      final seen = <bool>[];
+      final ref = await pumpRef(
+        tester,
+        launcher: (uri) async => true,
+        uploadFn: (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async {
+          seen.add(allowLatestSnapshotFallback);
+          return _result;
+        },
+      );
+
+      await const FitShareOperation().share(ref, fitId: "test-fit-1", fit: _makeFit());
+      await const FitShareOperation().share(
+        ref,
+        fitId: "test-fit-1",
+        fit: _makeFit(),
+        allowLatestSnapshotFallback: true,
+      );
+
+      expect(seen, [false, true]);
+    });
+
     testWidgets("upload failures propagate without launching anything", (tester) async {
       final launched = <Uri>[];
       final ref = await pumpRef(
@@ -124,8 +152,9 @@ void main() {
           launched.add(uri);
           return true;
         },
-        uploadFn: (ref, {required fitId, required fit}) async =>
-            throw const FitUploadException(FitUploadErrorCode.forbidden),
+        uploadFn:
+            (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                throw const FitUploadException(FitUploadErrorCode.forbidden),
       );
 
       await expectLater(
@@ -146,7 +175,8 @@ void main() {
         ProviderScope(
           overrides: [
             fitSnapshotUploadFnProvider.overrideWithValue(
-              (ref, {required fitId, required fit}) async => _result,
+              (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                  _result,
             ),
             fitShareUrlLauncherProvider.overrideWithValue(launcher),
           ],

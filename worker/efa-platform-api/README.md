@@ -67,17 +67,18 @@ without an `Origin` header (the native app) are unaffected. Errors are JSON
 `invalid_token` (`unauthorized` is no longer used), 403 `forbidden` (ACL
 permission missing), 404 `not_found`, 500
 `internal`; errors from fit-storage are
-passed through unchanged (e.g. 409 `snapshot_incomplete`, 422
+passed through unchanged (e.g. 409 `snapshot_incomplete` — carrying
+`latest_snapshot_hash` when a consented fallback candidate exists —, 422
 `validation_failed`).
 
 | Endpoint | Auth | Description |
 | --- | --- | --- |
-| `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted, postUrl }` — `postUrl` is the site's post page (`$PLATFORM_SITE_ORIGIN/post/<postId>`), so clients can redirect the user straight to it |
+| `POST /platform/internal/posts` | account + `post:create` | Submit a `FitUploadRequest` protobuf body; stores the fit via the binding and inserts a post owned by the authenticated account. `201` JSON `{ postId, fitHash, alreadyExisted, snapshotHash, snapshotFallback, postUrl }` — `snapshotHash`/`snapshotFallback` report which data snapshot computed the fit (the two differ from the request when the uploader consented to the latest-snapshot fallback), and the post is bound to that variant. `postUrl` is the site's post page (`$PLATFORM_SITE_ORIGIN/post/<postId>`), so clients can redirect the user straight to it |
 | `DELETE /platform/internal/posts/:id` | account + `post:delete:{own,all}` | Deletes the post row. `own` covers only the caller's own posts, `all` any post (qualifier validated against `posts.author_id` in the handler; NULL-author tombstones need `all`). The shared `fits` blob is unaffected. `200 { postId }`; 404 on unknown id |
 | `GET /platform/internal/my/posts` | account | The caller's own posts; same keyset pagination contract and summary shape as the public list, minus the ship/window filters. `Cache-Control: no-store` |
 | `GET /platform/internal/posts/:id` | public | JSON `{ postId, fitHash, createdAt, authorId, authorDeleted, commentCount }`; 400 on malformed UUID |
-| `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes, immutable cache |
-| `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache |
+| `GET /platform/internal/posts/:id/snapshot` | public | Raw `FitSnapshot` protobuf bytes of the fit variant the post was created with, immutable cache |
+| `GET /platform/internal/fits/:fitHash/snapshot` | public | Raw `FitSnapshot` protobuf bytes by fit hash, immutable cache; a fit hash may have several snapshot variants, the newest is served |
 | `GET /platform/internal/posts` | public | Keyset-paginated list (`cursor`, `limit` ≤ 50, `locale`, `shipTypeId`, `window` = 24h/7d/30d/all); each summary carries `authorId`/`authorDeleted`. `Cache-Control: public, max-age=30` |
 | `GET /platform/internal/ships` | public | Ship directory aggregated from `posts` (`q` name search, `window`, keyset `cursor`, `limit` ≤ 50, `locale`), `max-age=30` |
 | `GET /platform/internal/ships/:id` | public | Per-ship aggregate `{ shipTypeId, shipName, postCount, firstPostAt, lastPostAt }`; 404 when the ship has no posts |

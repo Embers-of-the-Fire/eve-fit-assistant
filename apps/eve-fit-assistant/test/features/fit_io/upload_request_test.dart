@@ -130,6 +130,21 @@ void main() {
       final request = _build(_makeFit(description: ""));
       expect(request.hasDescription(), isFalse);
     });
+
+    test("omits the latest-snapshot fallback consent unless consented", () {
+      expect(_build(_makeFit()).hasAllowLatestSnapshotFallback(), isFalse);
+
+      final consented = buildFitUploadRequest(
+        fit: _makeFit(),
+        snapshotHash: "snapshot-hash-1",
+        generator: "eve-fit-assistant/1.2.3",
+        skills: const {3300: 5, 3301: 4},
+        characterName: "Char Name",
+        allowLatestSnapshotFallback: true,
+      );
+      expect(consented.hasAllowLatestSnapshotFallback(), isTrue);
+      expect(consented.allowLatestSnapshotFallback, isTrue);
+    });
   });
 
   group("fit state", () {

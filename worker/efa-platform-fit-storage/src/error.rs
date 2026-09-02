@@ -1,13 +1,16 @@
 use serde_json::{Value, json};
 
 /// API error rendered as `{ "error": code, "message": msg }` (+ `"issues"`
-/// for `validation_failed`), per the spec §6 table.
+/// for `validation_failed`, + `"latest_snapshot_hash"` for
+/// `snapshot_incomplete` when the server has a completed snapshot to fall
+/// back to), per the spec §6 table.
 #[derive(Debug)]
 pub struct ApiError {
     pub status: u16,
     pub code: &'static str,
     pub message: String,
     pub issues: Option<Value>,
+    pub latest_snapshot_hash: Option<String>,
 }
 
 impl ApiError {
@@ -17,6 +20,7 @@ impl ApiError {
             code,
             message: message.into(),
             issues: None,
+            latest_snapshot_hash: None,
         }
     }
 
@@ -28,12 +32,22 @@ impl ApiError {
         Self::new(404, "not_found", message)
     }
 
-    pub fn snapshot_incomplete(server_id: &str, snapshot_hash: &str) -> Self {
-        Self::new(
+    /// `latest_snapshot_hash` is the server's newest completed snapshot for
+    /// the requested server (same-server fallback candidate); clients use it
+    /// to offer a consented retry with `allow_latest_snapshot_fallback`.
+    /// Absent when the server has no completed snapshot at all.
+    pub fn snapshot_incomplete(
+        server_id: &str,
+        snapshot_hash: &str,
+        latest_snapshot_hash: Option<String>,
+    ) -> Self {
+        let mut err = Self::new(
             409,
             "snapshot_incomplete",
             format!("snapshot not registered: {server_id}/{snapshot_hash}"),
-        )
+        );
+        err.latest_snapshot_hash = latest_snapshot_hash;
+        err
     }
 
     pub fn unknown_type(type_id: i32) -> Self {
@@ -46,6 +60,7 @@ impl ApiError {
             code: "validation_failed",
             message: "fit failed engine validation".to_string(),
             issues: Some(issues),
+            latest_snapshot_hash: None,
         }
     }
 
@@ -67,6 +82,9 @@ impl ApiError {
         });
         if let Some(issues) = &self.issues {
             body["issues"] = issues.clone();
+        }
+        if let Some(latest_snapshot_hash) = &self.latest_snapshot_hash {
+            body["latest_snapshot_hash"] = json!(latest_snapshot_hash);
         }
         body
     }

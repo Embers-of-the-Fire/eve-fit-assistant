@@ -29,14 +29,27 @@ Oversized free-text fields are rejected with 400 `bad_request` before
 canonicalization (limits in Unicode code points): `fit_name` ≤ 100,
 `description` ≤ 4000.
 
+When the requested `(server_id, snapshot_hash)` has no completed registry row,
+the submit either fails or — with explicit uploader consent
+(`FitUploadRequest.allow_latest_snapshot_fallback`) — reproduces the fit with
+the server's latest completed snapshot for the same `server_id`. The error
+envelope then carries `latest_snapshot_hash` so clients can ask for that
+consent; `FitStoreResponse.snapshot_hash` / `snapshot_fallback` report which
+snapshot actually computed the result. Fits are stored per
+`(fit_hash, snapshot_hash)` variant (`requested_snapshot_hash` records the
+fallback provenance), so a re-upload under the originally requested snapshot —
+once ingested — recomputes into its own variant instead of short-circuiting on
+the fallback entry; reads addressed by bare fit hash serve the newest variant.
+
 Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
-`issues` array for `validation_failed`):
+`issues` array for `validation_failed`, + `latest_snapshot_hash` for
+`snapshot_incomplete` when a fallback candidate exists):
 
 | Status | Code | Condition |
 | --- | --- | --- |
 | 400 | `bad_request` | Malformed protobuf, constraint violations |
 | 404 | `not_found` | Unknown fit hash |
-| 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` has no completed row in the `snapshots` registry |
+| 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` has no completed row in the `snapshots` registry; carries `latest_snapshot_hash` when a same-server fallback candidate exists |
 | 422 | `unknown_type` | A referenced type ID has no row in the snapshot |
 | 422 | `validation_failed` | Engine `validate_fit` returned Error-level issues |
 
@@ -55,9 +68,10 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
   Getter misses degrade to zero-value placeholders and are counted/logged,
   never a wasm trap.
 - Fits that pass `calculate` + `validate_fit` are stored in the `efa-platform`
-  D1 database (`migrations/0001_init.sql`): one `fits` row per canonical hash
-  (idempotent re-submits skip computation). The `posts` table in the same
-  database is owned by `efa-platform-api`.
+  D1 database (`migrations/0001_init.sql`, `0002_snapshot_variants.sql`): one
+  `fits` row per `(canonical hash, computation snapshot)` variant (idempotent
+  re-submits of the same variant skip computation). The `posts` table in the
+  same database is owned by `efa-platform-api`.
 - At submit time only, each used type's icon is resolved through the EFA
   storage catalog chain (`src/icons.rs`:
   `channels/heads/channels.json` → head `metadata.json` → generation

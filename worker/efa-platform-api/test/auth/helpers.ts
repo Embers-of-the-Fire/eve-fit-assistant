@@ -7,6 +7,7 @@ import { applyD1Migrations, reset } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import type { OtpEmailEnv, OtpEmailInput } from "../../src/auth/email.ts";
 import { createAuthApp } from "../../src/auth/router.ts";
+import { ensureFitsTable } from "../fits-table.ts";
 
 export interface CapturedEmail {
     to: string;
@@ -22,9 +23,12 @@ export type SendEmail = (env: OtpEmailEnv, input: OtpEmailInput) => Promise<bool
 // Wipes all auth state: Durable Object instances (OTP codes and rate-limit
 // counters), the refresh-rotation KV stash, and the D1 auth tables. reset()
 // clears the whole per-file isolated storage including the D1 schema, so the
-// migrations are re-applied to restore an empty database.
+// migrations are re-applied to restore an empty database. The fits table
+// (owned by efa-platform-fit-storage) is recreated first because the 0007
+// migration backfills posts.snapshot_hash from it.
 export async function clearAuthState(): Promise<void> {
     await reset();
+    await ensureFitsTable();
     await applyD1Migrations(env.FIT_DB, env.TEST_MIGRATIONS);
 }
 
