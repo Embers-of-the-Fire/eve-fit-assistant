@@ -10,8 +10,8 @@ preview_urls = false
 
 [[d1_databases]]
 binding = "PLATFORM_DB"
-database_name = "efa-platform-snapshots"
-database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
+database_name = "efa-snapshot-registry"
+database_id = "f75c61bb-7aca-4c6b-b67a-4332d172872c"
 
 [[d1_databases]]
 binding = "FIT_DB"
@@ -51,8 +51,8 @@ STORAGE_ORIGIN = "https://prod.storage.efa-tech.dev"
 
 [[env.preview.d1_databases]]
 binding = "PLATFORM_DB"
-database_name = "efa-platform-snapshots"
-database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
+database_name = "efa-snapshot-registry"
+database_id = "f75c61bb-7aca-4c6b-b67a-4332d172872c"
 
 [[env.preview.d1_databases]]
 binding = "FIT_DB"

@@ -36,15 +36,18 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
 | --- | --- | --- |
 | 400 | `bad_request` | Malformed protobuf, constraint violations |
 | 404 | `not_found` | Unknown fit hash |
-| 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` not in the `snapshots` registry |
+| 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` has no completed row in the `snapshots` registry |
 | 422 | `unknown_type` | A referenced type ID has no row in the snapshot |
 | 422 | `validation_failed` | Engine `validate_fit` returned Error-level issues |
 
 ## How it works
 
-- Engine data comes from the `efa-platform-snapshots` D1 database (populated
-  by `worker/efa-platform-data-sync`), addressed by the client-supplied
-  `(server_id, snapshot_hash)`. A 3-round transitive-closure prefetch
+- Engine data comes from the `efa-snapshot-registry` D1 database
+  (populated by `worker/efa-platform-data-sync`), addressed by the
+  client-supplied `(server_id, snapshot_hash)`. The selector is resolved to
+  the registry's `snapshot_id` (requiring `completed_at IS NOT NULL`, cached
+  per isolate), and rows are read from `snapshot_entries` ⋈ `entries` by
+  `(snapshot_id, family)`. A 3-round transitive-closure prefetch
   (`src/prefetch.rs`) loads exactly the reachable rows; a `thread_local!`
   isolate cache makes warm requests zero-query.
 - `eve-fit-os` is used with `default-features = false`; the worker decodes
@@ -92,7 +95,7 @@ pointing at it (never overwriting an existing one).
 
 `wrangler deploy --env preview` targets the `[env.preview]` preview chain:
 `FIT_DB` points at the disposable
-`efa-platform-test` database; `PLATFORM_DB` stays on `efa-platform-snapshots`
+`efa-platform-test` database; `PLATFORM_DB` stays on `efa-snapshot-registry`
 (engine data is read-only and shared).
 
 ## Deployment (one-time setup)

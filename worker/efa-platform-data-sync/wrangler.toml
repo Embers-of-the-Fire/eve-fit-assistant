@@ -4,8 +4,8 @@ main = "src/index.ts"
 
 [[d1_databases]]
 binding = "PLATFORM_DB"
-database_name = "efa-platform-snapshots"
-database_id = "ad8a55e2-3786-4258-ba79-e1f6ed30b498"
+database_name = "efa-snapshot-registry"
+database_id = "f75c61bb-7aca-4c6b-b67a-4332d172872c"
 migrations_dir = "migrations"
 
 # Sync session Durable Object: one named instance ("sync") terminates the

@@ -5,11 +5,16 @@ dogma attributes, dogma effects, buff collections) into per-entry rows and
 builds per-entry name/icon metadata from the snapshot's collection and
 localization database, then uploads everything to the platform data-sync
 worker (``api.efa-tech.dev/platform/storage/data-sync``), which stores them in
-the ``efa-platform-snapshots`` D1 database.
+the ``efa-snapshot-registry`` D1 database.
 
-Layout per family ``<f>``:
-  - table ``<f>``:     (content_hash TEXT PRIMARY KEY, content BLOB)
-  - table ``<f>_reg``: (server_id, snapshot_hash, entry_id, content_hash)
+Storage layout (v2; see worker/efa-platform-data-sync/migrations):
+  - ``entries``:          (content_id, family, content_hash BLOB, content)
+                          content-addressed payloads; content_id is a dense
+                          database-local integer assigned by the worker
+  - ``snapshot_entries``: (snapshot_id, family, entry_id, content_id)
+                          registration rows referencing integer ids only
+  - ``snapshots``:        (snapshot_id, server_id, snapshot_hash BLOB,
+                          entry_count, completed_at) completeness registry
 
 Uploads run over a single WebSocket to the worker's ``SyncSession`` Durable
 Object: every frame is a small JSON message (``content``/``lookup``/
@@ -18,13 +23,17 @@ the same client-chosen ``id``. Each frame is a separate Durable Object event
 with its own CPU budget, which replaced the old multi-request HTTP API whose
 large per-request batches regularly failed with 503s.
 
+Registration rows reference content ids rather than content hashes, so the
+``content`` and ``lookup`` replies carry ``ids`` maps (content hash ->
+content id) that this driver accumulates before emitting ``register`` frames.
+
 All operations are idempotent, so the transport reconnects and resends an
 unacknowledged frame on connection failures, and a rerun of the whole sync
 converges: the ``snapshot`` frame skips already-completed snapshots and the
 ``lookup`` frame skips already-uploaded content rows. A snapshot is only
-complete once the uploader has posted every content and registration frame and
-then marked it in the ``snapshots`` registry table (``complete``); readers
-must check that registry before serving data.
+complete once the uploader has posted every content and registration frame
+and then frozen it in the ``snapshots`` registry (``complete``); readers must
+check that registry before serving data.
 """
 
 from __future__ import annotations
@@ -94,7 +103,7 @@ class Entry:
 
 @dataclass(frozen=True)
 class Registration:
-    """A single ``<family>_reg`` row."""
+    """A single ``snapshot_entries`` row candidate."""
 
     family: str
     entry_id: int
@@ -430,22 +439,39 @@ def run_sync(
                 info(f"Snapshot already complete, skipping: {server_id} ({snapshot_hash[:16]}...)")
                 del pending[(server_id, snapshot_hash)]
 
+        pending_hashes = {(reg.family, reg.hash) for regs in pending.values() for reg in regs}
+
+        # The worker's `ids` reply maps content hash -> content id, keyed by
+        # hash alone. That is only sound when no content hash appears under
+        # two families (identical bytes in two per-family protobuf schemas);
+        # enforce the invariant before relying on it.
+        families_by_hash: dict[str, set[str]] = {}
+        for family, entry_hash in pending_hashes:
+            families_by_hash.setdefault(entry_hash, set()).add(family)
+        ambiguous = [h for h, families in families_by_hash.items() if len(families) > 1]
+        if ambiguous:
+            raise ValueError(
+                f"content hashes shared across families are not supported: {ambiguous[:5]}"
+            )
+
         # Resume support: content rows already present on the server (from
         # earlier runs or shared with completed snapshots) are not resent.
-        pending_hashes = {(reg.family, reg.hash) for regs in pending.values() for reg in regs}
         rows_to_check = sorted(
             (family, entry_hash)
             for (family, entry_hash) in content
             if (family, entry_hash) in pending_hashes
         )
         missing: set[tuple[str, str]] = set()
+        content_ids: dict[tuple[str, str], int] = {}
         for family in ALL_FAMILIES:
             family_hashes = [h for f, h in rows_to_check if f == family]
             if not family_hashes:
                 continue
-            for chunk in _batched(family_hashes, 10_000):
+            for chunk in _batched(family_hashes, 5_000):
                 reply = transport.post("lookup", {"family": family, "content_hashes": chunk})
                 missing.update((family, h) for h in reply.get("missing", []))
+                for h, content_id in reply.get("ids", {}).items():
+                    content_ids[(family, h)] = content_id
         info(f"Content rows missing on the server: {len(missing)} of {len(rows_to_check)}")
 
         content_rows = [
@@ -459,14 +485,30 @@ def run_sync(
         for batch in _batched(content_rows, batch_size):
             reply = transport.post("content", {"entries": batch})
             info(f"Uploaded {len(batch)} content rows (inserted: {reply.get('inserted', '?')})")
+            # Content frames may mix families, but the cross-family hash
+            # invariant above keeps the flat ids map unambiguous.
+            family_by_hash = {row["content_hash"]: row["family"] for row in batch}
+            for h, content_id in reply.get("ids", {}).items():
+                content_ids[(family_by_hash[h], h)] = content_id
+
+        unresolved = pending_hashes - set(content_ids)
+        if unresolved:
+            raise RuntimeError(
+                f"server did not return content ids for {len(unresolved)} content rows "
+                f"(first: {min(unresolved)})"
+            )
 
         for (server_id, snapshot_hash), regs in sorted(pending.items()):
             reg_rows = [
-                {"family": reg.family, "entry_id": reg.entry_id, "content_hash": reg.hash}
+                {
+                    "family": reg.family,
+                    "entry_id": reg.entry_id,
+                    "content_id": content_ids[(reg.family, reg.hash)],
+                }
                 for reg in regs
             ]
             for batch in _batched(reg_rows, batch_size):
-                reply = transport.post(
+                transport.post(
                     "register",
                     {"server_id": server_id, "snapshot_hash": snapshot_hash, "entries": batch},
                 )

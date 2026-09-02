@@ -5,14 +5,14 @@ use worker::{js_sys, wasm_bindgen::JsValue};
 use crate::error::ApiError;
 use crate::prefetch::FetchRequest;
 
-/// D1's bound-parameter limit is 100; reserve 2 for server_id/snapshot_hash.
+/// D1's bound-parameter limit is 100; reserve 2 for snapshot_id/family.
 const MAX_ENTRY_IDS_PER_CHUNK: usize = 98;
 
 fn js_text(value: &str) -> JsValue {
     JsValue::from_str(value)
 }
 
-fn js_int(value: i32) -> JsValue {
+fn js_int(value: i64) -> JsValue {
     JsValue::from_f64(value as f64)
 }
 
@@ -21,11 +21,32 @@ fn js_blob(bytes: &[u8]) -> JsValue {
     js_sys::Uint8Array::from(bytes).buffer().into()
 }
 
+/// Lowercase hex -> raw bytes (snapshot hashes are stored as 32-byte BLOBs).
+fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, ApiError> {
+    if !hex.len().is_multiple_of(2) {
+        return Err(ApiError::internal("hex string has odd length"));
+    }
+    (0..hex.len() / 2)
+        .map(|i| {
+            u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16)
+                .map_err(|e| ApiError::internal(format!("invalid hex: {e}")))
+        })
+        .collect()
+}
+
 fn row_int(row: &JsValue, index: u32) -> Result<i32, ApiError> {
     js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
         .ok()
         .and_then(|v| v.as_f64())
         .map(|v| v as i32)
+        .ok_or_else(|| ApiError::internal("D1 row: expected integer column"))
+}
+
+fn row_int64(row: &JsValue, index: u32) -> Result<i64, ApiError> {
+    js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
+        .ok()
+        .and_then(|v| v.as_f64())
+        .map(|v| v as i64)
         .ok_or_else(|| ApiError::internal("D1 row: expected integer column"))
 }
 
@@ -87,22 +108,19 @@ async fn run_change_count(
 /// Chunked family lookup (spec §7.2). `ids == None` fetches the whole family.
 pub async fn fetch_family(
     db: &D1Database,
-    server_id: &str,
-    snapshot_hash: &str,
+    snapshot_id: i64,
     request: FetchRequest,
 ) -> anyhow::Result<Vec<(i32, Vec<u8>)>> {
     let family = request.family;
-    let table = family.table();
+    let family_code = family.code();
     let mut out = Vec::new();
 
     match request.ids {
         None => {
-            let sql = format!(
-                "SELECT r.entry_id, c.content FROM {table}_reg r \
-                 JOIN {table} c ON c.content_hash = r.content_hash \
-                 WHERE r.server_id = ? AND r.snapshot_hash = ?"
-            );
-            let rows = raw_query(db, &sql, &[js_text(server_id), js_text(snapshot_hash)]).await?;
+            let sql = "SELECT se.entry_id, e.content FROM snapshot_entries se \
+                 JOIN entries e ON e.content_id = se.content_id \
+                 WHERE se.snapshot_id = ? AND se.family = ?";
+            let rows = raw_query(db, sql, &[js_int(snapshot_id), js_int(family_code)]).await?;
             for row in &rows {
                 out.push((row_int(row, 0)?, row_blob(row, 1)?));
             }
@@ -111,13 +129,13 @@ pub async fn fetch_family(
             for chunk in ids.chunks(MAX_ENTRY_IDS_PER_CHUNK) {
                 let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
                 let sql = format!(
-                    "SELECT r.entry_id, c.content FROM {table}_reg r \
-                     JOIN {table} c ON c.content_hash = r.content_hash \
-                     WHERE r.server_id = ? AND r.snapshot_hash = ? \
-                     AND r.entry_id IN ({placeholders})"
+                    "SELECT se.entry_id, e.content FROM snapshot_entries se \
+                     JOIN entries e ON e.content_id = se.content_id \
+                     WHERE se.snapshot_id = ? AND se.family = ? \
+                     AND se.entry_id IN ({placeholders})"
                 );
-                let mut params = vec![js_text(server_id), js_text(snapshot_hash)];
-                params.extend(chunk.iter().map(|id| js_int(*id)));
+                let mut params = vec![js_int(snapshot_id), js_int(family_code)];
+                params.extend(chunk.iter().map(|id| js_int(*id as i64)));
                 let rows = raw_query(db, &sql, &params).await?;
                 for row in &rows {
                     out.push((row_int(row, 0)?, row_blob(row, 1)?));
@@ -128,19 +146,26 @@ pub async fn fetch_family(
     Ok(out)
 }
 
-/// Snapshot completeness probe (spec §6.2 step 3).
-pub async fn snapshot_exists(
+/// Resolve a snapshot selector to its registry id, requiring the snapshot to
+/// be complete (spec §6.2 step 3): pending rows (`completed_at IS NULL`) are
+/// incomplete and resolve to `None`.
+pub async fn resolve_snapshot(
     db: &D1Database,
     server_id: &str,
     snapshot_hash: &str,
-) -> Result<bool, ApiError> {
+) -> Result<Option<i64>, ApiError> {
+    let snapshot_hash_bytes = hex_to_bytes(snapshot_hash)?;
     let rows = raw_query(
         db,
-        "SELECT 1 FROM snapshots WHERE server_id = ? AND snapshot_hash = ?",
-        &[js_text(server_id), js_text(snapshot_hash)],
+        "SELECT snapshot_id FROM snapshots \
+         WHERE server_id = ? AND snapshot_hash = ? AND completed_at IS NOT NULL",
+        &[js_text(server_id), js_blob(&snapshot_hash_bytes)],
     )
     .await?;
-    Ok(!rows.is_empty())
+    match rows.first() {
+        Some(row) => Ok(Some(row_int64(row, 0)?)),
+        None => Ok(None),
+    }
 }
 
 /// The stored `FitSnapshot` protobuf bytes for a fit hash, if any.

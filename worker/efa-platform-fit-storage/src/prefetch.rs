@@ -73,7 +73,10 @@ impl SnapshotData {
     }
 }
 
-/// Row families of `efa-platform-snapshots` (spec §7.2).
+/// Row families of `efa-snapshot-registry` (spec §7.2). The codes are
+/// mirrored in the sync worker and driver
+/// (`worker/efa-platform-data-sync/src/session.ts`,
+/// `bootstrap/data/d1/sync.py`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Family {
     Types,
@@ -85,6 +88,18 @@ pub enum Family {
 }
 
 impl Family {
+    pub fn code(self) -> i64 {
+        match self {
+            Family::Types => 0,
+            Family::TypeDogma => 1,
+            Family::DogmaAttributes => 2,
+            Family::DogmaEffects => 3,
+            Family::Buffs => 4,
+            Family::TypeMeta => 5,
+        }
+    }
+
+    /// Diagnostic name for error messages (the v1 table name).
     pub fn table(self) -> &'static str {
         match self {
             Family::Types => "types",
@@ -105,6 +120,10 @@ impl Family {
 thread_local! {
     static ISOLATE_CACHE: std::cell::RefCell<HashMap<SnapshotKey, SnapshotData>> =
         std::cell::RefCell::new(HashMap::new());
+    // Resolved registry ids of complete snapshots; one D1 query per snapshot
+    // per isolate instead of one per request.
+    static SNAPSHOT_IDS: std::cell::RefCell<HashMap<SnapshotKey, i64>> =
+        std::cell::RefCell::new(HashMap::new());
 }
 
 /// Clone out the accumulated data for a snapshot (empty on cold isolates).
@@ -124,6 +143,19 @@ pub fn cache_merge(key: SnapshotKey, data: SnapshotData) {
                 entry.insert(data);
             }
         }
+    });
+}
+
+/// The cached registry id of a complete snapshot, if resolved before.
+pub fn snapshot_id_get(key: &SnapshotKey) -> Option<i64> {
+    SNAPSHOT_IDS.with(|ids| ids.borrow().get(key).copied())
+}
+
+/// Cache the registry id of a complete snapshot. Snapshot rows are frozen at
+/// completion, so the mapping never changes.
+pub fn snapshot_id_put(key: SnapshotKey, snapshot_id: i64) {
+    SNAPSHOT_IDS.with(|ids| {
+        ids.borrow_mut().insert(key, snapshot_id);
     });
 }
 

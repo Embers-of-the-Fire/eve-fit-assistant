@@ -69,6 +69,14 @@ function toBase64(data: Uint8Array): string {
     return btoa(String.fromCharCode(...data));
 }
 
+function hexToBlob(hex: string): ArrayBuffer {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes.buffer as ArrayBuffer;
+}
+
 describe("sync route access", () => {
     it("rejects unauthenticated upgrade requests", async () => {
         const res = await worker.fetch(
@@ -115,7 +123,7 @@ describe("frame validation", () => {
 });
 
 describe("lookup", () => {
-    it("reports only the hashes missing from the family content table", async () => {
+    it("reports missing hashes and resolves ids for present rows", async () => {
         const ws = await connect();
         const content = new TextEncoder().encode("type-entry-1");
         const contentHash = await sha256Hex(content);
@@ -126,15 +134,17 @@ describe("lookup", () => {
             family: "types",
             content_hashes: [contentHash],
         });
-        expect(before).toEqual({ id: 1, ok: true, missing: [contentHash] });
+        expect(before).toEqual({ id: 1, ok: true, missing: [contentHash], ids: {} });
 
-        await call(ws, {
+        const upload = await call(ws, {
             id: 2,
             type: "content",
             entries: [
                 { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
             ],
         });
+        const ids = upload.ids as Record<string, number>;
+        expect(ids[contentHash]).toBeGreaterThan(0);
 
         const after = await call(ws, {
             id: 3,
@@ -142,7 +152,12 @@ describe("lookup", () => {
             family: "types",
             content_hashes: [contentHash, "00".repeat(32)],
         });
-        expect(after).toEqual({ id: 3, ok: true, missing: ["00".repeat(32)] });
+        expect(after).toEqual({
+            id: 3,
+            ok: true,
+            missing: ["00".repeat(32)],
+            ids: { [contentHash]: ids[contentHash] },
+        });
 
         ws.close();
     });
@@ -164,14 +179,18 @@ describe("snapshot freeze", () => {
                 { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
             ],
         });
-        expect(reply).toEqual({ id: 1, ok: true, inserted: 1 });
+        expect(reply.id).toBe(1);
+        expect(reply.ok).toBe(true);
+        expect(reply.inserted).toBe(1);
+        const contentId = (reply.ids as Record<string, number>)[contentHash];
+        expect(contentId).toBeGreaterThan(0);
 
         reply = await call(ws, {
             id: 2,
             type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
-            entries: [{ family: "types", entry_id: 1, content_hash: contentHash }],
+            entries: [{ family: "types", entry_id: 1, content_id: contentId }],
         });
         expect(reply).toEqual({ id: 2, ok: true, inserted: 1 });
 
@@ -189,16 +208,18 @@ describe("snapshot freeze", () => {
             type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
-            entries: [{ family: "types", entry_id: 2, content_hash: contentHash }],
+            entries: [{ family: "types", entry_id: 2, content_id: contentId }],
         });
         expect(reply.id).toBe(4);
         expect(reply.ok).toBe(false);
         expect(reply.error).toBe("Snapshot already complete");
 
         const regCount = await env.PLATFORM_DB.prepare(
-            "SELECT COUNT(*) AS n FROM types_reg WHERE server_id = ? AND snapshot_hash = ?",
+            "SELECT COUNT(*) AS n FROM snapshot_entries se " +
+                "JOIN snapshots s ON s.snapshot_id = se.snapshot_id " +
+                "WHERE s.server_id = ? AND s.snapshot_hash = ?",
         )
-            .bind(serverId, snapshotHash)
+            .bind(serverId, hexToBlob(snapshotHash))
             .first<{ n: number }>();
         expect(regCount?.n).toBe(1);
 
@@ -228,18 +249,57 @@ describe("snapshot freeze", () => {
         ws.close();
     });
 
-    it("rejects registration of unknown content hashes", async () => {
+    it("reports pending (registered but not completed) snapshots as incomplete", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "12".repeat(32);
+
+        const content = new TextEncoder().encode("type-entry-1");
+        const contentHash = await sha256Hex(content);
+        const upload = await call(ws, {
+            id: 1,
+            type: "content",
+            entries: [
+                { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
+            ],
+        });
+        const contentId = (upload.ids as Record<string, number>)[contentHash];
+
+        await call(ws, {
+            id: 2,
+            type: "register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entries: [{ family: "types", entry_id: 1, content_id: contentId }],
+        });
+
+        const reply = await call(ws, {
+            id: 3,
+            type: "snapshot",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+        });
+        expect(reply).toEqual({ id: 3, ok: true, complete: false });
+
+        const res = await get(`/snapshot?server_id=${serverId}&snapshot_hash=${snapshotHash}`);
+        const snapshot = (await res.json()) as { complete: boolean };
+        expect(snapshot.complete).toBe(false);
+
+        ws.close();
+    });
+
+    it("rejects registration of unknown content ids", async () => {
         const ws = await connect();
         const reply = await call(ws, {
             id: 1,
             type: "register",
             server_id: "tranquility",
             snapshot_hash: "cd".repeat(32),
-            entries: [{ family: "types", entry_id: 1, content_hash: "ef".repeat(32) }],
+            entries: [{ family: "types", entry_id: 1, content_id: 424242 }],
         });
         expect(reply.id).toBe(1);
         expect(reply.ok).toBe(false);
-        expect(reply.error).toBe("Unknown content hashes");
+        expect(reply.error).toBe("Unknown content ids");
         ws.close();
     });
 });
@@ -264,14 +324,17 @@ describe("entry_id validation", () => {
                 },
             ],
         });
-        expect(reply).toEqual({ id: 1, ok: true, inserted: 1 });
+        expect(reply.id).toBe(1);
+        expect(reply.ok).toBe(true);
+        expect(reply.inserted).toBe(1);
+        const contentId = (reply.ids as Record<string, number>)[contentHash];
 
         reply = await call(ws, {
             id: 2,
             type: "register",
             server_id: serverId,
             snapshot_hash: snapshotHash,
-            entries: [{ family: "dogma_effects", entry_id: -64, content_hash: contentHash }],
+            entries: [{ family: "dogma_effects", entry_id: -64, content_id: contentId }],
         });
         expect(reply).toEqual({ id: 2, ok: true, inserted: 1 });
 
@@ -286,7 +349,7 @@ describe("entry_id validation", () => {
                 type: "register",
                 server_id: "tranquility",
                 snapshot_hash: "ef".repeat(32),
-                entries: [{ family: "types", entry_id: entryId, content_hash: "ab".repeat(32) }],
+                entries: [{ family: "types", entry_id: entryId, content_id: 1 }],
             });
             expect(reply.id).toBe(1);
             expect(reply.ok).toBe(false);

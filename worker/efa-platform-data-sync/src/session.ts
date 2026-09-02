@@ -9,24 +9,36 @@
 //
 // Protocol: every client frame is a JSON object with a `type` discriminator
 // and a client-chosen integer `id`; the server replies with one JSON object
-// carrying the same `id`. All operations are idempotent (INSERT OR IGNORE /
-// INSERT OR REPLACE), so a client that loses the connection may reconnect and
-// resend the unacknowledged frame — or rerun the whole sync, which converges
-// via the `lookup`/`snapshot` frames.
+// carrying the same `id`. All operations are idempotent (INSERT OR IGNORE),
+// so a client that loses the connection may reconnect and resend the
+// unacknowledged frame — or rerun the whole sync, which converges via the
+// `lookup`/`snapshot` frames.
+//
+// Storage v2 (see migrations/0001_init.sql): hashes cross the wire as
+// lowercase hex but are stored as raw 32-byte BLOBs, and registration rows
+// reference dense database-local integer ids (snapshot_id, content_id)
+// instead of repeating both hashes per row.
 //
 // Client frames:
 //   {type: "content",  id, entries: [{family, content_hash, content_b64}]}
-//       -> {id, ok: true, inserted} — INSERT OR IGNORE per-entry payloads,
-//          each verified against its SHA-256 content hash.
+//       -> {id, ok: true, inserted, ids: {content_hash: content_id}} —
+//          INSERT OR IGNORE per-entry payloads, each verified against its
+//          SHA-256 content hash, then the content ids of the frame's entries
+//          (present and freshly inserted alike) are resolved for the client.
+//          `ids` is keyed by hash alone: ids are only unique per
+//          (family, hash), so a frame must not carry identical content bytes
+//          under two families (the pipeline's per-family protobuf schemas
+//          make this impossible in practice).
 //   {type: "lookup",   id, family, content_hashes: [hex]}
-//       -> {id, ok: true, missing: [hex]} — subset of the given hashes not
-//          yet present in the family content table (resume support).
-//   {type: "register", id, server_id, snapshot_hash, entries: [{family, entry_id, content_hash}]}
+//       -> {id, ok: true, missing: [hex], ids: {content_hash: content_id}} —
+//          hashes not yet present in the family, plus the content ids of the
+//          present ones (resume support).
+//   {type: "register", id, server_id, snapshot_hash, entries: [{family, entry_id, content_id}]}
 //       -> {id, ok: true, inserted} — registration rows, conditional on the
 //          snapshot not being frozen by a `complete` marker yet.
 //   {type: "complete", id, server_id, snapshot_hash, entry_count}
-//       -> {id, ok: true} — writes the `snapshots` completeness marker after
-//          verifying the actual registration row count server-side.
+//       -> {id, ok: true} — freezes the snapshot after verifying the actual
+//          registration row count server-side.
 //   {type: "snapshot", id, server_id, snapshot_hash}
 //       -> {id, ok: true, complete: bool, entry_count?, completed_at?} —
 //          completeness probe so reruns can skip finished snapshots.
@@ -37,32 +49,32 @@ import { DurableObject } from "cloudflare:workers";
 import { z } from "zod";
 import type { Env } from "./index.ts";
 
-const FAMILIES = {
-    types: { content: "types", reg: "types_reg" },
-    type_dogma: { content: "type_dogma", reg: "type_dogma_reg" },
-    dogma_attributes: { content: "dogma_attributes", reg: "dogma_attributes_reg" },
-    dogma_effects: { content: "dogma_effects", reg: "dogma_effects_reg" },
-    buffs: { content: "buffs", reg: "buffs_reg" },
-    type_meta: { content: "type_meta", reg: "type_meta_reg" },
-    dogma_attribute_meta: {
-        content: "dogma_attribute_meta",
-        reg: "dogma_attribute_meta_reg",
-    },
-    dogma_effect_meta: { content: "dogma_effect_meta", reg: "dogma_effect_meta_reg" },
+// Family codes, mirrored in bootstrap/data/d1/sync.py and
+// worker/efa-platform-fit-storage/src/prefetch.rs.
+const FAMILY_CODES = {
+    types: 0,
+    type_dogma: 1,
+    dogma_attributes: 2,
+    dogma_effects: 3,
+    buffs: 4,
+    type_meta: 5,
+    dogma_attribute_meta: 6,
+    dogma_effect_meta: 7,
 } as const;
 
-type Family = keyof typeof FAMILIES;
+type Family = keyof typeof FAMILY_CODES;
 
 const HASH_RE = /^[0-9a-f]{64}$/;
-const FamilySchema = z.enum(Object.keys(FAMILIES) as [Family, ...Family[]]);
+const FamilySchema = z.enum(Object.keys(FAMILY_CODES) as [Family, ...Family[]]);
 const IdSchema = z.number().int().nonnegative();
 
 // Per-frame caps. Frames are deliberately small: each one is a separate Durable
 // Object event with its own CPU budget, so modest frames keep every event far
-// below the limit and give the uploader fast acks.
+// below the limit and give the uploader fast acks. The lookup cap also keeps
+// the reply (hash -> id map) well under the 1 MiB WebSocket message limit.
 const CONTENT_ENTRIES_PER_FRAME = 2000;
 const REGISTER_ENTRIES_PER_FRAME = 2000;
-const LOOKUP_HASHES_PER_FRAME = 10000;
+const LOOKUP_HASHES_PER_FRAME = 5000;
 
 const ContentEntrySchema = z.object({
     family: FamilySchema,
@@ -74,7 +86,7 @@ const RegisterEntrySchema = z.object({
     family: FamilySchema,
     // Engine-internal pseudo attributes/effects carry negative int32 IDs.
     entry_id: z.number().int().gte(-2147483648).lte(2147483647),
-    content_hash: z.string().regex(HASH_RE),
+    content_id: z.number().int().positive(),
 });
 
 const SnapshotSelectorSchema = z.object({
@@ -114,9 +126,9 @@ const ClientMessageSchema = z.discriminatedUnion("type", [
 ]);
 
 // D1 allows at most 100 bound parameters per statement.
-const CONTENT_ROWS_PER_STATEMENT = 50; // 2 params per row
-const REGISTER_ROWS_PER_STATEMENT = 24; // 4 params per row + 2 freeze-guard params
-const HASHES_PER_LOOKUP = 100;
+const CONTENT_ROWS_PER_STATEMENT = 32; // 3 params per row
+const REGISTER_ROWS_PER_STATEMENT = 25; // 4 params per row
+const HASHES_PER_LOOKUP = 49; // 2 params per hash (family + hash)
 const STATEMENTS_PER_BATCH = 50;
 
 function base64ToBytes(value: string): Uint8Array {
@@ -134,6 +146,18 @@ function bytesToHex(bytes: Uint8Array): string {
         hex += b.toString(16).padStart(2, "0");
     }
     return hex;
+}
+
+function hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+}
+
+function hexToBlob(hex: string): ArrayBuffer {
+    return hexToBytes(hex).buffer as ArrayBuffer;
 }
 
 // Matches bootstrap/remote/hash.py content_hash(): plain SHA-256 of the raw
@@ -162,10 +186,83 @@ class SyncFailure extends Error {
 type ContentEntry = z.infer<typeof ContentEntrySchema>;
 type RegisterEntry = z.infer<typeof RegisterEntrySchema>;
 
+interface SnapshotRow {
+    snapshot_id: number;
+    completed_at: string | null;
+}
+
+// Resolve (server_id, snapshot_hash) to its registry row, if any.
+async function findSnapshot(
+    db: D1Database,
+    serverId: string,
+    snapshotHash: string,
+): Promise<SnapshotRow | null> {
+    return await db
+        .prepare(
+            "SELECT snapshot_id, completed_at FROM snapshots " +
+                "WHERE server_id = ? AND snapshot_hash = ?",
+        )
+        .bind(serverId, hexToBlob(snapshotHash))
+        .first<SnapshotRow>();
+}
+
+// Resolve-or-create the pending registry row for a snapshot. Registration
+// rows reference snapshot_id, so the row must exist before the first
+// register frame; `complete` later fills entry_count/completed_at.
+async function ensureSnapshot(
+    db: D1Database,
+    serverId: string,
+    snapshotHash: string,
+): Promise<SnapshotRow> {
+    await db
+        .prepare("INSERT OR IGNORE INTO snapshots (server_id, snapshot_hash) VALUES (?, ?)")
+        .bind(serverId, hexToBlob(snapshotHash))
+        .run();
+    const row = await findSnapshot(db, serverId, snapshotHash);
+    if (!row) {
+        throw new Error("snapshots row missing after insert");
+    }
+    return row;
+}
+
+// Resolve the content ids of the given hashes in one family. Returns the
+// hash -> id map for present rows and the list of missing hashes.
+async function resolveContentIds(
+    db: D1Database,
+    family: Family,
+    contentHashes: string[],
+): Promise<{ ids: Record<string, number>; missing: string[] }> {
+    const familyCode = FAMILY_CODES[family];
+    const ids: Record<string, number> = {};
+    const missing: string[] = [];
+    for (const chunk of chunked([...new Set(contentHashes)], HASHES_PER_LOOKUP)) {
+        const placeholders = chunk.map(() => "?").join(", ");
+        const found = await db
+            .prepare(
+                "SELECT content_id, content_hash FROM entries " +
+                    `WHERE family = ? AND content_hash IN (${placeholders})`,
+            )
+            .bind(familyCode, ...chunk.map(hexToBlob))
+            .all<{ content_id: number; content_hash: ArrayBuffer }>();
+        const foundSet = new Set<string>();
+        for (const row of found.results) {
+            const hex = bytesToHex(new Uint8Array(row.content_hash));
+            ids[hex] = row.content_id;
+            foundSet.add(hex);
+        }
+        for (const hash of chunk) {
+            if (!foundSet.has(hash)) {
+                missing.push(hash);
+            }
+        }
+    }
+    return { ids, missing };
+}
+
 async function handleContent(
     db: D1Database,
     entries: ContentEntry[],
-): Promise<{ inserted: number }> {
+): Promise<{ inserted: number; ids: Record<string, number> }> {
     const byFamily = new Map<Family, { hash: string; content: Uint8Array }[]>();
     const rejected: { family: Family; content_hash: string; reason: string }[] = [];
     for (const entry of entries) {
@@ -201,19 +298,21 @@ async function handleContent(
     }
 
     let inserted = 0;
+    const ids: Record<string, number> = {};
     for (const [family, rows] of byFamily) {
-        const table = FAMILIES[family].content;
         const statements: D1PreparedStatement[] = [];
         for (const chunk of chunked(rows, CONTENT_ROWS_PER_STATEMENT)) {
-            const placeholders = chunk.map(() => "(?, ?)").join(", ");
-            const binds: (string | ArrayBuffer)[] = chunk.flatMap((row) => [
-                row.hash,
+            const placeholders = chunk.map(() => "(?, ?, ?)").join(", ");
+            const binds: (number | ArrayBuffer)[] = chunk.flatMap((row) => [
+                FAMILY_CODES[family],
+                hexToBlob(row.hash),
                 row.content.buffer as ArrayBuffer,
             ]);
             statements.push(
                 db
                     .prepare(
-                        `INSERT OR IGNORE INTO ${table} (content_hash, content) VALUES ${placeholders}`,
+                        "INSERT OR IGNORE INTO entries (family, content_hash, content) " +
+                            `VALUES ${placeholders}`,
                     )
                     .bind(...binds),
             );
@@ -224,31 +323,24 @@ async function handleContent(
                 inserted += result.meta.changes ?? 0;
             }
         }
+        // Resolve the ids of every row in the frame, freshly inserted and
+        // pre-existing alike (INSERT OR IGNORE does not report which).
+        const resolved = await resolveContentIds(
+            db,
+            family,
+            rows.map((row) => row.hash),
+        );
+        Object.assign(ids, resolved.ids);
     }
-    return { inserted };
+    return { inserted, ids };
 }
 
 async function handleLookup(
     db: D1Database,
     family: Family,
     contentHashes: string[],
-): Promise<{ missing: string[] }> {
-    const table = FAMILIES[family].content;
-    const missing: string[] = [];
-    for (const chunk of chunked([...new Set(contentHashes)], HASHES_PER_LOOKUP)) {
-        const placeholders = chunk.map(() => "?").join(", ");
-        const found = await db
-            .prepare(`SELECT content_hash FROM ${table} WHERE content_hash IN (${placeholders})`)
-            .bind(...chunk)
-            .all<{ content_hash: string }>();
-        const foundSet = new Set(found.results.map((row) => row.content_hash));
-        for (const hash of chunk) {
-            if (!foundSet.has(hash)) {
-                missing.push(hash);
-            }
-        }
-    }
-    return { missing };
+): Promise<{ missing: string[]; ids: Record<string, number> }> {
+    return await resolveContentIds(db, family, contentHashes);
 }
 
 async function handleRegister(
@@ -257,64 +349,77 @@ async function handleRegister(
     snapshotHash: string,
     entries: RegisterEntry[],
 ): Promise<{ inserted: number }> {
-    const byFamily = new Map<Family, { id: number; hash: string }[]>();
-    for (const entry of entries) {
-        const rows = byFamily.get(entry.family) ?? [];
-        rows.push({ id: entry.entry_id, hash: entry.content_hash });
-        byFamily.set(entry.family, rows);
+    const snapshot = await ensureSnapshot(db, serverId, snapshotHash);
+    if (snapshot.completed_at !== null) {
+        throw new SyncFailure({ error: "Snapshot already complete" });
     }
 
-    // Referential integrity: every registered content hash must already exist.
-    const missing: { family: Family; content_hash: string }[] = [];
-    for (const [family, rows] of byFamily) {
-        const result = await handleLookup(
-            db,
-            family,
-            rows.map((row) => row.hash),
-        );
-        for (const hash of result.missing) {
-            missing.push({ family, content_hash: hash });
+    // Referential integrity: every referenced content id must exist and
+    // belong to the entry's stated family.
+    const missing: { family: Family; content_id: number }[] = [];
+    const byFamily = new Map<Family, number[]>();
+    for (const entry of entries) {
+        const ids = byFamily.get(entry.family) ?? [];
+        ids.push(entry.content_id);
+        byFamily.set(entry.family, ids);
+    }
+    for (const [family, contentIds] of byFamily) {
+        const familyCode = FAMILY_CODES[family];
+        for (const chunk of chunked([...new Set(contentIds)], HASHES_PER_LOOKUP)) {
+            const placeholders = chunk.map(() => "?").join(", ");
+            const found = await db
+                .prepare(
+                    "SELECT content_id FROM entries " +
+                        `WHERE family = ? AND content_id IN (${placeholders})`,
+                )
+                .bind(familyCode, ...chunk)
+                .all<{ content_id: number }>();
+            const foundSet = new Set(found.results.map((row) => row.content_id));
+            for (const contentId of chunk) {
+                if (!foundSet.has(contentId)) {
+                    missing.push({ family, content_id: contentId });
+                }
+            }
         }
     }
     if (missing.length > 0) {
-        throw new SyncFailure({ error: "Unknown content hashes", missing: missing.slice(0, 100) });
+        throw new SyncFailure({ error: "Unknown content ids", missing: missing.slice(0, 100) });
+    }
+
+    const byFamilyEntries = new Map<Family, { id: number; contentId: number }[]>();
+    for (const entry of entries) {
+        const rows = byFamilyEntries.get(entry.family) ?? [];
+        rows.push({ id: entry.entry_id, contentId: entry.content_id });
+        byFamilyEntries.set(entry.family, rows);
     }
 
     let inserted = 0;
-    for (const [family, rows] of byFamily) {
-        const table = FAMILIES[family].reg;
-        const statements: D1PreparedStatement[] = [];
+    const statements: D1PreparedStatement[] = [];
+    for (const [family, rows] of byFamilyEntries) {
+        const familyCode = FAMILY_CODES[family];
         for (const chunk of chunked(rows, REGISTER_ROWS_PER_STATEMENT)) {
             const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
-            const binds = chunk.flatMap((row) => [serverId, snapshotHash, row.id, row.hash]);
-            binds.push(serverId, snapshotHash);
+            const binds = chunk.flatMap((row) => [
+                snapshot.snapshot_id,
+                familyCode,
+                row.id,
+                row.contentId,
+            ]);
             statements.push(
                 db
                     .prepare(
-                        `INSERT OR IGNORE INTO ${table} ` +
-                            "(server_id, snapshot_hash, entry_id, content_hash) " +
-                            `SELECT column1, column2, column3, column4 FROM (VALUES ${placeholders}) ` +
-                            "WHERE NOT EXISTS (" +
-                            "SELECT 1 FROM snapshots WHERE server_id = ? AND snapshot_hash = ?" +
-                            ")",
+                        "INSERT OR IGNORE INTO snapshot_entries " +
+                            `(snapshot_id, family, entry_id, content_id) VALUES ${placeholders}`,
                     )
                     .bind(...binds),
             );
         }
-        for (const batch of chunked(statements, STATEMENTS_PER_BATCH)) {
-            const results = await db.batch(batch);
-            for (const result of results) {
-                inserted += result.meta.changes ?? 0;
-            }
-        }
     }
-
-    const snapshot = await db
-        .prepare("SELECT entry_count FROM snapshots WHERE server_id = ? AND snapshot_hash = ?")
-        .bind(serverId, snapshotHash)
-        .first();
-    if (snapshot) {
-        throw new SyncFailure({ error: "Snapshot already complete" });
+    for (const batch of chunked(statements, STATEMENTS_PER_BATCH)) {
+        const results = await db.batch(batch);
+        for (const result of results) {
+            inserted += result.meta.changes ?? 0;
+        }
     }
     return { inserted };
 }
@@ -325,17 +430,22 @@ async function handleComplete(
     snapshotHash: string,
     entryCount: number,
 ): Promise<Record<string, never>> {
+    const snapshot = await findSnapshot(db, serverId, snapshotHash);
+    if (!snapshot) {
+        throw new SyncFailure({
+            error: "Snapshot incomplete",
+            expected: entryCount,
+            registered: 0,
+        });
+    }
+
     // Verify completeness server-side: the marker is only written when the
     // registration rows actually present match the uploader's entry count.
-    let registered = 0;
-    for (const family of Object.keys(FAMILIES) as Family[]) {
-        const table = FAMILIES[family].reg;
-        const row = await db
-            .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE server_id = ? AND snapshot_hash = ?`)
-            .bind(serverId, snapshotHash)
-            .first<{ n: number }>();
-        registered += row?.n ?? 0;
-    }
+    const row = await db
+        .prepare("SELECT COUNT(*) AS n FROM snapshot_entries WHERE snapshot_id = ?")
+        .bind(snapshot.snapshot_id)
+        .first<{ n: number }>();
+    const registered = row?.n ?? 0;
     if (registered !== entryCount) {
         throw new SyncFailure({
             error: "Snapshot incomplete",
@@ -346,9 +456,11 @@ async function handleComplete(
 
     await db
         .prepare(
-            "INSERT OR REPLACE INTO snapshots (server_id, snapshot_hash, entry_count) VALUES (?, ?, ?)",
+            "UPDATE snapshots SET entry_count = ?, " +
+                "completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') " +
+                "WHERE snapshot_id = ?",
         )
-        .bind(serverId, snapshotHash, entryCount)
+        .bind(entryCount, snapshot.snapshot_id)
         .run();
     return {};
 }
@@ -360,14 +472,19 @@ async function handleSnapshot(
 ): Promise<{ complete: boolean; entry_count?: number; completed_at?: string }> {
     const row = await db
         .prepare(
-            "SELECT entry_count, completed_at FROM snapshots WHERE server_id = ? AND snapshot_hash = ?",
+            "SELECT entry_count, completed_at FROM snapshots " +
+                "WHERE server_id = ? AND snapshot_hash = ?",
         )
-        .bind(serverId, snapshotHash)
-        .first<{ entry_count: number; completed_at: string }>();
-    if (!row) {
+        .bind(serverId, hexToBlob(snapshotHash))
+        .first<{ entry_count: number | null; completed_at: string | null }>();
+    if (!row || row.completed_at === null) {
         return { complete: false };
     }
-    return { complete: true, entry_count: row.entry_count, completed_at: row.completed_at };
+    return {
+        complete: true,
+        entry_count: row.entry_count ?? undefined,
+        completed_at: row.completed_at,
+    };
 }
 
 export class SyncSession extends DurableObject<Env> {

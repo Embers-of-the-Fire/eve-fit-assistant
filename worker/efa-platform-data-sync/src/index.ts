@@ -11,6 +11,14 @@ export interface Env {
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 
+function hexToBlob(hex: string): ArrayBuffer {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes.buffer as ArrayBuffer;
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 const MOUNT_PATH = "/platform/storage/data-sync";
@@ -70,10 +78,13 @@ app.get("/snapshot", async (c) => {
     if (!serverId || !snapshotHash || !HASH_RE.test(snapshotHash)) {
         return c.json({ ok: false, error: "Invalid server_id or snapshot_hash" }, 400);
     }
+    // A snapshot is complete only once the uploader's `complete` frame has
+    // frozen it; pending rows (completed_at IS NULL) are incomplete.
     const row = await c.env.PLATFORM_DB.prepare(
-        "SELECT entry_count, completed_at FROM snapshots WHERE server_id = ? AND snapshot_hash = ?",
+        "SELECT entry_count, completed_at FROM snapshots " +
+            "WHERE server_id = ? AND snapshot_hash = ? AND completed_at IS NOT NULL",
     )
-        .bind(serverId, snapshotHash)
+        .bind(serverId, hexToBlob(snapshotHash))
         .first<{ entry_count: number; completed_at: string }>();
     if (!row) {
         return c.json({ ok: true, complete: false });

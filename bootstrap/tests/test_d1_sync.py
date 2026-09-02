@@ -229,17 +229,44 @@ class _FakeTransport:
         self._existing = existing or set()
         # (server_id, snapshot_hash) pairs already marked complete.
         self._completed = completed or set()
+        # Deterministic content ids, assigned as the worker would: dense,
+        # per (family, content_hash), stable for the session.
+        self._next_id = 0
+        self._ids: dict[tuple[str, str], int] = {}
+        for key in sorted(self._existing):
+            self._next_id += 1
+            self._ids[key] = self._next_id
+
+    def _ensure_id(self, family: str, content_hash: str) -> int:
+        key = (family, content_hash)
+        if key not in self._ids:
+            self._next_id += 1
+            self._ids[key] = self._next_id
+        return self._ids[key]
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.posts.append((path, payload))
         if path == "lookup":
+            present = [
+                h for h in payload["content_hashes"] if (payload["family"], h) in self._existing
+            ]
             missing = [
                 h for h in payload["content_hashes"] if (payload["family"], h) not in self._existing
             ]
-            return {"ok": True, "missing": missing}
+            return {
+                "ok": True,
+                "missing": missing,
+                "ids": {h: self._ids[(payload["family"], h)] for h in present},
+            }
         if path == "snapshot":
             complete = (payload["server_id"], payload["snapshot_hash"]) in self._completed
             return {"ok": True, "complete": complete}
+        if path == "content":
+            ids = {
+                entry["content_hash"]: self._ensure_id(entry["family"], entry["content_hash"])
+                for entry in payload["entries"]
+            }
+            return {"ok": True, "inserted": len(payload["entries"]), "ids": ids}
         return {"ok": True, "inserted": len(payload.get("entries", []))}
 
     def close(self) -> None:
@@ -454,6 +481,19 @@ class TestRunSync:
         assert servers == {"alpha", "beta"}
         for _path, payload in register_posts:
             assert len(payload["entries"]) == 10
+            # Registration rows reference worker-assigned content ids, not hashes.
+            for entry in payload["entries"]:
+                assert set(entry) == {"family", "entry_id", "content_id"}
+                assert isinstance(entry["content_id"], int)
+
+        # Identical snapshots share the same content ids across servers.
+        per_server = {
+            payload["server_id"]: {
+                (e["family"], e["entry_id"]): e["content_id"] for e in payload["entries"]
+            }
+            for _path, payload in register_posts
+        }
+        assert per_server["alpha"] == per_server["beta"]
 
         complete_posts = [p for p in transport.posts if p[0] == "complete"]
         assert len(complete_posts) == 2
@@ -519,6 +559,44 @@ class TestRunSync:
         with pytest.raises(RuntimeError, match="boom"):
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
         assert [p for p in transport.posts if p[0] == "complete"] == []
+
+    def test_fails_when_server_withholds_content_ids(self, schema_root: Path) -> None:
+        from bootstrap.data.d1.sync import run_sync
+
+        snapshot_hash = "dd" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+
+        class _IdlessTransport(_FakeTransport):
+            def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+                reply = super().post(path, payload)
+                reply.pop("ids", None)
+                return reply
+
+        transport = _IdlessTransport()
+        with pytest.raises(RuntimeError, match="did not return content ids"):
+            run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
+        assert [p for p in transport.posts if p[0] == "register"] == []
+
+    def test_rejects_content_hash_shared_across_families(
+        self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from bootstrap.data.d1 import sync
+
+        snapshot_hash = "dd" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+
+        entries = sync.load_snapshot_entries(schema_root, snapshot_hash)
+        # Identical bytes under two families => identical content hash, which
+        # the hash-keyed `ids` reply map cannot disambiguate.
+        type_entry = next(e for e in entries if e.family == "types")
+        duplicate = sync.Entry("buffs", 999, type_entry.content)
+        assert duplicate.hash == type_entry.hash
+        monkeypatch.setattr(sync, "load_snapshot_entries", lambda *args: [*entries, duplicate])
+
+        transport = _FakeTransport()
+        with pytest.raises(ValueError, match="shared across families"):
+            sync.run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
+        assert [p for p in transport.posts if p[0] == "register"] == []
 
     def test_dry_run_uploads_nothing(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
