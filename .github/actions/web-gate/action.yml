@@ -49,7 +49,10 @@ runs:
         FETCH: ${{ inputs.fetch }}
       run: |
         if [[ "$FETCH" == "true" && -n "$TARGET" ]]; then
-          git fetch --no-tags origin "$TARGET" "$HEAD"
+          if ! git fetch --no-tags origin "$TARGET" "$HEAD"; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
         fi
         if [[ -z "$TARGET" ]] || ! git cat-file -e "$TARGET^{commit}" 2>/dev/null; then
           echo "build=true" >> "$GITHUB_OUTPUT"
