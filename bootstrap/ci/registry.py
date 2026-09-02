@@ -256,6 +256,10 @@ class BlastRadius:
     - ``ecosystems``: every package of the named ecosystems is treated as
       changed;
     - ``everything``: every package is treated as changed (pure escalation).
+
+    ``except_patterns`` subtracts paths from ``patterns`` before any effect
+    applies, allowing a broad fail-safe entry to carve out a subtree that a
+    narrower entry handles.
     """
 
     id: str
@@ -263,6 +267,7 @@ class BlastRadius:
     packages: tuple[str, ...] = ()
     ecosystems: tuple[Ecosystem, ...] = ()
     everything: bool = False
+    except_patterns: tuple[str, ...] = ()
 
 
 BLAST_RADIUS: tuple[BlastRadius, ...] = (
@@ -277,7 +282,18 @@ BLAST_RADIUS: tuple[BlastRadius, ...] = (
         ),
         everything=True,
     ),
-    BlastRadius(id="github", patterns=(".github/**",), everything=True),
+    BlastRadius(
+        id="github",
+        patterns=(".github/**",),
+        # Workflow and composite-action definitions are scanned by the
+        # dedicated standalone task instead of escalating (see "ci-runner").
+        except_patterns=(".github/workflows/**", ".github/actions/**"),
+        everything=True,
+    ),
+    # The CI workflow is the generic parameterized runner that decides what
+    # CI runs for every change set; a defect in it must never merge with work
+    # unrun. All other workflow/action changes only select the zizmor scan.
+    BlastRadius(id="ci-runner", patterns=(".github/workflows/ci.yml",), everything=True),
     BlastRadius(id="flake", patterns=("flake.nix", "flake.lock"), everything=True),
     # Workspace-level manifests affect their whole ecosystem.
     BlastRadius(

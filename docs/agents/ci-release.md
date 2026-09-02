@@ -18,7 +18,10 @@ dependents, and every affected package instantiates its applicable task kinds
 setup needs, exact codegen/lint/test commands); the workflow's `test` job is a generic
 parameterized runner with no package or task-kind names in it. Changes to the selection
 system itself, `.github/**`, or `flake.nix`/`flake.lock` escalate to full instantiation as a
-fail-safe. A terminal `aggregate` job (`CI / Required`) is the single stable check name that
+fail-safe. Workflow and composite-action definitions are the exception: only changes to
+`ci.yml` itself (the parameterized runner) escalate; other changes under
+`.github/workflows/` or `.github/actions/` select just the `workflows` standalone task
+(zizmor scan). A terminal `aggregate` job (`CI / Required`) is the single stable check name that
 branch protection references; per-task job names vary with the change set and must never be
 protection requirements.
 
