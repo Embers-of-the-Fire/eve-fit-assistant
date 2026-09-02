@@ -31,8 +31,10 @@ def generate_protobuf_ts(
     ``bootstrap.utils.execute_command`` so both interactive and CI paths can reuse this.
     Delegates to the ``efa-proto-ts`` package's ``generate`` script (buf, npm-distributed,
     no protoc required); pnpm puts the package's ``node_modules/.bin`` on PATH so buf can
-    resolve the ``protoc-gen-es`` plugin. Skips with a warning when pnpm is unavailable,
-    unless ``required`` is set, in which case a missing pnpm raises ``FileNotFoundError``.
+    resolve the ``protoc-gen-es`` plugin. A filtered ``pnpm install`` runs first because
+    codegen may execute in an environment that never installs JS dependencies. Skips with
+    a warning when pnpm is unavailable, unless ``required`` is set, in which case a
+    missing pnpm raises ``FileNotFoundError``.
 
     Returns ``GENERATED`` only after real generation, ``SKIPPED`` when the step was
     skipped, and ``DRY_RUN`` when ``dry_run`` is set (no bindings were written).
@@ -55,6 +57,11 @@ def generate_protobuf_ts(
         info(f"[Dry-Run] Would generate TypeScript protobuf bindings: {pnpm}")
         return ProtobufTsResult.DRY_RUN
 
+    execute(
+        [pnpm, "install", "--filter", "efa-proto-ts"],
+        "PNPM INSTALL OUTPUT",
+        cwd=PROJECT_ROOT,
+    )
     execute(
         [pnpm, "--filter", "efa-proto-ts", "generate"],
         "PROTOBUF TS CODEGEN OUTPUT",
