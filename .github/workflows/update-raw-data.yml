@@ -58,13 +58,10 @@ jobs:
           submodules: true
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
-
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
+      - name: Setup Python env
+        uses: ./.github/actions/setup-python-env
+        with:
+          init-dev-env: true
 
       - name: Determine update matrix
         id: matrix
@@ -154,13 +151,10 @@ jobs:
           name: raw-artifacts-${{ matrix.server }}
           path: raw-artifacts/${{ matrix.server }}/
 
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
-
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
+      - name: Setup Python env
+        uses: ./.github/actions/setup-python-env
+        with:
+          init-dev-env: true
 
       - name: Upload to CI storage
         env:
