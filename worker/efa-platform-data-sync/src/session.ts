@@ -37,7 +37,9 @@
 //          snapshot not being frozen by a `complete` marker yet.
 //   {type: "complete", id, server_id, snapshot_hash, entry_count}
 //       -> {id, ok: true} — freezes the snapshot after verifying the actual
-//          registration row count server-side.
+//          registration row count server-side; the count check and the
+//          freeze are one atomic UPDATE, and a retry of the same frame after
+//          a lost reply succeeds.
 //   {type: "snapshot", id, server_id, snapshot_hash}
 //       -> {id, ok: true, complete: bool, entry_count?, completed_at?} —
 //          completeness probe so reruns can skip finished snapshots.
@@ -126,7 +128,7 @@ const ClientMessageSchema = z.discriminatedUnion("type", [
 
 // D1 allows at most 100 bound parameters per statement.
 const CONTENT_ROWS_PER_STATEMENT = 32; // 3 params per row
-const REGISTER_ROWS_PER_STATEMENT = 25; // 4 params per row
+const REGISTER_ROWS_PER_STATEMENT = 24; // 4 params per row + 1 freeze-guard param
 const HASHES_PER_LOOKUP = 49; // 2 params per hash (family + hash)
 const STATEMENTS_PER_BATCH = 50;
 
@@ -187,6 +189,7 @@ type RegisterEntry = z.infer<typeof RegisterEntrySchema>;
 
 interface SnapshotRow {
     snapshot_id: number;
+    entry_count: number | null;
     completed_at: string | null;
 }
 
@@ -198,7 +201,7 @@ async function findSnapshot(
 ): Promise<SnapshotRow | null> {
     return await db
         .prepare(
-            "SELECT snapshot_id, completed_at FROM snapshots " +
+            "SELECT snapshot_id, entry_count, completed_at FROM snapshots " +
                 "WHERE server_id = ? AND snapshot_hash = ?",
         )
         .bind(serverId, hexToBlob(snapshotHash))
@@ -349,6 +352,10 @@ async function handleRegister(
     entries: RegisterEntry[],
 ): Promise<{ inserted: number }> {
     const snapshot = await ensureSnapshot(db, serverId, snapshotHash);
+    // Fast path only. The authoritative freeze check is the guard on every
+    // insert plus the completed_at probe in the final batch below: the
+    // Durable Object input gate does not cover external D1 operations, so a
+    // concurrent complete event can commit between this read and the inserts.
     if (snapshot.completed_at !== null) {
         throw new SyncFailure({ error: "Snapshot already complete" });
     }
@@ -398,26 +405,60 @@ async function handleRegister(
         const familyCode = FAMILY_CODES[family];
         for (const chunk of chunked(rows, REGISTER_ROWS_PER_STATEMENT)) {
             const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
-            const binds = chunk.flatMap((row) => [
+            const binds = [
+                ...chunk.flatMap((row) => [
+                    snapshot.snapshot_id,
+                    familyCode,
+                    row.id,
+                    row.contentId,
+                ]),
                 snapshot.snapshot_id,
-                familyCode,
-                row.id,
-                row.contentId,
-            ]);
+            ];
+            // Every insert is conditional on the snapshot not being frozen:
+            // INSERT OR IGNORE alone would silently add rows to an already
+            // completed snapshot if a complete event won the race after the
+            // fast-path check above. (SQLite names the columns of a VALUES
+            // subquery column1..column4.)
             statements.push(
                 db
                     .prepare(
                         "INSERT OR IGNORE INTO snapshot_entries " +
-                            `(snapshot_id, family, entry_id, content_id) VALUES ${placeholders}`,
+                            "(snapshot_id, family, entry_id, content_id) " +
+                            "SELECT column1, column2, column3, column4 " +
+                            `FROM (VALUES ${placeholders}) ` +
+                            "WHERE EXISTS (SELECT 1 FROM snapshots " +
+                            "WHERE snapshot_id = ? AND completed_at IS NULL)",
                     )
                     .bind(...binds),
             );
         }
     }
-    for (const batch of chunked(statements, STATEMENTS_PER_BATCH)) {
+    // The final batch also probes completed_at. A batch commits atomically,
+    // so a concurrent complete either committed before it (the guards above
+    // inserted nothing and the probe observes the freeze, rejecting this
+    // frame) or runs after it (and counts these rows in its own atomic
+    // count-and-freeze update). Registration and completion therefore cannot
+    // interleave into a frozen snapshot whose entry_count disagrees with its
+    // registration set.
+    const batches = chunked(statements, STATEMENTS_PER_BATCH);
+    for (const [index, batch] of batches.entries()) {
+        const isLast = index === batches.length - 1;
+        if (isLast) {
+            batch.push(
+                db
+                    .prepare("SELECT completed_at FROM snapshots WHERE snapshot_id = ?")
+                    .bind(snapshot.snapshot_id),
+            );
+        }
         const results = await db.batch(batch);
-        for (const result of results) {
+        for (const result of isLast ? results.slice(0, -1) : results) {
             inserted += result.meta.changes ?? 0;
+        }
+        if (isLast) {
+            const probe = results.at(-1)?.results[0] as { completed_at: string | null } | undefined;
+            if (probe?.completed_at != null) {
+                throw new SyncFailure({ error: "Snapshot already complete" });
+            }
         }
     }
     return { inserted };
@@ -438,30 +479,54 @@ async function handleComplete(
         });
     }
 
-    // Verify completeness server-side: the marker is only written when the
-    // registration rows actually present match the uploader's entry count.
-    const row = await db
-        .prepare("SELECT COUNT(*) AS n FROM snapshot_entries WHERE snapshot_id = ?")
-        .bind(snapshot.snapshot_id)
-        .first<{ n: number }>();
-    const registered = row?.n ?? 0;
-    if (registered !== entryCount) {
-        throw new SyncFailure({
-            error: "Snapshot incomplete",
-            expected: entryCount,
-            registered,
-        });
+    // Idempotent retry of a complete frame whose reply was lost.
+    if (snapshot.completed_at !== null) {
+        if (snapshot.entry_count === entryCount) {
+            return {};
+        }
+        throw new SyncFailure({ error: "Snapshot already complete" });
     }
 
-    await db
+    // Atomic completion: the count verification, the not-yet-frozen check,
+    // and the marker write are a single UPDATE statement. A concurrent
+    // register frame can therefore never slip rows in between the
+    // verification and the freeze (the Durable Object input gate does not
+    // cover external D1 operations).
+    const result = await db
         .prepare(
             "UPDATE snapshots SET entry_count = ?, " +
                 "completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') " +
-                "WHERE snapshot_id = ?",
+                "WHERE snapshot_id = ? AND completed_at IS NULL AND " +
+                "(SELECT COUNT(*) FROM snapshot_entries WHERE snapshot_id = ?) = ?",
         )
-        .bind(entryCount, snapshot.snapshot_id)
+        .bind(entryCount, snapshot.snapshot_id, snapshot.snapshot_id, entryCount)
         .run();
-    return {};
+    if ((result.meta.changes ?? 0) > 0) {
+        return {};
+    }
+
+    // The conditional update matched no row: a concurrent complete won the
+    // race, or the registration count moved under us. Re-read to report
+    // which one happened.
+    const state = await db
+        .prepare(
+            "SELECT entry_count, completed_at, " +
+                "(SELECT COUNT(*) FROM snapshot_entries WHERE snapshot_id = ?) AS registered " +
+                "FROM snapshots WHERE snapshot_id = ?",
+        )
+        .bind(snapshot.snapshot_id, snapshot.snapshot_id)
+        .first<{ entry_count: number | null; completed_at: string | null; registered: number }>();
+    if (state?.completed_at != null) {
+        if (state.entry_count === entryCount) {
+            return {};
+        }
+        throw new SyncFailure({ error: "Snapshot already complete" });
+    }
+    throw new SyncFailure({
+        error: "Snapshot incomplete",
+        expected: entryCount,
+        registered: state?.registered ?? 0,
+    });
 }
 
 async function handleSnapshot(

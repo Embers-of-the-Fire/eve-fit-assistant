@@ -249,6 +249,102 @@ describe("snapshot freeze", () => {
         ws.close();
     });
 
+    it("never freezes a snapshot whose entry_count disagrees with its rows", async () => {
+        // Regression test for the register/complete race: Durable Object
+        // input gates do not cover external D1 operations, so a complete
+        // event can run between a register event's completed_at check and
+        // its inserts. The register frame below spans multiple D1 batches
+        // (2000 entries at 24 rows/statement over 50-statement batches) so
+        // the concurrent complete has real windows to interleave. Whichever
+        // side wins, the invariant must hold: a frozen snapshot's
+        // entry_count equals its actual registration row count.
+        const content = new TextEncoder().encode("type-entry-1");
+        const contentHash = await sha256Hex(content);
+
+        for (let round = 0; round < 5; round++) {
+            const ws1 = await connect();
+            const ws2 = await connect();
+            const serverId = "tranquility";
+            const snapshotHash = round.toString(16).padStart(2, "0").repeat(32);
+
+            const upload = await call(ws1, {
+                id: 1,
+                type: "content",
+                entries: [
+                    { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
+                ],
+            });
+            const contentId = (upload.ids as Record<string, number>)[contentHash];
+
+            const first = await call(ws1, {
+                id: 2,
+                type: "register",
+                server_id: serverId,
+                snapshot_hash: snapshotHash,
+                entries: [{ family: "types", entry_id: 1, content_id: contentId }],
+            });
+            expect(first).toEqual({ id: 2, ok: true, inserted: 1 });
+
+            // Fire both frames without awaiting so the two events interleave
+            // at their D1 awaits.
+            const [registerReply, completeReply] = await Promise.all([
+                call(ws1, {
+                    id: 3,
+                    type: "register",
+                    server_id: serverId,
+                    snapshot_hash: snapshotHash,
+                    entries: Array.from({ length: 2000 }, (_, i) => ({
+                        family: "types",
+                        entry_id: i + 2,
+                        content_id: contentId,
+                    })),
+                }),
+                call(ws2, {
+                    id: 4,
+                    type: "complete",
+                    server_id: serverId,
+                    snapshot_hash: snapshotHash,
+                    entry_count: 1,
+                }),
+            ]);
+
+            const regCount = await env.PLATFORM_DB.prepare(
+                "SELECT COUNT(*) AS n FROM snapshot_entries se " +
+                    "JOIN snapshots s ON s.snapshot_id = se.snapshot_id " +
+                    "WHERE s.server_id = ? AND s.snapshot_hash = ?",
+            )
+                .bind(serverId, hexToBlob(snapshotHash))
+                .first<{ n: number }>();
+
+            const probe = await call(ws1, {
+                id: 5,
+                type: "snapshot",
+                server_id: serverId,
+                snapshot_hash: snapshotHash,
+            });
+
+            if (completeReply.ok) {
+                // Completion won before any register batch committed: the
+                // freeze guards must have rejected every later insert.
+                expect(registerReply.ok).toBe(false);
+                expect(registerReply.error).toBe("Snapshot already complete");
+                expect(regCount?.n).toBe(1);
+                expect(probe.complete).toBe(true);
+                expect(probe.entry_count).toBe(1);
+            } else {
+                // The register committed rows the count check then saw, so
+                // completion must have failed instead of freezing a lie.
+                expect(completeReply.error).toBe("Snapshot incomplete");
+                expect(registerReply.ok).toBe(true);
+                expect(regCount?.n).toBe(2001);
+                expect(probe.complete).toBe(false);
+            }
+
+            ws1.close();
+            ws2.close();
+        }
+    });
+
     it("reports pending (registered but not completed) snapshots as incomplete", async () => {
         const ws = await connect();
         const serverId = "tranquility";

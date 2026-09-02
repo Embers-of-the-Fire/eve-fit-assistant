@@ -118,8 +118,12 @@ a snapshot, further registrations for it fail with
 
 Marks a snapshot complete. Verifies server-side that the registration rows
 present for the snapshot equal `entry_count` (error reply otherwise), then
-sets `entry_count` and `completed_at` on the `snapshots` registry row.
-Replies `{ "id": 4, "ok": true }`.
+sets `entry_count` and `completed_at` on the `snapshots` registry row. The
+count check and the freeze are a single conditional `UPDATE`, and every
+registration insert is guarded by `completed_at IS NULL`, so a concurrent
+`register` frame can never extend an already frozen registration set; a
+retry of the same `complete` frame after a lost reply succeeds. Replies
+`{ "id": 4, "ok": true }`.
 
 ### Frame: `snapshot`
 
