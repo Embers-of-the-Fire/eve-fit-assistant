@@ -25,7 +25,7 @@ enum FitUploadErrorCode {
 }
 
 class FitUploadException implements Exception {
-  const FitUploadException(this.code, [this.message, this.issues]);
+  const FitUploadException(this.code, [this.message, this.issues, this.latestSnapshotHash]);
 
   final FitUploadErrorCode code;
   final String? message;
@@ -34,10 +34,17 @@ class FitUploadException implements Exception {
   /// (`[{slot_type, index, severity, kind}]`), kept as decoded JSON.
   final Object? issues;
 
+  /// The server's newest completed snapshot for the requested server, from
+  /// the `snapshot_incomplete` error envelope. Present iff the platform can
+  /// offer a consented latest-snapshot fallback; null when the server has no
+  /// completed snapshot at all (or the error predates the fallback feature).
+  final String? latestSnapshotHash;
+
   @override
   String toString() =>
       "FitUploadException(${code.name}${message == null ? "" : ": $message"}"
-      "${issues == null ? "" : ", issues: ${jsonEncode(issues)}"})";
+      "${issues == null ? "" : ", issues: ${jsonEncode(issues)}"}"
+      "${latestSnapshotHash == null ? "" : ", latestSnapshotHash: $latestSnapshotHash"})";
 }
 
 /// Result of `POST /platform/internal/posts`: the post is a fresh publication
@@ -49,6 +56,8 @@ class FitPostSubmitResult {
     required this.alreadyExisted,
     required this.postUrl,
     required this.origin,
+    this.snapshotHash,
+    this.snapshotFallback = false,
   });
 
   factory FitPostSubmitResult.fromJson(Map<String, dynamic> json, {required String origin}) =>
@@ -58,11 +67,23 @@ class FitPostSubmitResult {
         alreadyExisted: json["alreadyExisted"] as bool,
         postUrl: json["postUrl"] as String,
         origin: origin,
+        snapshotHash: json["snapshotHash"] as String?,
+        snapshotFallback: json["snapshotFallback"] as bool? ?? false,
       );
 
   final String postId;
   final String fitHash;
   final bool alreadyExisted;
+
+  /// The data snapshot that actually computed the stored fit. Differs from
+  /// the uploaded selector iff [snapshotFallback] is true. Null only when the
+  /// platform predates variant reporting.
+  final String? snapshotHash;
+
+  /// True when the requested snapshot was not registered on the platform and
+  /// the fit was reproduced with the server's latest completed snapshot (the
+  /// uploader consented via `allow_latest_snapshot_fallback`).
+  final bool snapshotFallback;
 
   /// The post page URL on the platform site, provided by the worker
   /// (`$PLATFORM_SITE_ORIGIN/post/<postId>`). Share flows redirect the user
@@ -117,7 +138,12 @@ class FitSnapshotUploadApi {
       _ => null,
     };
     if (envelopeCode != null) {
-      return FitUploadException(envelopeCode, body?.message, body?.issues);
+      return FitUploadException(
+        envelopeCode,
+        body?.message,
+        body?.issues,
+        body?.latestSnapshotHash,
+      );
     }
     final statusCode = switch (e.response?.statusCode) {
       400 => FitUploadErrorCode.badRequest,
@@ -131,7 +157,12 @@ class FitSnapshotUploadApi {
       _ => null,
     };
     if (statusCode != null) {
-      return FitUploadException(statusCode, body?.message ?? e.message);
+      return FitUploadException(
+        statusCode,
+        body?.message ?? e.message,
+        null,
+        body?.latestSnapshotHash,
+      );
     }
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.sendTimeout ||
@@ -157,7 +188,9 @@ class FitSnapshotUploadApi {
     return FitUploadException(FitUploadErrorCode.unexpected, description.toString());
   }
 
-  ({String? error, String? message, Object? issues})? _decodeErrorBody(Object? data) {
+  ({String? error, String? message, Object? issues, String? latestSnapshotHash})? _decodeErrorBody(
+    Object? data,
+  ) {
     final String? text = switch (data) {
       final Uint8List bytes => utf8.decode(bytes, allowMalformed: true),
       final List<int> bytes => utf8.decode(bytes, allowMalformed: true),
@@ -180,6 +213,7 @@ class FitSnapshotUploadApi {
       error: json["error"] as String?,
       message: json["message"] as String?,
       issues: json["issues"],
+      latestSnapshotHash: json["latest_snapshot_hash"] as String?,
     );
   }
 }

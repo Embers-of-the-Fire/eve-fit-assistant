@@ -14,15 +14,27 @@ import { createAuthApp } from "../src/auth/router.ts";
 import { createPublicApp } from "../src/index.ts";
 import { AUTH_MOUNT_PATH, createRootApp, MOUNT_PATH } from "../src/root.ts";
 import { type CapturedEmail, clearAuthState } from "./auth/helpers.ts";
+import { ensureFitsTable } from "./fits-table.ts";
 
 const PASSWORD = "password-1234";
 const FIT_HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const SNAPSHOT_HASH = "snapshot-hash";
+const FALLBACK_HASH = "fallback-hash";
 
 // Pre-encoded protobuf fixtures (generated once from the schemas in
 // data/schema/ via efa-proto-ts; kept as constants so tests do not depend on
 // the protobuf runtime's behavior inside workerd).
-// FitStoreResponse { fit_hash: FIT_HASH, already_existed: false }.
+// FitStoreResponse { fit_hash: FIT_HASH, already_existed: false,
+//   snapshot_hash: "snapshot-hash", snapshot_fallback: false }.
 const STORE_RESPONSE_B64 =
+    "CkAwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmEAAaDXNuYXBzaG90LWhhc2ggAA==";
+// FitStoreResponse { fit_hash: FIT_HASH, already_existed: false,
+//   snapshot_hash: "fallback-hash", snapshot_fallback: true }.
+const FALLBACK_STORE_RESPONSE_B64 =
+    "CkAwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmEAAaDWZhbGxiYWNrLWhhc2ggAQ==";
+// FitStoreResponse { fit_hash: FIT_HASH, already_existed: false } — a
+// pre-variant fit-storage without snapshot reporting.
+const LEGACY_STORE_RESPONSE_B64 =
     "CkAwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmEAA=";
 // Minimal but fully-valid FitSnapshot (proto2 required fields only): the
 // worker decodes it after the store write and denormalizes the post row
@@ -40,27 +52,25 @@ interface TokenPair {
     expiresIn: number;
 }
 
-// The fits table is owned by efa-platform-fit-storage (its 0001_init.sql is
-// not part of this worker's migration set), so tests create and seed it
-// themselves.
-async function seedFit(fitHash: string): Promise<void> {
-    await env.FIT_DB.exec(
-        "CREATE TABLE fits (" +
-            "fit_hash TEXT PRIMARY KEY, server_id TEXT NOT NULL, snapshot_hash TEXT NOT NULL, " +
-            "fit_state BLOB NOT NULL, snapshot BLOB NOT NULL, " +
-            "created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))",
-    );
+// The fits table is owned by efa-platform-fit-storage (its migrations are not
+// part of this worker's set), so tests create and seed it themselves, at the
+// post-0002 variant schema. The table itself is created by the global setup
+// (test/apply-migrations.ts) before this worker's migrations backfill from
+// it; seeding is per test file.
+async function seedFit(fitHash: string, snapshotHash = SNAPSHOT_HASH): Promise<void> {
+    await insertFitVariant(fitHash, snapshotHash, b64ToBytes(SNAPSHOT_B64));
+}
+
+async function insertFitVariant(
+    fitHash: string,
+    snapshotHash: string,
+    snapshot: Uint8Array,
+): Promise<void> {
     await env.FIT_DB.prepare(
-        "INSERT INTO fits (fit_hash, server_id, snapshot_hash, fit_state, snapshot) " +
-            "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO fits (fit_hash, server_id, snapshot_hash, requested_snapshot_hash, fit_state, snapshot) " +
+            "VALUES (?, ?, ?, NULL, ?, ?)",
     )
-        .bind(
-            fitHash,
-            "Tranquility",
-            "snapshot-hash",
-            new Uint8Array([1]),
-            b64ToBytes(SNAPSHOT_B64),
-        )
+        .bind(fitHash, "Tranquility", snapshotHash, new Uint8Array([1]), snapshot)
         .run();
 }
 
@@ -159,6 +169,10 @@ describe("migration 0004_post_author", () => {
     // seeded before 0004 runs.
     async function applyPreAuthorMigrations(): Promise<void> {
         await reset();
+        // reset() drops the fits table created by the global setup;
+        // 0007_post_snapshot_variant.sql backfills from it, so recreate it
+        // (empty) before the full migration set is applied below.
+        await ensureFitsTable();
         const preAuthor = env.TEST_MIGRATIONS.filter((m) => m.name < "0004");
         await applyD1Migrations(env.FIT_DB, preAuthor);
     }
@@ -306,6 +320,109 @@ describe("POST /posts auth", () => {
         const res = await upload(pair.accessToken);
         expect(res.status).toBe(403);
         expect(await res.json()).toMatchObject({ error: "forbidden" });
+    });
+});
+
+describe("fit snapshot variants", () => {
+    it("binds the post to the store-reported snapshot variant", async () => {
+        const { upload, register } = setup();
+        const pair = await register("variant@example.com");
+
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(201);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(body).toMatchObject({
+            fitHash: FIT_HASH,
+            snapshotHash: SNAPSHOT_HASH,
+            snapshotFallback: false,
+        });
+
+        const row = await env.FIT_DB.prepare("SELECT snapshot_hash FROM posts WHERE post_id = ?")
+            .bind(body.postId as string)
+            .first<{ snapshot_hash: string }>();
+        expect(row?.snapshot_hash).toBe(SNAPSHOT_HASH);
+    });
+
+    it("reports and binds a consented fallback variant", async () => {
+        await insertFitVariant(FIT_HASH, FALLBACK_HASH, b64ToBytes(SNAPSHOT_B64));
+        const { upload, register } = setup({
+            storageResponse: new Response(b64ToBytes(FALLBACK_STORE_RESPONSE_B64), {
+                status: 200,
+                headers: { "Content-Type": "application/x-protobuf" },
+            }),
+        });
+        const pair = await register("fallback@example.com");
+
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(201);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(body).toMatchObject({ snapshotHash: FALLBACK_HASH, snapshotFallback: true });
+
+        const row = await env.FIT_DB.prepare("SELECT snapshot_hash FROM posts WHERE post_id = ?")
+            .bind(body.postId as string)
+            .first<{ snapshot_hash: string }>();
+        expect(row?.snapshot_hash).toBe(FALLBACK_HASH);
+    });
+
+    it("tolerates a pre-variant store response (no snapshot fields)", async () => {
+        const { upload, register } = setup({
+            storageResponse: new Response(b64ToBytes(LEGACY_STORE_RESPONSE_B64), {
+                status: 200,
+                headers: { "Content-Type": "application/x-protobuf" },
+            }),
+        });
+        const pair = await register("legacy-store@example.com");
+
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(201);
+        const body = (await res.json()) as Record<string, unknown>;
+        expect(body).toMatchObject({ snapshotHash: null, snapshotFallback: false });
+    });
+
+    it("keeps serving the variant a post was created with", async () => {
+        const { upload, register } = setup();
+        const pair = await register("pinning@example.com");
+        const res = await upload(pair.accessToken);
+        expect(res.status).toBe(201);
+        const { postId } = (await res.json()) as { postId: string };
+
+        // A newer variant of the same fit hash appears later.
+        const newer = new Uint8Array([9, 9, 9]);
+        await insertFitVariant(FIT_HASH, FALLBACK_HASH, newer);
+
+        const { get } = setup();
+        const pinned = await get(`${MOUNT_PATH}/posts/${postId}/snapshot`);
+        expect(pinned.status).toBe(200);
+        expect(new Uint8Array(await pinned.arrayBuffer())).toEqual(b64ToBytes(SNAPSHOT_B64));
+
+        // Bare-hash reads serve the newest variant.
+        const latest = await get(`${MOUNT_PATH}/fits/${FIT_HASH}/snapshot`);
+        expect(latest.status).toBe(200);
+        expect(new Uint8Array(await latest.arrayBuffer())).toEqual(newer);
+    });
+
+    it("serves the newest variant for legacy NULL-bound posts", async () => {
+        await env.FIT_DB.prepare(
+            "INSERT INTO posts (post_id, author_id, fit_hash, snapshot_hash, fit_name, description, ship_names, " +
+                "ship_type_id, last_modified_ms) VALUES (?, NULL, ?, NULL, ?, ?, ?, ?, ?)",
+        )
+            .bind(
+                "77777777-7777-4777-8777-777777777777",
+                FIT_HASH,
+                "Legacy Fit",
+                "",
+                '{"en":"Merlin"}',
+                12017,
+                42,
+            )
+            .run();
+        const newer = new Uint8Array([8, 8]);
+        await insertFitVariant(FIT_HASH, FALLBACK_HASH, newer);
+
+        const { get } = setup();
+        const res = await get(`${MOUNT_PATH}/posts/77777777-7777-4777-8777-777777777777/snapshot`);
+        expect(res.status).toBe(200);
+        expect(new Uint8Array(await res.arrayBuffer())).toEqual(newer);
     });
 });
 

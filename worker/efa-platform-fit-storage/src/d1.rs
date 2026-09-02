@@ -38,6 +38,11 @@ fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, ApiError> {
         .collect()
 }
 
+/// Raw bytes -> lowercase hex (inverse of `hex_to_bytes`).
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
 fn row_int(row: &JsValue, index: u32) -> Result<i32, ApiError> {
     js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
         .ok()
@@ -172,14 +177,38 @@ pub async fn resolve_snapshot(
     }
 }
 
-/// The stored `FitSnapshot` protobuf bytes for a fit hash, if any.
+/// Resolve the newest completed snapshot for a server — the fallback selector
+/// used with `allow_latest_snapshot_fallback` consent, and the payload of the
+/// enriched `snapshot_incomplete` error. Returns the registry id and the
+/// lowercase-hex hash.
+pub async fn resolve_latest_snapshot(
+    db: &D1Database,
+    server_id: &str,
+) -> Result<Option<(i64, String)>, ApiError> {
+    let rows = raw_query(
+        db,
+        "SELECT snapshot_id, snapshot_hash FROM snapshots \
+         WHERE server_id = ? AND completed_at IS NOT NULL \
+         ORDER BY completed_at DESC, snapshot_id DESC LIMIT 1",
+        &[js_text(server_id)],
+    )
+    .await?;
+    match rows.first() {
+        Some(row) => Ok(Some((row_int64(row, 0)?, bytes_to_hex(&row_blob(row, 1)?)))),
+        None => Ok(None),
+    }
+}
+
+/// The stored `FitSnapshot` protobuf bytes for a fit hash, if any. A fit hash
+/// may have several snapshot variants; serve the most recently computed one.
 pub async fn get_fit_snapshot(
     db: &D1Database,
     fit_hash: &str,
 ) -> Result<Option<Vec<u8>>, ApiError> {
     let rows = raw_query(
         db,
-        "SELECT snapshot FROM fits WHERE fit_hash = ?",
+        "SELECT snapshot FROM fits WHERE fit_hash = ? \
+         ORDER BY created_at DESC, rowid DESC LIMIT 1",
         &[js_text(fit_hash)],
     )
     .await?;
@@ -189,34 +218,49 @@ pub async fn get_fit_snapshot(
     }
 }
 
-pub async fn fit_exists(db: &D1Database, fit_hash: &str) -> Result<bool, ApiError> {
+/// Whether the `(fit_hash, snapshot_hash)` variant is already stored.
+pub async fn fit_exists(
+    db: &D1Database,
+    fit_hash: &str,
+    snapshot_hash: &str,
+) -> Result<bool, ApiError> {
     let rows = raw_query(
         db,
-        "SELECT 1 FROM fits WHERE fit_hash = ?",
-        &[js_text(fit_hash)],
+        "SELECT 1 FROM fits WHERE fit_hash = ? AND snapshot_hash = ?",
+        &[js_text(fit_hash), js_text(snapshot_hash)],
     )
     .await?;
     Ok(!rows.is_empty())
 }
 
-/// Inserts the fit row, tolerating concurrent re-submits of the same fit hash.
-/// Returns `true` when this call inserted the row, `false` when it already existed.
+/// Inserts the fit variant row, tolerating concurrent re-submits of the same
+/// `(fit_hash, snapshot_hash)` pair. `requested_snapshot_hash` is the
+/// fallback provenance: `None` when the fit was computed with the requested
+/// snapshot. Returns `true` when this call inserted the row, `false` when it
+/// already existed.
 pub async fn insert_fit(
     db: &D1Database,
     fit_hash: &str,
     server_id: &str,
     snapshot_hash: &str,
+    requested_snapshot_hash: Option<&str>,
     fit_state: &[u8],
     snapshot: &[u8],
 ) -> Result<bool, ApiError> {
+    let requested = match requested_snapshot_hash {
+        Some(hash) => js_text(hash),
+        None => JsValue::NULL,
+    };
     let changes = run_change_count(
         db,
-        "INSERT OR IGNORE INTO fits (fit_hash, server_id, snapshot_hash, fit_state, snapshot) \
-         VALUES (?, ?, ?, ?, ?)",
+        "INSERT OR IGNORE INTO fits \
+         (fit_hash, server_id, snapshot_hash, requested_snapshot_hash, fit_state, snapshot) \
+         VALUES (?, ?, ?, ?, ?, ?)",
         &[
             js_text(fit_hash),
             js_text(server_id),
             js_text(snapshot_hash),
+            requested,
             js_blob(fit_state),
             js_blob(snapshot),
         ],

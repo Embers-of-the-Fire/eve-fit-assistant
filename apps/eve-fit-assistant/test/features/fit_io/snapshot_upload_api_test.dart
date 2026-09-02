@@ -97,6 +97,8 @@ void main() {
     expect(response.alreadyExisted, isTrue);
     expect(response.postUrl, "https://platform.efa-tech.dev/post/post-1");
     expect(response.origin, _origin);
+    expect(response.snapshotHash, isNull);
+    expect(response.snapshotFallback, isFalse);
 
     expect(captured?.path, "$_origin/platform/internal/posts");
     expect(captured?.method, "POST");
@@ -106,6 +108,59 @@ void main() {
     final decoded = FitUploadRequest.fromBuffer(capturedBody!);
     expect(decoded.serverId, "Serenity");
     expect(decoded.fit.shipTypeId, 12017);
+  });
+
+  test("decodes the snapshot variant fields of the response", () async {
+    final dio = _dioWith((options, body) async {
+      return ResponseBody.fromString(
+        jsonEncode({
+          "postId": "post-2",
+          "fitHash": "abc123",
+          "alreadyExisted": false,
+          "snapshotHash": "ff00",
+          "snapshotFallback": true,
+          "postUrl": "https://platform.efa-tech.dev/post/post-2",
+        }),
+        201,
+        headers: {
+          Headers.contentTypeHeader: ["application/json"],
+        },
+      );
+    });
+
+    final response = await FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin);
+
+    expect(response.snapshotHash, "ff00");
+    expect(response.snapshotFallback, isTrue);
+  });
+
+  test("parses the latest-snapshot fallback candidate from the error envelope", () async {
+    final dio = _dioWith((options, body) async {
+      return ResponseBody.fromBytes(
+        Uint8List.fromList(
+          utf8.encode(
+            jsonEncode({
+              "error": "snapshot_incomplete",
+              "message": "snapshot not registered: Serenity/hash",
+              "latest_snapshot_hash": "aa11",
+            }),
+          ),
+        ),
+        409,
+        headers: {
+          Headers.contentTypeHeader: ["application/json"],
+        },
+      );
+    });
+
+    await expectLater(
+      () => FitSnapshotUploadApi().submit(_request(), dio: dio, origin: _origin),
+      throwsA(
+        isA<FitUploadException>()
+            .having((e) => e.code, "code", FitUploadErrorCode.snapshotIncomplete)
+            .having((e) => e.latestSnapshotHash, "latestSnapshotHash", "aa11"),
+      ),
+    );
   });
 
   test("maps the worker error envelope to a typed exception", () async {
@@ -126,7 +181,8 @@ void main() {
       throwsA(
         isA<FitUploadException>()
             .having((e) => e.code, "code", FitUploadErrorCode.snapshotIncomplete)
-            .having((e) => e.message, "message", "not registered"),
+            .having((e) => e.message, "message", "not registered")
+            .having((e) => e.latestSnapshotHash, "latestSnapshotHash", isNull),
       ),
     );
   });

@@ -34,11 +34,16 @@ class FitUploadNotReadyException implements Exception {
 /// The whole "build request + submit via the account session" upload
 /// operation, exposed as a provider so widget tests can exercise the upload
 /// flow without the data repository or the network.
+///
+/// [allowLatestSnapshotFallback] is the user's consent to reproduce the fit
+/// with the server's latest completed snapshot when the app's snapshot is not
+/// registered on the platform (the `snapshot_incomplete` consent flow).
 typedef FitSnapshotUploadFn =
     Future<FitPostSubmitResult> Function(
       WidgetRef ref, {
       required String fitId,
       required FitStorage fit,
+      bool allowLatestSnapshotFallback,
     });
 
 final fitSnapshotUploadFnProvider = Provider<FitSnapshotUploadFn>((Ref ref) => _submitFitSnapshot);
@@ -47,8 +52,11 @@ Future<FitPostSubmitResult> _submitFitSnapshot(
   WidgetRef ref, {
   required String fitId,
   required FitStorage fit,
+  bool allowLatestSnapshotFallback = false,
 }) async {
-  final request = await FitUploadRequestBuilder(ref).build(fitId: fitId, fit: fit);
+  final request = await FitUploadRequestBuilder(
+    ref,
+  ).build(fitId: fitId, fit: fit, allowLatestSnapshotFallback: allowLatestSnapshotFallback);
   final session = await ref.read(platformSessionProvider.future);
   return session.authed(
     (dio) =>
@@ -64,7 +72,11 @@ class FitUploadRequestBuilder {
 
   final WidgetRef ref;
 
-  Future<FitUploadRequest> build({required String fitId, required FitStorage fit}) async {
+  Future<FitUploadRequest> build({
+    required String fitId,
+    required FitStorage fit,
+    bool allowLatestSnapshotFallback = false,
+  }) async {
     final collection = ref.read(repoCollectionProvider);
     final snapshotHash = ref.read(activeSnapshotHashProvider).toNullable();
     if (collection == null || snapshotHash == null) {
@@ -95,6 +107,7 @@ class FitUploadRequestBuilder {
       characterName: characterName,
       collection: collection,
       emulated: emulated,
+      allowLatestSnapshotFallback: allowLatestSnapshotFallback,
     );
   }
 }
@@ -103,6 +116,10 @@ class FitUploadRequestBuilder {
 /// (`data/schema/fit_request.proto`). The worker re-applies the app's state
 /// conventions server-side (passive rigs/implants/boosters are ignored,
 /// subsystem modules are fed online), so raw slot states are sent as-is.
+///
+/// [allowLatestSnapshotFallback] records the user's consent to the
+/// latest-snapshot fallback; it is only consulted server-side when the
+/// requested snapshot is not registered, so it is omitted unless consented.
 FitUploadRequest buildFitUploadRequest({
   required FitStorage fit,
   required String snapshotHash,
@@ -111,6 +128,7 @@ FitUploadRequest buildFitUploadRequest({
   required String characterName,
   RepoCollectionService? collection,
   native.Ship? emulated,
+  bool allowLatestSnapshotFallback = false,
 }) {
   final ship = collection?.getShip(fit.body.shipTypeId);
 
@@ -307,6 +325,7 @@ FitUploadRequest buildFitUploadRequest({
     description: fit.metadata.description.isEmpty ? null : fit.metadata.description,
     lastModifiedMs: Int64(fit.metadata.lastModified),
     generator: generator,
+    allowLatestSnapshotFallback: allowLatestSnapshotFallback ? true : null,
     fit: FitState(
       shipTypeId: fit.body.shipTypeId,
       layout: SnapshotShipLayout(

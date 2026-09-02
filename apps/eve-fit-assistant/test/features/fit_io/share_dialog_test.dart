@@ -103,13 +103,14 @@ void main() {
       ),
       fitSnapshotUploadFnProvider.overrideWithValue(
         uploadFn ??
-            (ref, {required fitId, required fit}) async => const FitPostSubmitResult(
-              postId: "11111111-1111-4111-8111-111111111111",
-              fitHash: "0123456789abcdef0123456789abcdef",
-              alreadyExisted: false,
-              postUrl: _postUrl,
-              origin: platformApiProductionOrigin,
-            ),
+            (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                const FitPostSubmitResult(
+                  postId: "11111111-1111-4111-8111-111111111111",
+                  fitHash: "0123456789abcdef0123456789abcdef",
+                  alreadyExisted: false,
+                  postUrl: _postUrl,
+                  origin: platformApiProductionOrigin,
+                ),
       ),
       fitShareUrlLauncherProvider.overrideWithValue((uri) async {
         launchedUrls.add(uri);
@@ -117,7 +118,9 @@ void main() {
       }),
     ],
     child: testApp(
-      Scaffold(body: FitShareDialog(fitId: fit.metadata.fitId, initialFit: fit)),
+      Scaffold(
+        body: FitShareDialog(fitId: fit.metadata.fitId, initialFit: fit),
+      ),
     ),
   );
 
@@ -156,13 +159,15 @@ void main() {
     await tester.pumpWidget(
       buildDialog(
         _makeFit(),
-        uploadFn: (ref, {required fitId, required fit}) async => const FitPostSubmitResult(
-          postId: "11111111-1111-4111-8111-111111111111",
-          fitHash: "0123456789abcdef0123456789abcdef",
-          alreadyExisted: true,
-          postUrl: _postUrl,
-          origin: platformApiProductionOrigin,
-        ),
+        uploadFn:
+            (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                const FitPostSubmitResult(
+                  postId: "11111111-1111-4111-8111-111111111111",
+                  fitHash: "0123456789abcdef0123456789abcdef",
+                  alreadyExisted: true,
+                  postUrl: _postUrl,
+                  origin: platformApiProductionOrigin,
+                ),
       ),
     );
     await tester.pumpAndSettle();
@@ -177,8 +182,9 @@ void main() {
     await tester.pumpWidget(
       buildDialog(
         _makeFit(),
-        uploadFn: (ref, {required fitId, required fit}) async =>
-            throw const FitUploadException(FitUploadErrorCode.forbidden),
+        uploadFn:
+            (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                throw const FitUploadException(FitUploadErrorCode.forbidden),
       ),
     );
     await tester.pumpAndSettle();
@@ -190,5 +196,70 @@ void main() {
     expect(launchedUrls, isEmpty);
     // The dialog stays on the ready view so the user can retry.
     expect(find.text("分享"), findsOneWidget);
+  });
+
+  testWidgets("offers the server-snapshot fallback and shares with consent", (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      buildDialog(
+        _makeFit(),
+        uploadFn: (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async {
+          calls++;
+          if (!allowLatestSnapshotFallback) {
+            throw const FitUploadException(
+              FitUploadErrorCode.snapshotIncomplete,
+              "snapshot not registered: Serenity/hash",
+              null,
+              "aa11",
+            );
+          }
+          return const FitPostSubmitResult(
+            postId: "11111111-1111-4111-8111-111111111111",
+            fitHash: "0123456789abcdef0123456789abcdef",
+            alreadyExisted: false,
+            postUrl: _postUrl,
+            origin: platformApiProductionOrigin,
+            snapshotHash: "aa11",
+            snapshotFallback: true,
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("分享"));
+    await tester.pumpAndSettle();
+
+    // The rejection becomes a consent prompt, not an error.
+    expect(find.textContaining("平台尚未收录你当前的数据快照"), findsOneWidget);
+    expect(find.text("使用服务器快照"), findsOneWidget);
+    expect(find.text("平台尚未收录当前数据快照，请稍后重试。"), findsNothing);
+    expect(calls, 1);
+
+    await tester.tap(find.text("使用服务器快照"));
+    await tester.pumpAndSettle();
+
+    expect(calls, 2);
+    expect(find.text("配置已发布至平台，帖子页面可能需要片刻才能访问。"), findsOneWidget);
+    // The consented fallback is acknowledged on the result view.
+    expect(find.textContaining("已使用平台的最新数据快照计算"), findsOneWidget);
+  });
+
+  testWidgets("keeps the error when the platform has no fallback candidate", (tester) async {
+    await tester.pumpWidget(
+      buildDialog(
+        _makeFit(),
+        uploadFn:
+            (ref, {required fitId, required fit, allowLatestSnapshotFallback = false}) async =>
+                throw const FitUploadException(FitUploadErrorCode.snapshotIncomplete),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("分享"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("平台尚未收录当前数据快照，请稍后重试。"), findsOneWidget);
+    expect(find.text("使用服务器快照"), findsNothing);
   });
 }

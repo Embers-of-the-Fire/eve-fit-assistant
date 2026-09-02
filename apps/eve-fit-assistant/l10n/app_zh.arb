@@ -1020,6 +1020,9 @@
   "fitShareErrorUnauthorized": "登录状态已失效，请重新登录后重试。",
   "fitShareErrorForbidden": "当前账号无权向平台发布配置。",
   "fitShareErrorSnapshotIncomplete": "平台尚未收录当前数据快照，请稍后重试。",
+  "fitShareFallbackOffer": "平台尚未收录你当前的数据快照。是否改用服务器上最新的数据快照重现并发布该配置？数值可能与本地视图略有差异。稍后你可以重新分享，用自己的快照重新计算。",
+  "fitShareFallbackAccept": "使用服务器快照",
+  "fitShareFallbackNotice": "已使用平台的最新数据快照计算，因为你的本地快照尚未发布到平台。稍后重新分享即可用本地快照重新计算。",
   "fitShareErrorValidation": "平台拒绝了该配置：{message}",
   "@fitShareErrorValidation": {
     "placeholders": {

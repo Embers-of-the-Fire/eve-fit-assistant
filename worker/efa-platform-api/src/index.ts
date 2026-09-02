@@ -136,10 +136,25 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
                 FitStoreResponseSchema,
                 new Uint8Array(await stored.arrayBuffer()),
             );
+            // Absent proto2 optional strings surface as the field default
+            // ""; normalize to null for "store did not report a variant".
+            const storedSnapshotHash = storeResult.snapshotHash || null;
 
-            const row = await c.env.FIT_DB.prepare("SELECT snapshot FROM fits WHERE fit_hash = ?")
-                .bind(storeResult.fitHash)
-                .first<{ snapshot: unknown }>();
+            // Read back the exact variant the store computed; absent only
+            // from a pre-variant fit-storage, which still serves the newest
+            // variant.
+            const row = storedSnapshotHash
+                ? await c.env.FIT_DB.prepare(
+                      "SELECT snapshot FROM fits WHERE fit_hash = ? AND snapshot_hash = ?",
+                  )
+                      .bind(storeResult.fitHash, storedSnapshotHash)
+                      .first<{ snapshot: unknown }>()
+                : await c.env.FIT_DB.prepare(
+                      "SELECT snapshot FROM fits WHERE fit_hash = ? " +
+                          "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                  )
+                      .bind(storeResult.fitHash)
+                      .first<{ snapshot: unknown }>();
             if (!row) {
                 console.error(`fit ${storeResult.fitHash} stored but not readable`);
                 return errorJson(500, "internal", "internal server error");
@@ -174,13 +189,18 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
 
             const postId = crypto.randomUUID();
             await c.env.FIT_DB.prepare(
-                "INSERT INTO posts (post_id, author_id, fit_hash, fit_name, description, ship_names, ship_type_id, last_modified_ms, generator) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO posts (post_id, author_id, fit_hash, snapshot_hash, fit_name, description, ship_names, ship_type_id, last_modified_ms, generator) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
                 .bind(
                     postId,
                     claims.sub,
                     storeResult.fitHash,
+                    // Binds the post to the exact fit variant computed at
+                    // creation; NULL only when a pre-variant fit-storage
+                    // answered (the snapshot read above fell back the same
+                    // way the /posts/:id/snapshot join does).
+                    storedSnapshotHash,
                     fitName,
                     description,
                     JSON.stringify(shipNames),
@@ -195,6 +215,8 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
                     postId,
                     fitHash: storeResult.fitHash,
                     alreadyExisted: storeResult.alreadyExisted,
+                    snapshotHash: storedSnapshotHash,
+                    snapshotFallback: storeResult.snapshotFallback ?? false,
                     postUrl: `${c.env.PLATFORM_SITE_ORIGIN}/post/${postId}`,
                 },
                 201,
@@ -448,14 +470,18 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         },
     );
 
-    // Raw FitSnapshot protobuf bytes behind a post.
+    // Raw FitSnapshot protobuf bytes behind a post. The post is bound to the
+    // fit variant computed at its creation (posts.snapshot_hash); legacy NULL
+    // bindings fall back to the newest variant.
     app.get("/posts/:id/snapshot", async (c) => {
         const postId = c.req.param("id");
         if (!UUID_PATTERN.test(postId)) {
             return errorJson(400, "bad_request", "invalid post id");
         }
         const row = await c.env.FIT_DB.prepare(
-            "SELECT f.snapshot FROM posts p JOIN fits f ON f.fit_hash = p.fit_hash WHERE p.post_id = ?",
+            "SELECT f.snapshot FROM posts p JOIN fits f ON f.fit_hash = p.fit_hash " +
+                "WHERE p.post_id = ? AND (p.snapshot_hash IS NULL OR f.snapshot_hash = p.snapshot_hash) " +
+                "ORDER BY f.created_at DESC, f.rowid DESC LIMIT 1",
         )
             .bind(postId)
             .first<{ snapshot: unknown }>();
@@ -465,13 +491,17 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         return blobResponse(row.snapshot);
     });
 
-    // Raw FitSnapshot protobuf bytes addressed directly by fit hash.
+    // Raw FitSnapshot protobuf bytes addressed directly by fit hash. A fit
+    // hash may have several snapshot variants; serve the newest.
     app.get("/fits/:fitHash/snapshot", async (c) => {
         const fitHash = c.req.param("fitHash");
         if (!FIT_HASH_PATTERN.test(fitHash)) {
             return errorJson(400, "bad_request", "invalid fit hash");
         }
-        const row = await c.env.FIT_DB.prepare("SELECT snapshot FROM fits WHERE fit_hash = ?")
+        const row = await c.env.FIT_DB.prepare(
+            "SELECT snapshot FROM fits WHERE fit_hash = ? " +
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        )
             .bind(fitHash)
             .first<{ snapshot: unknown }>();
         if (!row) {
@@ -482,13 +512,17 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
 
     // Raw canonical FitState protobuf bytes addressed directly by fit hash.
     // Unlike the snapshot, the state is full-fidelity (dynamic items, custom
-    // character skills) and is what registered fit links import from.
+    // character skills) and is what registered fit links import from. The
+    // state bytes are identical across snapshot variants of a fit hash.
     app.get("/fits/:fitHash/state", async (c) => {
         const fitHash = c.req.param("fitHash");
         if (!FIT_HASH_PATTERN.test(fitHash)) {
             return errorJson(400, "bad_request", "invalid fit hash");
         }
-        const row = await c.env.FIT_DB.prepare("SELECT fit_state FROM fits WHERE fit_hash = ?")
+        const row = await c.env.FIT_DB.prepare(
+            "SELECT fit_state FROM fits WHERE fit_hash = ? " +
+                "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        )
             .bind(fitHash)
             .first<{ fit_state: unknown }>();
         if (!row) {

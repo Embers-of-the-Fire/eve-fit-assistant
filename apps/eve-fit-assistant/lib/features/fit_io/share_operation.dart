@@ -40,11 +40,21 @@ class FitShareOperation {
 
   /// Uploads the fit via [fitSnapshotUploadFnProvider]. Does not open the
   /// post page; callers decide when to offer that action.
+  ///
+  /// [allowLatestSnapshotFallback] is the user's consent to reproduce the fit
+  /// with the server's latest completed snapshot when the app's data snapshot
+  /// is not registered on the platform.
   Future<FitPostSubmitResult> share(
     WidgetRef ref, {
     required String fitId,
     required FitStorage fit,
-  }) async => ref.read(fitSnapshotUploadFnProvider)(ref, fitId: fitId, fit: fit);
+    bool allowLatestSnapshotFallback = false,
+  }) async => ref.read(fitSnapshotUploadFnProvider)(
+    ref,
+    fitId: fitId,
+    fit: fit,
+    allowLatestSnapshotFallback: allowLatestSnapshotFallback,
+  );
 
   /// Opens a post page URL through [fitShareUrlLauncherProvider]. Launcher
   /// failures (a `false` return or a thrown exception) are non-fatal: they

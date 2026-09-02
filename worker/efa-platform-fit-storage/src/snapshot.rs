@@ -376,6 +376,7 @@ mod tests {
             last_modified_ms: 123,
             generator: Some("test/0.1".to_string()),
             fit: state,
+            allow_latest_snapshot_fallback: None,
         }
     }
 
