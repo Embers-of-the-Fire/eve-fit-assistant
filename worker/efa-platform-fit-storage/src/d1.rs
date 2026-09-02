@@ -22,9 +22,13 @@ fn js_blob(bytes: &[u8]) -> JsValue {
 }
 
 /// Lowercase hex -> raw bytes (snapshot hashes are stored as 32-byte BLOBs).
+/// Validate before slicing: `str::len` counts UTF-8 bytes, so slicing a
+/// non-ASCII hash (e.g. "aé…") would panic on a non-char boundary.
 fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, ApiError> {
-    if !hex.len().is_multiple_of(2) {
-        return Err(ApiError::internal("hex string has odd length"));
+    if hex.len() != 64 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(ApiError::bad_request(
+            "snapshot_hash must be a 64-character ASCII hexadecimal string",
+        ));
     }
     (0..hex.len() / 2)
         .map(|i| {
