@@ -1,42 +1,53 @@
-name: Update Raw EVE Data (reusable)
-
-on:
-  workflow_call:
-    inputs:
-      all:
-        description: "Check/update all servers"
-        type: boolean
-        default: true
-      server:
-        description: "Check/update a single server (takes precedence over all)"
-        type: string
-        default: ""
-      no_upload:
-        description: "Skip uploading to CI storage"
-        type: boolean
-        default: false
-    secrets:
-      CI_STORAGE_ENDPOINT:
-        description: "CI storage S3 endpoint"
-        required: false
-      CI_STORAGE_ACCESS_KEY:
-        description: "CI storage access key"
-        required: false
-      CI_STORAGE_SECRET_KEY:
-        description: "CI storage secret key"
-        required: false
-    outputs:
-      matrix:
-        value: ${{ jobs.check.outputs.matrix }}
-      has_updates:
-        value: ${{ jobs.check.outputs.has_updates }}
+name: Update Raw EVE Data
 
 permissions:
   contents: read
 
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [dev]
+
+# Non-PR runs must never be canceled mid-flight: the upload job writes to CI
+# storage, and the chained release-data.yml publish runs nested inside this
+# run against the remote channel, whose publish cycle is not interruptible.
+# They queue sequentially instead. PR test runs have no remote side effects
+# and stay cancelable.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  gate:
+    name: Evaluate PR gate
+    runs-on: ubuntu-slim
+    outputs:
+      run: ${{ steps.gate.outputs.raw_data_update }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Evaluate gates
+        id: gate
+        uses: ./.github/actions/pr-gate
+        with:
+          labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          repository: ${{ github.repository }}
+          head-repo-fork: ${{ github.event.pull_request.head.repo.fork }}
+
   check:
     name: Check for updates
+    needs: gate
+    if: >-
+      (github.event_name == 'pull_request' && needs.gate.outputs.run == 'true') ||
+      (github.event_name != 'pull_request' &&
+        github.ref == 'refs/heads/dev' &&
+        github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+        github.event.repository.fork == false)
     runs-on: ubuntu-slim
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -57,18 +68,9 @@ jobs:
 
       - name: Determine update matrix
         id: matrix
-        env:
-          CHECK_ALL: ${{ inputs.all && '--all' || '' }}
-          SERVER: ${{ inputs.server }}
         run: |
-          # shellcheck disable=SC2016
-          if [ -n "$SERVER" ]; then
-            MATRIX=$(nix develop .#python --command bash -c \
-              'uv run x.py ci raw-data check --server "$SERVER" --format json')
-          else
-            MATRIX=$(nix develop .#python --command bash -c \
-              'uv run x.py ci raw-data check ${CHECK_ALL:+"$CHECK_ALL"} --format json')
-          fi
+          MATRIX=$(nix develop .#python --command bash -c \
+            'uv run x.py ci raw-data check --all --format json')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "$MATRIX" = "[]" ] || [ -z "$MATRIX" ]; then
             echo "has_updates=false" >> "$GITHUB_OUTPUT"
@@ -128,11 +130,12 @@ jobs:
         with:
           name: diagnostics-raw-update-${{ matrix.server }}
 
+  # PR runs are test-only and never upload.
   upload:
     name: Upload raw artifacts
     needs: [check, update]
     if: |
-      inputs.no_upload == false &&
+      github.event_name != 'pull_request' &&
       needs.check.outputs.matrix != '' &&
       needs.check.outputs.matrix != '[]'
     runs-on: ubuntu-slim
@@ -184,3 +187,18 @@ jobs:
           redact-values: |
             ${{ secrets.CI_STORAGE_ACCESS_KEY }}
             ${{ secrets.CI_STORAGE_SECRET_KEY }}
+
+  release:
+    name: Release data snapshot
+    needs: [check, upload]
+    if: |
+      github.event_name != 'pull_request' &&
+      needs.check.outputs.has_updates == 'true'
+    uses: ./.github/workflows/release-data.yml
+    # CI_STORAGE_* are repo-level read-only; _release-data.yml's build job
+    # needs them.  Remote/ write-scoped credentials come from per-job
+    # environments downstream and are not available here.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    with:
+      test_mode: false
+      servers: ${{ needs.check.outputs.matrix }}

@@ -38,9 +38,9 @@ Release PRs target the `dev` branch and use three labels:
 
 - `V-Release` marks the PR as a release and triggers fast preflight checks in
   `release-preflight.yml`.
-- `V-Test` triggers the full release test suite in `release-full.yml`, which builds the app
+- `V-Test` triggers the full release test suite in `release-test.yml`, which builds the app
   and data snapshots in test mode.
-- `V-Tested Release` is added automatically by `release-full.yml` after both app and data
+- `V-Tested Release` is added automatically by `release-test.yml` after both app and data
   tests pass.
 
 Merging a `V-Release` PR that also has `V-Tested Release` triggers the real release through
@@ -48,7 +48,15 @@ Merging a `V-Release` PR that also has `V-Tested Release` triggers the real rele
 remote `testing` channel, and creates the Git tag.
 
 The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is
-`_release-data.yml`.
+`_release-data.yml`. Their PR/cron/dispatch entry points are merged into multi-trigger
+workflows: `release-test.yml` (PR app/data release tests for both the `V-*` and the
+`D-Full CI`/`D-CI-App Release` label sets), `release-data.yml` (`workflow_call` from
+`update-raw-data.yml`, manual dispatch, and PR test via `D-CI-Data Release`), and
+`update-raw-data.yml` (daily cron, dispatch, and PR test via `D-CI-Data Update`; cron runs
+chain into `release-data.yml` when servers changed). All PR label gates — including
+`web-preview.yml`'s `D-CI-Page Preview` — are evaluated by the shared composite action
+`.github/actions/pr-gate`, which also applies the upstream-repository and non-fork-head
+guards; fork PRs never run these jobs.
 
 ## Data Snapshot Workflow
 
@@ -65,6 +73,15 @@ The reusable app release workflow is `_release.yml`; the reusable data snapshot 
    to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-data`; real
    releases only. Depends only on `publish`, never on `d1-sync`, so a platform D1 sync
    failure does not suppress the announcement.
+
+Real-release paths are never canceled mid-flight: `release-data.yml` (cron chain and manual
+dispatch) and `update-raw-data.yml`'s non-PR runs use `cancel-in-progress: false`, so
+same-group runs queue sequentially at concurrency 1 (one running, one pending; a newer arrival
+replaces the pending one). Interrupting the session → commit → publish cycle could leave the
+remote channel in an unrecoverable state. PR test runs target the local MinIO mock and remain
+cancelable. `release-data.yml` also uses a literal `release-data-` group prefix because a
+workflow called via `workflow_call` resolves `github.workflow` to the caller's name, which
+would collide with the caller's own group.
 
 ## App Release Workflow
 
@@ -141,7 +158,7 @@ Entry points:
   through `uv run x.py ci web-gate` with the same merge-base diff) get a branch preview on
   `efa-app-nightly` plus a pinned PR comment. This is gated on the `D-CI-Page Preview` label,
   which `D-Full CI` also enables. Release PRs labeled `V-Release` skip this build because
-  `release-full.yml`'s `site`/`site-deploy` jobs build and deploy the web bundle instead.
+  `release-test.yml`'s `site`/`site-deploy` jobs build and deploy the web bundle instead.
   Fork PRs get no preview.
 - `site-nightly.yml` — daily cron on `dev`; fetches the last nightly production deployment's
   commit hash from the Pages API and only rebuilds/deploys to

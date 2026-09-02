@@ -1,0 +1,83 @@
+name: Release Data Snapshot
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      test_mode:
+        description: "Run in test mode (skip publish)"
+        type: boolean
+        default: false
+      servers:
+        description: "JSON array of server IDs to rebuild (default: all)"
+        type: string
+        default: "[]"
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Run in test mode (skip publish)"
+        type: boolean
+        default: false
+      servers:
+        description: "JSON array of server IDs to rebuild (default: all)"
+        type: string
+        default: "[]"
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [dev]
+
+# Literal group prefix: a workflow called via workflow_call resolves
+# github.workflow to the CALLER's name, so ${{ github.workflow }} here would
+# collide with update-raw-data.yml's group and could cancel the still-running
+# caller. Real releases (cron chain, dispatch) touch the remote channel, whose
+# publish cycle is not interruptible — they must queue sequentially and never
+# be canceled. PR test runs only target the local MinIO mock and stay
+# cancelable for fast iteration.
+concurrency:
+  group: release-data-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gate:
+    name: Evaluate PR gate
+    runs-on: ubuntu-slim
+    outputs:
+      run: ${{ steps.gate.outputs.data_release }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Evaluate gates
+        id: gate
+        uses: ./.github/actions/pr-gate
+        with:
+          labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          repository: ${{ github.repository }}
+          head-repo-fork: ${{ github.event.pull_request.head.repo.fork }}
+
+  release:
+    name: Build and publish
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/_release-data.yml
+    # Inherit repo-level CI_STORAGE_* for the build job (no environment).
+    # The publish job gets REMOTE_STORAGE_* from environment: production-data
+    # and does not need them via workflow_call.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    with:
+      test_mode: ${{ inputs.test_mode || false }}
+      servers: ${{ inputs.servers || '[]' }}
+
+  release-test:
+    name: Build and test publish
+    needs: gate
+    if: github.event_name == 'pull_request' && needs.gate.outputs.run == 'true'
+    uses: ./.github/workflows/_release-data.yml
+    secrets:
+      CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+      CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+      CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+    with:
+      test_mode: true
