@@ -62,13 +62,21 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
     let platform_db = platform_db(&env)?;
     let fit_db = fit_db(&env)?;
 
-    // 2. Snapshot completeness.
-    if !d1::snapshot_exists(&platform_db, &request.server_id, &request.snapshot_hash).await? {
-        return Err(ApiError::snapshot_incomplete(
-            &request.server_id,
-            &request.snapshot_hash,
-        ));
-    }
+    // 2. Snapshot completeness: resolve the selector to its registry id.
+    //    Resolved ids are cached per isolate (completed snapshots are frozen).
+    let key: prefetch::SnapshotKey = (request.server_id.clone(), request.snapshot_hash.clone());
+    let snapshot_id = match prefetch::snapshot_id_get(&key) {
+        Some(id) => id,
+        None => {
+            let id = d1::resolve_snapshot(&platform_db, &request.server_id, &request.snapshot_hash)
+                .await?
+                .ok_or_else(|| {
+                    ApiError::snapshot_incomplete(&request.server_id, &request.snapshot_hash)
+                })?;
+            prefetch::snapshot_id_put(key.clone(), id);
+            id
+        }
+    };
 
     // 3. Canonicalize → fit hash.
     let canonical = hash::canonical_state(state);
@@ -81,16 +89,11 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
 
     if !already_existed {
         // 5a. Prefetch the transitive closure (unknown seed type → 422).
-        let key: prefetch::SnapshotKey = (request.server_id.clone(), request.snapshot_hash.clone());
         let mut data = prefetch::cache_get(&key);
         {
-            let server_id = request.server_id.clone();
-            let snapshot_hash = request.snapshot_hash.clone();
             let platform_db = &platform_db;
-            let fetch = |request: prefetch::FetchRequest| {
-                let server_id = server_id.clone();
-                let snapshot_hash = snapshot_hash.clone();
-                async move { d1::fetch_family(platform_db, &server_id, &snapshot_hash, request).await }
+            let fetch = |request: prefetch::FetchRequest| async move {
+                d1::fetch_family(platform_db, snapshot_id, request).await
             };
             prefetch::prefetch(&mut data, &canonical, fetch).await?;
         }

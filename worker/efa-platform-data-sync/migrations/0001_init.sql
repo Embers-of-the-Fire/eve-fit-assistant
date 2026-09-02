@@ -1,121 +1,48 @@
--- Platform data store: per-entry, content-addressed engine data rows.
--- Each family <f> has a content table and a registration table mapping
--- (server_id, snapshot_hash, entry_id) -> content_hash.
+-- Platform data store v2: per-entry, content-addressed engine data rows.
+--
+-- Two design changes over v1 (which stored every hash as 64-char hex TEXT and
+-- repeated the full snapshot hash in each of ~145k registration rows per
+-- snapshot, costing ~50 MiB/snapshot):
+--   1. All hashes are raw 32-byte BLOBs.
+--   2. Registration rows reference dense integer ids (snapshot_id, content_id)
+--      instead of hashes, ~25 B/row including the primary-key index.
+--
+-- The v1 tables were abandoned with the legacy database; this file is the
+-- initial migration of the v2 database (efa-snapshot-registry).
 
--- Snapshot completeness registry. Content and registration uploads span many
--- requests (one transaction each), so a failed run leaves partial <f>_reg rows
--- behind. The uploader inserts a row here only after every content and
--- registration batch for the snapshot succeeded; readers MUST treat any
--- (server_id, snapshot_hash) with no row here as incomplete and reject it.
+-- Snapshot registry, doubling as the pending/completion marker: a row is
+-- created by the first `register` frame for (server_id, snapshot_hash) and
+-- `completed_at` stays NULL until the uploader's `complete` frame verifies
+-- the registration row count and freezes the snapshot. Readers MUST treat a
+-- snapshot with completed_at IS NULL as incomplete and reject it.
 CREATE TABLE snapshots (
+    snapshot_id INTEGER PRIMARY KEY,
     server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_count INTEGER NOT NULL,
-    completed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    PRIMARY KEY (server_id, snapshot_hash)
+    snapshot_hash BLOB NOT NULL,               -- raw 32-byte SHA-256
+    entry_count INTEGER,                       -- set at completion
+    completed_at TEXT,                         -- NULL = incomplete
+    UNIQUE (server_id, snapshot_hash)
 );
 
-CREATE TABLE types (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
+-- Content-addressed single-entry protobuf payloads for every family
+-- (efos.* entry messages for the engine families, platform_data.* messages
+-- for metadata). family codes: types=0, type_dogma=1, dogma_attributes=2,
+-- dogma_effects=3, buffs=4, type_meta=5, dogma_attribute_meta=6,
+-- dogma_effect_meta=7. content_id is database-local and must never leak
+-- outside the sync protocol.
+CREATE TABLE entries (
+    content_id INTEGER PRIMARY KEY,
+    family INTEGER NOT NULL,
+    content_hash BLOB NOT NULL,                -- raw 32-byte SHA-256
+    content BLOB NOT NULL,
+    UNIQUE (family, content_hash)
 );
-CREATE TABLE types_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES types (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
--- Reverse lookup for reference counting / orphan cleanup / FK checks on DELETE.
-CREATE INDEX types_reg_content_hash ON types_reg (content_hash);
 
-CREATE TABLE type_dogma (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE type_dogma_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
+-- Registration rows mapping a snapshot's entries onto content rows.
+CREATE TABLE snapshot_entries (
+    snapshot_id INTEGER NOT NULL REFERENCES snapshots (snapshot_id),
+    family INTEGER NOT NULL,
     entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES type_dogma (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
+    content_id INTEGER NOT NULL REFERENCES entries (content_id),
+    PRIMARY KEY (snapshot_id, family, entry_id)
 );
-CREATE INDEX type_dogma_reg_content_hash ON type_dogma_reg (content_hash);
-
-CREATE TABLE dogma_attributes (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE dogma_attributes_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES dogma_attributes (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX dogma_attributes_reg_content_hash ON dogma_attributes_reg (content_hash);
-
-CREATE TABLE dogma_effects (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE dogma_effects_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES dogma_effects (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX dogma_effects_reg_content_hash ON dogma_effects_reg (content_hash);
-
-CREATE TABLE buffs (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE buffs_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES buffs (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX buffs_reg_content_hash ON buffs_reg (content_hash);
-
-CREATE TABLE type_meta (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE type_meta_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES type_meta (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX type_meta_reg_content_hash ON type_meta_reg (content_hash);
-
-CREATE TABLE dogma_attribute_meta (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE dogma_attribute_meta_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES dogma_attribute_meta (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX dogma_attribute_meta_reg_content_hash ON dogma_attribute_meta_reg (content_hash);
-
-CREATE TABLE dogma_effect_meta (
-    content_hash TEXT PRIMARY KEY,
-    content BLOB NOT NULL
-);
-CREATE TABLE dogma_effect_meta_reg (
-    server_id TEXT NOT NULL,
-    snapshot_hash TEXT NOT NULL,
-    entry_id INTEGER NOT NULL,
-    content_hash TEXT NOT NULL REFERENCES dogma_effect_meta (content_hash),
-    PRIMARY KEY (server_id, snapshot_hash, entry_id)
-);
-CREATE INDEX dogma_effect_meta_reg_content_hash ON dogma_effect_meta_reg (content_hash);
