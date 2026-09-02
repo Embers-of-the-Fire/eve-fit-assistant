@@ -75,7 +75,8 @@ payload is verified against its SHA-256 hash. At most 2000 entries per frame.
 Replies `{ "id": 1, "ok": true, "inserted": n, "ids": { "<hash>": 123 } }`
 where `ids` resolves the frame's hashes to their content ids — freshly
 inserted and pre-existing alike. (`ids` is keyed by hash alone; a frame must
-not carry identical content bytes under two families.)
+not carry identical content bytes under two families — the reference uploader
+sends one family per frame.)
 
 ### Frame: `lookup`
 

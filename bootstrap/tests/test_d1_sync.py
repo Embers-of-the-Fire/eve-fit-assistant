@@ -577,7 +577,7 @@ class TestRunSync:
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
         assert [p for p in transport.posts if p[0] == "register"] == []
 
-    def test_rejects_content_hash_shared_across_families(
+    def test_registers_content_hash_shared_across_families(
         self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from bootstrap.data.d1 import sync
@@ -586,17 +586,40 @@ class TestRunSync:
         _build_snapshot(schema_root, snapshot_hash)
 
         entries = sync.load_snapshot_entries(schema_root, snapshot_hash)
-        # Identical bytes under two families => identical content hash, which
-        # the hash-keyed `ids` reply map cannot disambiguate.
+        # Identical bytes under two families => identical content hash. The
+        # entries table's (family, content_hash) uniqueness key makes these
+        # valid distinct rows, so the sync must succeed.
         type_entry = next(e for e in entries if e.family == "types")
         duplicate = sync.Entry("buffs", 999, type_entry.content)
         assert duplicate.hash == type_entry.hash
         monkeypatch.setattr(sync, "load_snapshot_entries", lambda *args: [*entries, duplicate])
 
         transport = _FakeTransport()
-        with pytest.raises(ValueError, match="shared across families"):
-            sync.run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
-        assert [p for p in transport.posts if p[0] == "register"] == []
+        sync.run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
+
+        # Content frames carry one family each, keeping the worker's
+        # hash-keyed ids reply unambiguous; both rows are uploaded.
+        content_posts = [p for p in transport.posts if p[0] == "content"]
+        for _path, payload in content_posts:
+            assert len({e["family"] for e in payload["entries"]}) == 1
+        uploaded = [e for _path, payload in content_posts for e in payload["entries"]]
+        assert ("types", type_entry.hash) in {(e["family"], e["content_hash"]) for e in uploaded}
+        assert ("buffs", duplicate.hash) in {(e["family"], e["content_hash"]) for e in uploaded}
+
+        # The shared hash resolves to a distinct content id per family, and
+        # both registrations complete.
+        register_posts = [p for p in transport.posts if p[0] == "register"]
+        reg_entries = [e for _path, payload in register_posts for e in payload["entries"]]
+        types_id = next(
+            e["content_id"]
+            for e in reg_entries
+            if e["family"] == "types" and e["entry_id"] == type_entry.entry_id
+        )
+        buffs_id = next(
+            e["content_id"] for e in reg_entries if e["family"] == "buffs" and e["entry_id"] == 999
+        )
+        assert types_id != buffs_id
+        assert [p for p in transport.posts if p[0] == "complete"] != []
 
     def test_dry_run_uploads_nothing(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync

@@ -26,6 +26,9 @@ large per-request batches regularly failed with 503s.
 Registration rows reference content ids rather than content hashes, so the
 ``content`` and ``lookup`` replies carry ``ids`` maps (content hash ->
 content id) that this driver accumulates before emitting ``register`` frames.
+The ``ids`` maps are keyed by hash alone, so ``content`` frames are sent one
+family at a time: identical bytes under two families are distinct
+``(family, content_hash)`` rows and must not share a frame.
 
 All operations are idempotent, so the transport reconnects and resends an
 unacknowledged frame on connection failures, and a rerun of the whole sync
@@ -441,19 +444,6 @@ def run_sync(
 
         pending_hashes = {(reg.family, reg.hash) for regs in pending.values() for reg in regs}
 
-        # The worker's `ids` reply maps content hash -> content id, keyed by
-        # hash alone. That is only sound when no content hash appears under
-        # two families (identical bytes in two per-family protobuf schemas);
-        # enforce the invariant before relying on it.
-        families_by_hash: dict[str, set[str]] = {}
-        for family, entry_hash in pending_hashes:
-            families_by_hash.setdefault(entry_hash, set()).add(family)
-        ambiguous = [h for h, families in families_by_hash.items() if len(families) > 1]
-        if ambiguous:
-            raise ValueError(
-                f"content hashes shared across families are not supported: {ambiguous[:5]}"
-            )
-
         # Resume support: content rows already present on the server (from
         # earlier runs or shared with completed snapshots) are not resent.
         rows_to_check = sorted(
@@ -474,22 +464,28 @@ def run_sync(
                     content_ids[(family, h)] = content_id
         info(f"Content rows missing on the server: {len(missing)} of {len(rows_to_check)}")
 
-        content_rows = [
-            {
-                "family": family,
-                "content_hash": entry_hash,
-                "content_b64": base64.b64encode(content[(family, entry_hash)]).decode("ascii"),
-            }
-            for family, entry_hash in sorted(missing)
-        ]
-        for batch in _batched(content_rows, batch_size):
-            reply = transport.post("content", {"entries": batch})
-            info(f"Uploaded {len(batch)} content rows (inserted: {reply.get('inserted', '?')})")
-            # Content frames may mix families, but the cross-family hash
-            # invariant above keeps the flat ids map unambiguous.
-            family_by_hash = {row["content_hash"]: row["family"] for row in batch}
-            for h, content_id in reply.get("ids", {}).items():
-                content_ids[(family_by_hash[h], h)] = content_id
+        # Content frames are kept per family so the worker's hash-keyed
+        # `ids` reply is unambiguous even when identical bytes (hence
+        # identical hashes) appear under two families; the entries table's
+        # (family, content_hash) uniqueness key makes those distinct rows.
+        for family in ALL_FAMILIES:
+            family_rows = [
+                {
+                    "family": family,
+                    "content_hash": entry_hash,
+                    "content_b64": base64.b64encode(content[(family, entry_hash)]).decode("ascii"),
+                }
+                for f, entry_hash in sorted(missing)
+                if f == family
+            ]
+            for batch in _batched(family_rows, batch_size):
+                reply = transport.post("content", {"entries": batch})
+                info(
+                    f"Uploaded {len(batch)} {family} content rows "
+                    f"(inserted: {reply.get('inserted', '?')})"
+                )
+                for h, content_id in reply.get("ids", {}).items():
+                    content_ids[(family, h)] = content_id
 
         unresolved = pending_hashes - set(content_ids)
         if unresolved:

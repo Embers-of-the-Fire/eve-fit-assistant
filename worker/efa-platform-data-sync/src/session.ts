@@ -27,8 +27,7 @@
 //          (present and freshly inserted alike) are resolved for the client.
 //          `ids` is keyed by hash alone: ids are only unique per
 //          (family, hash), so a frame must not carry identical content bytes
-//          under two families (the pipeline's per-family protobuf schemas
-//          make this impossible in practice).
+//          under two families (the uploader sends one family per frame).
 //   {type: "lookup",   id, family, content_hashes: [hex]}
 //       -> {id, ok: true, missing: [hex], ids: {content_hash: content_id}} —
 //          hashes not yet present in the family, plus the content ids of the
