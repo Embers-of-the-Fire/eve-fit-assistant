@@ -1,0 +1,16 @@
+# Linguist overrides
+
+apps/eve-fit-assistant/web/sqlite/** linguist-vendored
+apps/eve-fit-assistant/web/pkg/** linguist-vendored
+tools/eve-fsd-dumper/** linguist-vendored
+
+**/pubspec.lock linguist-generated
+**/pnpm-lock.yaml linguist-generated
+**/Cargo.lock linguist-generated
+**/uv.lock linguist-generated
+**/pnpm-workspace.yaml linguist-generated
+
+**/AGENTS.md linguist-documentation
+**/CLAUDE.md linguist-documentation
+docs/** linguist-documentation
+
