@@ -18,7 +18,10 @@ dependents, and every affected package instantiates its applicable task kinds
 setup needs, exact codegen/lint/test commands); the workflow's `test` job is a generic
 parameterized runner with no package or task-kind names in it. Changes to the selection
 system itself, `.github/**`, or `flake.nix`/`flake.lock` escalate to full instantiation as a
-fail-safe. A terminal `aggregate` job (`CI / Required`) is the single stable check name that
+fail-safe. Workflow and composite-action definitions are the exception: only changes to
+`ci.yml` itself (the parameterized runner) escalate; other changes under
+`.github/workflows/` or `.github/actions/` select just the `workflows` standalone task
+(zizmor scan). A terminal `aggregate` job (`CI / Required`) is the single stable check name that
 branch protection references; per-task job names vary with the change set and must never be
 protection requirements.
 
@@ -125,7 +128,9 @@ against a local MinIO mock instead of touching the real remote:
 CI workflows share the tracked developer config `ci/config/efa.dev.toml`. It contains
 non-secret values, with `.invalid` placeholders for secret fields. The composite action
 `.github/actions/init-dev-env` copies it to `./efa.dev.toml` after checkout; jobs inject real
-secrets through `--dev-env` overrides.
+secrets through `--dev-env` overrides. Nix-based Python jobs get their whole preamble
+(Nix install, `uv sync` in the `.#python` shell, optional dev-config copy) from
+`.github/actions/setup-python-env` instead of repeating the steps inline.
 
 Publishing credentials live in GitHub Environments, not repository secrets:
 
@@ -151,7 +156,9 @@ All jobs build through `.github/actions/build-web` and deploy through
 `ci/config/wrangler.{prod,nightly}.toml` to `./wrangler.toml` because wrangler requires a
 config file, then runs `wrangler pages deploy` with `--commit-hash`.
 
-Entry points:
+Entry points (`web-preview.yml` and `site-nightly.yml` both run the rebuild decision through
+the shared `.github/actions/web-gate` composite action, which wraps `uv run x.py ci web-gate`
+and defaults to building when the target commit is empty or unfetchable):
 
 - `web-preview.yml` — PRs to `dev` whose change set instantiates the Flutter app's tasks
   (the web-bundle gate: a query over the same resolver output as test selection, checked

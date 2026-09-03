@@ -24,10 +24,8 @@ jobs:
           submodules: true
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
+      - name: Setup Python env
+        uses: ./.github/actions/setup-python-env
 
       - name: Run fast release preflight checks
         env:

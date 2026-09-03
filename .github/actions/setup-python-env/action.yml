@@ -1,0 +1,27 @@
+name: Setup Python env
+
+description: >-
+  Shared Python tooling preamble: install Nix and install Python
+  dependencies (uv sync) inside the .#python dev shell. Set init-dev-env to
+  also copy the tracked CI dev config for subsequent x.py invocations.
+  This action reads no secrets; jobs keep their `environment:` and inject
+  credentials only into the steps that need them.
+
+inputs:
+  init-dev-env:
+    description: "Copy ci/config/efa.dev.toml to ./efa.dev.toml (x.py dev config)."
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+    - name: Install Python dependencies
+      shell: bash
+      run: nix develop .#python --command bash -c 'uv sync'
+
+    - name: Init dev env
+      if: inputs.init-dev-env == 'true'
+      uses: ./.github/actions/init-dev-env

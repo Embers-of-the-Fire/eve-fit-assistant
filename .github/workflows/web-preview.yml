@@ -39,21 +39,13 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-        with:
-          python-version: "3.13"
       - name: Check web preview relevance
         id: filter
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # The checkout only fetched history reachable from the PR merge
-          # ref; the base/head tips may not be ancestors of it (e.g. when
-          # the base branch advanced), so fetch them explicitly.
-          git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
-          BUILD=$(uv run x.py ci web-gate --target "$BASE_SHA" --head "$HEAD_SHA")
-          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/web-gate
+        with:
+          target: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          fetch: "true"
 
   build:
     needs: [changes, gate]

@@ -1,8 +1,11 @@
 """Tests enforcing the architectural invariants of the CI selection system.
 
 1. Fail-safe — changes to any selection-system module (``bootstrap/ci/``),
-   the selection tests, the workflow definitions, or the environment flake
-   escalate to full instantiation.
+   the selection tests, the CI runner workflow (``.github/workflows/ci.yml``),
+   repository automation outside ``.github/workflows/`` and
+   ``.github/actions/``, or the environment flake escalate to full
+   instantiation. Other workflow/action definitions only select the zizmor
+   scan task.
 2. Coverage — every package is reachable by at least one applicable task
    kind, or is explicitly declared opaque.
 3. Referential integrity — every codegen step named by a package exists in
@@ -46,7 +49,6 @@ def test_selection_system_changes_escalate():
         "flake.nix",
         "flake.lock",
         ".github/workflows/ci.yml",
-        ".github/actions/build-web/action.yml",
         ".github/AGENTS.md",
     ):
         assert resolver.resolve([path]).escalated, path

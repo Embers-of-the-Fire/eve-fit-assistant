@@ -144,7 +144,9 @@ def resolve(files: Iterable[str]) -> Resolution:
 
     for path in normalized:
         for entry in BLAST_RADIUS:
-            if not match_any_pattern(path, entry.patterns):
+            if not match_any_pattern(path, entry.patterns) or match_any_pattern(
+                path, entry.except_patterns
+            ):
                 continue
             if entry.everything:
                 return escalated_resolution(normalized)

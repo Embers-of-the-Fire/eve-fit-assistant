@@ -106,6 +106,30 @@ def test_escalating_blast_radius_equals_explicit_escalation():
     }
 
 
+def test_ci_workflow_change_escalates():
+    # ci.yml is the generic parameterized runner; changes to it escalate.
+    assert resolver.resolve([".github/workflows/ci.yml"]).escalated
+
+
+def test_other_workflow_changes_select_only_the_workflows_task():
+    resolution = resolver.resolve([".github/workflows/release.yml"])
+    assert not resolution.escalated
+    assert not resolution.packages
+    assert {i.id for i in resolution.instances} == {"workflows"}
+
+
+def test_action_changes_select_only_the_workflows_task():
+    resolution = resolver.resolve([".github/actions/build-web/action.yml"])
+    assert not resolution.escalated
+    assert not resolution.packages
+    assert {i.id for i in resolution.instances} == {"workflows"}
+
+
+def test_github_automation_outside_workflows_and_actions_escalates():
+    assert resolver.resolve([".github/pull_request_template.md"]).escalated
+    assert resolver.resolve([".github/AGENTS.md"]).escalated
+
+
 def test_web_bundle_gate_is_a_query_over_the_resolver_output():
     assert resolver.web_bundle_gate(resolver.resolve(["packages/efa_fit/lib/fit.dart"]))
     assert resolver.web_bundle_gate(resolver.resolve(["packages/eve-fit-os/src/lib.rs"]))

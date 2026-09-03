@@ -29,10 +29,8 @@ jobs:
           submodules: true
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
+      - name: Setup Python env
+        uses: ./.github/actions/setup-python-env
 
       - name: Verify release version
         id: verify
@@ -276,13 +274,10 @@ jobs:
           submodules: true
           persist-credentials: false
 
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-
-      - name: Install Python dependencies
-        run: nix develop .#python --command bash -c 'uv sync'
-
-      - name: Init dev env
-        uses: ./.github/actions/init-dev-env
+      - name: Setup Python env
+        uses: ./.github/actions/setup-python-env
+        with:
+          init-dev-env: true
 
       # The remote session/publish tooling imports generated pb2 modules
       # (bootstrap/data/schema, gitignored). The .#python shell has no protoc,

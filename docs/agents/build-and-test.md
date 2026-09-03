@@ -26,7 +26,8 @@ package graph in `bootstrap/ci/registry.py`, closed over dependents):
 
 Uncommitted (staged, unstaged, and untracked) changes are included in `--changed`.
 Changes to the selection system, `flake.nix`/`flake.lock`, or `.github/**` escalate to the
-full pass.
+full pass — except workflow/action definitions other than `.github/workflows/ci.yml`, which
+only select the zizmor scan task.
 Use `uv run x.py ci affected --target <ref>` to inspect the resolution.
 
 Focused generators:
