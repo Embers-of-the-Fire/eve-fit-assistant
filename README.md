@@ -1,5 +1,7 @@
 # EVE Fit Assistant
 
+![Bannner | EFA](docs/images/banner.png)
+
 ## Overview
 
 > This branch (`dev`) is under active development.
