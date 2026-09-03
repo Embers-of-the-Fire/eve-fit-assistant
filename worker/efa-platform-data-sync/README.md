@@ -207,7 +207,11 @@ ids of the present ones.
 
 Links a snapshot's segments (one frame per family). Every referenced blob id
 must exist in the link's family (error reply with a `missing` list
-otherwise). Links are freeze-guarded exactly like v2 `register`: once
+otherwise), and a frame may link each blob id at most once per family — a
+duplicate fails with `Duplicate segment links` and inserts nothing (the
+freeze `SUM(entry_count)` counts once per link row, so a duplicated blob id
+would be double-counted). Links are freeze-guarded exactly like v2
+`register`: once
 `segment_complete` has frozen a snapshot, further registrations fail with
 `Snapshot already complete`. Replies `{ "id": 8, "ok": true, "inserted": n }`.
 

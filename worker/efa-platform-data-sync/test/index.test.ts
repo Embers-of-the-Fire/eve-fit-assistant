@@ -1028,6 +1028,68 @@ describe("v3 snapshot freeze", () => {
         ws.close();
     });
 
+    it("rejects frames linking the same blob id more than once per family", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "fa".repeat(32);
+
+        const [segment] = await foldSegments([
+            { id: 1, content: new TextEncoder().encode("type-entry-1") },
+            { id: 2, content: new TextEncoder().encode("type-entry-2") },
+        ]);
+        const { blobId } = await uploadSegment(ws, 1, "types", segment);
+
+        // The same blob at two seq values would double-count entry_count in
+        // the freeze SUM and enumerate the segment twice in readers'
+        // catalogs; the frame is rejected before writing anything.
+        let reply = await call(ws, {
+            id: 2,
+            type: "segment_register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            segments: [
+                { family: "types", seq: 0, blob_id: blobId },
+                { family: "types", seq: 1, blob_id: blobId },
+            ],
+        });
+        expect(reply.id).toBe(2);
+        expect(reply.ok).toBe(false);
+        expect(reply.error).toBe("Duplicate segment links");
+        expect(reply.duplicates).toEqual([{ family: "types", blob_id: blobId }]);
+        expect(await linkStats(serverId, snapshotHash)).toEqual({ links: 0, entries: 0 });
+
+        // The same link registered once is fine, and a retry of the
+        // identical frame stays idempotent (primary-key dedup).
+        reply = await call(ws, {
+            id: 3,
+            type: "segment_register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            segments: [{ family: "types", seq: 0, blob_id: blobId }],
+        });
+        expect(reply).toEqual({ id: 3, ok: true, inserted: 1 });
+        reply = await call(ws, {
+            id: 4,
+            type: "segment_register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            segments: [{ family: "types", seq: 0, blob_id: blobId }],
+        });
+        expect(reply).toEqual({ id: 4, ok: true, inserted: 0 });
+
+        // The happy path still freezes at the real entry count.
+        reply = await call(ws, {
+            id: 5,
+            type: "segment_complete",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entry_count: 2,
+        });
+        expect(reply).toEqual({ id: 5, ok: true });
+        expect(await linkStats(serverId, snapshotHash)).toEqual({ links: 1, entries: 2 });
+        ws.close();
+    });
+
     it("never freezes mid-registration even when register and complete race", async () => {
         // Port of the v2 register/complete race regression test to the v3
         // frames: whichever side runs first, a frozen snapshot's entry_count

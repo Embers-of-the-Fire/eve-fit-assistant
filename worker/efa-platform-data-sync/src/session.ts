@@ -65,7 +65,9 @@
 //   {type: "segment_register", id, server_id, snapshot_hash,
 //    segments: [{family, seq, blob_id}]}
 //       -> {id, ok: true, inserted} — per-snapshot segment links, guarded
-//          against frozen snapshots exactly like v2 register.
+//          against frozen snapshots exactly like v2 register. A frame
+//          linking the same blob id more than once per family is rejected
+//          (the freeze SUM counts entry_count once per link row).
 //   {type: "segment_complete", id, server_id, snapshot_hash, entry_count}
 //       -> {id, ok: true} — freezes the snapshot after verifying
 //          SUM(folded_blobs.entry_count) over the segment-link join inside
@@ -885,13 +887,33 @@ async function handleSegmentRegister(
     }
 
     // Referential integrity: every referenced blob id must exist and belong
-    // to the link's stated family.
+    // to the link's stated family. Within one frame, each blob id may be
+    // linked at most once per family: freezeSnapshotSegments sums
+    // entry_count once per link row, so a duplicated blob id would be
+    // double-counted (and enumerated twice by readers' catalogs). Reject
+    // before any insert so a bad frame writes nothing. Cross-frame replays
+    // are unaffected — they carry identical (family, seq, blob_id) rows,
+    // which the INSERT OR IGNORE below dedupes by primary key.
+    const duplicates: { family: Family; blob_id: number }[] = [];
+    const frameLinks = new Set<string>();
     const missing: { family: Family; blob_id: number }[] = [];
     const byFamily = new Map<Family, number[]>();
     for (const link of segments) {
+        const key = `${FAMILY_CODES[link.family]}:${link.blob_id}`;
+        if (frameLinks.has(key)) {
+            duplicates.push({ family: link.family, blob_id: link.blob_id });
+            continue;
+        }
+        frameLinks.add(key);
         const ids = byFamily.get(link.family) ?? [];
         ids.push(link.blob_id);
         byFamily.set(link.family, ids);
+    }
+    if (duplicates.length > 0) {
+        throw new SyncFailure({
+            error: "Duplicate segment links",
+            duplicates: duplicates.slice(0, 100),
+        });
     }
     for (const [family, blobIds] of byFamily) {
         const familyCode = FAMILY_CODES[family];
