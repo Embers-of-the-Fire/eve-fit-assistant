@@ -706,8 +706,11 @@ const SEGMENT_HEADER_BYTES = 4;
 const SEGMENT_INDEX_ENTRY_BYTES = 12;
 
 // Parse a verified segment's own index. Returns null when the buffer is too
-// small to hold the index its header declares (or declares zero entries, in
-// which case first/last entry ids are undefined).
+// small to hold the index its header declares, declares zero entries, or the
+// entry ids are not strictly increasing. The ordering guarantee matters:
+// readers binary-search this index (prefetch's segment_extract), and the
+// stored blob is immutable (INSERT OR IGNORE keeps the first row), so an
+// unsorted or duplicate index accepted here would be unrepairable.
 function parseSegmentIndex(
     content: Uint8Array,
 ): { count: number; firstId: number; lastId: number } | null {
@@ -719,11 +722,16 @@ function parseSegmentIndex(
     if (count < 1 || SEGMENT_HEADER_BYTES + count * SEGMENT_INDEX_ENTRY_BYTES > content.length) {
         return null;
     }
-    return {
-        count,
-        firstId: view.getInt32(SEGMENT_HEADER_BYTES, true),
-        lastId: view.getInt32(SEGMENT_HEADER_BYTES + (count - 1) * SEGMENT_INDEX_ENTRY_BYTES, true),
-    };
+    const firstId = view.getInt32(SEGMENT_HEADER_BYTES, true);
+    let lastId = firstId;
+    for (let i = 1; i < count; i++) {
+        const id = view.getInt32(SEGMENT_HEADER_BYTES + i * SEGMENT_INDEX_ENTRY_BYTES, true);
+        if (id <= lastId) {
+            return null;
+        }
+        lastId = id;
+    }
+    return { count, firstId, lastId };
 }
 
 interface SegmentFrame {

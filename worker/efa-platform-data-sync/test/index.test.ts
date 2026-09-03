@@ -853,6 +853,63 @@ describe("v3 segment content", () => {
         ws.close();
     });
 
+    it("rejects segments whose index entry ids are not strictly increasing", async () => {
+        const ws = await connect();
+        // Hash-valid content whose metadata (count, first/last) matches the
+        // parsed index, but the ids are unsorted or duplicated. Readers
+        // binary-search this index, and the stored blob is immutable
+        // (INSERT OR IGNORE keeps the first row), so accepting it would
+        // poison the family permanently.
+        const build = (ids: number[]): Uint8Array => {
+            const payload = new TextEncoder().encode("x");
+            const bytes = new Uint8Array(4 + ids.length * 12 + ids.length * payload.length);
+            const view = new DataView(bytes.buffer);
+            view.setUint32(0, ids.length, true);
+            let indexOffset = 4;
+            let dataOffset = 4 + ids.length * 12;
+            for (const id of ids) {
+                view.setInt32(indexOffset, id, true);
+                view.setUint32(indexOffset + 4, dataOffset, true);
+                view.setUint32(indexOffset + 8, payload.length, true);
+                bytes.set(payload, dataOffset);
+                indexOffset += 12;
+                dataOffset += payload.length;
+            }
+            return bytes;
+        };
+        for (const ids of [
+            [2, 1],
+            [1, 1],
+        ]) {
+            const bytes = build(ids);
+            const hash = await sha256Hex(bytes);
+            const reply = await call(ws, {
+                id: 1,
+                type: "segment",
+                family: "types",
+                content_hash: hash,
+                entry_count: ids.length,
+                first_entry_id: ids[0],
+                last_entry_id: ids[ids.length - 1],
+                content_b64: toBase64(bytes),
+            });
+            expect(reply.id).toBe(1);
+            expect(reply.ok).toBe(false);
+            expect(reply.error).toBe("Content verification failed");
+            expect(reply.rejected).toEqual([
+                { family: "types", content_hash: hash, reason: "malformed segment index" },
+            ]);
+            // Nothing was stored for the crafted hash.
+            const stored = await env.PLATFORM_DB.prepare(
+                "SELECT COUNT(*) AS n FROM folded_blobs WHERE content_hash = ?",
+            )
+                .bind(hexToBlob(hash))
+                .first<{ n: number }>();
+            expect(stored?.n).toBe(0);
+        }
+        ws.close();
+    });
+
     it("rejects oversize segments", async () => {
         const ws = await connect();
         const reply = await call(ws, {
