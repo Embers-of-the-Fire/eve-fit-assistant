@@ -245,17 +245,26 @@ fn segment_index(segment: &[u8]) -> Result<Vec<(i32, u32, u32)>, ApiError> {
             .ok_or_else(|| ApiError::internal("corrupt segment: truncated header"))
     };
     let count = read_u32(0)? as usize;
-    let index_bytes = SEGMENT_HEADER_BYTES + count * SEGMENT_INDEX_ENTRY_BYTES;
-    if segment.len() < index_bytes {
-        return Err(ApiError::internal("corrupt segment: truncated index"));
-    }
+    // Guard the header against unchecked 32-bit arithmetic on wasm32: an
+    // overflowing `count * SEGMENT_INDEX_ENTRY_BYTES` would wrap small
+    // enough to pass the truncation check, and Vec::with_capacity(count)
+    // on an unvalidated count would abort the instance. Only a count
+    // whose index provably fits in the segment reaches the allocation.
+    count
+        .checked_mul(SEGMENT_INDEX_ENTRY_BYTES)
+        .and_then(|bytes| bytes.checked_add(SEGMENT_HEADER_BYTES))
+        .filter(|&bytes| bytes <= segment.len())
+        .ok_or_else(|| ApiError::internal("corrupt segment: truncated index"))?;
     let mut entries = Vec::with_capacity(count);
     for i in 0..count {
         let at = SEGMENT_HEADER_BYTES + i * SEGMENT_INDEX_ENTRY_BYTES;
         let entry_id = read_u32(at)? as i32;
         let offset = read_u32(at + 4)?;
         let length = read_u32(at + 8)?;
-        if offset as usize + length as usize > segment.len() {
+        let in_bounds = (offset as usize)
+            .checked_add(length as usize)
+            .is_some_and(|end| end <= segment.len());
+        if !in_bounds {
             return Err(ApiError::internal("corrupt segment: payload out of bounds"));
         }
         entries.push((entry_id, offset, length));
@@ -830,6 +839,18 @@ mod tests {
         // The first (only) index entry's length field, at 4 + 0*12 + 8.
         corrupted[12..16].copy_from_slice(&u32::MAX.to_le_bytes()); // payload out of bounds
         assert!(segment_extract(&corrupted, None).is_err());
+
+        // A count that would overflow `count * SEGMENT_INDEX_ENTRY_BYTES`
+        // on a 32-bit target is rejected before any allocation.
+        let mut huge_count = segment.clone();
+        huge_count[0..4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(segment_extract(&huge_count, None).is_err());
+
+        // offset + length overflowing u32 is rejected, not wrapped.
+        let mut wrapped_end = segment.clone();
+        wrapped_end[8..12].copy_from_slice(&u32::MAX.to_le_bytes()); // offset
+        wrapped_end[12..16].copy_from_slice(&2u32.to_le_bytes()); // length
+        assert!(segment_extract(&wrapped_end, None).is_err());
     }
 
     #[test]
