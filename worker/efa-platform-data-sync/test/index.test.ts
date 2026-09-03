@@ -797,6 +797,62 @@ describe("v3 segment content", () => {
         ws.close();
     });
 
+    it("rejects segment metadata that disagrees with the verified content", async () => {
+        const ws = await connect();
+        const [segment] = await foldSegments([
+            { id: 587, content: new TextEncoder().encode("type-entry-587") },
+            { id: 600, content: new TextEncoder().encode("type-entry-600") },
+        ]);
+        // entry_count, first/last_entry_id are not covered by the content
+        // hash; each mismatch must be rejected against the parsed index.
+        for (const metadata of [
+            { entry_count: 1, first_entry_id: 587, last_entry_id: 600 },
+            { entry_count: 3, first_entry_id: 587, last_entry_id: 600 },
+            { entry_count: 2, first_entry_id: 588, last_entry_id: 600 },
+            { entry_count: 2, first_entry_id: 587, last_entry_id: 599 },
+        ]) {
+            const reply = await call(ws, {
+                id: 1,
+                type: "segment",
+                family: "types",
+                content_hash: segment.hash,
+                ...metadata,
+                content_b64: toBase64(segment.bytes),
+            });
+            expect(reply.id).toBe(1);
+            expect(reply.ok).toBe(false);
+            expect(reply.error).toBe("Content verification failed");
+        }
+        // Nothing was stored: the same content with correct metadata still
+        // inserts (a retry repairs what INSERT OR IGNORE would otherwise
+        // have frozen in).
+        const { inserted } = await uploadSegment(ws, 2, "types", segment);
+        expect(inserted).toBe(1);
+        ws.close();
+    });
+
+    it("rejects segments whose index overruns the content", async () => {
+        const ws = await connect();
+        // Hash-valid content whose header declares more index entries than
+        // the buffer holds.
+        const bytes = new Uint8Array(4);
+        new DataView(bytes.buffer).setUint32(0, 2, true);
+        const reply = await call(ws, {
+            id: 1,
+            type: "segment",
+            family: "types",
+            content_hash: await sha256Hex(bytes),
+            entry_count: 2,
+            first_entry_id: 1,
+            last_entry_id: 2,
+            content_b64: toBase64(bytes),
+        });
+        expect(reply.id).toBe(1);
+        expect(reply.ok).toBe(false);
+        expect(reply.error).toBe("Content verification failed");
+        ws.close();
+    });
+
     it("rejects oversize segments", async () => {
         const ws = await connect();
         const reply = await call(ws, {

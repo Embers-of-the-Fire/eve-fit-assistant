@@ -697,6 +697,33 @@ async function handleSnapshot(
 
 type SegmentLink = z.infer<typeof SegmentLinkSchema>;
 
+// Folded segment layout (mirrors bootstrap/data/d1/sync.py::fold_family and
+// the 0003_folded.sql comment): u32 count, then count x (i32 entry_id,
+// u32 offset, u32 length) index, then the concatenated payloads.
+const SEGMENT_HEADER_BYTES = 4;
+const SEGMENT_INDEX_ENTRY_BYTES = 12;
+
+// Parse a verified segment's own index. Returns null when the buffer is too
+// small to hold the index its header declares (or declares zero entries, in
+// which case first/last entry ids are undefined).
+function parseSegmentIndex(
+    content: Uint8Array,
+): { count: number; firstId: number; lastId: number } | null {
+    if (content.length < SEGMENT_HEADER_BYTES) {
+        return null;
+    }
+    const view = new DataView(content.buffer, content.byteOffset, content.byteLength);
+    const count = view.getUint32(0, true);
+    if (count < 1 || SEGMENT_HEADER_BYTES + count * SEGMENT_INDEX_ENTRY_BYTES > content.length) {
+        return null;
+    }
+    return {
+        count,
+        firstId: view.getInt32(SEGMENT_HEADER_BYTES, true),
+        lastId: view.getInt32(SEGMENT_HEADER_BYTES + (count - 1) * SEGMENT_INDEX_ENTRY_BYTES, true),
+    };
+}
+
 interface SegmentFrame {
     family: Family;
     content_hash: string;
@@ -743,6 +770,46 @@ async function handleSegment(
         });
     }
     const familyCode = FAMILY_CODES[frame.family];
+    // The hash proves the content, not the metadata: the stored entry_count
+    // and first/last id range are trusted verbatim by freezeSnapshotSegments
+    // (SUM over entry_count) and prefetch's subset routing (find_segment
+    // binary-searches the stored ranges). Parse the verified content's own
+    // index and reject a frame whose metadata disagrees — INSERT OR IGNORE
+    // keeps the first row for (family, content_hash), so a stored mismatch
+    // could never be repaired by a retry.
+    const index = parseSegmentIndex(content);
+    if (index === null) {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason: "malformed segment index",
+                },
+            ],
+        });
+    }
+    if (
+        index.count !== frame.entry_count ||
+        index.firstId !== frame.first_entry_id ||
+        index.lastId !== frame.last_entry_id
+    ) {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason:
+                        `metadata mismatch: index has count=${index.count} ` +
+                        `ids=[${index.firstId}, ${index.lastId}], frame declares ` +
+                        `count=${frame.entry_count} ` +
+                        `ids=[${frame.first_entry_id}, ${frame.last_entry_id}]`,
+                },
+            ],
+        });
+    }
     const inserted = await db
         .prepare(
             "INSERT OR IGNORE INTO folded_blobs " +
