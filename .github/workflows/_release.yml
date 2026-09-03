@@ -601,7 +601,17 @@ jobs:
             }
             const humanBody = enLines.slice(h1Index + 1).join("\n").trim();
             const changelogBody = fs.readFileSync(changelogPath, "utf8").trim();
-            const notes = `${humanBody}\n\n## Full Changelog\n\n${changelogBody}\n`;
+            const imagePath = `${notesDir}/image.png`;
+            let banner = "";
+            if (fs.existsSync(imagePath)) {
+              const imageUrl =
+                `https://raw.githubusercontent.com/${owner}/${repo}/${tag}/${imagePath}`;
+              banner = `![v${semver}](${imageUrl})\n\n`;
+              core.info(`Including version banner image: ${imagePath}`);
+            } else {
+              core.info("No version banner image found; releasing without it");
+            }
+            const notes = `${banner}${humanBody}\n\n## Full Changelog\n\n${changelogBody}\n`;
 
             const apkFiles = [
               ...(await (await glob.create(`cache/releases/apk/${version}/*.apk`)).glob()),

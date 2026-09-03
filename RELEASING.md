@@ -57,6 +57,20 @@ To override the version or published time:
 
 Use `--force` to overwrite an existing release note directory.
 
+### 1.2.1. Generate the version banner image
+
+```bash
+./x release version-image
+```
+
+This stamps the version onto the brand banner (`ci/assets/version-banner.png`,
+rendered with the vendored `ci/assets/MapleMono-NF-Bold.ttf`)
+and writes `docs/changelog/<version-dir>/image.png`.
+The GitHub release embeds the committed image at the top of the release body
+(via the raw file URL at the release tag) when present.
+
+Use `--force` to overwrite an existing version image.
+
 ### 1.3. Sync the version to package manifests
 
 ```bash
@@ -271,6 +285,7 @@ wired into releases as follows:
 |------|------------------|
 | Bump version | Edit `efa.config.toml` `[version]` |
 | Generate release note | `./x release relnote` |
+| Generate version banner image | `./x release version-image` |
 | Author localized content | `docs/changelog/<version-dir>/content.{zh,en}.md` |
 | Sync version targets | `./x release version sync` |
 | Full local preflight | `./x ci release verify --check-all` |

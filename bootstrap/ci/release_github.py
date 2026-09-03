@@ -11,6 +11,9 @@ from bootstrap.constant import PROJECT_ROOT
 from bootstrap.docs.document_parser import parse_locale_document
 
 
+_GITHUB_REPO = "Embers-of-the-Fire/eve-fit-assistant"
+
+
 def register_github_release_command(ci_group: click.Group) -> None:
     release_group = ci_group.commands.get("release")
     if release_group is None:
@@ -65,7 +68,9 @@ def register_github_release_command(ci_group: click.Group) -> None:
         then uploads the APK and SHA1 artifacts as release assets
         via gh release create. Linux artifacts (AppImage, zsync, and
         raw zip) are attached additionally when a matching versioned
-        directory exists.
+        directory exists. The committed version banner image
+        (docs/changelog/<version-dir>/image.png) is embedded at the
+        top of the release body when present.
         """
         semver = version_str.split("+")[0]
         notes_dir_name = semver.replace(".", "-")
@@ -88,13 +93,28 @@ def register_github_release_command(ci_group: click.Group) -> None:
             raise click.ClickException(f"Missing {changelog_path} — changelog.md is required")
         changelog_body = changelog_path.read_text(encoding="utf-8")
 
-        body_parts = [
-            human_body.strip(),
-            "",
-            "## Full Changelog",
-            "",
-            changelog_body.strip(),
-        ]
+        image_path = notes_dir / "image.png"
+        if image_path.is_file():
+            click.echo(f"Including version banner image: {image_path}")
+        else:
+            click.echo("No version banner image found; releasing without it")
+
+        body_parts = []
+        if image_path.is_file():
+            image_url = (
+                f"https://raw.githubusercontent.com/{_GITHUB_REPO}/{tag}"
+                f"/docs/changelog/{notes_dir_name}/image.png"
+            )
+            body_parts.extend([f"![v{semver}]({image_url})", ""])
+        body_parts.extend(
+            [
+                human_body.strip(),
+                "",
+                "## Full Changelog",
+                "",
+                changelog_body.strip(),
+            ]
+        )
         release_body = "\n".join(body_parts) + "\n"
 
         version_apk_dir = apk_dir / version_str
