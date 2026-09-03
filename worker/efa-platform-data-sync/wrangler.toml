@@ -2,6 +2,8 @@ name = "efa-platform-data-sync"
 compatibility_date = "2026-08-01"
 main = "src/index.ts"
 
+preview_urls = true
+
 [[d1_databases]]
 binding = "PLATFORM_DB"
 database_name = "efa-snapshot-registry"
