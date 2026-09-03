@@ -1,7 +1,5 @@
 # EVE Fit Assistant
 
-![EVE Fit Assistant](docs/changelog/latest.png)
-
 ## Overview
 
 > This branch (`dev`) is under active development.

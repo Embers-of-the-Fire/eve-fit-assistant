@@ -158,8 +158,7 @@ def register_release_commands(cli_group: click.Group) -> None:
     ):
         """Stamp the version onto the brand banner for a changelog entry.
 
-        Writes docs/changelog/<version-dir>/image.png and points the shared
-        docs/changelog/latest.png symlink at it.
+        Writes docs/changelog/<version-dir>/image.png.
         """
         if version_override is not None:
             version = ProjectVersion.model_validate(parse_version_override(version_override))

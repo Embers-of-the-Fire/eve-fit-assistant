@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from typing import TYPE_CHECKING
 
 import click
@@ -25,7 +23,6 @@ DEFAULT_BASE_IMAGE = PROJECT_ROOT / "ci" / "assets" / "version-banner.png"
 DEFAULT_FONT = PROJECT_ROOT / "ci" / "assets" / "MapleMono-NF-Bold.ttf"
 
 IMAGE_NAME = "image.png"
-LATEST_LINK = CHANGELOG_ROOT / "latest.png"
 
 TEXT_POSITION = (1085, 572)
 TEXT_ANCHOR = "la"
@@ -43,8 +40,7 @@ def create_version_image(
 ) -> Path:
     """Stamp the version onto the brand banner for a changelog entry.
 
-    Writes docs/changelog/<version-dir>/image.png and points the shared
-    docs/changelog/latest.png symlink at it.
+    Writes docs/changelog/<version-dir>/image.png.
     """
     dir_name = normalize_version_dir(semver)
     directory = CHANGELOG_ROOT / dir_name
@@ -78,9 +74,5 @@ def create_version_image(
         raise click.ClickException(f"Invalid font file: {font_path}") from exc
     draw.text(TEXT_POSITION, semver, font=font, fill=TEXT_COLOR, anchor=TEXT_ANCHOR)
     image.save(output_path)
-
-    link_target = os.path.relpath(output_path, LATEST_LINK.parent)
-    LATEST_LINK.unlink(missing_ok=True)
-    LATEST_LINK.symlink_to(link_target)
 
     return output_path

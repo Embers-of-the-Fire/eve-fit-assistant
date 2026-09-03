@@ -65,8 +65,7 @@ Use `--force` to overwrite an existing release note directory.
 
 This stamps the version onto the brand banner (`ci/assets/version-banner.png`,
 rendered with the vendored `ci/assets/MapleMono-NF-Bold.ttf`)
-and writes `docs/changelog/<version-dir>/image.png`. It also points the shared
-`docs/changelog/latest.png` symlink (embedded in the README) at the new image.
+and writes `docs/changelog/<version-dir>/image.png`.
 The GitHub release embeds the committed image at the top of the release body
 (via the raw file URL at the release tag) when present.
 
