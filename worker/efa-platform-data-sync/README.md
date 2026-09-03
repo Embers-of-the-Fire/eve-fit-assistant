@@ -25,11 +25,14 @@ Storage v2 uses three tables:
   referencing integer ids only (~25 B/row; the v1 schema repeated both full
   hex hashes per row at ~344 B/row including indexes).
 - `snapshots` — `(snapshot_id INTEGER PRIMARY KEY, server_id, snapshot_hash
-  BLOB, entry_count, completed_at, UNIQUE (server_id, snapshot_hash))`: the
-  completeness registry. The first `register` frame creates the row with
-  `completed_at = NULL`; the uploader's `complete` frame freezes the snapshot
-  after the worker verifies the actual registration row count. **Readers must
-  check `completed_at IS NOT NULL` and treat any other
+  BLOB, entry_count, completed_at, registered_count, UNIQUE (server_id,
+  snapshot_hash))`: the completeness registry. The first `register` frame
+  creates the row with `completed_at = NULL`; each register frame adds its
+  actually-inserted row count to `registered_count`, and the uploader's
+  `complete` frame freezes the snapshot after verifying that counter against
+  the expected entry count (O(1); a real `COUNT(*)` scan only runs to repair
+  a counter diverged by a crash or a pre-migration pending snapshot).
+  **Readers must check `completed_at IS NOT NULL` and treat any other
   `(server_id, snapshot_hash)` as incomplete.**
 
 An upload spans many WebSocket frames (one D1 transaction each), so a failed
@@ -116,14 +119,14 @@ a snapshot, further registrations for it fail with
 { "type": "complete", "id": 4, "server_id": "tranquility", "snapshot_hash": "sha256-hex", "entry_count": 8 }
 ```
 
-Marks a snapshot complete. Verifies server-side that the registration rows
-present for the snapshot equal `entry_count` (error reply otherwise), then
-sets `entry_count` and `completed_at` on the `snapshots` registry row. The
-count check and the freeze are a single conditional `UPDATE`, and every
+Marks a snapshot complete. Verifies server-side that the register-maintained
+`registered_count` equals `entry_count` (error reply otherwise); the count
+check and the freeze are a single conditional `UPDATE`, and every
 registration insert is guarded by `completed_at IS NULL`, so a concurrent
-`register` frame can never extend an already frozen registration set; a
-retry of the same `complete` frame after a lost reply succeeds. Replies
-`{ "id": 4, "ok": true }`.
+`register` frame can never extend an already frozen registration set. A
+counter diverged by a crash (or a pre-migration pending snapshot) is repaired
+with one real `COUNT(*)` before the freeze; a retry of the same `complete`
+frame after a lost reply succeeds. Replies `{ "id": 4, "ok": true }`.
 
 ### Frame: `snapshot`
 

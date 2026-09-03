@@ -36,10 +36,16 @@
 //       -> {id, ok: true, inserted} — registration rows, conditional on the
 //          snapshot not being frozen by a `complete` marker yet.
 //   {type: "complete", id, server_id, snapshot_hash, entry_count}
-//       -> {id, ok: true} — freezes the snapshot after verifying the actual
-//          registration row count server-side; the count check and the
-//          freeze are one atomic UPDATE, and a retry of the same frame after
-//          a lost reply succeeds.
+//       -> {id, ok: true} — freezes the snapshot after verifying the
+//          registration count server-side. The check compares the
+//          register-maintained registered_count counter in one atomic
+//          conditional UPDATE (a real COUNT(*) scan only runs to repair a
+//          counter diverged by a crash), and a retry of the same frame
+//          after a lost reply succeeds. Register and complete frames for
+//          the same snapshot are serialized in instance memory
+//          (runSerialized), so the counter is settled whenever complete
+//          evaluates it; the per-statement freeze guards remain as the
+//          SQL-level backstop.
 //   {type: "snapshot", id, server_id, snapshot_hash}
 //       -> {id, ok: true, complete: bool, entry_count?, completed_at?} —
 //          completeness probe so reruns can skip finished snapshots.
@@ -191,6 +197,7 @@ interface SnapshotRow {
     snapshot_id: number;
     entry_count: number | null;
     completed_at: string | null;
+    registered_count: number;
 }
 
 // Resolve (server_id, snapshot_hash) to its registry row, if any.
@@ -201,7 +208,7 @@ async function findSnapshot(
 ): Promise<SnapshotRow | null> {
     return await db
         .prepare(
-            "SELECT snapshot_id, entry_count, completed_at FROM snapshots " +
+            "SELECT snapshot_id, entry_count, completed_at, registered_count FROM snapshots " +
                 "WHERE server_id = ? AND snapshot_hash = ?",
         )
         .bind(serverId, hexToBlob(snapshotHash))
@@ -353,9 +360,10 @@ async function handleRegister(
 ): Promise<{ inserted: number }> {
     const snapshot = await ensureSnapshot(db, serverId, snapshotHash);
     // Fast path only. The authoritative freeze check is the guard on every
-    // insert plus the completed_at probe in the final batch below: the
-    // Durable Object input gate does not cover external D1 operations, so a
-    // concurrent complete event can commit between this read and the inserts.
+    // insert plus the completed_at probe in the final batch below. Register
+    // and complete handlers for the same snapshot are serialized in the
+    // Durable Object (runSerialized), but that is instance memory — these
+    // SQL guards are the backstop for any writer that bypasses it.
     if (snapshot.completed_at !== null) {
         throw new SyncFailure({ error: "Snapshot already complete" });
     }
@@ -434,9 +442,10 @@ async function handleRegister(
         }
     }
     // The final batch also probes completed_at. A batch commits atomically,
-    // so a concurrent complete either committed before it (the guards above
-    // inserted nothing and the probe observes the freeze, rejecting this
-    // frame) or runs after it (and counts these rows in its own atomic
+    // so a concurrent complete that bypassed the instance-level
+    // serialization either committed before it (the guards above inserted
+    // nothing and the probe observes the freeze, rejecting this frame) or
+    // runs after it (and counts these rows in its own atomic
     // count-and-freeze update). Registration and completion therefore cannot
     // interleave into a frozen snapshot whose entry_count disagrees with its
     // registration set.
@@ -461,7 +470,54 @@ async function handleRegister(
             }
         }
     }
+    // Maintain the O(1) completion counter: add only the rows this frame
+    // actually inserted (INSERT OR IGNORE conflicts contribute 0, so re-sent
+    // frames never inflate it). The UPDATE commits separately from the
+    // insert batches above; a crash in between leaves the counter short,
+    // which the complete frame's fallback detects and repairs with one real
+    // COUNT(*). Incrementing an already-frozen snapshot is harmless: frozen
+    // rows are never re-verified.
+    if (inserted > 0) {
+        await db
+            .prepare(
+                "UPDATE snapshots SET registered_count = registered_count + ? " +
+                    "WHERE snapshot_id = ?",
+            )
+            .bind(inserted, snapshot.snapshot_id)
+            .run();
+    }
     return { inserted };
+}
+
+// The freezing UPDATE: the count verification, the not-yet-frozen check, and
+// the marker write are a single statement, so a concurrent register frame
+// that bypassed the instance-level serialization can never slip rows in
+// between the verification and the freeze. The count check compares
+// registered_count — maintained incrementally by register frames — instead
+// of scanning snapshot_entries: a COUNT(*) here costs a full index-range
+// scan of the snapshot's registration rows.
+async function freezeSnapshot(
+    db: D1Database,
+    snapshotId: number,
+    entryCount: number,
+): Promise<boolean> {
+    const result = await db
+        .prepare(
+            "UPDATE snapshots SET entry_count = ?, " +
+                "completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') " +
+                "WHERE snapshot_id = ? AND completed_at IS NULL AND registered_count = ?",
+        )
+        .bind(entryCount, snapshotId, entryCount)
+        .run();
+    return (result.meta.changes ?? 0) > 0;
+}
+
+async function countRegistrations(db: D1Database, snapshotId: number): Promise<number> {
+    const row = await db
+        .prepare("SELECT COUNT(*) AS n FROM snapshot_entries WHERE snapshot_id = ?")
+        .bind(snapshotId)
+        .first<{ n: number }>();
+    return row?.n ?? 0;
 }
 
 async function handleComplete(
@@ -487,37 +543,49 @@ async function handleComplete(
         throw new SyncFailure({ error: "Snapshot already complete" });
     }
 
-    // Atomic completion: the count verification, the not-yet-frozen check,
-    // and the marker write are a single UPDATE statement. A concurrent
-    // register frame can therefore never slip rows in between the
-    // verification and the freeze (the Durable Object input gate does not
-    // cover external D1 operations).
-    const result = await db
-        .prepare(
-            "UPDATE snapshots SET entry_count = ?, " +
-                "completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') " +
-                "WHERE snapshot_id = ? AND completed_at IS NULL AND " +
-                "(SELECT COUNT(*) FROM snapshot_entries WHERE snapshot_id = ?) = ?",
-        )
-        .bind(entryCount, snapshot.snapshot_id, snapshot.snapshot_id, entryCount)
-        .run();
-    if ((result.meta.changes ?? 0) > 0) {
+    if (await freezeSnapshot(db, snapshot.snapshot_id, entryCount)) {
         return {};
     }
 
     // The conditional update matched no row: a concurrent complete won the
-    // race, or the registration count moved under us. Re-read to report
-    // which one happened.
-    const state = await db
-        .prepare(
-            "SELECT entry_count, completed_at, " +
-                "(SELECT COUNT(*) FROM snapshot_entries WHERE snapshot_id = ?) AS registered " +
-                "FROM snapshots WHERE snapshot_id = ?",
-        )
-        .bind(snapshot.snapshot_id, snapshot.snapshot_id)
-        .first<{ entry_count: number | null; completed_at: string | null; registered: number }>();
+    // race, the registration count genuinely differs, or the counter
+    // diverged from the rows (a crash between a register frame's inserts and
+    // its counter update, or a pre-0002 pending snapshot). Re-read the
+    // registry row, then fall back to one real COUNT(*) to disambiguate.
+    const state = await findSnapshot(db, serverId, snapshotHash);
     if (state?.completed_at != null) {
         if (state.entry_count === entryCount) {
+            return {};
+        }
+        throw new SyncFailure({ error: "Snapshot already complete" });
+    }
+    const registered = await countRegistrations(db, snapshot.snapshot_id);
+    if (registered !== entryCount) {
+        throw new SyncFailure({
+            error: "Snapshot incomplete",
+            expected: entryCount,
+            registered,
+        });
+    }
+
+    // Complete row set behind a diverged counter: repair it (CAS on the
+    // value read above, so a concurrent register frame's increment is kept)
+    // and retry the freeze once.
+    await db
+        .prepare(
+            "UPDATE snapshots SET registered_count = ? " +
+                "WHERE snapshot_id = ? AND registered_count = ?",
+        )
+        .bind(registered, snapshot.snapshot_id, state?.registered_count ?? 0)
+        .run();
+    if (await freezeSnapshot(db, snapshot.snapshot_id, entryCount)) {
+        return {};
+    }
+    // The retry matched no row: a concurrent complete or register won the
+    // race in between. Report from a fresh read.
+    const final = await findSnapshot(db, serverId, snapshotHash);
+    if (final?.completed_at != null) {
+        if (final.entry_count === entryCount) {
             return {};
         }
         throw new SyncFailure({ error: "Snapshot already complete" });
@@ -525,7 +593,7 @@ async function handleComplete(
     throw new SyncFailure({
         error: "Snapshot incomplete",
         expected: entryCount,
-        registered: state?.registered ?? 0,
+        registered: final?.registered_count ?? registered,
     });
 }
 
@@ -552,6 +620,38 @@ async function handleSnapshot(
 }
 
 export class SyncSession extends DurableObject<Env> {
+    // Per-snapshot mutual exclusion between register and complete handlers.
+    // The freeze fast path trusts registered_count, which a register frame
+    // updates only after its insert batches commit; serializing the two
+    // handlers per snapshot guarantees no register frame is mid-flight when
+    // complete evaluates the counter. This is instance memory, so a
+    // restarted instance starts empty — safe, because an instance is never
+    // evicted while it is still processing a frame, and a crashed register
+    // frame's divergence is repaired by the complete fallback's COUNT(*).
+    // The per-statement freeze guards remain the SQL-level backstop.
+    private readonly snapshotLocks = new Map<string, Promise<unknown>>();
+
+    // Run `task` after every previously queued register/complete handler for
+    // the same snapshot settles; settled chains remove themselves so the map
+    // does not grow without bound.
+    private async runSerialized<T>(key: string, task: () => Promise<T>): Promise<T> {
+        const previous = this.snapshotLocks.get(key) ?? Promise.resolve();
+        const current = (async () => {
+            // A failed predecessor must not block the chain.
+            await previous.catch(() => {});
+            return await task();
+        })();
+        const tail = current
+            .catch(() => {})
+            .finally(() => {
+                if (this.snapshotLocks.get(key) === tail) {
+                    this.snapshotLocks.delete(key);
+                }
+            });
+        this.snapshotLocks.set(key, tail);
+        return await current;
+    }
+
     fetch(_request: Request): Response {
         // Auth runs in the worker middleware before the request is forwarded
         // here; the worker route already rejected non-upgrade requests.
@@ -601,20 +701,24 @@ export class SyncSession extends DurableObject<Env> {
                 case "register":
                     Object.assign(
                         reply,
-                        await handleRegister(
-                            this.env.PLATFORM_DB,
-                            msg.server_id,
-                            msg.snapshot_hash,
-                            msg.entries,
+                        await this.runSerialized(`${msg.server_id}:${msg.snapshot_hash}`, () =>
+                            handleRegister(
+                                this.env.PLATFORM_DB,
+                                msg.server_id,
+                                msg.snapshot_hash,
+                                msg.entries,
+                            ),
                         ),
                     );
                     break;
                 case "complete":
-                    await handleComplete(
-                        this.env.PLATFORM_DB,
-                        msg.server_id,
-                        msg.snapshot_hash,
-                        msg.entry_count,
+                    await this.runSerialized(`${msg.server_id}:${msg.snapshot_hash}`, () =>
+                        handleComplete(
+                            this.env.PLATFORM_DB,
+                            msg.server_id,
+                            msg.snapshot_hash,
+                            msg.entry_count,
+                        ),
                     );
                     break;
                 case "snapshot":
