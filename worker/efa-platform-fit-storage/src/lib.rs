@@ -151,7 +151,7 @@ async fn handle_submit(mut req: Request, env: Env) -> Result<Response, ApiError>
         {
             let platform_db = &platform_db;
             let fetch = |request: prefetch::FetchRequest| async move {
-                d1::fetch_family(platform_db, snapshot_id, request).await
+                prefetch::fetch_family(platform_db, snapshot_id, request).await
             };
             prefetch::prefetch(&mut data, &canonical, fetch).await?;
         }

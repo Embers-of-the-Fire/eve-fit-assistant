@@ -5,6 +5,7 @@ main = "src/index.ts"
 [[d1_databases]]
 binding = "PLATFORM_DB"
 database_name = "efa-snapshot-registry"
+preview_database_id = "33351495-a249-4f46-b83d-888cdec56d85"
 database_id = "f75c61bb-7aca-4c6b-b67a-4332d172872c"
 migrations_dir = "migrations"
 

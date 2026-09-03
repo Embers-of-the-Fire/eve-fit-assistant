@@ -1,41 +1,52 @@
 """Sync resource snapshot engine data into the platform D1 database.
 
-Splits the snapshot's native engine protobuf collections (types, type dogma,
-dogma attributes, dogma effects, buff collections) into per-entry rows and
-builds per-entry name/icon metadata from the snapshot's collection and
-localization database, then uploads everything to the platform data-sync
-worker (``api.efa-tech.dev/platform/storage/data-sync``), which stores them in
-the ``efa-snapshot-registry`` D1 database.
+Folds the snapshot's native engine protobuf collections (types, type dogma,
+dogma attributes, dogma effects, buff collections) plus sync-built metadata
+into per-family binary streams, segments each stream into self-contained
+content-addressed blobs of at most 512 KiB, and uploads everything to the
+platform data-sync worker (``api.efa-tech.dev/platform/storage/data-sync``),
+which stores them in the ``efa-snapshot-registry`` D1 database.
 
-Storage layout (v2; see worker/efa-platform-data-sync/migrations):
-  - ``entries``:          (content_id, family, content_hash BLOB, content)
-                          content-addressed payloads; content_id is a dense
-                          database-local integer assigned by the worker
-  - ``snapshot_entries``: (snapshot_id, family, entry_id, content_id)
-                          registration rows referencing integer ids only
-  - ``snapshots``:        (snapshot_id, server_id, snapshot_hash BLOB,
-                          entry_count, completed_at) completeness registry
+Storage layout (v3; see worker/efa-platform-data-sync/migrations):
+  - ``folded_blobs``:            (blob_id, family, content_hash BLOB,
+                                 entry_count, first_entry_id, last_entry_id,
+                                 content) — the only content store; blob_id is
+                                 a dense database-local integer assigned by
+                                 the worker
+  - ``snapshot_family_segments``: (snapshot_id, family, seq, blob_id)
+                                 per-snapshot segment links, no content
+  - ``snapshots``:               (snapshot_id, server_id, snapshot_hash BLOB,
+                                 entry_count, completed_at) completeness
+                                 registry
+
+Segment format (self-contained, entries sorted by entry id)::
+
+    u32 count
+    count x { i32 entry_id, u32 offset, u32 length }   # offset from segment start
+    payload bytes (concatenated per-entry protobufs)
+
+Segments are capped at 512 KiB because D1 caps a BLOB row at 2 MB and the
+base64'd frame stays well under the 1 MiB WebSocket message limit. Folding
+is a deterministic greedy pack at entry boundaries (not CDC): cross-snapshot
+segment-level dedup is marginal (~1.3%) because inter-snapshot churn is
+dense. Content addressing still deduplicates segments shared verbatim
+across servers (e.g. identical snapshots on two servers).
 
 Uploads run over a single WebSocket to the worker's ``SyncSession`` Durable
-Object: every frame is a small JSON message (``content``/``lookup``/
-``register``/``complete``/``snapshot``) answered by one JSON reply carrying
-the same client-chosen ``id``. Each frame is a separate Durable Object event
-with its own CPU budget, which replaced the old multi-request HTTP API whose
-large per-request batches regularly failed with 503s.
-
-Registration rows reference content ids rather than content hashes, so the
-``content`` and ``lookup`` replies carry ``ids`` maps (content hash ->
-content id) that this driver accumulates before emitting ``register`` frames.
-The ``ids`` maps are keyed by hash alone, so ``content`` frames are sent one
-family at a time: identical bytes under two families are distinct
-``(family, content_hash)`` rows and must not share a frame.
+Object: every frame is a small JSON message (``segment``/
+``segment_lookup``/``segment_register``/``segment_complete``/``snapshot``)
+answered by one JSON reply carrying the same client-chosen ``id``. Each
+frame is a separate Durable Object event with its own CPU budget, which
+replaced the old multi-request HTTP API whose large per-request batches
+regularly failed with 503s.
 
 All operations are idempotent, so the transport reconnects and resends an
 unacknowledged frame on connection failures, and a rerun of the whole sync
 converges: the ``snapshot`` frame skips already-completed snapshots and the
-``lookup`` frame skips already-uploaded content rows. A snapshot is only
-complete once the uploader has posted every content and registration frame
-and then frozen it in the ``snapshots`` registry (``complete``); readers must
+``segment_lookup`` frame skips already-uploaded segments. A snapshot is only
+complete once the uploader has posted every segment and link frame and then
+frozen it in the ``snapshots`` registry (``segment_complete``, verified
+server-side via ``SUM(entry_count)`` over the segment links); readers must
 check that registry before serving data.
 """
 
@@ -46,6 +57,7 @@ import contextlib
 import json
 import random
 import sqlite3
+import struct
 import sys
 import tempfile
 import time
@@ -93,10 +105,30 @@ ALL_FAMILIES = tuple(ENGINE_FAMILIES) + META_FAMILIES
 
 @dataclass(frozen=True)
 class Entry:
-    """A single D1 content row candidate."""
+    """A single engine-data entry (one protobuf payload per entry id)."""
 
     family: str
     entry_id: int
+    content: bytes
+
+
+#: Segment size cap in raw bytes: D1 caps a BLOB row at 2 MB, and the
+#: base64'd frame (~683 KiB) stays well under the 1 MiB WebSocket limit.
+SEGMENT_MAX_BYTES = 512 * 1024
+
+#: Segment framing: u32 count + count x (i32 id, u32 offset, u32 length).
+_SEGMENT_HEADER_BYTES = 4
+_SEGMENT_INDEX_ENTRY_BYTES = 12
+
+
+@dataclass(frozen=True)
+class Segment:
+    """One self-contained, content-addressed folded segment of a family."""
+
+    family: str
+    entry_count: int
+    first_entry_id: int
+    last_entry_id: int
     content: bytes
     hash: str = field(init=False)
 
@@ -104,21 +136,12 @@ class Entry:
         object.__setattr__(self, "hash", content_hash(self.content))
 
 
-@dataclass(frozen=True)
-class Registration:
-    """A single ``snapshot_entries`` row candidate."""
-
-    family: str
-    entry_id: int
-    hash: str
-
-
 class SyncTransport(Protocol):
     """Send one frame payload to the worker and return the decoded reply.
 
-    ``path`` is the frame type (``content``, ``lookup``, ``register``,
-    ``complete``, ``snapshot``); the payload carries the frame's remaining
-    fields. Raises on ``ok: false`` replies.
+    ``path`` is the frame type (``segment``, ``segment_lookup``,
+    ``segment_register``, ``segment_complete``, ``snapshot``); the payload
+    carries the frame's remaining fields. Raises on ``ok: false`` replies.
     """
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]: ...
@@ -386,6 +409,47 @@ def _batched(items: list, batch_size: int) -> Iterable[list]:
         yield items[offset : offset + batch_size]
 
 
+def fold_family(family: str, entries: list[Entry]) -> list[Segment]:
+    """Fold one family's entries into self-contained <=512 KiB segments.
+
+    Entries are sorted by entry id and greedy-packed at entry boundaries
+    (deterministic, not CDC — see the module docstring). One SHA-256 per
+    segment replaces the v2 per-entry hashes (~300k -> ~160 hashes).
+    """
+    groups: list[list[Entry]] = []
+    current: list[Entry] = []
+    size = _SEGMENT_HEADER_BYTES
+    for entry in sorted(entries, key=lambda e: e.entry_id):
+        entry_size = _SEGMENT_INDEX_ENTRY_BYTES + len(entry.content)
+        if current and size + entry_size > SEGMENT_MAX_BYTES:
+            groups.append(current)
+            current = []
+            size = _SEGMENT_HEADER_BYTES
+        current.append(entry)
+        size += entry_size
+    if current:
+        groups.append(current)
+    return [_build_segment(family, group) for group in groups]
+
+
+def _build_segment(family: str, group: list[Entry]) -> Segment:
+    index = bytearray()
+    payload = bytearray()
+    data_offset = _SEGMENT_HEADER_BYTES + _SEGMENT_INDEX_ENTRY_BYTES * len(group)
+    for entry in group:
+        index += struct.pack("<iII", entry.entry_id, data_offset, len(entry.content))
+        payload += entry.content
+        data_offset += len(entry.content)
+    content = struct.pack("<I", len(group)) + bytes(index) + bytes(payload)
+    return Segment(
+        family=family,
+        entry_count=len(group),
+        first_entry_id=group[0].entry_id,
+        last_entry_id=group[-1].entry_id,
+        content=content,
+    )
+
+
 def run_sync(
     hashes: dict[str, str],
     schema_root: Path,
@@ -395,35 +459,48 @@ def run_sync(
 ) -> None:
     """Sync every server snapshot in ``hashes`` to the platform D1 database.
 
-    Content rows are deduplicated across servers before uploading (identical
-    entries share a content hash); registration rows are uploaded per server.
-    Reruns converge: snapshots already marked complete are skipped, and
-    already-uploaded content rows are filtered out via ``lookup`` frames.
+    Each snapshot's families are folded into segments; segments are
+    deduplicated across servers by content hash before uploading, and segment
+    links are registered per (snapshot, family). Reruns converge: snapshots
+    already marked complete are skipped, and already-uploaded segments are
+    filtered out via ``segment_lookup`` frames. ``batch_size`` chunks the
+    lookup frames.
     """
     if not 1 <= batch_size <= 2_000:
         raise ValueError(f"batch_size must be between 1 and 2000, got {batch_size}")
 
-    content: dict[tuple[str, str], bytes] = {}
-    registrations: dict[tuple[str, str], list[Registration]] = {}
+    segments: dict[tuple[str, str], Segment] = {}
+    per_snapshot: dict[tuple[str, str], dict[str, list[Segment]]] = {}
+    entry_counts: dict[tuple[str, str], int] = {}
 
     for server_id, snapshot_hash in sorted(hashes.items()):
         info(f"Loading snapshot entries for {server_id} ({snapshot_hash[:16]}...)...")
         entries = load_snapshot_entries(schema_root, snapshot_hash)
-        regs: list[Registration] = []
+        by_family: dict[str, list[Entry]] = {family: [] for family in ALL_FAMILIES}
         for entry in entries:
-            content.setdefault((entry.family, entry.hash), entry.content)
-            regs.append(Registration(entry.family, entry.entry_id, entry.hash))
-        registrations[(server_id, snapshot_hash)] = regs
+            by_family[entry.family].append(entry)
+        families: dict[str, list[Segment]] = {}
+        for family in ALL_FAMILIES:
+            family_segments = fold_family(family, by_family[family])
+            families[family] = family_segments
+            for segment in family_segments:
+                segments.setdefault((family, segment.hash), segment)
+        key = (server_id, snapshot_hash)
+        per_snapshot[key] = families
+        entry_counts[key] = len(entries)
 
-    info(f"Total unique content rows: {len(content)}")
-    info(f"Total registration rows: {sum(len(r) for r in registrations.values())}")
+    info(f"Total unique segments: {len(segments)}")
+    info(
+        "Total segment links: "
+        f"{sum(len(segs) for families in per_snapshot.values() for segs in families.values())}"
+    )
 
     if dry_run:
         per_family: dict[str, int] = {}
-        for family, _hash in content:
+        for family, _hash in segments:
             per_family[family] = per_family.get(family, 0) + 1
         for family in ALL_FAMILIES:
-            info(f"  {family}: {per_family.get(family, 0)} content rows")
+            info(f"  {family}: {per_family.get(family, 0)} segments")
         info("Dry run: skipped upload.")
         return
 
@@ -431,10 +508,10 @@ def run_sync(
         raise ValueError("transport is required unless dry_run is set")
 
     try:
-        # Skip snapshots a previous run already finished: their registration
-        # set is frozen and the worker would reject further register frames.
-        pending = dict(registrations)
-        for server_id, snapshot_hash in sorted(registrations):
+        # Skip snapshots a previous run already finished: their segment links
+        # are frozen and the worker would reject further register frames.
+        pending = dict(per_snapshot)
+        for server_id, snapshot_hash in sorted(per_snapshot):
             reply = transport.post(
                 "snapshot", {"server_id": server_id, "snapshot_hash": snapshot_hash}
             )
@@ -442,83 +519,92 @@ def run_sync(
                 info(f"Snapshot already complete, skipping: {server_id} ({snapshot_hash[:16]}...)")
                 del pending[(server_id, snapshot_hash)]
 
-        pending_hashes = {(reg.family, reg.hash) for regs in pending.values() for reg in regs}
+        pending_segments = {
+            (family, segment.hash)
+            for key in pending
+            for family, family_segments in per_snapshot[key].items()
+            for segment in family_segments
+        }
 
-        # Resume support: content rows already present on the server (from
+        # Resume support: segments already present on the server (from
         # earlier runs or shared with completed snapshots) are not resent.
-        rows_to_check = sorted(
-            (family, entry_hash)
-            for (family, entry_hash) in content
-            if (family, entry_hash) in pending_hashes
-        )
+        blob_ids: dict[tuple[str, str], int] = {}
         missing: set[tuple[str, str]] = set()
-        content_ids: dict[tuple[str, str], int] = {}
         for family in ALL_FAMILIES:
-            family_hashes = [h for f, h in rows_to_check if f == family]
-            if not family_hashes:
-                continue
-            for chunk in _batched(family_hashes, 5_000):
-                reply = transport.post("lookup", {"family": family, "content_hashes": chunk})
+            family_hashes = sorted(h for f, h in pending_segments if f == family)
+            for chunk in _batched(family_hashes, batch_size):
+                reply = transport.post(
+                    "segment_lookup", {"family": family, "content_hashes": chunk}
+                )
                 missing.update((family, h) for h in reply.get("missing", []))
-                for h, content_id in reply.get("ids", {}).items():
-                    content_ids[(family, h)] = content_id
-        info(f"Content rows missing on the server: {len(missing)} of {len(rows_to_check)}")
+                for h, blob_id in reply.get("ids", {}).items():
+                    blob_ids[(family, h)] = blob_id
+        info(f"Segments missing on the server: {len(missing)} of {len(pending_segments)}")
 
-        # Content frames are kept per family so the worker's hash-keyed
-        # `ids` reply is unambiguous even when identical bytes (hence
-        # identical hashes) appear under two families; the entries table's
-        # (family, content_hash) uniqueness key makes those distinct rows.
-        for family in ALL_FAMILIES:
-            family_rows = [
+        # One content frame per missing segment; the reply resolves the
+        # database-local blob id used by the register frames below.
+        for family, segment_hash in sorted(missing):
+            segment = segments[(family, segment_hash)]
+            reply = transport.post(
+                "segment",
                 {
                     "family": family,
-                    "content_hash": entry_hash,
-                    "content_b64": base64.b64encode(content[(family, entry_hash)]).decode("ascii"),
-                }
-                for f, entry_hash in sorted(missing)
-                if f == family
-            ]
-            for batch in _batched(family_rows, batch_size):
-                reply = transport.post("content", {"entries": batch})
-                info(
-                    f"Uploaded {len(batch)} {family} content rows "
-                    f"(inserted: {reply.get('inserted', '?')})"
-                )
-                for h, content_id in reply.get("ids", {}).items():
-                    content_ids[(family, h)] = content_id
+                    "content_hash": segment.hash,
+                    "entry_count": segment.entry_count,
+                    "first_entry_id": segment.first_entry_id,
+                    "last_entry_id": segment.last_entry_id,
+                    "content_b64": base64.b64encode(segment.content).decode("ascii"),
+                },
+            )
+            # A reply without a blob id leaves the segment unresolved, which
+            # the check below reports.
+            blob_id = reply.get("blob_id")
+            if blob_id is not None:
+                blob_ids[(family, segment_hash)] = blob_id
+        if missing:
+            info(f"Uploaded {len(missing)} segments")
 
-        unresolved = pending_hashes - set(content_ids)
+        unresolved = pending_segments - set(blob_ids)
         if unresolved:
             raise RuntimeError(
-                f"server did not return content ids for {len(unresolved)} content rows "
+                f"server did not return blob ids for {len(unresolved)} segments "
                 f"(first: {min(unresolved)})"
             )
 
-        for (server_id, snapshot_hash), regs in sorted(pending.items()):
-            reg_rows = [
-                {
-                    "family": reg.family,
-                    "entry_id": reg.entry_id,
-                    "content_id": content_ids[(reg.family, reg.hash)],
-                }
-                for reg in regs
-            ]
-            for batch in _batched(reg_rows, batch_size):
+        for (server_id, snapshot_hash), families in sorted(pending.items()):
+            links = 0
+            for family in ALL_FAMILIES:
+                family_segments = families[family]
+                if not family_segments:
+                    continue
                 transport.post(
-                    "register",
-                    {"server_id": server_id, "snapshot_hash": snapshot_hash, "entries": batch},
+                    "segment_register",
+                    {
+                        "server_id": server_id,
+                        "snapshot_hash": snapshot_hash,
+                        "segments": [
+                            {
+                                "family": family,
+                                "seq": seq,
+                                "blob_id": blob_ids[(family, segment.hash)],
+                            }
+                            for seq, segment in enumerate(family_segments)
+                        ],
+                    },
                 )
-            info(f"Registered {len(reg_rows)} rows for {server_id} ({snapshot_hash[:16]}...)")
+                links += len(family_segments)
+            info(f"Registered {links} segment links for {server_id} ({snapshot_hash[:16]}...)")
 
-            # Completeness marker: only reached when every content frame and
-            # every registration frame for this snapshot succeeded. Readers
-            # treat a snapshot without this marker as incomplete.
+            # Completeness marker: only reached when every segment frame and
+            # every link frame for this snapshot succeeded; the worker
+            # verifies SUM(entry_count) over the links before freezing.
+            # Readers treat a snapshot without this marker as incomplete.
             transport.post(
-                "complete",
+                "segment_complete",
                 {
                     "server_id": server_id,
                     "snapshot_hash": snapshot_hash,
-                    "entry_count": len(reg_rows),
+                    "entry_count": entry_counts[(server_id, snapshot_hash)],
                 },
             )
             info(f"Marked snapshot complete for {server_id} ({snapshot_hash[:16]}...)")

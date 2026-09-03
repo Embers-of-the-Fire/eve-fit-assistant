@@ -59,10 +59,18 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
   (populated by `worker/efa-platform-data-sync`), addressed by the
   client-supplied `(server_id, snapshot_hash)`. The selector is resolved to
   the registry's `snapshot_id` (requiring `completed_at IS NOT NULL`, cached
-  per isolate), and rows are read from `snapshot_entries` ⋈ `entries` by
-  `(snapshot_id, family)`. A 3-round transitive-closure prefetch
-  (`src/prefetch.rs`) loads exactly the reachable rows; a `thread_local!`
-  isolate cache makes warm requests zero-query.
+  per isolate). Storage v3 stores each family as folded ≤512 KiB segments
+  (`folded_blobs` ⋈ `snapshot_family_segments`): subset reads route entry ids
+  through the segment catalog's `[first_entry_id, last_entry_id]` ranges and
+  binary-search the segment index; whole families fetch all segments. Raw
+  segments (content-addressed, shared across snapshots) and per-family
+  catalogs are cached in the isolate. Snapshots registered before v3 are
+  served by the legacy per-entry join (`snapshot_entries` ⋈ `entries`) via a
+  per-snapshot dual-read probe (v3 catalog first, v2 fallback, decision
+  cached per isolate — zero-downtime cutover, instant rollback). A 3-round
+  transitive-closure prefetch (`src/prefetch.rs`) loads exactly the
+  reachable rows; a `thread_local!` isolate cache makes warm requests
+  zero-query.
 - `eve-fit-os` is used with `default-features = false`; the worker decodes
   `efos.*` rows itself and implements `InfoProvider` (`src/provider.rs`).
   Getter misses degrade to zero-value placeholders and are counted/logged,
