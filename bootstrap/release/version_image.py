@@ -67,9 +67,15 @@ def create_version_image(
     if dry_run:
         return output_path
 
-    image = Image.open(base_image).convert("RGB")
+    try:
+        image = Image.open(base_image).convert("RGB")
+    except OSError as exc:
+        raise click.ClickException(f"Invalid base banner image: {base_image}") from exc
     draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype(str(font_path), FONT_SIZE)
+    try:
+        font = ImageFont.truetype(str(font_path), FONT_SIZE)
+    except OSError as exc:
+        raise click.ClickException(f"Invalid font file: {font_path}") from exc
     draw.text(TEXT_POSITION, semver, font=font, fill=TEXT_COLOR, anchor=TEXT_ANCHOR)
     image.save(output_path)
 
