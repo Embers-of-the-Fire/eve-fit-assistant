@@ -12,7 +12,31 @@ Eight families: the five native engine collections (`types`, `type_dogma`,
 `dogma_attributes`, `dogma_effects`, `buffs`) plus sync-built metadata
 (`type_meta`, `dogma_attribute_meta`, `dogma_effect_meta`), each with a fixed
 integer code (`types=0` … `dogma_effect_meta=7`, see `src/session.ts`).
-Storage v2 uses three tables:
+
+Storage v3 (folded per-family segments, `migrations/0003_folded.sql`,
+additive) is the current layout:
+
+- `folded_blobs` — `(blob_id INTEGER PRIMARY KEY, family, content_hash BLOB,
+  entry_count, first_entry_id, last_entry_id, content BLOB, UNIQUE (family,
+  content_hash))`: the only content store. Each row is one self-contained,
+  content-addressed ≤512 KiB segment of a family's folded stream (`u32
+  count` + `count × (i32 entry_id, u32 offset, u32 length)` + concatenated
+  per-entry protobuf payloads, byte-identical to v2 `entries.content`).
+  `first_entry_id`/`last_entry_id` bound the segment's id range for subset
+  routing; `blob_id` is a dense database-local integer that must never leak
+  outside the sync protocol.
+- `snapshot_family_segments` — `(snapshot_id, family, seq, blob_id)`:
+  per-snapshot segment links, no content.
+- `snapshots` — unchanged registry + freeze semantics. v3 keeps no
+  `registered_count`: `segment_complete` verifies `SUM(entry_count)` over
+  the segment-link join inside the freezing `UPDATE`.
+
+The v2 tables (`entries`, `snapshot_entries`) stay in place for the rollback
+window — 0003 deliberately drops nothing — and the v2 frames below stay
+operational until cutover; migration 0004 drops the v2 tables and the v2
+frames are removed in the same step.
+
+Storage v2 (`migrations/0001_init.sql`, legacy after cutover):
 
 - `entries` — `(content_id INTEGER PRIMARY KEY, family, content_hash BLOB,
   content BLOB, UNIQUE (family, content_hash))`: content-addressed
@@ -137,6 +161,72 @@ frame after a lost reply succeeds. Replies `{ "id": 4, "ok": true }`.
 Completeness probe, same semantics as the HTTP GET below:
 `{ "id": 5, "ok": true, "complete": false }` or
 `{ "id": 5, "ok": true, "complete": true, "entry_count": n, "completed_at": "..." }`.
+
+### Frame: `segment` (v3)
+
+```json
+{
+  "type": "segment",
+  "id": 6,
+  "family": "types",
+  "content_hash": "sha256-hex",
+  "entry_count": 137,
+  "first_entry_id": 587,
+  "last_entry_id": 42000,
+  "content_b64": "..."
+}
+```
+
+Uploads one folded segment: base64-decoded, verified against its SHA-256
+content hash, `INSERT OR IGNORE`d into `folded_blobs`. One segment per frame,
+≤512 KiB raw (base64 capped at ~700 KiB, keeping the frame under the 1 MiB
+WebSocket message limit). Replies `{ "id": 6, "ok": true, "inserted": n,
+"blob_id": 123 }` — the blob id of the freshly inserted or pre-existing row.
+
+### Frame: `segment_lookup` (v3)
+
+```json
+{ "type": "segment_lookup", "id": 7, "family": "types", "content_hashes": ["sha256-hex"] }
+```
+
+Same shape as v2 `lookup`, resolved against `folded_blobs`: the segment
+hashes not yet present in the family (at most 5000 per frame) plus the blob
+ids of the present ones.
+
+### Frame: `segment_register` (v3)
+
+```json
+{
+  "type": "segment_register",
+  "id": 8,
+  "server_id": "tranquility",
+  "snapshot_hash": "sha256-hex",
+  "segments": [{ "family": "types", "seq": 0, "blob_id": 123 }]
+}
+```
+
+Links a snapshot's segments (one frame per family). Every referenced blob id
+must exist in the link's family (error reply with a `missing` list
+otherwise), and a frame may link each blob id at most once per family — a
+duplicate fails with `Duplicate segment links` and inserts nothing (the
+freeze `SUM(entry_count)` counts once per link row, so a duplicated blob id
+would be double-counted). Links are freeze-guarded exactly like v2
+`register`: once
+`segment_complete` has frozen a snapshot, further registrations fail with
+`Snapshot already complete`. Replies `{ "id": 8, "ok": true, "inserted": n }`.
+
+### Frame: `segment_complete` (v3)
+
+```json
+{ "type": "segment_complete", "id": 9, "server_id": "tranquility", "snapshot_hash": "sha256-hex", "entry_count": 8 }
+```
+
+Marks a snapshot complete. Verifies server-side that
+`SUM(folded_blobs.entry_count)` over the snapshot's segment links equals
+`entry_count` (error reply carrying the real sum otherwise); the SUM check
+and the freeze are a single conditional `UPDATE`. v3 keeps no counter, so
+there is no divergence/repair path. A retry of the same frame after a lost
+reply succeeds. Replies `{ "id": 9, "ok": true }`.
 
 ### `GET /platform/storage/data-sync/health`
 

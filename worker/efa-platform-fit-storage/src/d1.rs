@@ -8,6 +8,9 @@ use crate::prefetch::FetchRequest;
 /// D1's bound-parameter limit is 100; reserve 2 for snapshot_id/family.
 const MAX_ENTRY_IDS_PER_CHUNK: usize = 98;
 
+/// Segment-content chunk fetches bind blob ids only.
+const MAX_BLOB_IDS_PER_CHUNK: usize = 100;
+
 fn js_text(value: &str) -> JsValue {
     JsValue::from_str(value)
 }
@@ -115,6 +118,10 @@ async fn run_change_count(
 }
 
 /// Chunked family lookup (spec §7.2). `ids == None` fetches the whole family.
+///
+/// This is the v2 read path (per-entry `snapshot_entries` ⋈ `entries` join),
+/// kept as the dual-read fallback for snapshots registered before storage v3;
+/// the v3 folded-segment path lives in `prefetch::fetch_family`.
 pub async fn fetch_family(
     db: &D1Database,
     snapshot_id: i64,
@@ -150,6 +157,75 @@ pub async fn fetch_family(
                     out.push((row_int(row, 0)?, row_blob(row, 1)?));
                 }
             }
+        }
+    }
+    Ok(out)
+}
+
+/// One segment of a snapshot's folded family stream (storage v3,
+/// `snapshot_family_segments` ⋈ `folded_blobs`): the blob id plus the
+/// segment's entry-id range for subset routing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CatalogEntry {
+    pub blob_id: i64,
+    pub first_entry_id: i32,
+    pub last_entry_id: i32,
+}
+
+/// Whether the snapshot has any v3 segment links — the dual-read layout
+/// probe. Snapshots are frozen at completion, so the answer never changes
+/// and is cached per isolate by the caller.
+pub async fn snapshot_has_segments(db: &D1Database, snapshot_id: i64) -> Result<bool, ApiError> {
+    let rows = raw_query(
+        db,
+        "SELECT 1 FROM snapshot_family_segments WHERE snapshot_id = ? LIMIT 1",
+        &[js_int(snapshot_id)],
+    )
+    .await?;
+    Ok(!rows.is_empty())
+}
+
+/// The ordered segment catalog of one (snapshot, family): blob ids and
+/// entry-id ranges in stream order. Frozen at snapshot completion.
+pub async fn fetch_catalog(
+    db: &D1Database,
+    snapshot_id: i64,
+    family_code: i64,
+) -> Result<Vec<CatalogEntry>, ApiError> {
+    let rows = raw_query(
+        db,
+        "SELECT s.blob_id, b.first_entry_id, b.last_entry_id \
+         FROM snapshot_family_segments s \
+         JOIN folded_blobs b ON b.blob_id = s.blob_id \
+         WHERE s.snapshot_id = ? AND s.family = ? ORDER BY s.seq",
+        &[js_int(snapshot_id), js_int(family_code)],
+    )
+    .await?;
+    rows.iter()
+        .map(|row| {
+            Ok(CatalogEntry {
+                blob_id: row_int64(row, 0)?,
+                first_entry_id: row_int(row, 1)?,
+                last_entry_id: row_int(row, 2)?,
+            })
+        })
+        .collect()
+}
+
+/// Chunked segment-content fetch by blob id, preserving request order.
+pub async fn fetch_segments(
+    db: &D1Database,
+    blob_ids: &[i64],
+) -> Result<Vec<(i64, Vec<u8>)>, ApiError> {
+    let mut out = Vec::new();
+    for chunk in blob_ids.chunks(MAX_BLOB_IDS_PER_CHUNK) {
+        let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+        let sql =
+            format!("SELECT blob_id, content FROM folded_blobs WHERE blob_id IN ({placeholders})");
+        let params = chunk.iter().map(|id| js_int(*id)).collect::<Vec<_>>();
+        let rows = raw_query(db, &sql, &params).await?;
+        for row in &rows {
+            out.push((row_int64(row, 0)?, row_blob(row, 1)?));
         }
     }
     Ok(out)

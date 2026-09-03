@@ -217,6 +217,101 @@ class TestLoadSnapshotEntries:
         assert negative_effect_meta.name == "shipModularity"
 
 
+class TestFoldFamily:
+    def test_deterministic_regardless_of_input_order(self) -> None:
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+
+        entries = [Entry("types", i, bytes([i]) * (10 + i)) for i in range(50)]
+        shuffled = list(reversed(entries))
+
+        folded_a = fold_family("types", entries)
+        folded_b = fold_family("types", shuffled)
+
+        assert [s.hash for s in folded_a] == [s.hash for s in folded_b]
+        assert [s.content for s in folded_a] == [s.content for s in folded_b]
+
+    def test_size_cap_and_boundary_packing(self) -> None:
+        from bootstrap.data.d1.sync import SEGMENT_MAX_BYTES
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+
+        # 300 KiB entries: one per segment (two would exceed the cap).
+        entries = [Entry("types", i, bytes(300 * 1024)) for i in range(4)]
+        segments = fold_family("types", entries)
+
+        assert len(segments) == 4
+        for segment in segments:
+            assert len(segment.content) <= SEGMENT_MAX_BYTES
+            assert segment.entry_count == 1
+
+        # Small entries pack greedily up to the cap.
+        small = [Entry("types", i, bytes(1000)) for i in range(600)]
+        packed = fold_family("types", small)
+        assert 1 < len(packed) < 600
+        for segment in packed:
+            assert len(segment.content) <= SEGMENT_MAX_BYTES
+        # Greedy: every segment except the last is full to the cap.
+        offset = 0
+        for segment in packed[:-1]:
+            next_entry_size = 12 + len(small[offset + segment.entry_count].content)
+            assert len(segment.content) + next_entry_size > SEGMENT_MAX_BYTES
+            offset += segment.entry_count
+
+    def test_rejects_entry_exceeding_segment_cap(self) -> None:
+        from bootstrap.data.d1.sync import SEGMENT_MAX_BYTES
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+
+        oversized = Entry("types", 42, bytes(SEGMENT_MAX_BYTES))
+        with pytest.raises(ValueError, match="42"):
+            fold_family("types", [Entry("types", 1, b"ok"), oversized])
+
+        # Just under the cap still folds into a single-entry segment.
+        just_fits = Entry("types", 7, bytes(SEGMENT_MAX_BYTES - 4 - 12))
+        [segment] = fold_family("types", [just_fits])
+        assert segment.entry_count == 1
+
+    def test_hash_is_content_hash_of_segment_bytes(self) -> None:
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+        from bootstrap.remote.hash import content_hash
+
+        segments = fold_family("types", [Entry("types", 1, b"payload")])
+        assert len(segments) == 1
+        assert segments[0].hash == content_hash(segments[0].content)
+
+    def test_segment_format_round_trip(self) -> None:
+        import struct
+
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+
+        entries = [
+            Entry("dogma_effects", -64, b"negative-id"),
+            Entry("dogma_effects", 10, b"effect-10"),
+            Entry("dogma_effects", 11, b"effect-11"),
+        ]
+        [segment] = fold_family("dogma_effects", entries)
+
+        assert segment.entry_count == 3
+        assert segment.first_entry_id == -64  # sorted by id, negatives first
+        assert segment.last_entry_id == 11
+
+        (count,) = struct.unpack_from("<I", segment.content, 0)
+        assert count == 3
+        decoded = []
+        for i in range(count):
+            entry_id, offset, length = struct.unpack_from("<iII", segment.content, 4 + i * 12)
+            decoded.append((entry_id, segment.content[offset : offset + length]))
+        assert decoded == [(-64, b"negative-id"), (10, b"effect-10"), (11, b"effect-11")]
+
+    def test_empty_family_folds_to_no_segments(self) -> None:
+        from bootstrap.data.d1.sync import fold_family
+
+        assert fold_family("types", []) == []
+
+
 class _FakeTransport:
     def __init__(
         self,
@@ -225,11 +320,11 @@ class _FakeTransport:
     ) -> None:
         self.posts: list[tuple[str, dict[str, Any]]] = []
         self.closed = False
-        # (family, content_hash) rows the server already holds.
+        # (family, content_hash) segments the server already holds.
         self._existing = existing or set()
         # (server_id, snapshot_hash) pairs already marked complete.
         self._completed = completed or set()
-        # Deterministic content ids, assigned as the worker would: dense,
+        # Deterministic blob ids, assigned as the worker would: dense,
         # per (family, content_hash), stable for the session.
         self._next_id = 0
         self._ids: dict[tuple[str, str], int] = {}
@@ -246,7 +341,7 @@ class _FakeTransport:
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.posts.append((path, payload))
-        if path == "lookup":
+        if path == "segment_lookup":
             present = [
                 h for h in payload["content_hashes"] if (payload["family"], h) in self._existing
             ]
@@ -261,13 +356,12 @@ class _FakeTransport:
         if path == "snapshot":
             complete = (payload["server_id"], payload["snapshot_hash"]) in self._completed
             return {"ok": True, "complete": complete}
-        if path == "content":
-            ids = {
-                entry["content_hash"]: self._ensure_id(entry["family"], entry["content_hash"])
-                for entry in payload["entries"]
-            }
-            return {"ok": True, "inserted": len(payload["entries"]), "ids": ids}
-        return {"ok": True, "inserted": len(payload.get("entries", []))}
+        if path == "segment":
+            blob_id = self._ensure_id(payload["family"], payload["content_hash"])
+            return {"ok": True, "inserted": 1, "blob_id": blob_id}
+        if path == "segment_register":
+            return {"ok": True, "inserted": len(payload["segments"])}
+        return {"ok": True}
 
     def close(self) -> None:
         self.closed = True
@@ -466,41 +560,39 @@ class TestRunSync:
         transport = _FakeTransport()
         run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
 
-        content_posts = [p for p in transport.posts if p[0] == "content"]
-        register_posts = [p for p in transport.posts if p[0] == "register"]
+        segment_posts = [p for p in transport.posts if p[0] == "segment"]
+        register_posts = [p for p in transport.posts if p[0] == "segment_register"]
 
-        # Identical snapshots: content uploaded once, deduplicated by hash.
-        content_hashes = [
-            e["content_hash"] for _path, payload in content_posts for e in payload["entries"]
-        ]
-        assert len(content_hashes) == len(set(content_hashes))
-        assert len(content_hashes) == 10  # one entry per family
+        # Identical snapshots: segments uploaded once, deduplicated by hash.
+        segment_hashes = [payload["content_hash"] for _path, payload in segment_posts]
+        assert len(segment_hashes) == len(set(segment_hashes))
+        assert len(segment_hashes) == 8  # one folded segment per family
 
-        assert len(register_posts) == 2
+        # One register frame per (snapshot, family).
+        assert len(register_posts) == 16
         servers = {payload["server_id"] for _path, payload in register_posts}
         assert servers == {"alpha", "beta"}
         for _path, payload in register_posts:
-            assert len(payload["entries"]) == 10
-            # Registration rows reference worker-assigned content ids, not hashes.
-            for entry in payload["entries"]:
-                assert set(entry) == {"family", "entry_id", "content_id"}
-                assert isinstance(entry["content_id"], int)
+            assert len(payload["segments"]) == 1
+            # Segment links reference worker-assigned blob ids, not hashes.
+            for link in payload["segments"]:
+                assert set(link) == {"family", "seq", "blob_id"}
+                assert link["seq"] == 0
+                assert isinstance(link["blob_id"], int)
 
-        # Identical snapshots share the same content ids across servers.
+        # Identical snapshots share the same blob ids across servers.
         per_server = {
-            payload["server_id"]: {
-                (e["family"], e["entry_id"]): e["content_id"] for e in payload["entries"]
-            }
+            payload["server_id"]: {link["family"]: link["blob_id"] for link in payload["segments"]}
             for _path, payload in register_posts
         }
         assert per_server["alpha"] == per_server["beta"]
 
-        complete_posts = [p for p in transport.posts if p[0] == "complete"]
+        complete_posts = [p for p in transport.posts if p[0] == "segment_complete"]
         assert len(complete_posts) == 2
         complete_servers = {payload["server_id"] for _path, payload in complete_posts}
         assert complete_servers == {"alpha", "beta"}
         for _path, payload in complete_posts:
-            assert payload["entry_count"] == 10
+            assert payload["entry_count"] == 10  # total entries, all families
 
         assert transport.closed
 
@@ -516,32 +608,34 @@ class TestRunSync:
         run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
 
         # Nothing is re-registered or re-completed for the finished snapshot.
-        register_posts = [p for p in transport.posts if p[0] == "register"]
-        complete_posts = [p for p in transport.posts if p[0] == "complete"]
+        register_posts = [p for p in transport.posts if p[0] == "segment_register"]
+        complete_posts = [p for p in transport.posts if p[0] == "segment_complete"]
         assert {payload["server_id"] for _path, payload in register_posts} == {"beta"}
         assert {payload["server_id"] for _path, payload in complete_posts} == {"beta"}
 
-    def test_lookup_skips_existing_content(self, schema_root: Path) -> None:
+    def test_lookup_skips_existing_segments(self, schema_root: Path) -> None:
+        from bootstrap.data.d1.sync import fold_family
         from bootstrap.data.d1.sync import load_snapshot_entries
         from bootstrap.data.d1.sync import run_sync
 
         snapshot_hash = "cc" * 32
         _build_snapshot(schema_root, snapshot_hash)
 
+        entries = load_snapshot_entries(schema_root, snapshot_hash)
         existing = {
-            (entry.family, entry.hash)
-            for entry in load_snapshot_entries(schema_root, snapshot_hash)
-            if entry.family == "types"
+            (segment.family, segment.hash)
+            for segment in fold_family(
+                "types", [entry for entry in entries if entry.family == "types"]
+            )
         }
         assert existing  # fixture sanity check
 
         transport = _FakeTransport(existing=existing)
         run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
 
-        content_posts = [p for p in transport.posts if p[0] == "content"]
-        uploaded = [e for _path, payload in content_posts for e in payload["entries"]]
-        assert "types" not in {e["family"] for e in uploaded}
-        assert len(uploaded) == 9  # 10 rows minus the existing types row
+        segment_posts = [p for p in transport.posts if p[0] == "segment"]
+        assert "types" not in {payload["family"] for _path, payload in segment_posts}
+        assert len(segment_posts) == 7  # 8 families minus the existing types segment
 
     def test_complete_not_posted_when_register_fails(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
@@ -551,16 +645,16 @@ class TestRunSync:
 
         class _FailingTransport(_FakeTransport):
             def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-                if path == "register":
+                if path == "segment_register":
                     raise RuntimeError("boom")
                 return super().post(path, payload)
 
         transport = _FailingTransport()
         with pytest.raises(RuntimeError, match="boom"):
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
-        assert [p for p in transport.posts if p[0] == "complete"] == []
+        assert [p for p in transport.posts if p[0] == "segment_complete"] == []
 
-    def test_fails_when_server_withholds_content_ids(self, schema_root: Path) -> None:
+    def test_fails_when_server_withholds_blob_ids(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
 
         snapshot_hash = "dd" * 32
@@ -569,57 +663,49 @@ class TestRunSync:
         class _IdlessTransport(_FakeTransport):
             def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
                 reply = super().post(path, payload)
-                reply.pop("ids", None)
+                if path == "segment":
+                    reply.pop("blob_id", None)
                 return reply
 
         transport = _IdlessTransport()
-        with pytest.raises(RuntimeError, match="did not return content ids"):
+        with pytest.raises(RuntimeError, match="did not return blob ids"):
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
-        assert [p for p in transport.posts if p[0] == "register"] == []
+        assert [p for p in transport.posts if p[0] == "segment_register"] == []
 
-    def test_registers_content_hash_shared_across_families(
+    def test_identical_segment_bytes_across_families_stay_distinct(
         self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from bootstrap.data.d1 import sync
 
-        snapshot_hash = "dd" * 32
-        _build_snapshot(schema_root, snapshot_hash)
-
-        entries = sync.load_snapshot_entries(schema_root, snapshot_hash)
-        # Identical bytes under two families => identical content hash. The
-        # entries table's (family, content_hash) uniqueness key makes these
-        # valid distinct rows, so the sync must succeed.
-        type_entry = next(e for e in entries if e.family == "types")
-        duplicate = sync.Entry("buffs", 999, type_entry.content)
-        assert duplicate.hash == type_entry.hash
-        monkeypatch.setattr(sync, "load_snapshot_entries", lambda *args: [*entries, duplicate])
+        # Identical segment bytes under two families => identical content
+        # hash. The folded_blobs table's (family, content_hash) uniqueness
+        # key makes these valid distinct rows, so both must be uploaded.
+        entries = [sync.Entry("types", 1, b"shared"), sync.Entry("buffs", 1, b"shared")]
+        monkeypatch.setattr(sync, "load_snapshot_entries", lambda *args: entries)
 
         transport = _FakeTransport()
-        sync.run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
+        sync.run_sync({"alpha": "dd" * 32}, schema_root, transport, batch_size=2000)
 
-        # Content frames carry one family each, keeping the worker's
-        # hash-keyed ids reply unambiguous; both rows are uploaded.
-        content_posts = [p for p in transport.posts if p[0] == "content"]
-        for _path, payload in content_posts:
-            assert len({e["family"] for e in payload["entries"]}) == 1
-        uploaded = [e for _path, payload in content_posts for e in payload["entries"]]
-        assert ("types", type_entry.hash) in {(e["family"], e["content_hash"]) for e in uploaded}
-        assert ("buffs", duplicate.hash) in {(e["family"], e["content_hash"]) for e in uploaded}
+        segment_posts = [payload for path, payload in transport.posts if path == "segment"]
+        assert len(segment_posts) == 2
+        assert {payload["family"] for payload in segment_posts} == {"types", "buffs"}
+        assert segment_posts[0]["content_hash"] == segment_posts[1]["content_hash"]
 
-        # The shared hash resolves to a distinct content id per family, and
+        # The shared hash resolves to a distinct blob id per family, and
         # both registrations complete.
-        register_posts = [p for p in transport.posts if p[0] == "register"]
-        reg_entries = [e for _path, payload in register_posts for e in payload["entries"]]
-        types_id = next(
-            e["content_id"]
-            for e in reg_entries
-            if e["family"] == "types" and e["entry_id"] == type_entry.entry_id
-        )
-        buffs_id = next(
-            e["content_id"] for e in reg_entries if e["family"] == "buffs" and e["entry_id"] == 999
-        )
-        assert types_id != buffs_id
-        assert [p for p in transport.posts if p[0] == "complete"] != []
+        register_posts = [
+            payload for path, payload in transport.posts if path == "segment_register"
+        ]
+        blob_ids = {
+            payload["segments"][0]["family"]: payload["segments"][0]["blob_id"]
+            for payload in register_posts
+        }
+        assert blob_ids["types"] != blob_ids["buffs"]
+        complete_posts = [
+            payload for path, payload in transport.posts if path == "segment_complete"
+        ]
+        assert len(complete_posts) == 1
+        assert complete_posts[0]["entry_count"] == 2
 
     def test_dry_run_uploads_nothing(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
@@ -656,9 +742,9 @@ class TestRunSync:
         run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=batch_size)
 
         for path, payload in transport.posts:
-            if path in ("content", "register"):
-                assert len(payload["entries"]) <= batch_size
-        assert [p for p in transport.posts if p[0] == "complete"] != []
+            if path == "segment_lookup":
+                assert len(payload["content_hashes"]) <= batch_size
+        assert [p for p in transport.posts if p[0] == "segment_complete"] != []
 
 
 class TestCli:

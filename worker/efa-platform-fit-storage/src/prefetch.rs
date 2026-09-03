@@ -1,8 +1,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::future::Future;
+use std::rc::Rc;
 
 use prost::Message;
+use worker::d1::D1Database;
 
+use crate::d1::{self, CatalogEntry};
 use crate::error::ApiError;
 use crate::proto::{efos, fit as pb, platform_data};
 use crate::provider::{
@@ -31,6 +34,10 @@ const fn flatten_buff_pairs(pairs: [(i32, i32); 4]) -> [i32; 8] {
 
 /// Isolate-cache key: the engine data snapshot selector.
 pub type SnapshotKey = (String, String);
+
+/// Isolate-cache entry for a v3 segment catalog, keyed by
+/// `(snapshot_id, family code)`.
+type CatalogCache = HashMap<(i64, i64), Rc<Vec<CatalogEntry>>>;
 
 /// Accumulated decoded engine data for one `(server_id, snapshot_hash)`. The
 /// isolate cache is additive: warm requests skip already-seen rows entirely
@@ -124,6 +131,19 @@ thread_local! {
     // per isolate instead of one per request.
     static SNAPSHOT_IDS: std::cell::RefCell<HashMap<SnapshotKey, i64>> =
         std::cell::RefCell::new(HashMap::new());
+    // v3 dual-read layout decision per snapshot registry id (true = folded
+    // segments). Snapshots are frozen at completion, so this never changes.
+    static LAYOUTS: std::cell::RefCell<HashMap<i64, bool>> =
+        std::cell::RefCell::new(HashMap::new());
+    // v3 segment catalogs per (snapshot_id, family code), in stream order.
+    static CATALOGS: std::cell::RefCell<CatalogCache> =
+        std::cell::RefCell::new(HashMap::new());
+    // v3 raw segment bytes by blob id. Segments are content-addressed and
+    // shared verbatim across snapshots, so this cache is global, not keyed
+    // by snapshot. Sits under the decoded-entry cache: a warm segment cache
+    // hit skips the D1 round trip but still decodes the wanted entries.
+    static SEGMENTS: std::cell::RefCell<HashMap<i64, Rc<[u8]>>> =
+        std::cell::RefCell::new(HashMap::new());
 }
 
 /// Clone out the accumulated data for a snapshot (empty on cold isolates).
@@ -164,6 +184,220 @@ pub fn snapshot_id_put(key: SnapshotKey, snapshot_id: i64) {
 pub struct FetchRequest {
     pub family: Family,
     pub ids: Option<Vec<i32>>,
+}
+
+// ---------------------------------------------------------------------------
+// Storage v3: folded per-family segments (migrations/0003_folded.sql).
+//
+// Segment format (self-contained, entries sorted by entry id):
+//   u32 count
+//   count x { i32 entry_id, u32 offset, u32 length }  -- offset from segment
+//   payload bytes (concatenated per-entry protobufs, byte-identical to the
+//   v2 entries.content payloads, so the decode path is untouched)
+// ---------------------------------------------------------------------------
+
+const SEGMENT_HEADER_BYTES: usize = 4;
+const SEGMENT_INDEX_ENTRY_BYTES: usize = 12;
+
+fn layout_get(snapshot_id: i64) -> Option<bool> {
+    LAYOUTS.with(|layouts| layouts.borrow().get(&snapshot_id).copied())
+}
+
+fn layout_put(snapshot_id: i64, folded: bool) {
+    LAYOUTS.with(|layouts| {
+        layouts.borrow_mut().insert(snapshot_id, folded);
+    });
+}
+
+fn catalog_get(snapshot_id: i64, family_code: i64) -> Option<Rc<Vec<CatalogEntry>>> {
+    CATALOGS.with(|catalogs| catalogs.borrow().get(&(snapshot_id, family_code)).cloned())
+}
+
+fn catalog_put(snapshot_id: i64, family_code: i64, catalog: Rc<Vec<CatalogEntry>>) {
+    CATALOGS.with(|catalogs| {
+        catalogs
+            .borrow_mut()
+            .insert((snapshot_id, family_code), catalog);
+    });
+}
+
+fn segment_get(blob_id: i64) -> Option<Rc<[u8]>> {
+    SEGMENTS.with(|segments| segments.borrow().get(&blob_id).cloned())
+}
+
+fn segment_put_all(fetched: Vec<(i64, Vec<u8>)>) {
+    SEGMENTS.with(|segments| {
+        let mut segments = segments.borrow_mut();
+        for (blob_id, content) in fetched {
+            segments.insert(blob_id, Rc::from(content.into_boxed_slice()));
+        }
+    });
+}
+
+/// Parse a segment's index: `(entry_id, offset, length)` per entry, sorted
+/// by entry id. Bounds-checked; corrupt segments are an internal error,
+/// never a panic.
+fn segment_index(segment: &[u8]) -> Result<Vec<(i32, u32, u32)>, ApiError> {
+    let read_u32 = |at: usize| -> Result<u32, ApiError> {
+        segment
+            .get(at..at + 4)
+            .map(|b| u32::from_le_bytes(b.try_into().expect("slice of 4")))
+            .ok_or_else(|| ApiError::internal("corrupt segment: truncated header"))
+    };
+    let count = read_u32(0)? as usize;
+    // Guard the header against unchecked 32-bit arithmetic on wasm32: an
+    // overflowing `count * SEGMENT_INDEX_ENTRY_BYTES` would wrap small
+    // enough to pass the truncation check, and Vec::with_capacity(count)
+    // on an unvalidated count would abort the instance. Only a count
+    // whose index provably fits in the segment reaches the allocation.
+    count
+        .checked_mul(SEGMENT_INDEX_ENTRY_BYTES)
+        .and_then(|bytes| bytes.checked_add(SEGMENT_HEADER_BYTES))
+        .filter(|&bytes| bytes <= segment.len())
+        .ok_or_else(|| ApiError::internal("corrupt segment: truncated index"))?;
+    let mut entries = Vec::with_capacity(count);
+    for i in 0..count {
+        let at = SEGMENT_HEADER_BYTES + i * SEGMENT_INDEX_ENTRY_BYTES;
+        let entry_id = read_u32(at)? as i32;
+        let offset = read_u32(at + 4)?;
+        let length = read_u32(at + 8)?;
+        let in_bounds = (offset as usize)
+            .checked_add(length as usize)
+            .is_some_and(|end| end <= segment.len());
+        if !in_bounds {
+            return Err(ApiError::internal("corrupt segment: payload out of bounds"));
+        }
+        entries.push((entry_id, offset, length));
+    }
+    Ok(entries)
+}
+
+/// Slice payloads out of a segment: `wanted == None` extracts every entry
+/// (whole-family fetch), otherwise binary-searches the sorted index per id
+/// and returns only the ids present.
+pub fn segment_extract(
+    segment: &[u8],
+    wanted: Option<&[i32]>,
+) -> Result<Vec<(i32, Vec<u8>)>, ApiError> {
+    let index = segment_index(segment)?;
+    match wanted {
+        None => Ok(index
+            .into_iter()
+            .map(|(id, offset, length)| {
+                (
+                    id,
+                    segment[offset as usize..(offset + length) as usize].to_vec(),
+                )
+            })
+            .collect()),
+        Some(ids) => {
+            let mut sorted: Vec<i32> = ids.to_vec();
+            sorted.sort_unstable();
+            sorted.dedup();
+            let mut out = Vec::new();
+            for id in sorted {
+                if let Ok(i) = index.binary_search_by_key(&id, |entry| entry.0) {
+                    let (_, offset, length) = index[i];
+                    out.push((
+                        id,
+                        segment[offset as usize..(offset + length) as usize].to_vec(),
+                    ));
+                }
+            }
+            Ok(out)
+        }
+    }
+}
+
+/// Route an entry id to its catalog segment by `[first, last]` range. The
+/// catalog is sorted by seq (= ascending id ranges, non-overlapping), so
+/// this is one binary search. Ids outside every range route nowhere — the
+/// family simply has no such row.
+pub fn find_segment(catalog: &[CatalogEntry], id: i32) -> Option<usize> {
+    let i = catalog.partition_point(|entry| entry.last_entry_id < id);
+    let entry = catalog.get(i)?;
+    (entry.first_entry_id <= id).then_some(i)
+}
+
+/// Family fetch with the v3 dual-read transition: probe the segment catalog
+/// first (decision cached per snapshot per isolate), fall back to the v2
+/// per-entry join for snapshots registered before storage v3. On the v3 path
+/// the catalog is cached per (snapshot, family) and raw segments per blob id
+/// — both are frozen at snapshot completion — so warm requests slice payloads
+/// straight from the isolate cache.
+pub async fn fetch_family(
+    db: &D1Database,
+    snapshot_id: i64,
+    request: FetchRequest,
+) -> anyhow::Result<Vec<(i32, Vec<u8>)>> {
+    let folded = match layout_get(snapshot_id) {
+        Some(folded) => folded,
+        None => {
+            let folded = d1::snapshot_has_segments(db, snapshot_id).await?;
+            layout_put(snapshot_id, folded);
+            folded
+        }
+    };
+    if !folded {
+        return d1::fetch_family(db, snapshot_id, request).await;
+    }
+
+    let family_code = request.family.code();
+    let catalog = match catalog_get(snapshot_id, family_code) {
+        Some(catalog) => catalog,
+        None => {
+            let catalog = Rc::new(d1::fetch_catalog(db, snapshot_id, family_code).await?);
+            catalog_put(snapshot_id, family_code, catalog.clone());
+            catalog
+        }
+    };
+
+    // Route the wanted ids to their segments: blob id -> ids within it
+    // (`None` = the whole segment).
+    let mut wanted: HashMap<i64, Option<Vec<i32>>> = HashMap::new();
+    match &request.ids {
+        None => {
+            for entry in catalog.iter() {
+                wanted.insert(entry.blob_id, None);
+            }
+        }
+        Some(ids) => {
+            for id in ids {
+                if let Some(i) = find_segment(&catalog, *id) {
+                    let blob_id = catalog[i].blob_id;
+                    match wanted.entry(blob_id) {
+                        std::collections::hash_map::Entry::Vacant(slot) => {
+                            slot.insert(Some(vec![*id]));
+                        }
+                        std::collections::hash_map::Entry::Occupied(mut slot) => {
+                            if let Some(ids) = slot.get_mut() {
+                                ids.push(*id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Fetch only the segments this isolate has not seen; content addressing
+    // makes segments shared across snapshots.
+    let missing: Vec<i64> = wanted
+        .keys()
+        .filter(|blob_id| segment_get(**blob_id).is_none())
+        .copied()
+        .collect();
+    if !missing.is_empty() {
+        segment_put_all(d1::fetch_segments(db, &missing).await?);
+    }
+
+    let mut out = Vec::new();
+    for (blob_id, ids) in wanted {
+        let segment = segment_get(blob_id)
+            .ok_or_else(|| anyhow::anyhow!("segment {blob_id} missing after fetch"))?;
+        out.extend(segment_extract(&segment, ids.as_deref())?);
+    }
+    Ok(out)
 }
 
 /// The fit's seed type set (spec §7.3, round 0): ship, modules, charges,
@@ -446,34 +680,210 @@ mod tests {
 
     type FetchResult = std::future::Ready<anyhow::Result<Vec<(i32, Vec<u8>)>>>;
 
+    /// Fold rows into segments, mirroring `bootstrap/data/d1/sync.py`'s
+    /// `fold_family` (u32 count + (i32 id, u32 off, u32 len) index +
+    /// payloads, greedy-packed at entry boundaries). Fixtures use a small
+    /// cap so families split into several segments and exercise routing.
+    fn fold_rows(
+        rows: &[(i32, Vec<u8>)],
+        max_bytes: usize,
+        next_blob_id: &mut i64,
+    ) -> (Vec<CatalogEntry>, HashMap<i64, Vec<u8>>) {
+        let mut sorted = rows.to_vec();
+        sorted.sort_by_key(|(id, _)| *id);
+        let mut catalog = Vec::new();
+        let mut blobs = HashMap::new();
+        let mut current: Vec<(i32, Vec<u8>)> = Vec::new();
+        let mut size = SEGMENT_HEADER_BYTES;
+        let mut flush = |current: &mut Vec<(i32, Vec<u8>)>, catalog: &mut Vec<CatalogEntry>| {
+            if current.is_empty() {
+                return;
+            }
+            let mut bytes = Vec::with_capacity(
+                current.iter().map(|(_, c)| c.len()).sum::<usize>()
+                    + SEGMENT_HEADER_BYTES
+                    + SEGMENT_INDEX_ENTRY_BYTES * current.len(),
+            );
+            bytes.extend_from_slice(&(current.len() as u32).to_le_bytes());
+            let mut data_offset =
+                (SEGMENT_HEADER_BYTES + SEGMENT_INDEX_ENTRY_BYTES * current.len()) as u32;
+            let mut payloads = Vec::new();
+            for (id, content) in current.iter() {
+                bytes.extend_from_slice(&id.to_le_bytes());
+                bytes.extend_from_slice(&data_offset.to_le_bytes());
+                bytes.extend_from_slice(&(content.len() as u32).to_le_bytes());
+                payloads.extend_from_slice(content);
+                data_offset += content.len() as u32;
+            }
+            bytes.extend_from_slice(&payloads);
+            *next_blob_id += 1;
+            catalog.push(CatalogEntry {
+                blob_id: *next_blob_id,
+                first_entry_id: current.first().unwrap().0,
+                last_entry_id: current.last().unwrap().0,
+            });
+            blobs.insert(*next_blob_id, bytes);
+            current.clear();
+        };
+        for (id, content) in sorted {
+            let entry_size = SEGMENT_INDEX_ENTRY_BYTES + content.len();
+            if !current.is_empty() && size + entry_size > max_bytes {
+                flush(&mut current, &mut catalog);
+                size = SEGMENT_HEADER_BYTES;
+            }
+            current.push((id, content));
+            size += entry_size;
+        }
+        flush(&mut current, &mut catalog);
+        (catalog, blobs)
+    }
+
+    /// Segment-backed fixture: rows are folded into segments and served
+    /// through the production routing/extraction path.
     struct Fixture {
-        rows: HashMap<Family, HashMap<i32, Vec<u8>>>,
+        catalogs: HashMap<Family, Vec<CatalogEntry>>,
+        blobs: HashMap<i64, Vec<u8>>,
         requests: std::cell::RefCell<Vec<FetchRequest>>,
     }
 
     impl Fixture {
+        fn new() -> Fixture {
+            Fixture {
+                catalogs: HashMap::new(),
+                blobs: HashMap::new(),
+                requests: std::cell::RefCell::new(Vec::new()),
+            }
+        }
+
+        fn insert_family(&mut self, family: Family, rows: Vec<(i32, Vec<u8>)>) {
+            let mut next_blob_id = self.blobs.keys().copied().max().unwrap_or(0);
+            // Small cap: fixture families split into multiple segments.
+            let (catalog, blobs) = fold_rows(&rows, 128, &mut next_blob_id);
+            self.catalogs.insert(family, catalog);
+            self.blobs.extend(blobs);
+        }
+
         fn fetcher(&self) -> impl FnMut(FetchRequest) -> FetchResult + '_ {
             move |req| {
+                let catalog = self.catalogs.get(&req.family).cloned().unwrap_or_default();
                 let rows = match &req.ids {
-                    None => self
-                        .rows
-                        .get(&req.family)
-                        .map(|m| m.iter().map(|(id, b)| (*id, b.clone())).collect::<Vec<_>>())
-                        .unwrap_or_default(),
-                    Some(ids) => ids
+                    None => catalog
                         .iter()
-                        .filter_map(|id| {
-                            self.rows
-                                .get(&req.family)
-                                .and_then(|m| m.get(id))
-                                .map(|b| (*id, b.clone()))
+                        .flat_map(|entry| {
+                            segment_extract(&self.blobs[&entry.blob_id], None)
+                                .expect("fixture segments are well-formed")
                         })
                         .collect(),
+                    Some(ids) => {
+                        let mut by_segment: HashMap<i64, Vec<i32>> = HashMap::new();
+                        for id in ids {
+                            if let Some(i) = find_segment(&catalog, *id) {
+                                by_segment.entry(catalog[i].blob_id).or_default().push(*id);
+                            }
+                        }
+                        by_segment
+                            .into_iter()
+                            .flat_map(|(blob_id, ids)| {
+                                segment_extract(&self.blobs[&blob_id], Some(&ids))
+                                    .expect("fixture segments are well-formed")
+                            })
+                            .collect()
+                    }
                 };
                 self.requests.borrow_mut().push(req);
                 std::future::ready(Ok(rows))
             }
         }
+    }
+
+    #[test]
+    fn segment_extract_whole_and_subset() {
+        let rows = vec![
+            (-64, b"negative".to_vec()),
+            (10, b"ten".to_vec()),
+            (11, b"eleven".to_vec()),
+        ];
+        let mut next_blob_id = 0;
+        let (catalog, blobs) = fold_rows(&rows, usize::MAX, &mut next_blob_id);
+        assert_eq!(catalog.len(), 1);
+        let segment = &blobs[&catalog[0].blob_id];
+
+        let all = segment_extract(segment, None).unwrap();
+        assert_eq!(
+            all,
+            vec![
+                (-64, b"negative".to_vec()),
+                (10, b"ten".to_vec()),
+                (11, b"eleven".to_vec())
+            ]
+        );
+
+        // Binary search finds present ids and skips missing ones.
+        let subset = segment_extract(segment, Some(&[11, 999, -64])).unwrap();
+        assert_eq!(
+            subset,
+            vec![(-64, b"negative".to_vec()), (11, b"eleven".to_vec())]
+        );
+    }
+
+    #[test]
+    fn segment_extract_rejects_corrupt_segments() {
+        let rows = vec![(1, b"payload".to_vec())];
+        let mut next_blob_id = 0;
+        let (catalog, blobs) = fold_rows(&rows, usize::MAX, &mut next_blob_id);
+        let segment = &blobs[&catalog[0].blob_id];
+
+        assert!(segment_extract(&segment[..2], None).is_err()); // truncated count
+        assert!(segment_extract(&segment[..8], None).is_err()); // truncated index
+        let mut corrupted = segment.clone();
+        // The first (only) index entry's length field, at 4 + 0*12 + 8.
+        corrupted[12..16].copy_from_slice(&u32::MAX.to_le_bytes()); // payload out of bounds
+        assert!(segment_extract(&corrupted, None).is_err());
+
+        // A count that would overflow `count * SEGMENT_INDEX_ENTRY_BYTES`
+        // on a 32-bit target is rejected before any allocation.
+        let mut huge_count = segment.clone();
+        huge_count[0..4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(segment_extract(&huge_count, None).is_err());
+
+        // offset + length overflowing u32 is rejected, not wrapped.
+        let mut wrapped_end = segment.clone();
+        wrapped_end[8..12].copy_from_slice(&u32::MAX.to_le_bytes()); // offset
+        wrapped_end[12..16].copy_from_slice(&2u32.to_le_bytes()); // length
+        assert!(segment_extract(&wrapped_end, None).is_err());
+    }
+
+    #[test]
+    fn find_segment_routes_by_entry_id_range() {
+        let catalog = vec![
+            CatalogEntry {
+                blob_id: 1,
+                first_entry_id: -10,
+                last_entry_id: 0,
+            },
+            CatalogEntry {
+                blob_id: 2,
+                first_entry_id: 1,
+                last_entry_id: 10,
+            },
+            CatalogEntry {
+                blob_id: 3,
+                first_entry_id: 20,
+                last_entry_id: 30,
+            },
+        ];
+        // Boundaries and interiors route to their segment.
+        assert_eq!(find_segment(&catalog, -10), Some(0));
+        assert_eq!(find_segment(&catalog, 0), Some(0));
+        assert_eq!(find_segment(&catalog, 5), Some(1));
+        assert_eq!(find_segment(&catalog, 10), Some(1));
+        assert_eq!(find_segment(&catalog, 20), Some(2));
+        assert_eq!(find_segment(&catalog, 30), Some(2));
+        // Outside every range: nowhere.
+        assert_eq!(find_segment(&catalog, -11), None);
+        assert_eq!(find_segment(&catalog, 15), None);
+        assert_eq!(find_segment(&catalog, 31), None);
+        assert_eq!(find_segment(&[], 1), None);
     }
 
     fn ty(group_id: i32) -> Vec<u8> {
@@ -602,75 +1012,49 @@ mod tests {
     }
 
     fn full_fixture() -> Fixture {
-        let mut fixture = Fixture {
-            rows: HashMap::new(),
-            requests: std::cell::RefCell::new(Vec::new()),
-        };
-        for id in [100, 200, 201, 300, 400] {
-            fixture
-                .rows
-                .entry(Family::Types)
-                .or_default()
-                .insert(id, ty(1));
-        }
+        let mut fixture = Fixture::new();
+        fixture.insert_family(
+            Family::Types,
+            [100, 200, 201, 300, 400]
+                .into_iter()
+                .map(|id| (id, ty(1)))
+                .collect(),
+        );
         // ship: attr 10; module 200: attrs 11, 12 + effect 1000;
         // charge 300: attr 13; dynamic base 201: attr 14; skill 400: attr 15.
-        let dogmas = [
-            (100, dogma(&[(10, 1.0)], &[])),
-            (200, dogma(&[(11, 1.0), (12, 2.0)], &[1000])),
-            (201, dogma(&[(14, 1.0)], &[])),
-            (300, dogma(&[(13, 1.0)], &[])),
-            (400, dogma(&[(15, 1.0)], &[])),
-        ];
-        for (id, row) in dogmas {
-            fixture
-                .rows
-                .entry(Family::TypeDogma)
-                .or_default()
-                .insert(id, row);
-        }
-        fixture
-            .rows
-            .entry(Family::DogmaEffects)
-            .or_default()
-            .insert(1000, effect(Some(20), Some(21)));
-        for id in [10, 11, 12, 13, 14, 15, 20, 21] {
-            fixture
-                .rows
-                .entry(Family::DogmaAttributes)
-                .or_default()
-                .insert(id, attr());
-        }
-        for id in WARFARE_BUFF_ATTRIBUTE_IDS {
-            fixture
-                .rows
-                .entry(Family::DogmaAttributes)
-                .or_default()
-                .insert(id, attr());
-        }
-        fixture
-            .rows
-            .entry(Family::Buffs)
-            .or_default()
-            .insert(1, buff(30));
-        fixture
-            .rows
-            .entry(Family::DogmaAttributes)
-            .or_default()
-            .insert(30, attr());
-        for id in [100, 200, 201, 300, 400] {
-            fixture
-                .rows
-                .entry(Family::TypeMeta)
-                .or_default()
-                .insert(id, meta("Name"));
-        }
-        // Mutated type of the dynamic item: metadata only, not an engine type.
-        fixture
-            .rows
-            .entry(Family::TypeMeta)
-            .or_default()
-            .insert(210, meta("Mutated"));
+        fixture.insert_family(
+            Family::TypeDogma,
+            vec![
+                (100, dogma(&[(10, 1.0)], &[])),
+                (200, dogma(&[(11, 1.0), (12, 2.0)], &[1000])),
+                (201, dogma(&[(14, 1.0)], &[])),
+                (300, dogma(&[(13, 1.0)], &[])),
+                (400, dogma(&[(15, 1.0)], &[])),
+            ],
+        );
+        fixture.insert_family(
+            Family::DogmaEffects,
+            vec![(1000, effect(Some(20), Some(21)))],
+        );
+        fixture.insert_family(
+            Family::DogmaAttributes,
+            [10, 11, 12, 13, 14, 15, 20, 21, 30]
+                .into_iter()
+                .chain(WARFARE_BUFF_ATTRIBUTE_IDS)
+                .map(|id| (id, attr()))
+                .collect(),
+        );
+        fixture.insert_family(Family::Buffs, vec![(1, buff(30))]);
+        fixture.insert_family(
+            Family::TypeMeta,
+            [100, 200, 201, 300, 400]
+                .into_iter()
+                .map(|id| (id, meta("Name")))
+                // Mutated type of the dynamic item: metadata only, not an
+                // engine type.
+                .chain([(210, meta("Mutated"))])
+                .collect(),
+        );
         fixture
     }
 
@@ -701,10 +1085,7 @@ mod tests {
 
     #[test]
     fn prefetch_unknown_seed_type_is_422() {
-        let fixture = Fixture {
-            rows: HashMap::new(),
-            requests: std::cell::RefCell::new(Vec::new()),
-        };
+        let fixture = Fixture::new();
         let mut data = SnapshotData::default();
         let err = run(prefetch(&mut data, &simple_state(), fixture.fetcher())).unwrap_err();
         assert_eq!(err.status, 422);

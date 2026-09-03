@@ -50,6 +50,31 @@
 //       -> {id, ok: true, complete: bool, entry_count?, completed_at?} —
 //          completeness probe so reruns can skip finished snapshots.
 //
+// Storage v3 (folded per-family segments, see migrations/0003_folded.sql)
+// adds a parallel frame set; the v2 frames above stay operational until
+// cutover (additive deploy, rollback window — the v2 tables are dropped by
+// migration 0004, not 0003):
+//   {type: "segment", id, family, content_hash, entry_count,
+//    first_entry_id, last_entry_id, content_b64}
+//       -> {id, ok: true, inserted, blob_id} — one folded segment (<=512 KiB
+//          raw, ~700 KiB base64 cap), SHA-256-verified, INSERT OR IGNORE
+//          into folded_blobs; the reply resolves the database-local blob id.
+//   {type: "segment_lookup", id, family, content_hashes: [hex]}
+//       -> {id, ok: true, missing: [hex], ids: {content_hash: blob_id}} —
+//          same shape as v2 lookup, resolved against folded_blobs.
+//   {type: "segment_register", id, server_id, snapshot_hash,
+//    segments: [{family, seq, blob_id}]}
+//       -> {id, ok: true, inserted} — per-snapshot segment links, guarded
+//          against frozen snapshots exactly like v2 register. A frame
+//          linking the same blob id more than once per family is rejected
+//          (the freeze SUM counts entry_count once per link row).
+//   {type: "segment_complete", id, server_id, snapshot_hash, entry_count}
+//       -> {id, ok: true} — freezes the snapshot after verifying
+//          SUM(folded_blobs.entry_count) over the segment-link join inside
+//          the single conditional UPDATE; v3 keeps no registered_count
+//          counter, so there is no crash-repair path — the SUM is the check.
+//          A retry of the same frame after a lost reply succeeds.
+//
 // Error replies carry {id, ok: false, error, ...details}.
 
 import { DurableObject } from "cloudflare:workers";
@@ -83,6 +108,18 @@ const CONTENT_ENTRIES_PER_FRAME = 2000;
 const REGISTER_ENTRIES_PER_FRAME = 2000;
 const LOOKUP_HASHES_PER_FRAME = 5000;
 
+// v3 (folded segments): one segment per content frame, <=512 KiB raw. The
+// base64 cap (~700 KiB) keeps the JSON frame well under the 1 MiB WebSocket
+// message limit. Register frames carry one family's segment links (the
+// largest family folds to ~25 segments at 512 KiB); 1000 is generous
+// headroom, not an expected size.
+const SEGMENT_CONTENT_B64_MAX = 700 * 1024;
+const SEGMENT_LINKS_PER_FRAME = 1000;
+const SEGMENT_LOOKUP_HASHES_PER_FRAME = 5000;
+
+// Engine-internal pseudo attributes/effects carry negative int32 IDs.
+const EntryIdSchema = z.number().int().gte(-2147483648).lte(2147483647);
+
 const ContentEntrySchema = z.object({
     family: FamilySchema,
     content_hash: z.string().regex(HASH_RE),
@@ -91,9 +128,14 @@ const ContentEntrySchema = z.object({
 
 const RegisterEntrySchema = z.object({
     family: FamilySchema,
-    // Engine-internal pseudo attributes/effects carry negative int32 IDs.
-    entry_id: z.number().int().gte(-2147483648).lte(2147483647),
+    entry_id: EntryIdSchema,
     content_id: z.number().int().positive(),
+});
+
+const SegmentLinkSchema = z.object({
+    family: FamilySchema,
+    seq: z.number().int().nonnegative(),
+    blob_id: z.number().int().positive(),
 });
 
 const SnapshotSelectorSchema = z.object({
@@ -129,6 +171,38 @@ const ClientMessageSchema = z.discriminatedUnion("type", [
         type: z.literal("snapshot"),
         id: IdSchema,
         ...SnapshotSelectorSchema.shape,
+    }),
+    // Storage v3 (folded segments); see the header comment.
+    z.object({
+        type: z.literal("segment"),
+        id: IdSchema,
+        family: FamilySchema,
+        content_hash: z.string().regex(HASH_RE),
+        entry_count: z.number().int().positive(),
+        first_entry_id: EntryIdSchema,
+        last_entry_id: EntryIdSchema,
+        content_b64: z.base64().min(1).max(SEGMENT_CONTENT_B64_MAX),
+    }),
+    z.object({
+        type: z.literal("segment_lookup"),
+        id: IdSchema,
+        family: FamilySchema,
+        content_hashes: z
+            .array(z.string().regex(HASH_RE))
+            .min(1)
+            .max(SEGMENT_LOOKUP_HASHES_PER_FRAME),
+    }),
+    z.object({
+        type: z.literal("segment_register"),
+        id: IdSchema,
+        ...SnapshotSelectorSchema.shape,
+        segments: z.array(SegmentLinkSchema).min(1).max(SEGMENT_LINKS_PER_FRAME),
+    }),
+    z.object({
+        type: z.literal("segment_complete"),
+        id: IdSchema,
+        ...SnapshotSelectorSchema.shape,
+        entry_count: z.number().int().nonnegative(),
     }),
 ]);
 
@@ -619,16 +693,411 @@ async function handleSnapshot(
     };
 }
 
+// ---------------------------------------------------------------------------
+// Storage v3: folded per-family segments (migrations/0003_folded.sql).
+// ---------------------------------------------------------------------------
+
+type SegmentLink = z.infer<typeof SegmentLinkSchema>;
+
+// Folded segment layout (mirrors bootstrap/data/d1/sync.py::fold_family and
+// the 0003_folded.sql comment): u32 count, then count x (i32 entry_id,
+// u32 offset, u32 length) index, then the concatenated payloads.
+const SEGMENT_HEADER_BYTES = 4;
+const SEGMENT_INDEX_ENTRY_BYTES = 12;
+
+// Parse a verified segment's own index. Returns null when the buffer is too
+// small to hold the index its header declares, declares zero entries, or the
+// entry ids are not strictly increasing. The ordering guarantee matters:
+// readers binary-search this index (prefetch's segment_extract), and the
+// stored blob is immutable (INSERT OR IGNORE keeps the first row), so an
+// unsorted or duplicate index accepted here would be unrepairable.
+function parseSegmentIndex(
+    content: Uint8Array,
+): { count: number; firstId: number; lastId: number } | null {
+    if (content.length < SEGMENT_HEADER_BYTES) {
+        return null;
+    }
+    const view = new DataView(content.buffer, content.byteOffset, content.byteLength);
+    const count = view.getUint32(0, true);
+    if (count < 1 || SEGMENT_HEADER_BYTES + count * SEGMENT_INDEX_ENTRY_BYTES > content.length) {
+        return null;
+    }
+    const firstId = view.getInt32(SEGMENT_HEADER_BYTES, true);
+    let lastId = firstId;
+    for (let i = 1; i < count; i++) {
+        const id = view.getInt32(SEGMENT_HEADER_BYTES + i * SEGMENT_INDEX_ENTRY_BYTES, true);
+        if (id <= lastId) {
+            return null;
+        }
+        lastId = id;
+    }
+    return { count, firstId, lastId };
+}
+
+interface SegmentFrame {
+    family: Family;
+    content_hash: string;
+    entry_count: number;
+    first_entry_id: number;
+    last_entry_id: number;
+    content_b64: string;
+}
+
+// One folded segment: base64-decode, verify against its SHA-256 content
+// hash, INSERT OR IGNORE, then resolve the database-local blob id (the row
+// may have pre-existed, so the id is read back rather than derived from the
+// insert result).
+async function handleSegment(
+    db: D1Database,
+    frame: SegmentFrame,
+): Promise<{ inserted: number; blob_id: number }> {
+    let content: Uint8Array;
+    try {
+        content = base64ToBytes(frame.content_b64);
+    } catch {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason: "invalid base64",
+                },
+            ],
+        });
+    }
+    const actual = await sha256Hex(content);
+    if (actual !== frame.content_hash) {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason: `hash mismatch: content hashes to ${actual}`,
+                },
+            ],
+        });
+    }
+    const familyCode = FAMILY_CODES[frame.family];
+    // The hash proves the content, not the metadata: the stored entry_count
+    // and first/last id range are trusted verbatim by freezeSnapshotSegments
+    // (SUM over entry_count) and prefetch's subset routing (find_segment
+    // binary-searches the stored ranges). Parse the verified content's own
+    // index and reject a frame whose metadata disagrees — INSERT OR IGNORE
+    // keeps the first row for (family, content_hash), so a stored mismatch
+    // could never be repaired by a retry.
+    const index = parseSegmentIndex(content);
+    if (index === null) {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason: "malformed segment index",
+                },
+            ],
+        });
+    }
+    if (
+        index.count !== frame.entry_count ||
+        index.firstId !== frame.first_entry_id ||
+        index.lastId !== frame.last_entry_id
+    ) {
+        throw new SyncFailure({
+            error: "Content verification failed",
+            rejected: [
+                {
+                    family: frame.family,
+                    content_hash: frame.content_hash,
+                    reason:
+                        `metadata mismatch: index has count=${index.count} ` +
+                        `ids=[${index.firstId}, ${index.lastId}], frame declares ` +
+                        `count=${frame.entry_count} ` +
+                        `ids=[${frame.first_entry_id}, ${frame.last_entry_id}]`,
+                },
+            ],
+        });
+    }
+    const inserted = await db
+        .prepare(
+            "INSERT OR IGNORE INTO folded_blobs " +
+                "(family, content_hash, entry_count, first_entry_id, last_entry_id, content) " +
+                "VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+            familyCode,
+            hexToBlob(frame.content_hash),
+            frame.entry_count,
+            frame.first_entry_id,
+            frame.last_entry_id,
+            content.buffer as ArrayBuffer,
+        )
+        .run();
+    const row = await db
+        .prepare("SELECT blob_id FROM folded_blobs WHERE family = ? AND content_hash = ?")
+        .bind(familyCode, hexToBlob(frame.content_hash))
+        .first<{ blob_id: number }>();
+    if (!row) {
+        throw new Error("folded_blobs row missing after insert");
+    }
+    return { inserted: inserted.meta.changes ?? 0, blob_id: row.blob_id };
+}
+
+// Same shape as v2 lookup, resolved against folded_blobs: segment hashes
+// not yet present in the family, plus the blob ids of the present ones.
+async function handleSegmentLookup(
+    db: D1Database,
+    family: Family,
+    contentHashes: string[],
+): Promise<{ missing: string[]; ids: Record<string, number> }> {
+    const familyCode = FAMILY_CODES[family];
+    const ids: Record<string, number> = {};
+    const missing: string[] = [];
+    for (const chunk of chunked([...new Set(contentHashes)], HASHES_PER_LOOKUP)) {
+        const placeholders = chunk.map(() => "?").join(", ");
+        const found = await db
+            .prepare(
+                "SELECT blob_id, content_hash FROM folded_blobs " +
+                    `WHERE family = ? AND content_hash IN (${placeholders})`,
+            )
+            .bind(familyCode, ...chunk.map(hexToBlob))
+            .all<{ blob_id: number; content_hash: ArrayBuffer }>();
+        const foundSet = new Set<string>();
+        for (const row of found.results) {
+            const hex = bytesToHex(new Uint8Array(row.content_hash));
+            ids[hex] = row.blob_id;
+            foundSet.add(hex);
+        }
+        for (const hash of chunk) {
+            if (!foundSet.has(hash)) {
+                missing.push(hash);
+            }
+        }
+    }
+    return { ids, missing };
+}
+
+// Per-snapshot segment links. Freeze-guarded like v2 register (fast-path
+// check, per-statement EXISTS guard, completed_at probe in the final
+// batch), but maintains no counter: v3 completion verifies SUM(entry_count)
+// over the link join instead.
+async function handleSegmentRegister(
+    db: D1Database,
+    serverId: string,
+    snapshotHash: string,
+    segments: SegmentLink[],
+): Promise<{ inserted: number }> {
+    const snapshot = await ensureSnapshot(db, serverId, snapshotHash);
+    if (snapshot.completed_at !== null) {
+        throw new SyncFailure({ error: "Snapshot already complete" });
+    }
+
+    // Referential integrity: every referenced blob id must exist and belong
+    // to the link's stated family. Within one frame, each blob id may be
+    // linked at most once per family: freezeSnapshotSegments sums
+    // entry_count once per link row, so a duplicated blob id would be
+    // double-counted (and enumerated twice by readers' catalogs). Reject
+    // before any insert so a bad frame writes nothing. Cross-frame replays
+    // are unaffected — they carry identical (family, seq, blob_id) rows,
+    // which the INSERT OR IGNORE below dedupes by primary key.
+    const duplicates: { family: Family; blob_id: number }[] = [];
+    const frameLinks = new Set<string>();
+    const missing: { family: Family; blob_id: number }[] = [];
+    const byFamily = new Map<Family, number[]>();
+    for (const link of segments) {
+        const key = `${FAMILY_CODES[link.family]}:${link.blob_id}`;
+        if (frameLinks.has(key)) {
+            duplicates.push({ family: link.family, blob_id: link.blob_id });
+            continue;
+        }
+        frameLinks.add(key);
+        const ids = byFamily.get(link.family) ?? [];
+        ids.push(link.blob_id);
+        byFamily.set(link.family, ids);
+    }
+    if (duplicates.length > 0) {
+        throw new SyncFailure({
+            error: "Duplicate segment links",
+            duplicates: duplicates.slice(0, 100),
+        });
+    }
+    for (const [family, blobIds] of byFamily) {
+        const familyCode = FAMILY_CODES[family];
+        for (const chunk of chunked([...new Set(blobIds)], HASHES_PER_LOOKUP)) {
+            const placeholders = chunk.map(() => "?").join(", ");
+            const found = await db
+                .prepare(
+                    "SELECT blob_id FROM folded_blobs " +
+                        `WHERE family = ? AND blob_id IN (${placeholders})`,
+                )
+                .bind(familyCode, ...chunk)
+                .all<{ blob_id: number }>();
+            const foundSet = new Set(found.results.map((row) => row.blob_id));
+            for (const blobId of chunk) {
+                if (!foundSet.has(blobId)) {
+                    missing.push({ family, blob_id: blobId });
+                }
+            }
+        }
+    }
+    if (missing.length > 0) {
+        throw new SyncFailure({ error: "Unknown blob ids", missing: missing.slice(0, 100) });
+    }
+
+    let inserted = 0;
+    const statements: D1PreparedStatement[] = [];
+    for (const chunk of chunked(segments, REGISTER_ROWS_PER_STATEMENT)) {
+        const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
+        const binds = [
+            ...chunk.flatMap((link) => [
+                snapshot.snapshot_id,
+                FAMILY_CODES[link.family],
+                link.seq,
+                link.blob_id,
+            ]),
+            snapshot.snapshot_id,
+        ];
+        // Same freeze guard as v2 register: every insert is conditional on
+        // the snapshot not being frozen (see handleRegister).
+        statements.push(
+            db
+                .prepare(
+                    "INSERT OR IGNORE INTO snapshot_family_segments " +
+                        "(snapshot_id, family, seq, blob_id) " +
+                        "SELECT column1, column2, column3, column4 " +
+                        `FROM (VALUES ${placeholders}) ` +
+                        "WHERE EXISTS (SELECT 1 FROM snapshots " +
+                        "WHERE snapshot_id = ? AND completed_at IS NULL)",
+                )
+                .bind(...binds),
+        );
+    }
+    // The final batch also probes completed_at, closing the race against a
+    // concurrent complete that bypassed the instance-level serialization
+    // (same argument as v2 register).
+    const batches = chunked(statements, STATEMENTS_PER_BATCH);
+    for (const [index, batch] of batches.entries()) {
+        const isLast = index === batches.length - 1;
+        if (isLast) {
+            batch.push(
+                db
+                    .prepare("SELECT completed_at FROM snapshots WHERE snapshot_id = ?")
+                    .bind(snapshot.snapshot_id),
+            );
+        }
+        const results = await db.batch(batch);
+        for (const result of isLast ? results.slice(0, -1) : results) {
+            inserted += result.meta.changes ?? 0;
+        }
+        if (isLast) {
+            const probe = results.at(-1)?.results[0] as { completed_at: string | null } | undefined;
+            if (probe?.completed_at != null) {
+                throw new SyncFailure({ error: "Snapshot already complete" });
+            }
+        }
+    }
+    return { inserted };
+}
+
+// The v3 freezing UPDATE: the count verification is SUM(folded_blobs.
+// entry_count) over the snapshot's segment links — a ~64-row join, µs — not
+// a maintained counter, so there is no divergence/repair path at all. The
+// SUM, the not-yet-frozen check, and the marker write are one statement, so
+// a concurrent register frame that bypassed the instance-level serialization
+// can never slip links in between the verification and the freeze.
+async function freezeSnapshotSegments(
+    db: D1Database,
+    snapshotId: number,
+    entryCount: number,
+): Promise<boolean> {
+    const result = await db
+        .prepare(
+            "UPDATE snapshots SET entry_count = ?, " +
+                "completed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') " +
+                "WHERE snapshot_id = ? AND completed_at IS NULL AND " +
+                "(SELECT COALESCE(SUM(b.entry_count), 0) " +
+                "FROM snapshot_family_segments s " +
+                "JOIN folded_blobs b ON b.blob_id = s.blob_id " +
+                "WHERE s.snapshot_id = ?) = ?",
+        )
+        .bind(entryCount, snapshotId, snapshotId, entryCount)
+        .run();
+    return (result.meta.changes ?? 0) > 0;
+}
+
+async function sumSegmentEntries(db: D1Database, snapshotId: number): Promise<number> {
+    const row = await db
+        .prepare(
+            "SELECT COALESCE(SUM(b.entry_count), 0) AS n " +
+                "FROM snapshot_family_segments s " +
+                "JOIN folded_blobs b ON b.blob_id = s.blob_id " +
+                "WHERE s.snapshot_id = ?",
+        )
+        .bind(snapshotId)
+        .first<{ n: number }>();
+    return row?.n ?? 0;
+}
+
+async function handleSegmentComplete(
+    db: D1Database,
+    serverId: string,
+    snapshotHash: string,
+    entryCount: number,
+): Promise<Record<string, never>> {
+    const snapshot = await findSnapshot(db, serverId, snapshotHash);
+    if (!snapshot) {
+        throw new SyncFailure({
+            error: "Snapshot incomplete",
+            expected: entryCount,
+            registered: 0,
+        });
+    }
+
+    // Idempotent retry of a complete frame whose reply was lost.
+    if (snapshot.completed_at !== null) {
+        if (snapshot.entry_count === entryCount) {
+            return {};
+        }
+        throw new SyncFailure({ error: "Snapshot already complete" });
+    }
+
+    if (await freezeSnapshotSegments(db, snapshot.snapshot_id, entryCount)) {
+        return {};
+    }
+
+    // The conditional update matched no row: a concurrent complete won the
+    // race, or the segment-link SUM genuinely differs. Re-read the registry
+    // row, then report the real SUM — no counter to repair (v3 keeps none).
+    const state = await findSnapshot(db, serverId, snapshotHash);
+    if (state?.completed_at != null) {
+        if (state.entry_count === entryCount) {
+            return {};
+        }
+        throw new SyncFailure({ error: "Snapshot already complete" });
+    }
+    const registered = await sumSegmentEntries(db, snapshot.snapshot_id);
+    throw new SyncFailure({
+        error: "Snapshot incomplete",
+        expected: entryCount,
+        registered,
+    });
+}
+
 export class SyncSession extends DurableObject<Env> {
-    // Per-snapshot mutual exclusion between register and complete handlers.
-    // The freeze fast path trusts registered_count, which a register frame
-    // updates only after its insert batches commit; serializing the two
-    // handlers per snapshot guarantees no register frame is mid-flight when
-    // complete evaluates the counter. This is instance memory, so a
-    // restarted instance starts empty — safe, because an instance is never
-    // evicted while it is still processing a frame, and a crashed register
-    // frame's divergence is repaired by the complete fallback's COUNT(*).
-    // The per-statement freeze guards remain the SQL-level backstop.
+    // Per-snapshot mutual exclusion between register and complete handlers
+    // (v2 and v3 share the lock keyspace: a snapshot is frozen once,
+    // whichever protocol freezes it). For v2 the freeze fast path trusts
+    // registered_count, which a register frame updates only after its
+    // insert batches commit; serializing the two handlers per snapshot
+    // guarantees no register frame is mid-flight when complete evaluates
+    // the counter (v3's SUM check benefits the same way). This is instance
+    // memory, so a restarted instance starts empty — safe, because an
+    // instance is never evicted while it is still processing a frame, and
+    // a crashed v2 register frame's divergence is repaired by the complete
+    // fallback's COUNT(*). The per-statement freeze guards remain the
+    // SQL-level backstop.
     private readonly snapshotLocks = new Map<string, Promise<unknown>>();
 
     // Run `task` after every previously queued register/complete handler for
@@ -728,6 +1197,42 @@ export class SyncSession extends DurableObject<Env> {
                             this.env.PLATFORM_DB,
                             msg.server_id,
                             msg.snapshot_hash,
+                        ),
+                    );
+                    break;
+                case "segment":
+                    Object.assign(reply, await handleSegment(this.env.PLATFORM_DB, msg));
+                    break;
+                case "segment_lookup":
+                    Object.assign(
+                        reply,
+                        await handleSegmentLookup(
+                            this.env.PLATFORM_DB,
+                            msg.family,
+                            msg.content_hashes,
+                        ),
+                    );
+                    break;
+                case "segment_register":
+                    Object.assign(
+                        reply,
+                        await this.runSerialized(`${msg.server_id}:${msg.snapshot_hash}`, () =>
+                            handleSegmentRegister(
+                                this.env.PLATFORM_DB,
+                                msg.server_id,
+                                msg.snapshot_hash,
+                                msg.segments,
+                            ),
+                        ),
+                    );
+                    break;
+                case "segment_complete":
+                    await this.runSerialized(`${msg.server_id}:${msg.snapshot_hash}`, () =>
+                        handleSegmentComplete(
+                            this.env.PLATFORM_DB,
+                            msg.server_id,
+                            msg.snapshot_hash,
+                            msg.entry_count,
                         ),
                     );
                     break;
