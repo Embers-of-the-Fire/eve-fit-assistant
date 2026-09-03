@@ -250,14 +250,16 @@ describe("snapshot freeze", () => {
     });
 
     it("never freezes a snapshot whose entry_count disagrees with its rows", async () => {
-        // Regression test for the register/complete race: Durable Object
-        // input gates do not cover external D1 operations, so a complete
-        // event can run between a register event's completed_at check and
-        // its inserts. The register frame below spans multiple D1 batches
-        // (2000 entries at 24 rows/statement over 50-statement batches) so
-        // the concurrent complete has real windows to interleave. Whichever
-        // side wins, the invariant must hold: a frozen snapshot's
-        // entry_count equals its actual registration row count.
+        // Regression test for the register/complete race: register and
+        // complete frames for the same snapshot are serialized in the
+        // Durable Object (runSerialized), and the per-statement freeze
+        // guards plus the counter check are the SQL-level backstop. The
+        // register frame below spans multiple D1 batches (2000 entries at
+        // 24 rows/statement over 50-statement batches), so without the
+        // serialization a complete event would have real windows to
+        // interleave. Whichever side runs first, the invariant must hold:
+        // a frozen snapshot's entry_count equals its actual registration
+        // row count.
         const content = new TextEncoder().encode("type-entry-1");
         const contentHash = await sha256Hex(content);
 
@@ -396,6 +398,187 @@ describe("snapshot freeze", () => {
         expect(reply.id).toBe(1);
         expect(reply.ok).toBe(false);
         expect(reply.error).toBe("Unknown content ids");
+        ws.close();
+    });
+});
+
+describe("registration counter", () => {
+    async function snapshotRow(
+        serverId: string,
+        snapshotHash: string,
+    ): Promise<{
+        snapshot_id: number;
+        entry_count: number | null;
+        completed_at: string | null;
+        registered_count: number;
+    } | null> {
+        return await env.PLATFORM_DB.prepare(
+            "SELECT snapshot_id, entry_count, completed_at, registered_count FROM snapshots " +
+                "WHERE server_id = ? AND snapshot_hash = ?",
+        )
+            .bind(serverId, hexToBlob(snapshotHash))
+            .first<{
+                snapshot_id: number;
+                entry_count: number | null;
+                completed_at: string | null;
+                registered_count: number;
+            }>();
+    }
+
+    async function uploadType(ws: WebSocket, id: number, label: string): Promise<number> {
+        const content = new TextEncoder().encode(label);
+        const contentHash = await sha256Hex(content);
+        const reply = await call(ws, {
+            id,
+            type: "content",
+            entries: [
+                { family: "types", content_hash: contentHash, content_b64: toBase64(content) },
+            ],
+        });
+        expect(reply.ok).toBe(true);
+        return (reply.ids as Record<string, number>)[contentHash];
+    }
+
+    it("tracks registrations across frames and freezes via the counter", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "aa".repeat(32);
+        const contentId = await uploadType(ws, 1, "type-entry-1");
+
+        for (let frame = 0; frame < 3; frame++) {
+            const reply = await call(ws, {
+                id: 10 + frame,
+                type: "register",
+                server_id: serverId,
+                snapshot_hash: snapshotHash,
+                entries: [{ family: "types", entry_id: frame + 1, content_id: contentId }],
+            });
+            expect(reply).toEqual({ id: 10 + frame, ok: true, inserted: 1 });
+        }
+        expect((await snapshotRow(serverId, snapshotHash))?.registered_count).toBe(3);
+
+        const complete = await call(ws, {
+            id: 20,
+            type: "complete",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entry_count: 3,
+        });
+        expect(complete).toEqual({ id: 20, ok: true });
+
+        const row = await snapshotRow(serverId, snapshotHash);
+        expect(row?.completed_at).not.toBeNull();
+        expect(row?.entry_count).toBe(3);
+        ws.close();
+    });
+
+    it("does not inflate the counter on re-sent register frames", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "bb".repeat(32);
+        const contentId = await uploadType(ws, 1, "type-entry-1");
+
+        const frame = {
+            type: "register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entries: [{ family: "types", entry_id: 1, content_id: contentId }],
+        };
+        expect(await call(ws, { id: 2, ...frame })).toEqual({ id: 2, ok: true, inserted: 1 });
+        // Idempotent re-send (lost reply): all rows conflict, so the counter
+        // must stay at 1.
+        expect(await call(ws, { id: 3, ...frame })).toEqual({ id: 3, ok: true, inserted: 0 });
+        expect((await snapshotRow(serverId, snapshotHash))?.registered_count).toBe(1);
+
+        const complete = await call(ws, {
+            id: 4,
+            type: "complete",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entry_count: 1,
+        });
+        expect(complete).toEqual({ id: 4, ok: true });
+        ws.close();
+    });
+
+    it("repairs a diverged counter before freezing", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "cc".repeat(32);
+        const contentId = await uploadType(ws, 1, "type-entry-1");
+
+        const register = await call(ws, {
+            id: 2,
+            type: "register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entries: [{ family: "types", entry_id: 1, content_id: contentId }],
+        });
+        expect(register).toEqual({ id: 2, ok: true, inserted: 1 });
+
+        // Simulate a crash between a register frame's inserts and its
+        // counter update: the row exists but registered_count does not
+        // reflect it (also the state of a pre-0002 pending snapshot).
+        const row = await snapshotRow(serverId, snapshotHash);
+        await env.PLATFORM_DB.prepare(
+            "INSERT INTO snapshot_entries (snapshot_id, family, entry_id, content_id) " +
+                "VALUES (?, 0, 2, ?)",
+        )
+            .bind(row?.snapshot_id, contentId)
+            .run();
+        expect((await snapshotRow(serverId, snapshotHash))?.registered_count).toBe(1);
+
+        const complete = await call(ws, {
+            id: 3,
+            type: "complete",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entry_count: 2,
+        });
+        expect(complete).toEqual({ id: 3, ok: true });
+
+        const repaired = await snapshotRow(serverId, snapshotHash);
+        expect(repaired?.completed_at).not.toBeNull();
+        expect(repaired?.entry_count).toBe(2);
+        expect(repaired?.registered_count).toBe(2);
+        ws.close();
+    });
+
+    it("reports a genuinely incomplete snapshot with the real row count", async () => {
+        const ws = await connect();
+        const serverId = "tranquility";
+        const snapshotHash = "dd".repeat(32);
+        const contentId = await uploadType(ws, 1, "type-entry-1");
+
+        await call(ws, {
+            id: 2,
+            type: "register",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entries: [{ family: "types", entry_id: 1, content_id: contentId }],
+        });
+        const row = await snapshotRow(serverId, snapshotHash);
+        await env.PLATFORM_DB.prepare(
+            "INSERT INTO snapshot_entries (snapshot_id, family, entry_id, content_id) " +
+                "VALUES (?, 0, 2, ?)",
+        )
+            .bind(row?.snapshot_id, contentId)
+            .run();
+
+        // Counter says 1, the uploader claims 3, the truth is 2: the error
+        // must report the real row count, and the snapshot stays pending.
+        const reply = await call(ws, {
+            id: 3,
+            type: "complete",
+            server_id: serverId,
+            snapshot_hash: snapshotHash,
+            entry_count: 3,
+        });
+        expect(reply.id).toBe(3);
+        expect(reply.ok).toBe(false);
+        expect(reply.error).toBe("Snapshot incomplete");
+        expect(reply.registered).toBe(2);
+        expect((await snapshotRow(serverId, snapshotHash))?.completed_at).toBeNull();
         ws.close();
     });
 });
