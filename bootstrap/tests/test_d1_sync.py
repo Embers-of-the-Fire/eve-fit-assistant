@@ -258,6 +258,20 @@ class TestFoldFamily:
             assert len(segment.content) + next_entry_size > SEGMENT_MAX_BYTES
             offset += segment.entry_count
 
+    def test_rejects_entry_exceeding_segment_cap(self) -> None:
+        from bootstrap.data.d1.sync import SEGMENT_MAX_BYTES
+        from bootstrap.data.d1.sync import Entry
+        from bootstrap.data.d1.sync import fold_family
+
+        oversized = Entry("types", 42, bytes(SEGMENT_MAX_BYTES))
+        with pytest.raises(ValueError, match="42"):
+            fold_family("types", [Entry("types", 1, b"ok"), oversized])
+
+        # Just under the cap still folds into a single-entry segment.
+        just_fits = Entry("types", 7, bytes(SEGMENT_MAX_BYTES - 4 - 12))
+        [segment] = fold_family("types", [just_fits])
+        assert segment.entry_count == 1
+
     def test_hash_is_content_hash_of_segment_bytes(self) -> None:
         from bootstrap.data.d1.sync import Entry
         from bootstrap.data.d1.sync import fold_family

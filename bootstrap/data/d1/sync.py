@@ -421,6 +421,11 @@ def fold_family(family: str, entries: list[Entry]) -> list[Segment]:
     size = _SEGMENT_HEADER_BYTES
     for entry in sorted(entries, key=lambda e: e.entry_id):
         entry_size = _SEGMENT_INDEX_ENTRY_BYTES + len(entry.content)
+        if _SEGMENT_HEADER_BYTES + entry_size > SEGMENT_MAX_BYTES:
+            raise ValueError(
+                f"Entry {entry.entry_id} in family '{family}' is {entry_size} bytes, "
+                f"exceeding the {SEGMENT_MAX_BYTES}-byte segment cap"
+            )
         if current and size + entry_size > SEGMENT_MAX_BYTES:
             groups.append(current)
             current = []
