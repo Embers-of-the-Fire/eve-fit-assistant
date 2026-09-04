@@ -341,7 +341,7 @@ class _FakeTransport:
 
     def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.posts.append((path, payload))
-        if path == "segment_lookup":
+        if path == "lookup":
             present = [
                 h for h in payload["content_hashes"] if (payload["family"], h) in self._existing
             ]
@@ -356,10 +356,10 @@ class _FakeTransport:
         if path == "snapshot":
             complete = (payload["server_id"], payload["snapshot_hash"]) in self._completed
             return {"ok": True, "complete": complete}
-        if path == "segment":
+        if path == "content":
             blob_id = self._ensure_id(payload["family"], payload["content_hash"])
             return {"ok": True, "inserted": 1, "blob_id": blob_id}
-        if path == "segment_register":
+        if path == "register":
             return {"ok": True, "inserted": len(payload["segments"])}
         return {"ok": True}
 
@@ -560,8 +560,8 @@ class TestRunSync:
         transport = _FakeTransport()
         run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
 
-        segment_posts = [p for p in transport.posts if p[0] == "segment"]
-        register_posts = [p for p in transport.posts if p[0] == "segment_register"]
+        segment_posts = [p for p in transport.posts if p[0] == "content"]
+        register_posts = [p for p in transport.posts if p[0] == "register"]
 
         # Identical snapshots: segments uploaded once, deduplicated by hash.
         segment_hashes = [payload["content_hash"] for _path, payload in segment_posts]
@@ -587,7 +587,7 @@ class TestRunSync:
         }
         assert per_server["alpha"] == per_server["beta"]
 
-        complete_posts = [p for p in transport.posts if p[0] == "segment_complete"]
+        complete_posts = [p for p in transport.posts if p[0] == "complete"]
         assert len(complete_posts) == 2
         complete_servers = {payload["server_id"] for _path, payload in complete_posts}
         assert complete_servers == {"alpha", "beta"}
@@ -608,8 +608,8 @@ class TestRunSync:
         run_sync({"alpha": hash_a, "beta": hash_b}, schema_root, transport, batch_size=2000)
 
         # Nothing is re-registered or re-completed for the finished snapshot.
-        register_posts = [p for p in transport.posts if p[0] == "segment_register"]
-        complete_posts = [p for p in transport.posts if p[0] == "segment_complete"]
+        register_posts = [p for p in transport.posts if p[0] == "register"]
+        complete_posts = [p for p in transport.posts if p[0] == "complete"]
         assert {payload["server_id"] for _path, payload in register_posts} == {"beta"}
         assert {payload["server_id"] for _path, payload in complete_posts} == {"beta"}
 
@@ -633,7 +633,7 @@ class TestRunSync:
         transport = _FakeTransport(existing=existing)
         run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
 
-        segment_posts = [p for p in transport.posts if p[0] == "segment"]
+        segment_posts = [p for p in transport.posts if p[0] == "content"]
         assert "types" not in {payload["family"] for _path, payload in segment_posts}
         assert len(segment_posts) == 7  # 8 families minus the existing types segment
 
@@ -645,14 +645,14 @@ class TestRunSync:
 
         class _FailingTransport(_FakeTransport):
             def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-                if path == "segment_register":
+                if path == "register":
                     raise RuntimeError("boom")
                 return super().post(path, payload)
 
         transport = _FailingTransport()
         with pytest.raises(RuntimeError, match="boom"):
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
-        assert [p for p in transport.posts if p[0] == "segment_complete"] == []
+        assert [p for p in transport.posts if p[0] == "complete"] == []
 
     def test_fails_when_server_withholds_blob_ids(self, schema_root: Path) -> None:
         from bootstrap.data.d1.sync import run_sync
@@ -663,14 +663,14 @@ class TestRunSync:
         class _IdlessTransport(_FakeTransport):
             def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
                 reply = super().post(path, payload)
-                if path == "segment":
+                if path == "content":
                     reply.pop("blob_id", None)
                 return reply
 
         transport = _IdlessTransport()
         with pytest.raises(RuntimeError, match="did not return blob ids"):
             run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=2000)
-        assert [p for p in transport.posts if p[0] == "segment_register"] == []
+        assert [p for p in transport.posts if p[0] == "register"] == []
 
     def test_identical_segment_bytes_across_families_stay_distinct(
         self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
@@ -686,24 +686,20 @@ class TestRunSync:
         transport = _FakeTransport()
         sync.run_sync({"alpha": "dd" * 32}, schema_root, transport, batch_size=2000)
 
-        segment_posts = [payload for path, payload in transport.posts if path == "segment"]
+        segment_posts = [payload for path, payload in transport.posts if path == "content"]
         assert len(segment_posts) == 2
         assert {payload["family"] for payload in segment_posts} == {"types", "buffs"}
         assert segment_posts[0]["content_hash"] == segment_posts[1]["content_hash"]
 
         # The shared hash resolves to a distinct blob id per family, and
         # both registrations complete.
-        register_posts = [
-            payload for path, payload in transport.posts if path == "segment_register"
-        ]
+        register_posts = [payload for path, payload in transport.posts if path == "register"]
         blob_ids = {
             payload["segments"][0]["family"]: payload["segments"][0]["blob_id"]
             for payload in register_posts
         }
         assert blob_ids["types"] != blob_ids["buffs"]
-        complete_posts = [
-            payload for path, payload in transport.posts if path == "segment_complete"
-        ]
+        complete_posts = [payload for path, payload in transport.posts if path == "complete"]
         assert len(complete_posts) == 1
         assert complete_posts[0]["entry_count"] == 2
 
@@ -742,9 +738,9 @@ class TestRunSync:
         run_sync({"alpha": snapshot_hash}, schema_root, transport, batch_size=batch_size)
 
         for path, payload in transport.posts:
-            if path == "segment_lookup":
+            if path == "lookup":
                 assert len(payload["content_hashes"]) <= batch_size
-        assert [p for p in transport.posts if p[0] == "segment_complete"] != []
+        assert [p for p in transport.posts if p[0] == "complete"] != []
 
 
 class TestCli:

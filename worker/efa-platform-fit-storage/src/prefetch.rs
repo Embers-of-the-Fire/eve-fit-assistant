@@ -35,7 +35,7 @@ const fn flatten_buff_pairs(pairs: [(i32, i32); 4]) -> [i32; 8] {
 /// Isolate-cache key: the engine data snapshot selector.
 pub type SnapshotKey = (String, String);
 
-/// Isolate-cache entry for a v3 segment catalog, keyed by
+/// Isolate-cache entry for a segment catalog, keyed by
 /// `(snapshot_id, family code)`.
 type CatalogCache = HashMap<(i64, i64), Rc<Vec<CatalogEntry>>>;
 
@@ -131,14 +131,11 @@ thread_local! {
     // per isolate instead of one per request.
     static SNAPSHOT_IDS: std::cell::RefCell<HashMap<SnapshotKey, i64>> =
         std::cell::RefCell::new(HashMap::new());
-    // v3 dual-read layout decision per snapshot registry id (true = folded
-    // segments). Snapshots are frozen at completion, so this never changes.
-    static LAYOUTS: std::cell::RefCell<HashMap<i64, bool>> =
-        std::cell::RefCell::new(HashMap::new());
-    // v3 segment catalogs per (snapshot_id, family code), in stream order.
+    // Segment catalogs per (snapshot_id, family code), in stream order.
+    // Frozen at snapshot completion.
     static CATALOGS: std::cell::RefCell<CatalogCache> =
         std::cell::RefCell::new(HashMap::new());
-    // v3 raw segment bytes by blob id. Segments are content-addressed and
+    // Raw segment bytes by blob id. Segments are content-addressed and
     // shared verbatim across snapshots, so this cache is global, not keyed
     // by snapshot. Sits under the decoded-entry cache: a warm segment cache
     // hit skips the D1 round trip but still decodes the wanted entries.
@@ -187,27 +184,16 @@ pub struct FetchRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Storage v3: folded per-family segments (migrations/0003_folded.sql).
+// Folded per-family segments (migrations/0003_folded.sql).
 //
 // Segment format (self-contained, entries sorted by entry id):
 //   u32 count
 //   count x { i32 entry_id, u32 offset, u32 length }  -- offset from segment
-//   payload bytes (concatenated per-entry protobufs, byte-identical to the
-//   v2 entries.content payloads, so the decode path is untouched)
+//   payload bytes (concatenated per-entry protobufs)
 // ---------------------------------------------------------------------------
 
 const SEGMENT_HEADER_BYTES: usize = 4;
 const SEGMENT_INDEX_ENTRY_BYTES: usize = 12;
-
-fn layout_get(snapshot_id: i64) -> Option<bool> {
-    LAYOUTS.with(|layouts| layouts.borrow().get(&snapshot_id).copied())
-}
-
-fn layout_put(snapshot_id: i64, folded: bool) {
-    LAYOUTS.with(|layouts| {
-        layouts.borrow_mut().insert(snapshot_id, folded);
-    });
-}
 
 fn catalog_get(snapshot_id: i64, family_code: i64) -> Option<Rc<Vec<CatalogEntry>>> {
     CATALOGS.with(|catalogs| catalogs.borrow().get(&(snapshot_id, family_code)).cloned())
@@ -319,29 +305,15 @@ pub fn find_segment(catalog: &[CatalogEntry], id: i32) -> Option<usize> {
     (entry.first_entry_id <= id).then_some(i)
 }
 
-/// Family fetch with the v3 dual-read transition: probe the segment catalog
-/// first (decision cached per snapshot per isolate), fall back to the v2
-/// per-entry join for snapshots registered before storage v3. On the v3 path
-/// the catalog is cached per (snapshot, family) and raw segments per blob id
-/// — both are frozen at snapshot completion — so warm requests slice payloads
-/// straight from the isolate cache.
+/// Family fetch over folded segments: the catalog is cached per
+/// (snapshot, family) and raw segments per blob id — both are frozen at
+/// snapshot completion — so warm requests slice payloads straight from the
+/// isolate cache.
 pub async fn fetch_family(
     db: &D1Database,
     snapshot_id: i64,
     request: FetchRequest,
 ) -> anyhow::Result<Vec<(i32, Vec<u8>)>> {
-    let folded = match layout_get(snapshot_id) {
-        Some(folded) => folded,
-        None => {
-            let folded = d1::snapshot_has_segments(db, snapshot_id).await?;
-            layout_put(snapshot_id, folded);
-            folded
-        }
-    };
-    if !folded {
-        return d1::fetch_family(db, snapshot_id, request).await;
-    }
-
     let family_code = request.family.code();
     let catalog = match catalog_get(snapshot_id, family_code) {
         Some(catalog) => catalog,

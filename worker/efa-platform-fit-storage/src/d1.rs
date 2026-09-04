@@ -3,10 +3,6 @@ use worker::wasm_bindgen::JsCast;
 use worker::{js_sys, wasm_bindgen::JsValue};
 
 use crate::error::ApiError;
-use crate::prefetch::FetchRequest;
-
-/// D1's bound-parameter limit is 100; reserve 2 for snapshot_id/family.
-const MAX_ENTRY_IDS_PER_CHUNK: usize = 98;
 
 /// Segment-content chunk fetches bind blob ids only.
 const MAX_BLOB_IDS_PER_CHUNK: usize = 100;
@@ -117,72 +113,14 @@ async fn run_change_count(
     Ok(changes)
 }
 
-/// Chunked family lookup (spec §7.2). `ids == None` fetches the whole family.
-///
-/// This is the v2 read path (per-entry `snapshot_entries` ⋈ `entries` join),
-/// kept as the dual-read fallback for snapshots registered before storage v3;
-/// the v3 folded-segment path lives in `prefetch::fetch_family`.
-pub async fn fetch_family(
-    db: &D1Database,
-    snapshot_id: i64,
-    request: FetchRequest,
-) -> anyhow::Result<Vec<(i32, Vec<u8>)>> {
-    let family = request.family;
-    let family_code = family.code();
-    let mut out = Vec::new();
-
-    match request.ids {
-        None => {
-            let sql = "SELECT se.entry_id, e.content FROM snapshot_entries se \
-                 JOIN entries e ON e.content_id = se.content_id \
-                 WHERE se.snapshot_id = ? AND se.family = ?";
-            let rows = raw_query(db, sql, &[js_int(snapshot_id), js_int(family_code)]).await?;
-            for row in &rows {
-                out.push((row_int(row, 0)?, row_blob(row, 1)?));
-            }
-        }
-        Some(ids) => {
-            for chunk in ids.chunks(MAX_ENTRY_IDS_PER_CHUNK) {
-                let placeholders = chunk.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
-                let sql = format!(
-                    "SELECT se.entry_id, e.content FROM snapshot_entries se \
-                     JOIN entries e ON e.content_id = se.content_id \
-                     WHERE se.snapshot_id = ? AND se.family = ? \
-                     AND se.entry_id IN ({placeholders})"
-                );
-                let mut params = vec![js_int(snapshot_id), js_int(family_code)];
-                params.extend(chunk.iter().map(|id| js_int(*id as i64)));
-                let rows = raw_query(db, &sql, &params).await?;
-                for row in &rows {
-                    out.push((row_int(row, 0)?, row_blob(row, 1)?));
-                }
-            }
-        }
-    }
-    Ok(out)
-}
-
-/// One segment of a snapshot's folded family stream (storage v3,
-/// `snapshot_family_segments` ⋈ `folded_blobs`): the blob id plus the
+/// One segment of a snapshot's folded family stream
+/// (`snapshot_family_segments` ⋈ `folded_blobs`): the blob id plus the
 /// segment's entry-id range for subset routing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CatalogEntry {
     pub blob_id: i64,
     pub first_entry_id: i32,
     pub last_entry_id: i32,
-}
-
-/// Whether the snapshot has any v3 segment links — the dual-read layout
-/// probe. Snapshots are frozen at completion, so the answer never changes
-/// and is cached per isolate by the caller.
-pub async fn snapshot_has_segments(db: &D1Database, snapshot_id: i64) -> Result<bool, ApiError> {
-    let rows = raw_query(
-        db,
-        "SELECT 1 FROM snapshot_family_segments WHERE snapshot_id = ? LIMIT 1",
-        &[js_int(snapshot_id)],
-    )
-    .await?;
-    Ok(!rows.is_empty())
 }
 
 /// The ordered segment catalog of one (snapshot, family): blob ids and

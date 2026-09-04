@@ -33,8 +33,8 @@ dense. Content addressing still deduplicates segments shared verbatim
 across servers (e.g. identical snapshots on two servers).
 
 Uploads run over a single WebSocket to the worker's ``SyncSession`` Durable
-Object: every frame is a small JSON message (``segment``/
-``segment_lookup``/``segment_register``/``segment_complete``/``snapshot``)
+Object: every frame is a small JSON message (``content``/
+``lookup``/``register``/``complete``/``snapshot``)
 answered by one JSON reply carrying the same client-chosen ``id``. Each
 frame is a separate Durable Object event with its own CPU budget, which
 replaced the old multi-request HTTP API whose large per-request batches
@@ -43,9 +43,9 @@ regularly failed with 503s.
 All operations are idempotent, so the transport reconnects and resends an
 unacknowledged frame on connection failures, and a rerun of the whole sync
 converges: the ``snapshot`` frame skips already-completed snapshots and the
-``segment_lookup`` frame skips already-uploaded segments. A snapshot is only
+``lookup`` frame skips already-uploaded segments. A snapshot is only
 complete once the uploader has posted every segment and link frame and then
-frozen it in the ``snapshots`` registry (``segment_complete``, verified
+frozen it in the ``snapshots`` registry (``complete``, verified
 server-side via ``SUM(entry_count)`` over the segment links); readers must
 check that registry before serving data.
 """
@@ -139,8 +139,8 @@ class Segment:
 class SyncTransport(Protocol):
     """Send one frame payload to the worker and return the decoded reply.
 
-    ``path`` is the frame type (``segment``, ``segment_lookup``,
-    ``segment_register``, ``segment_complete``, ``snapshot``); the payload
+    ``path`` is the frame type (``content``, ``lookup``,
+    ``register``, ``complete``, ``snapshot``); the payload
     carries the frame's remaining fields. Raises on ``ok: false`` replies.
     """
 
@@ -468,7 +468,7 @@ def run_sync(
     deduplicated across servers by content hash before uploading, and segment
     links are registered per (snapshot, family). Reruns converge: snapshots
     already marked complete are skipped, and already-uploaded segments are
-    filtered out via ``segment_lookup`` frames. ``batch_size`` chunks the
+    filtered out via ``lookup`` frames. ``batch_size`` chunks the
     lookup frames.
     """
     if not 1 <= batch_size <= 2_000:
@@ -538,9 +538,7 @@ def run_sync(
         for family in ALL_FAMILIES:
             family_hashes = sorted(h for f, h in pending_segments if f == family)
             for chunk in _batched(family_hashes, batch_size):
-                reply = transport.post(
-                    "segment_lookup", {"family": family, "content_hashes": chunk}
-                )
+                reply = transport.post("lookup", {"family": family, "content_hashes": chunk})
                 missing.update((family, h) for h in reply.get("missing", []))
                 for h, blob_id in reply.get("ids", {}).items():
                     blob_ids[(family, h)] = blob_id
@@ -551,7 +549,7 @@ def run_sync(
         for family, segment_hash in sorted(missing):
             segment = segments[(family, segment_hash)]
             reply = transport.post(
-                "segment",
+                "content",
                 {
                     "family": family,
                     "content_hash": segment.hash,
@@ -583,7 +581,7 @@ def run_sync(
                 if not family_segments:
                     continue
                 transport.post(
-                    "segment_register",
+                    "register",
                     {
                         "server_id": server_id,
                         "snapshot_hash": snapshot_hash,
@@ -605,7 +603,7 @@ def run_sync(
             # verifies SUM(entry_count) over the links before freezing.
             # Readers treat a snapshot without this marker as incomplete.
             transport.post(
-                "segment_complete",
+                "complete",
                 {
                     "server_id": server_id,
                     "snapshot_hash": snapshot_hash,
