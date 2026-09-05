@@ -22,6 +22,14 @@ onMount(initLocale);
             </a>
         </nav>
         <a
+            href="https://ifdian.net/a/embersofthefire"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-console-text-dim transition-colors hover:text-console-highlight"
+        >
+            {t("nav.sponsor")}
+        </a>
+        <a
             href="https://efa-tech.dev/report/platform"
             target="_blank"
             rel="noopener noreferrer"

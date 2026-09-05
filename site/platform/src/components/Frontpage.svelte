@@ -8,6 +8,7 @@ import type { PlatformStats, PostSummary, TopShip } from "../lib/types";
 import PostCard from "./PostCard.svelte";
 
 const GITHUB_URL = "https://github.com/Embers-of-the-Fire/eve-fit-assistant";
+const SPONSOR_URL = "https://ifdian.net/a/embersofthefire";
 const PAGE_SIZE = 20;
 
 let stats = $state<PlatformStats | null>(null);
@@ -127,6 +128,14 @@ onMount(() => {
             class="rounded border border-console-border px-4 py-2 text-sm text-console-text-dim transition-colors hover:border-console-primary hover:text-console-highlight"
         >
             {t("home.ctaGithub")}
+        </a>
+        <a
+            href={SPONSOR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded border border-console-border px-4 py-2 text-sm text-console-text-dim transition-colors hover:border-console-primary hover:text-console-highlight"
+        >
+            {t("nav.sponsor")}
         </a>
     </div>
 </section>
