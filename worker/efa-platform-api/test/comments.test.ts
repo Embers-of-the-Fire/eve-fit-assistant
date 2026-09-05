@@ -160,7 +160,9 @@ describe("GET /posts/:id/comments", () => {
 
         const res = await get(`${MOUNT_PATH}/posts/${POST_ID}/comments`);
         expect(res.status).toBe(200);
-        expect(res.headers.get("Cache-Control")).toBe("public, max-age=10");
+        expect(res.headers.get("Cache-Control")).toBe(
+            "public, max-age=30, stale-while-revalidate=60",
+        );
         const body = (await res.json()) as { comments: CommentView[]; nextCursor: string | null };
         expect(body.comments.map((c) => c.body)).toEqual(["first", "second"]);
         expect(body.comments[0]).toMatchObject({ authorId: null, authorDeleted: true });
