@@ -280,7 +280,7 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
     for (index, drone) in state.drones.iter().enumerate() {
         for _ in 0..drone.quantity {
             drones.push(ef::ItemDrone {
-                type_id: drone.type_id as i32,
+                item_id: ItemID::Item(drone.type_id as i32),
                 group_id: index as u8,
                 state: item_state(drone.state),
             });

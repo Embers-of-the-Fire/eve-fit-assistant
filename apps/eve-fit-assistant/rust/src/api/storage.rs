@@ -55,7 +55,7 @@ pub enum ItemID {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Drone {
-    pub type_id: i32,
+    pub item_id: ItemID,
     pub group_id: u8,
     pub state: State,
 }
@@ -203,7 +203,7 @@ impl ItemID {
 impl Drone {
     pub(crate) fn into_native(self) -> ItemDrone {
         ItemDrone {
-            type_id: self.type_id,
+            item_id: self.item_id.into_native(),
             group_id: self.group_id,
             state: self.state.into_native(),
         }

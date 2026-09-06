@@ -13,22 +13,75 @@ class _DroneSlotRow extends ConsumerWidget {
   final FitContext fitContext;
   final FitInteractionOptions interactionOptions;
 
-  List<TileAction> _buildStartActions(BuildContext context, WidgetRef ref) => <TileAction>[
-    if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 1)
-      TileAction(
-        onPressed: (_) => _handleSetAmount(context, ref, 1),
-        backgroundColor: Colors.green.shade200,
-        foregroundColor: Colors.black,
-        label: "x1",
-      ),
-    if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 5)
-      TileAction(
-        onPressed: (_) => _handleSetAmount(context, ref, 5),
-        backgroundColor: Colors.green.shade400,
-        foregroundColor: Colors.white,
-        label: "x5",
-      ),
-  ];
+  List<TileAction> _buildStartActions(BuildContext context, WidgetRef ref) {
+    final actions = <TileAction>[
+      if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 1)
+        TileAction(
+          onPressed: (_) => _handleSetAmount(context, ref, 1),
+          backgroundColor: Colors.green.shade200,
+          foregroundColor: Colors.black,
+          label: "x1",
+        ),
+      if (fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity != 5)
+        TileAction(
+          onPressed: (_) => _handleSetAmount(context, ref, 5),
+          backgroundColor: Colors.green.shade400,
+          foregroundColor: Colors.white,
+          label: "x5",
+        ),
+    ];
+
+    final dynamicItem = fitContext.dynamicItemFor(slotInfo.slot.itemId);
+    if (dynamicItem != null) {
+      actions
+        ..add(
+          TileAction(
+            onPressed: (_) => fitContext.fitWrapper.revertDroneFromDynamic(slotIdent.index),
+            backgroundColor: Colors.grey,
+            foregroundColor: Colors.white,
+            icon: Icons.cyclone_outlined,
+            label: context.l10n.dynamicRevert,
+            group: _SlotActionGroup.abyss,
+          ),
+        )
+        ..add(
+          TileAction(
+            onPressed: (_) => _handleMutateRandom(context, ref),
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+            icon: Icons.casino_outlined,
+            label: context.l10n.fitActionMutateRandom,
+            group: _SlotActionGroup.abyss,
+          ),
+        );
+    } else if (_availableDynamicModifierTypeIds(ref).isNotEmpty) {
+      actions.add(
+        TileAction(
+          onPressed: (_) => _handleConvertToDynamic(context, ref),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+          icon: Icons.cyclone_outlined,
+          label: context.l10n.dynamicConvert,
+          group: _SlotActionGroup.abyss,
+        ),
+      );
+    }
+
+    if (dynamicItem != null || _availableDynamicModifierTypeIds(ref).isNotEmpty) {
+      actions.add(
+        TileAction(
+          onPressed: (_) => _handleMutateAll(context, ref),
+          backgroundColor: Colors.deepPurple,
+          foregroundColor: Colors.white,
+          icon: Icons.casino_outlined,
+          label: context.l10n.fitActionMutateRandomAll,
+          group: _SlotActionGroup.abyss,
+        ),
+      );
+    }
+
+    return actions;
+  }
 
   List<TileAction> _buildEndActions(BuildContext context, WidgetRef ref) => <TileAction>[
     if ((fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0) > 1)
@@ -46,6 +99,15 @@ class _DroneSlotRow extends ConsumerWidget {
       foregroundColor: Colors.black,
       label: "+1",
     ),
+    if (fitContext.dynamicItemFor(slotInfo.slot.itemId) != null)
+      TileAction(
+        onPressed: (_) => fitContext.fitWrapper.revertAllSameDynamicDrones(slotIdent.index),
+        backgroundColor: Colors.grey,
+        foregroundColor: Colors.white,
+        icon: Icons.cyclone_outlined,
+        label: context.l10n.fitActionRevertAllDynamic,
+        group: _SlotActionGroup.abyss,
+      ),
     TileAction(
       onPressed: (_) => _handleRemoveDrone(context, ref),
       backgroundColor: colorActionDelete,
@@ -75,6 +137,55 @@ class _DroneSlotRow extends ConsumerWidget {
 
   Future<void> _handleRemoveDrone(BuildContext context, WidgetRef ref) async {
     await fitContext.fitWrapper.removeDrone(slotIdent.index);
+  }
+
+  List<int> _availableDynamicModifierTypeIds(WidgetRef ref) {
+    final originTypeId = fitContext.resolveOriginTypeId(slotInfo.slot.itemId);
+    if (originTypeId == null) return const [];
+
+    final collection = ref.read(repoCollectionProvider);
+    return collection?.getDynamicTypeOptions(originTypeId)?.modifierTypeIds.toList() ?? const [];
+  }
+
+  Future<void> _handleConvertToDynamic(BuildContext context, WidgetRef ref) async {
+    final modifierTypeIds = _availableDynamicModifierTypeIds(ref);
+    if (modifierTypeIds.isEmpty) return;
+
+    final modifierTypeId = await showDialog<int>(
+      context: context,
+      builder: (context) => AppDialog(
+        title: context.l10n.dynamicSelectTitle,
+        content: _DynamicModifierDialog(modifierTypeIds: modifierTypeIds),
+      ),
+    );
+    if (modifierTypeId == null) return;
+
+    await fitContext.fitWrapper.convertDroneToDynamic(slotIdent.index, modifierTypeId);
+  }
+
+  Future<void> _handleMutateRandom(BuildContext context, WidgetRef ref) async {
+    final dynamicItem = fitContext.dynamicItemFor(slotInfo.slot.itemId);
+    if (dynamicItem == null) return;
+    await fitContext.fitWrapper.randomizeDynamicAttributes(dynamicItem.dynamicItemId);
+  }
+
+  Future<void> _handleMutateAll(BuildContext context, WidgetRef ref) async {
+    var modifierTypeId = fitContext.dynamicItemFor(slotInfo.slot.itemId)?.modifierTypeId;
+    if (modifierTypeId == null) {
+      final modifierTypeIds = _availableDynamicModifierTypeIds(ref);
+      if (modifierTypeIds.isEmpty) return;
+
+      modifierTypeId = await showDialog<int>(
+        context: context,
+        builder: (context) => AppDialog(
+          title: context.l10n.dynamicSelectTitle,
+          content: _DynamicModifierDialog(modifierTypeIds: modifierTypeIds),
+        ),
+      );
+      if (modifierTypeId == null) return;
+    }
+
+    await fitContext.fitWrapper.mutateAllSameOriginDrones(slotIdent.index, modifierTypeId);
   }
 
   Widget _buildRecoveryRow(BuildContext context, WidgetRef ref, String title) {
@@ -162,7 +273,13 @@ class _DroneSlotRow extends ConsumerWidget {
       startActionPane: buildTileActionPane(startActions),
       endActionPane: buildTileActionPane(endActions, overflowFirst: true),
       child: SlidableEdgeZone(
-        child: TileSecondaryActionRegion(actions: [...startActions, ...endActions], child: content),
+        child: TileSecondaryActionRegion(
+          actions: flattenTileActionGroups([
+            ...startActions,
+            ...endActions,
+          ], _SlotActionGroup.values),
+          child: content,
+        ),
       ),
     );
   }

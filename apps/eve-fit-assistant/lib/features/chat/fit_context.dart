@@ -472,7 +472,11 @@ Map<String, Object?> _encodeNativeFit(native_storage.Fit fit) => {
   "modules": [for (final m in fit.modules) _encodeNativeModule(m)],
   "drones": [
     for (final d in fit.drones)
-      {"type_id": d.typeId, "group_id": d.groupId, "state": _stateName(d.state)},
+      {
+        "item_id": d.itemId.when(item: (id) => {"item": id}, dynamic_: (id) => {"dynamic": id}),
+        "group_id": d.groupId,
+        "state": _stateName(d.state),
+      },
   ],
   "fighters": [
     for (final f in fit.fighters)

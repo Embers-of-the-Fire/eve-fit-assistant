@@ -880,7 +880,7 @@ impl FitToolContext {
                 started.elapsed().as_millis()
             );
             let payload = parse_callback_fit_payload(&raw)?;
-            let active = payload.into_active();
+            let active = payload.into_active()?;
             let (after, validation) = self.calculate_report(&active.container);
             if !self.commit_active(ticket, active) {
                 log::debug!(
@@ -958,7 +958,7 @@ impl FitToolContext {
         );
         let payload = parse_callback_fit_payload(&raw)?;
         let created_id = payload.fit_id.clone();
-        let active = payload.into_active();
+        let active = payload.into_active()?;
         let summary = self.summarize(&active);
         if self.commit_active(ticket, active) {
             return Ok(summary);
@@ -1040,7 +1040,7 @@ impl FitToolContext {
             started.elapsed().as_millis()
         );
         let payload = parse_callback_fit_payload(&raw)?;
-        let active = payload.into_active();
+        let active = payload.into_active()?;
         // Summarize straight from the input snapshot (no engine pass needed).
         let summary = self.summarize(&active);
         if self.commit_active(ticket, active) {
@@ -1076,12 +1076,13 @@ impl FitToolContext {
 
         let mut drones: Vec<DroneGroupEntry> = Vec::new();
         for drone in &input.drones {
+            let drone_type_id = drone.item_id.as_type_id(&fit.container);
             match drones.iter_mut().find(|group| {
-                group.item.type_id == drone.type_id && group.state == state_name(drone.state)
+                group.item.type_id == drone_type_id && group.state == state_name(drone.state)
             }) {
                 Some(group) => group.count += 1,
                 None => drones.push(DroneGroupEntry {
-                    item: fit.type_ref(drone.type_id),
+                    item: fit.type_ref(drone_type_id),
                     count: 1,
                     state: state_name(drone.state),
                 }),
