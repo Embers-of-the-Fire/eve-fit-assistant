@@ -594,6 +594,9 @@ describe("post author reads", () => {
 
         const detail = await get(`${MOUNT_PATH}/posts/${postId}`);
         expect(detail.status).toBe(200);
+        expect(detail.headers.get("Cache-Control")).toBe(
+            "public, max-age=60, stale-while-revalidate=300",
+        );
         expect(await detail.json()).toMatchObject({
             postId,
             authorId: userId,
@@ -652,5 +655,15 @@ describe("post author reads", () => {
         const { posts } = (await list.json()) as { posts: Record<string, unknown>[] };
         expect(posts).toHaveLength(1);
         expect(posts[0]).toMatchObject({ authorId: null, authorDeleted: true });
+    });
+});
+
+describe("GET /health", () => {
+    it("is never cached so probes report live state", async () => {
+        const { get } = setup();
+        const res = await get(`${MOUNT_PATH}/health`);
+        expect(res.status).toBe(200);
+        expect(res.headers.get("Cache-Control")).toBe("no-store");
+        expect(await res.json()).toMatchObject({ ok: true });
     });
 });

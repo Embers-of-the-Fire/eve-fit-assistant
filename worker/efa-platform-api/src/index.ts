@@ -61,10 +61,15 @@ const MAX_COMMENT_BODY_CODE_POINTS = 10_000;
 
 const PROTOBUF_CONTENT_TYPE = "application/x-protobuf";
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
-const LIST_CACHE_CONTROL = "public, max-age=30";
-const STATS_CACHE_CONTROL = "public, max-age=60";
-// Comment lists change more often than post lists; keep the edge copy short.
-const COMMENT_LIST_CACHE_CONTROL = "public, max-age=10";
+// Workers Cache honors stale-while-revalidate per RFC 9111: after max-age the
+// edge serves the stale copy while revalidating in the background.
+const LIST_CACHE_CONTROL = "public, max-age=30, stale-while-revalidate=120";
+const STATS_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
+// Post detail changes on comment activity, edits, and deletion; the short
+// fresh window bounds that staleness.
+const POST_DETAIL_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=300";
+// Comment lists change more often than post lists; keep the fresh window short.
+const COMMENT_LIST_CACHE_CONTROL = "public, max-age=30, stale-while-revalidate=60";
 
 function errorJson(status: 400 | 401 | 403 | 404 | 500, code: string, message: string): Response {
     return Response.json({ error: code, message }, { status });
@@ -425,14 +430,18 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
         if (!row) {
             return errorJson(404, "not_found", "unknown post id");
         }
-        return c.json({
-            postId: row.post_id,
-            fitHash: row.fit_hash,
-            createdAt: row.created_at,
-            authorId: row.author_id,
-            authorDeleted: row.author_id === null || row.author_status === "deregistered",
-            commentCount: row.comment_count,
-        });
+        return c.json(
+            {
+                postId: row.post_id,
+                fitHash: row.fit_hash,
+                createdAt: row.created_at,
+                authorId: row.author_id,
+                authorDeleted: row.author_id === null || row.author_status === "deregistered",
+                commentCount: row.comment_count,
+            },
+            200,
+            { "Cache-Control": POST_DETAIL_CACHE_CONTROL },
+        );
     });
 
     // Delete post. The requirePermission middleware performs the action-level
@@ -904,6 +913,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
     });
 
     // Health; a valid Bearer token additionally pings D1 and the binding.
+    // no-store: a health probe must report live state, never an edge-cached ok.
     app.get("/health", async (c) => {
         const token = c.env.FIT_STORAGE_TOKEN;
         const header = c.req.header("Authorization") ?? "";
@@ -917,7 +927,7 @@ export function createPublicApp(): Hono<{ Bindings: Env }> {
                 return errorJson(500, "internal", "internal server error");
             }
         }
-        return c.json({ ok: true });
+        return c.json({ ok: true }, 200, { "Cache-Control": "no-store" });
     });
 
     app.onError((err, _c) => {
