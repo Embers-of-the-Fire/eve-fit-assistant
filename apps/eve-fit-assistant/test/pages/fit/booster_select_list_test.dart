@@ -181,7 +181,10 @@ void main() {
         100: Slots_BoosterSlot(typeId: 100, slotIndex: 1),
         500: Slots_BoosterSlot(typeId: 500, slotIndex: 89),
       },
-      types: {100: _type(100, marketGroupId: mgSlot1), 500: _type(500, marketGroupId: 2834)},
+      types: {
+        100: _type(100, marketGroupId: mgSlot1),
+        500: _type(500, marketGroupId: 2834),
+      },
       groups: flatGroups,
     );
 
@@ -189,5 +192,35 @@ void main() {
     // Name id 2834 is unresolved in [names]: the numeric fallback kicks in.
     expect(section.label, "Booster 89");
     expect(section.families.single.label, "Other");
+  });
+
+  test("slotFilter still derives section hierarchy from all published slots", () {
+    // Same flattened fixture, but filtered to slot 89: without the unfiltered
+    // hierarchy map, "Booster" would become the section and unresolved group
+    // 2834 a blank family row instead of Other.
+    final flatGroups = [
+      _marketGroup(mgRoot, nameId: 24, groups: [mgBoosters]),
+      _marketGroup(mgBoosters, nameId: 977, parentGroupId: mgRoot, groups: [mgSlot1, 2834]),
+      _marketGroup(mgSlot1, nameId: 2488, parentGroupId: mgBoosters, types: [100]),
+      _marketGroup(2834, nameId: 2834, parentGroupId: mgBoosters, types: [500]),
+    ];
+    final sections = build(
+      boosterSlots: {
+        100: Slots_BoosterSlot(typeId: 100, slotIndex: 1),
+        500: Slots_BoosterSlot(typeId: 500, slotIndex: 89),
+      },
+      types: {
+        100: _type(100, marketGroupId: mgSlot1),
+        500: _type(500, marketGroupId: 2834),
+      },
+      groups: flatGroups,
+      slotFilter: 89,
+    );
+
+    final section = sections.single;
+    expect(section.slotIndex, 89);
+    expect(section.label, "Booster 89");
+    expect(section.families.single.label, "Other");
+    expect(section.families.single.typeIds, [500]);
   });
 }

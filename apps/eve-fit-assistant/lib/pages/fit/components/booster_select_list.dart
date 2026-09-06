@@ -63,13 +63,20 @@ List<BoosterSlotSection> buildBoosterSlotSections({
   required String otherLabel,
   int? slotFilter,
 }) {
-  final eligible = <int, int>{}; // typeId -> slotIndex
+  // Hierarchy decisions (subtree slot sets, section groups) must see every
+  // published slot: filtering first would let a lone slot claim aggregate
+  // groups like "Booster" as its section. The slot filter applies only when
+  // constructing the visible section contents below.
+  final publishedSlots = <int, int>{}; // typeId -> slotIndex
   for (final entry in boosterSlots.entries) {
     final typeId = entry.key;
-    final slotIndex = entry.value.slotIndex;
-    if (slotFilter != null && slotIndex != slotFilter) continue;
     if (typeOf(typeId)?.published != true) continue;
-    eligible[typeId] = slotIndex;
+    publishedSlots[typeId] = entry.value.slotIndex;
+  }
+  final visible = <int, int>{};
+  for (final entry in publishedSlots.entries) {
+    if (slotFilter != null && entry.value != slotFilter) continue;
+    visible[entry.key] = entry.value;
   }
 
   final groupsById = {for (final group in marketGroups) group.marketGroupId: group};
@@ -82,7 +89,7 @@ List<BoosterSlotSection> buildBoosterSlotSections({
     final seen = (visiting ?? {})..add(groupId);
     final slots = <int>{};
     for (final typeId in group.types) {
-      final slot = eligible[typeId];
+      final slot = publishedSlots[typeId];
       if (slot != null) slots.add(slot);
     }
     for (final childId in group.groups) {
@@ -141,7 +148,7 @@ List<BoosterSlotSection> buildBoosterSlotSections({
   String nameOf(pb_market.MarketGroup group) => names[group.marketGroupName.id] ?? "";
   final sections = <BoosterSlotSection>[];
   final bySlotIndex = <int, List<int>>{};
-  for (final entry in eligible.entries) {
+  for (final entry in visible.entries) {
     bySlotIndex.putIfAbsent(entry.value, () => []).add(entry.key);
   }
 
