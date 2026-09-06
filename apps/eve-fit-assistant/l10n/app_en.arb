@@ -383,6 +383,7 @@
   "fitSkillPolicyUnsupportedDescription": "Fits are simulated without character skill modifiers. Implants and boosters still apply.",
   "fitAddItemDialogTitle": "Add Item: {slotName}",
   "fitAddItemDialogTitleWithIndex": "Add Item: {slotName} #{index}",
+  "fitBoosterFamilyOther": "Other",
   "fitImplantSetDialogTitle": "Apply Implant Set",
   "fitSlotEmpty": "{slotName} (Empty)",
   "fitActionFill": "Fill",
