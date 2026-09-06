@@ -862,6 +862,7 @@
     }
   },
   "fitImplantSetDialogTitle": "应用植入体套装",
+  "fitBoosterFamilyOther": "其他",
   "fitSlotEmpty": "{slotName}（空）",
   "@fitSlotEmpty": {
     "placeholders": {

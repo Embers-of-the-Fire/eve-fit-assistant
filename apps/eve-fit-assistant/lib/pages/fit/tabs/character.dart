@@ -417,15 +417,10 @@ class _CharacterBoosterTabState extends ConsumerState<_CharacterBoosterTab>
 
   Future<void> _handleAddBooster(BuildContext context, WidgetRef ref) async {
     const slotIdent = SlotIdentifier.booster(slotId: 1);
-    final typeId = await showAddItemDialog(
+    final typeId = await showBoosterSelectDialog(
       context: context,
+      ref: ref,
       title: slotIdent.localizedAddItemDialogTitle(context),
-      initialMarketGroupId: slotIdent.baseMarketGroupId,
-      validator: (node) => switch (node) {
-        EveSelectListRootType(:final typeId) =>
-          ref.read(repoCollectionProvider)?.slots.boosterSlots.containsKey(typeId) ?? false,
-        _ => true,
-      },
     );
     if (typeId == null) return;
 
@@ -669,23 +664,16 @@ class _BoosterRow extends ConsumerWidget {
 
   Future<void> _handleReplace(BuildContext context, WidgetRef ref) async {
     final slotIdent = SlotIdentifier.booster(slotId: slotId);
-    final typeId = await showAddItemDialog(
+    final typeId = await showBoosterSelectDialog(
       context: context,
+      ref: ref,
       title: slotIdent.localizedAddItemDialogTitle(context),
-      initialMarketGroupId: slotIdent.baseMarketGroupId,
-      validator: _boosterValidator(ref, slotId),
+      slotFilter: slotId,
     );
     if (typeId == null) return;
     await fitContext.fitWrapper.setBooster(slotId, typeId);
   }
 }
-
-bool Function(EveSelectListRoot) _boosterValidator(WidgetRef ref, int slotId) =>
-    (node) => switch (node) {
-      EveSelectListRootType(:final typeId) =>
-        ref.read(repoCollectionProvider)?.slots.boosterSlots[typeId]?.slotIndex == slotId,
-      _ => true,
-    };
 
 Map<int, int> _buildImplantAssignments(FitStorage fit, WidgetRef ref) {
   final slotsInfo = ref.watch(repoCollectionProvider)?.slots;
