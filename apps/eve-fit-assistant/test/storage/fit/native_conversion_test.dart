@@ -1,3 +1,9 @@
+@TestOn("vm")
+library;
+
+import "dart:io";
+
+import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/native/api/storage.dart" as native;
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
@@ -45,6 +51,11 @@ FitStorage _makeFit() => FitStorage(
 );
 
 void main() {
+  setUpAll(() {
+    final logDir = Directory.systemTemp.createTempSync("efa_native_conversion_log_");
+    GlobalLogger.init(logDir.path, enableDebugLog: false);
+  });
+
   group("convertModulesToNative", () {
     test("excludes passive rigs but keeps all subsequent modules", () {
       final modules = convertModulesToNative(_makeFit());
@@ -72,6 +83,61 @@ void main() {
         modules.singleWhere((m) => m.slot.slotType == native.SlotType.high).state,
         native.State.passive,
       );
+    });
+  });
+
+  group("convertFitBodyToNative drones", () {
+    test("expands quantity and passes dynamic item ids through", () {
+      final base = _makeFit();
+      final fit = base.copyWith(
+        body: base.body.copyWith(
+          drones: IList([
+            const FitDroneItem(
+              itemId: FitStorageItemId.dynamic(dynamicId: 7),
+              state: FitItemState.active,
+              quantity: 3,
+            ),
+          ]),
+        ),
+        dynamicRegistry: FitDynamicRegistry(
+          dynamicItems: IMap({
+            7: FitDynamicItem(
+              dynamicItemId: 7,
+              originTypeId: 2203,
+              typeId: 60478,
+              modifierTypeId: 60460,
+              dynamicAttributes: IMap({64: 1.05}),
+            ),
+          }),
+        ),
+      );
+
+      final nativeFit = convertFitBodyToNative(fit);
+
+      expect(nativeFit.drones, hasLength(3));
+      for (final drone in nativeFit.drones) {
+        expect(drone.itemId, isA<native.ItemID_Dynamic>());
+        expect((drone.itemId as native.ItemID_Dynamic).field0, 7);
+        expect(drone.groupId, 0);
+        expect(drone.state, native.State.active);
+      }
+    });
+
+    test("skips drones with dangling dynamic references", () {
+      final base = _makeFit();
+      final fit = base.copyWith(
+        body: base.body.copyWith(
+          drones: IList([
+            const FitDroneItem(
+              itemId: FitStorageItemId.dynamic(dynamicId: 7),
+              state: FitItemState.active,
+              quantity: 3,
+            ),
+          ]),
+        ),
+      );
+
+      expect(convertFitBodyToNative(fit).drones, isEmpty);
     });
   });
 }

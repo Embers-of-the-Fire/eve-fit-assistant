@@ -28,6 +28,7 @@ import "package:eve_fit_assistant/utils/skill.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:fpdart/fpdart.dart" hide State;
 
 const List<int> _requiredSkillAttributeIds = [182, 183, 184, 1285, 1289, 1290];
 const List<int> _requiredSkillLevelAttributeIds = [277, 278, 279, 1286, 1287, 1288];
@@ -1964,6 +1965,14 @@ FitModuleItem? _resolveStoredModule(FitStorage fit, native.OutSlotType slotType,
       native.OutSlotType_Rig() => fit.body.slots.rig.getOrNull(index)?.toNullable(),
       native.OutSlotType_SubSystem() => fit.body.slots.subsystem.getOrNull(index)?.toNullable(),
       native.OutSlotType_Service() => fit.body.slots.service.getOrNull(index)?.toNullable(),
+      native.OutSlotType_DroneBay() => switch (fit.body.drones.getOrNull(index)) {
+        final drone? => FitModuleItem(
+          itemId: drone.itemId,
+          state: drone.state,
+          charge: const Option.none(),
+        ),
+        _ => null,
+      },
       _ => null,
     };
 

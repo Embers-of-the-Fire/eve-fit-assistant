@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_ref.dart";
@@ -88,6 +89,68 @@ Map<String, dynamic> _legacyV1FitJson() => <String, dynamic>{
 
 Map<String, dynamic> _roundTripJson(Map<String, dynamic> json) =>
     jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
+
+/// V2 fit payload with a drone stack referencing a dynamic (mutated) item.
+/// Mirrors the fixture in `fit_dynamic_drone_compat_test.dart`.
+Map<String, dynamic> _dynamicDroneV2FitJson() => <String, dynamic>{
+  "metadata": <String, dynamic>{
+    "fitId": "test-fit-dynamic-drone",
+    "shipTypeId": 1234,
+    "name": "Dynamic Drone Fit",
+    "lastModified": 0,
+    "description": "",
+    "checkoutRef": <String, dynamic>{"checkoutId": "checkout-abc", "serverId": "Serenity"},
+  },
+  "body": <String, dynamic>{
+    "shipTypeId": 1234,
+    "characterId": "predefined_all_5",
+    "damageProfile": <String, dynamic>{
+      "em": 0.25,
+      "explosive": 0.25,
+      "kinetic": 0.25,
+      "thermal": 0.25,
+    },
+    "slots": <String, dynamic>{
+      "high": <dynamic>[],
+      "medium": <dynamic>[],
+      "low": <dynamic>[],
+      "rig": <dynamic>[],
+      "subsystem": <dynamic>[],
+      "service": <dynamic>[],
+      "tacticalMode": null,
+    },
+    "drones": <dynamic>[
+      <String, dynamic>{
+        "itemId": <String, dynamic>{"dynamicId": 0, "runtimeType": "dynamic"},
+        "state": "active",
+        "quantity": 5,
+      },
+    ],
+    "fighters": <dynamic>[],
+    "implants": <dynamic>[],
+    "boosters": <dynamic>[],
+  },
+  "dynamicRegistry": <String, dynamic>{
+    "dynamicItems": <String, dynamic>{
+      "0": <String, dynamic>{
+        "dynamicItemId": 0,
+        "originTypeId": 2203,
+        "typeId": 60478,
+        "modifierTypeId": 60460,
+        "dynamicAttributes": <String, dynamic>{
+          "9": 1.05,
+          "37": 1.15,
+          "54": 0.95,
+          "64": 1.05,
+          "158": 0.9,
+          "160": 1.2,
+          "263": 1.1,
+          "265": 0.8,
+        },
+      },
+    },
+  },
+};
 
 void main() {
   group("encodeNativeFitPayload", () {
@@ -213,6 +276,29 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("round-trips a dynamic drone payload through the EFA binary codec", () {
+      final payload = encodeNativeFitPayload(
+        decodeFitStorage(
+          <String, dynamic>{"version": 2, "fit": _dynamicDroneV2FitJson()},
+        ).fit,
+      );
+
+      final decoded = decodeNativeFitPayload(
+        _roundTripJson(decodeEfaFitBinary(encodeEfaFitBinary(payload))),
+      );
+
+      expect(decoded.didMigrate, isFalse);
+      final drone = decoded.fit.body.drones.single;
+      expect(drone.itemId.dynamicIdOrNull, 0);
+      expect(drone.quantity, 5);
+      final dynamicItem = decoded.fit.dynamicRegistry.dynamicItems[0];
+      expect(dynamicItem, isNotNull);
+      expect(dynamicItem!.originTypeId, 2203);
+      expect(dynamicItem.typeId, 60478);
+      expect(dynamicItem.modifierTypeId, 60460);
+      expect(dynamicItem.dynamicAttributes[64], 1.05);
     });
   });
 }

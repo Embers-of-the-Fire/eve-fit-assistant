@@ -1687,6 +1687,122 @@ class FitWrapper {
     return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   });
 
+  // Drone mutation operates on whole stacks: one dynamic item per drone group,
+  // shared by every unit of the stack (quantity changes keep the roll).
+  Future<void> convertDroneToDynamic(int index, int modifierTypeId) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final drone = fit.body.drones[index];
+    if (drone.itemId is FitStorageItemIdDynamic) return fit;
+
+    final originTypeId = _resolveOriginTypeId(fit, drone.itemId);
+    if (originTypeId == null) return fit;
+
+    final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+    if (dynamicMutator == null) return fit;
+    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+    final dynamicItemId = _allocateDynamicItemId(fit);
+    final dynamicItem = FitDynamicItem(
+      dynamicItemId: dynamicItemId,
+      originTypeId: originTypeId,
+      typeId: dynamicMutator.resultingTypeId,
+      modifierTypeId: modifierTypeId,
+      dynamicAttributes: IMap.fromEntries(
+        dynamicMutator.attributes.keys.map((attributeId) => MapEntry<int, double>(attributeId, 1)),
+      ),
+    );
+    final updatedFit = _storeDynamicItem(fit, dynamicItem);
+    final drones = updatedFit.body.drones.toList();
+    drones[index] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
+    return updatedFit.copyWith(body: updatedFit.body.copyWith(drones: drones.toIList()));
+  });
+
+  Future<void> revertDroneFromDynamic(int index) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final drone = fit.body.drones[index];
+    return drone.itemId.when(
+      item: (_) => fit,
+      dynamic: (dynamicId) {
+        final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+        if (dynamicItem == null) return fit;
+        final drones = fit.body.drones.toList();
+        drones[index] = drone.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+        return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+      },
+    );
+  });
+
+  Future<void> mutateAllSameOriginDrones(int index, int modifierTypeId) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final originTypeId = _resolveOriginTypeId(fit, fit.body.drones[index].itemId);
+    if (originTypeId == null) return fit;
+
+    final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+    if (dynamicMutator == null) return fit;
+    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+    var updatedFit = fit;
+    for (var i = 0; i < updatedFit.body.drones.length; i++) {
+      final drone = updatedFit.body.drones[i];
+      if (_resolveOriginTypeId(updatedFit, drone.itemId) != originTypeId) continue;
+
+      updatedFit = drone.itemId.when(
+        item: (_) {
+          final dynamicItemId = _allocateDynamicItemId(updatedFit);
+          final dynamicItem = FitDynamicItem(
+            dynamicItemId: dynamicItemId,
+            originTypeId: originTypeId,
+            typeId: dynamicMutator.resultingTypeId,
+            modifierTypeId: modifierTypeId,
+            dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
+          );
+          final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
+          final drones = fitWithItem.body.drones.toList();
+          drones[i] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
+          return fitWithItem.copyWith(body: fitWithItem.body.copyWith(drones: drones.toIList()));
+        },
+        dynamic: (dynamicId) {
+          final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+          if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
+          return _storeDynamicItem(
+            updatedFit,
+            existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+          );
+        },
+      );
+    }
+    return updatedFit;
+  });
+
+  Future<void> revertAllSameDynamicDrones(int index) => wrapped.update((fit) {
+    if (index < 0 || index >= fit.body.drones.length) return fit;
+    final sourceDynamic = fit.body.drones[index].itemId.when(
+      item: (_) => null,
+      dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
+    );
+    if (sourceDynamic == null) return fit;
+
+    final drones = fit.body.drones.toList();
+    var changed = false;
+    for (var i = 0; i < drones.length; i++) {
+      final reverted = drones[i].itemId.when(
+        item: (_) => null,
+        dynamic: (dynamicId) {
+          final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+          if (dynamicItem == null) return null;
+          if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
+          if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
+          return drones[i].copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+        },
+      );
+      if (reverted == null) continue;
+      drones[i] = reverted;
+      changed = true;
+    }
+    if (!changed) return fit;
+    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+  });
+
   FitStorage applySubsystemResize(
     FitStorage fit,
     Ship ship,

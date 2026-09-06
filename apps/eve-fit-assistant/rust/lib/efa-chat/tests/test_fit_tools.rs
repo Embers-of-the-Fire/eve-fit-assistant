@@ -48,12 +48,12 @@ fn test_fit() -> FitContainer {
             .collect(),
         drones: vec![
             ItemDrone {
-                type_id: 2488,
+                item_id: eve_fit_os::calculate::item::ItemID::Item(2488),
                 group_id: 0,
                 state: ItemState::Active,
             },
             ItemDrone {
-                type_id: 2488,
+                item_id: eve_fit_os::calculate::item::ItemID::Item(2488),
                 group_id: 1,
                 state: ItemState::Active,
             },

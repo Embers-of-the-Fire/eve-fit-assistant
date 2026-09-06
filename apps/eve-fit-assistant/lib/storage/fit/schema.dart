@@ -414,17 +414,18 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage) {
   for (final (index, drone) in fitStorage.body.drones.mapWithIndex(
     (drone, index) => (index, drone),
   )) {
-    final typeId = _resolveNativeTypeId(
+    if (!_hasValidDynamicReference(
       fitStorage,
       drone.itemId,
       context: "drone $index in fit ${fitStorage.metadata.fitId}",
-    );
-    if (typeId == null) continue;
+    )) {
+      continue;
+    }
     drones.addAll(
       List.generate(
         drone.quantity,
         (_) => native.Drone(
-          typeId: typeId,
+          itemId: drone.itemId.when(item: native.ItemID.item, dynamic: native.ItemID.dynamic_),
           groupId: index,
           state: switch (drone.state) {
             FitItemState.passive => native.State.passive,

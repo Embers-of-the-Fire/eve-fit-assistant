@@ -102,7 +102,7 @@ pub struct ChargeDto {
 
 #[derive(Debug, Deserialize)]
 pub struct DroneDto {
-    pub type_id: i32,
+    pub item_id: ItemIdDto,
     pub group_id: u8,
     pub state: StateDto,
 }
@@ -212,7 +212,10 @@ impl ModuleDto {
 impl DroneDto {
     fn into_native(self) -> ItemDrone {
         ItemDrone {
-            type_id: self.type_id,
+            item_id: match self.item_id {
+                ItemIdDto::Item(id) => eve_fit_os::calculate::item::ItemID::Item(id),
+                ItemIdDto::Dynamic(id) => eve_fit_os::calculate::item::ItemID::Dynamic(id),
+            },
             group_id: self.group_id,
             state: match self.state {
                 StateDto::Passive => ItemState::Passive,

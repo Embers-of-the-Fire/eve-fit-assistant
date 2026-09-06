@@ -404,16 +404,15 @@ pub fn apply_edit_ops(
                 };
                 match result {
                     Ok(state) => {
-                        let group_id = next_group_id(
-                            edited
-                                .fit
-                                .drones
-                                .iter()
-                                .map(|drone| (drone.type_id, drone.group_id)),
-                            *type_id,
-                        );
+                        let group_id =
+                            next_group_id(
+                                edited.fit.drones.iter().map(|drone| {
+                                    (drone.item_id.as_type_id(&edited), drone.group_id)
+                                }),
+                                *type_id,
+                            );
                         edited.fit.drones.push(ItemDrone {
-                            type_id: *type_id,
+                            item_id: eve_fit_os::calculate::item::ItemID::Item(*type_id),
                             group_id,
                             state,
                         });
@@ -431,7 +430,11 @@ pub fn apply_edit_ops(
 
             FitEditOp::RemoveDrone { type_id } => {
                 let before = edited.fit.drones.len();
-                edited.fit.drones.retain(|drone| drone.type_id != *type_id);
+                let drones = std::mem::take(&mut edited.fit.drones);
+                edited.fit.drones = drones
+                    .into_iter()
+                    .filter(|drone| drone.item_id.as_type_id(&edited) != *type_id)
+                    .collect();
                 let removed = before - edited.fit.drones.len();
                 if removed > 0 {
                     applied.push(format!("remove {removed} drone(s) of type {type_id}"));
@@ -443,13 +446,17 @@ pub fn apply_edit_ops(
 
             FitEditOp::SetDroneState { type_id, state } => match parse_drone_state(state) {
                 Ok(state) => {
-                    let mut matched = 0;
-                    for drone in edited
+                    let matches: Vec<bool> = edited
                         .fit
                         .drones
-                        .iter_mut()
-                        .filter(|drone| drone.type_id == *type_id)
-                    {
+                        .iter()
+                        .map(|drone| drone.item_id.as_type_id(&edited) == *type_id)
+                        .collect();
+                    let mut matched = 0;
+                    for (drone, is_match) in edited.fit.drones.iter_mut().zip(matches) {
+                        if !is_match {
+                            continue;
+                        }
                         drone.state = state;
                         matched += 1;
                     }
