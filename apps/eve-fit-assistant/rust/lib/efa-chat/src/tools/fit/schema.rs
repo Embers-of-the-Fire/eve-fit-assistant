@@ -7,7 +7,7 @@ use eve_fit_os::fit::{
 };
 use serde::Deserialize;
 
-use super::ActiveFit;
+use super::{ActiveFit, FitToolError};
 
 /// A fit payload as pushed from the app (mirrors the bridge `Fit` DTOs in
 /// JSON form), used by the `load_fit` tool to switch the attached fit
@@ -134,8 +134,21 @@ pub struct DynamicItemDto {
 }
 
 impl FitPayload {
-    pub fn into_active(self) -> ActiveFit {
-        ActiveFit {
+    pub fn into_active(self) -> Result<ActiveFit, FitToolError> {
+        // A drone referencing a dynamic item missing from `dynamic_items`
+        // would panic later in `ItemID::as_type_id`, whose
+        // `FitContainer::get_dynamic_item_base_type_id` lookup unwraps;
+        // reject the dangling reference here instead.
+        for drone in &self.fit.drones {
+            if let ItemIdDto::Dynamic(id) = &drone.item_id {
+                if !self.dynamic_items.contains_key(id) {
+                    return Err(FitToolError::BadPayload(format!(
+                        "drone references unknown dynamic item {id}"
+                    )));
+                }
+            }
+        }
+        Ok(ActiveFit {
             name: self.name,
             container: FitContainer::new(
                 self.fit.into_native(),
@@ -154,7 +167,7 @@ impl FitPayload {
                     .collect(),
             ),
             names: self.names,
-        }
+        })
     }
 }
 
@@ -252,5 +265,70 @@ impl BoosterDto {
             type_id: self.type_id,
             index: self.index,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn payload_with_drone(item_id: ItemIdDto) -> FitPayload {
+        FitPayload {
+            name: None,
+            fit_id: None,
+            names: HashMap::new(),
+            fit: FitDto {
+                ship_type_id: 587,
+                damage_profile: DamageProfileDto {
+                    em: 0.0,
+                    explosive: 0.0,
+                    kinetic: 0.0,
+                    thermal: 0.0,
+                },
+                modules: vec![],
+                drones: vec![DroneDto {
+                    item_id,
+                    group_id: 0,
+                    state: StateDto::Active,
+                }],
+                fighters: vec![],
+                implants: vec![],
+                boosters: vec![],
+            },
+            skills: HashMap::new(),
+            dynamic_items: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn into_active_rejects_drone_with_missing_dynamic_item() {
+        // Regression: a drone referencing a dynamic item absent from
+        // `dynamic_items` must not reach `ItemID::as_type_id`, whose
+        // `get_dynamic_item_base_type_id` lookup unwraps and panics.
+        let err = payload_with_drone(ItemIdDto::Dynamic(7))
+            .into_active()
+            .unwrap_err();
+        assert!(matches!(err, FitToolError::BadPayload(_)));
+        assert_eq!(
+            err.to_string(),
+            "invalid payload from the app: drone references unknown dynamic item 7"
+        );
+    }
+
+    #[test]
+    fn into_active_accepts_drone_with_known_dynamic_item() {
+        let mut payload = payload_with_drone(ItemIdDto::Dynamic(7));
+        payload.dynamic_items.insert(
+            7,
+            DynamicItemDto {
+                base_type: 2456,
+                dynamic_attributes: HashMap::new(),
+            },
+        );
+        let active = payload.into_active().unwrap();
+        assert_eq!(
+            active.container.dynamic.get(&7).map(|item| item.base_type),
+            Some(2456)
+        );
     }
 }

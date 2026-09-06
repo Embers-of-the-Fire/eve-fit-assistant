@@ -880,7 +880,7 @@ impl FitToolContext {
                 started.elapsed().as_millis()
             );
             let payload = parse_callback_fit_payload(&raw)?;
-            let active = payload.into_active();
+            let active = payload.into_active()?;
             let (after, validation) = self.calculate_report(&active.container);
             if !self.commit_active(ticket, active) {
                 log::debug!(
@@ -958,7 +958,7 @@ impl FitToolContext {
         );
         let payload = parse_callback_fit_payload(&raw)?;
         let created_id = payload.fit_id.clone();
-        let active = payload.into_active();
+        let active = payload.into_active()?;
         let summary = self.summarize(&active);
         if self.commit_active(ticket, active) {
             return Ok(summary);
@@ -1040,7 +1040,7 @@ impl FitToolContext {
             started.elapsed().as_millis()
         );
         let payload = parse_callback_fit_payload(&raw)?;
-        let active = payload.into_active();
+        let active = payload.into_active()?;
         // Summarize straight from the input snapshot (no engine pass needed).
         let summary = self.summarize(&active);
         if self.commit_active(ticket, active) {
