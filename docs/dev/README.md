@@ -2,6 +2,7 @@
 
 ## Table of Content
 
+- [Development Guide](./development.md) — environment setup, configuration, and builds
 - [General](../../README.md)
 - [Data Collection](../../data/README.md)
 - [Data Storage and Management](./data-storage.md)
