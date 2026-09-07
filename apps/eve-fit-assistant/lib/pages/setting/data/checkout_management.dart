@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -926,9 +927,9 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
     super.dispose();
   }
 
-  /// Runs the shared policy-aware provisioning pipeline: NON_FORCE resources
-  /// are skipped (fetched lazily on first access) and the index is validated
-  /// for the current platform.
+  /// Runs the shared resolution-aware provisioning pipeline: lazy resources
+  /// are skipped (fetched on first access), excluded resources are never
+  /// listed, and the index is validated for the current platform.
   void _startProvisioning() {
     final provisioner = CheckoutProvisioner(
       remoteCatalog: ref.read(remoteCatalogServiceProvider),
@@ -944,6 +945,7 @@ class _CreateProgressDialogState extends ConsumerState<_CreateProgressDialog> {
       name: IMap({"zh": widget.serverDisplayName, "en": widget.serverDisplayName}),
       generationHash: widget.generationHash,
       resourceSnapshotHash: widget.snapshotHash,
+      context: ResourceResolutionContext(locale: ref.read(localeProvider).name),
     );
     unawaited(provisioner.execute());
   }

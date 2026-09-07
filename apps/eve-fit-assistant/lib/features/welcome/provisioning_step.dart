@@ -11,7 +11,9 @@ import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/provisioning.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/material.dart";
@@ -150,9 +152,15 @@ class _ProvisioningStepPageState extends ConsumerState<ProvisioningStepPage>
     _emit(MultiProvisionerFetching(done: targets.length, total: targets.length));
 
     // Phase 2: Partition the union of eager entries across all targets.
-    // NON_FORCE entries are skipped — they are fetched lazily on first
-    // access — and identical blobs shared between servers download once.
-    final workList = await computeEagerWorkList(assetStore, targetToIndex.values);
+    // Entries resolving to lazy are skipped — they are fetched on first
+    // access — and excluded entries are never listed. Identical blobs shared
+    // between servers download once. The wizard's language step precedes
+    // provisioning, so the active locale is already the chosen one.
+    final workList = await computeEagerWorkList(
+      assetStore,
+      targetToIndex.values,
+      context: ResourceResolutionContext(locale: ref.read(localeProvider).name),
+    );
     if (_cancelled) return;
 
     final toDownload = workList.toDownload;

@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/provisioning.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 // ── State machine ────────────────────────────────────────────────────────────
@@ -125,10 +126,14 @@ class CheckoutProvisioner {
   IMap<String, String>? _name;
   String? _generationHash;
   String? _resourceSnapshotHash;
+  ResourceResolutionContext? _resolutionContext;
   bool _cancelled = false;
   Timer? _progressTimer;
 
   /// Sets the parameters for the next [execute] call.
+  ///
+  /// [context] is the RRS evaluation context (the active app locale); it
+  /// decides which entries of the resource index are provisioned eagerly.
   void configure({
     required Channel channel,
     required String channelName,
@@ -136,6 +141,7 @@ class CheckoutProvisioner {
     required IMap<String, String> name,
     required String generationHash,
     required String resourceSnapshotHash,
+    required ResourceResolutionContext context,
   }) {
     _channel = channel;
     _channelName = channelName;
@@ -143,6 +149,7 @@ class CheckoutProvisioner {
     _name = name;
     _generationHash = generationHash;
     _resourceSnapshotHash = resourceSnapshotHash;
+    _resolutionContext = context;
     _cancelled = false;
   }
 
@@ -157,13 +164,15 @@ class CheckoutProvisioner {
     final name = _name;
     final generationHash = _generationHash;
     final resourceSnapshotHash = _resourceSnapshotHash;
+    final resolutionContext = _resolutionContext;
 
     if (channel == null ||
         channelName == null ||
         serverId == null ||
         name == null ||
         generationHash == null ||
-        resourceSnapshotHash == null) {
+        resourceSnapshotHash == null ||
+        resolutionContext == null) {
       _emit(const ProvisionerFatal(message: "Provisioner not configured"));
       return;
     }
@@ -190,9 +199,12 @@ class CheckoutProvisioner {
       return;
     }
 
-    // 2. Partition cached vs. to-download via the shared policy-aware work
-    // list: NON_FORCE entries are skipped and fetched lazily on first access.
-    final workList = await computeEagerWorkList(assetStore, [resourceIndex]);
+    // 2. Partition cached vs. to-download via the shared resolution-aware
+    // work list: entries resolving to lazy are skipped and fetched on first
+    // access; excluded entries are never listed.
+    final workList = await computeEagerWorkList(assetStore, [
+      resourceIndex,
+    ], context: resolutionContext);
     final toDownload = workList.toDownload;
     final cachedCount = workList.cachedCount;
     final cachedBytes = workList.cachedBytes;

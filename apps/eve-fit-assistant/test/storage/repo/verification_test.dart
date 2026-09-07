@@ -23,6 +23,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -30,6 +31,10 @@ import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 import "package:path/path.dart" as p;
+
+/// The RRS evaluation context used by these tests; no per-locale localization
+/// index entries appear here, so the locale choice is immaterial.
+const _ctx = ResourceResolutionContext(locale: "en");
 
 class _FakeRemoteCatalogService extends RemoteCatalogService {
   _FakeRemoteCatalogService() : super(dio: Dio(), originUrl: "https://test.local");
@@ -107,12 +112,14 @@ void main() {
       remoteCatalogService: fakeRemote,
       diffEngine: diffEngine,
       checkoutRegistry: registryService,
+      resolutionContext: _ctx,
     );
     return VerificationService(
       checkoutService: checkoutService,
       assetStore: assetStore,
       checkoutRegistry: registryService,
       remoteCatalogService: fakeRemote,
+      resolutionContext: _ctx,
     );
   }
 
@@ -509,12 +516,14 @@ void main() {
         remoteCatalogService: fakeRemote,
         diffEngine: diffEngine,
         checkoutRegistry: registryService,
+        resolutionContext: _ctx,
       );
       final service = VerificationService(
         checkoutService: checkoutService,
         assetStore: assetStore,
         checkoutRegistry: registryService,
         remoteCatalogService: fakeRemote,
+        resolutionContext: _ctx,
       );
 
       final first = service.repairAll(channel: Channel.testing);
@@ -554,12 +563,14 @@ void main() {
         remoteCatalogService: fakeRemote,
         diffEngine: diffEngine,
         checkoutRegistry: registryService,
+        resolutionContext: _ctx,
       );
       final service = VerificationService(
         checkoutService: checkoutService,
         assetStore: assetStore,
         checkoutRegistry: registryService,
         remoteCatalogService: fakeRemote,
+        resolutionContext: _ctx,
       );
 
       final first = service.repairAll(channel: Channel.testing);
@@ -608,12 +619,14 @@ void main() {
         remoteCatalogService: servingRemote,
         diffEngine: diffEngine,
         checkoutRegistry: registryService,
+        resolutionContext: _ctx,
       );
       final repairService = VerificationService(
         checkoutService: checkoutService,
         assetStore: assetStore,
         checkoutRegistry: registryService,
         remoteCatalogService: servingRemote,
+        resolutionContext: _ctx,
       );
 
       final unresolved = await repairService.repairAll(channel: Channel.testing);
@@ -648,12 +661,14 @@ void main() {
         remoteCatalogService: servingRemote,
         diffEngine: diffEngine,
         checkoutRegistry: registryService,
+        resolutionContext: _ctx,
       );
       final repairService = VerificationService(
         checkoutService: checkoutService,
         assetStore: assetStore,
         checkoutRegistry: registryService,
         remoteCatalogService: servingRemote,
+        resolutionContext: _ctx,
       );
 
       final unresolved = await repairService.repairAll(channel: Channel.testing);

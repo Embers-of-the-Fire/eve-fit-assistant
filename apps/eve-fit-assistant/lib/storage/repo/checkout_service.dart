@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -35,12 +36,19 @@ class CheckoutService {
     required this.remoteCatalogService,
     required this.diffEngine,
     required this.checkoutRegistry,
+    required this.resolutionContext,
   });
 
   final AssetStore assetStore;
   final RemoteCatalogService remoteCatalogService;
   final DiffEngine diffEngine;
   final CheckoutRegistryService checkoutRegistry;
+
+  /// The RRS evaluation context (active app locale) captured when this
+  /// service was built. Download decisions are resolved through the Resource
+  /// Resolution Schema with this context — never from the server-stamped
+  /// `download_policy` directly.
+  final ResourceResolutionContext resolutionContext;
 
   BlobStore get _store => assetStore.store;
 
@@ -292,7 +300,9 @@ class CheckoutService {
       final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
       final total = ri.match(
         () => 0,
-        (r) => r.entries.where((e) => shouldEagerDownload(r, e)).length,
+        (r) => r.entries
+            .where((e) => resolveResource(r, e, resolutionContext) == ResourceResolution.eager)
+            .length,
       );
       onProgress?.call(total, total);
       return Right(m.resourceSnapshotHash);
@@ -317,8 +327,11 @@ class CheckoutService {
 
     if (previousIndex.isNone()) {
       for (final entry in newIndex.entries) {
-        // NON_FORCE entries fetch lazily on first access; skip them here.
-        if (!shouldEagerDownload(newIndex, entry)) continue;
+        // Entries resolving to lazy fetch on first access; excluded entries
+        // never enter the download accounting.
+        if (resolveResource(newIndex, entry, resolutionContext) != ResourceResolution.eager) {
+          continue;
+        }
         entriesToDownload.add((
           resourceId: entry.resourceId,
           contentHash: entry.contentHash,
@@ -331,7 +344,7 @@ class CheckoutService {
         prevMap[e.resourceId] = e.contentHash;
       }
       for (final e in newIndex.entries) {
-        if (!shouldEagerDownload(newIndex, e)) continue;
+        if (resolveResource(newIndex, e, resolutionContext) != ResourceResolution.eager) continue;
         final prevHash = prevMap[e.resourceId];
         if (prevHash == null || prevHash != e.contentHash) {
           entriesToDownload.add((
@@ -366,9 +379,12 @@ class CheckoutService {
 
     actualToDownload.sort((a, b) => b.size.compareTo(a.size));
 
-    // Progress counts only eager entries — NON_FORCE entries are skipped and
-    // would otherwise leave the counter permanently short of the total.
-    final totalCount = newIndex.entries.where((e) => shouldEagerDownload(newIndex, e)).length;
+    // Progress counts only eager entries — lazy entries are skipped and
+    // excluded entries never enter the accounting; either would otherwise
+    // leave the counter permanently short of the total.
+    final totalCount = newIndex.entries
+        .where((e) => resolveResource(newIndex, e, resolutionContext) == ResourceResolution.eager)
+        .length;
     onProgress?.call(downloadedCount, totalCount);
 
     // 5. Download changed blobs with sliding-window concurrency.

@@ -47,16 +47,6 @@ void validateResourceIndexForPlatform(ResourceIndex index) {
   }
 }
 
-/// Whether [entry] must be downloaded ahead of time (provisioning, updates).
-///
-/// Indexes that predate the policy-aware format carry no download policy;
-/// every entry is force-downloaded (legacy behavior). In the policy-aware
-/// format the entry's `download_policy` decides — absent means NON_FORCE,
-/// i.e. the resource is fetched lazily on first access.
-bool shouldEagerDownload(ResourceIndex index, ResourceIndex_Entry entry) =>
-    index.formatVersion < kPolicyAwareResourceIndexFormatVersion ||
-    entry.downloadPolicy == ResourceIndex_DownloadPolicy.FORCE;
-
 /// A [ResourceIndex] whose per-snapshot format is not supported by this
 /// client — either because it exceeds [kMaxSupportedResourceIndexFormatVersion]
 /// (update the app) or, on web, because it predates the policy-aware format.

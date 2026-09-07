@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/storage/fs/memory_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/provisioning.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 
@@ -39,6 +40,10 @@ ResourceIndex _index({required int formatVersion, required List<_EntrySpec> entr
 
 const _v2 = 2;
 
+/// The RRS evaluation context used by these tests; no per-locale localization
+/// index entries appear here, so the locale choice is immaterial.
+const _ctx = ResourceResolutionContext(locale: "en");
+
 void main() {
   setUpAll(() {
     final logDir = Directory.systemTemp.createTempSync("efa_provisioning_test_log_");
@@ -58,7 +63,10 @@ void main() {
   });
 
   group("computeEagerWorkList", () {
-    test("pre-policy indexes treat every entry as eager", () async {
+    test("pre-policy indexes resolve entries via the RRS", () async {
+      // The resolution replaces the stamped policy entirely: the collection
+      // is eager (R5 default), the image is lazy (R4) even though pre-policy
+      // indexes carry no download policy.
       final index = _index(
         formatVersion: 1,
         entries: [
@@ -77,15 +85,15 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
 
-      expect(workList.totalEntries, 2);
-      expect(workList.totalBytes, 30);
-      expect(workList.toDownload, hasLength(2));
+      expect(workList.totalEntries, 1);
+      expect(workList.totalBytes, 10);
+      expect(workList.toDownload, hasLength(1));
       expect(workList.cachedCount, 0);
     });
 
-    test("policy-aware indexes skip NON_FORCE entries", () async {
+    test("entries resolving to lazy are skipped", () async {
       final index = _index(
         formatVersion: _v2,
         entries: [
@@ -101,7 +109,6 @@ void main() {
             size: 20,
             policy: ResourceIndex_DownloadPolicy.NON_FORCE,
           ),
-          // Absent policy defaults to NON_FORCE in the policy-aware format.
           (
             resourceId: "resource://static/images/icons/2.png",
             contentHash: "cc" * 32,
@@ -111,12 +118,47 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
 
       expect(workList.totalEntries, 1);
       expect(workList.totalBytes, 10);
       expect(workList.toDownload, hasLength(1));
       expect(workList.toDownload.single.entry.resourceId, "resource://static/collection.pb2");
+    });
+
+    test("excluded entries are never listed", () async {
+      // With per-locale dbs present, R1 excludes the legacy combined db.
+      final index = _index(
+        formatVersion: _v2,
+        entries: [
+          (
+            resourceId: "resource://localization/localization.db",
+            contentHash: "dd" * 32,
+            size: 40,
+            policy: ResourceIndex_DownloadPolicy.FORCE,
+          ),
+          (
+            resourceId: "resource://localization/locales/en.db",
+            contentHash: "ee" * 32,
+            size: 15,
+            policy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+          (
+            resourceId: "resource://localization/locales/zh.db",
+            contentHash: "ff" * 32,
+            size: 25,
+            policy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+        ],
+      );
+
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
+
+      // Only the active locale's db is eager; the legacy db is excluded and
+      // the other locale's db is lazy.
+      expect(workList.totalEntries, 1);
+      expect(workList.totalBytes, 15);
+      expect(workList.toDownload.single.entry.resourceId, "resource://localization/locales/en.db");
     });
 
     test("dedups identical blobs across indexes", () async {
@@ -129,7 +171,7 @@ void main() {
       final indexA = _index(formatVersion: _v2, entries: [shared]);
       final indexB = _index(formatVersion: _v2, entries: [shared]);
 
-      final workList = await computeEagerWorkList(assetStore, [indexA, indexB]);
+      final workList = await computeEagerWorkList(assetStore, [indexA, indexB], context: _ctx);
 
       expect(workList.totalEntries, 1);
       expect(workList.toDownload, hasLength(1));
@@ -142,13 +184,13 @@ void main() {
         formatVersion: _v2,
         entries: [
           (
-            resourceId: "resource://static/images/icons/1.png",
+            resourceId: "resource://static/native/types.pb2",
             contentHash: "aa" * 32,
             size: 10,
             policy: ResourceIndex_DownloadPolicy.FORCE,
           ),
           (
-            resourceId: "resource://static/images/icons/2.png",
+            resourceId: "resource://static/native/typeDogma.pb2",
             contentHash: "aa" * 32,
             size: 10,
             policy: ResourceIndex_DownloadPolicy.FORCE,
@@ -156,7 +198,7 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
 
       expect(workList.totalEntries, 2);
       expect(workList.toDownload, hasLength(2));
@@ -186,7 +228,7 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
 
       expect(workList.totalEntries, 2);
       expect(workList.cachedCount, 1);
@@ -223,7 +265,7 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
 
       expect(workList.toDownload.map((b) => b.size).toList(), [100, 42, 5]);
     });
@@ -243,7 +285,7 @@ void main() {
         ],
       );
 
-      final workList = await computeEagerWorkList(assetStore, [index]);
+      final workList = await computeEagerWorkList(assetStore, [index], context: _ctx);
       final blob = workList.toDownload.single;
 
       expect(blob.identHash, RepoHash.hashIdent(resourceId));

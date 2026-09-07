@@ -480,8 +480,7 @@ class NativeFitEngineService extends _$NativeFitEngineService {
   static const _engineDogmaAttributesId = "${kResourceIdScheme}static/native/dogmaAttributes.pb2";
   static const _engineDogmaEffectsId = "${kResourceIdScheme}static/native/dogmaEffects.pb2";
   static const _engineTypeDogmaId = "${kResourceIdScheme}static/native/typeDogma.pb2";
-  static const _engineBuffCollectionsId =
-      "${kResourceIdScheme}static/native/dbuffcollections.pb2";
+  static const _engineBuffCollectionsId = "${kResourceIdScheme}static/native/dbuffcollections.pb2";
 
   /// Resolves the five engine `.pb2` files directly from the content-addressed
   /// blob store using a [ResourceBlobProxy], bypassing any filesystem tree.

@@ -2,7 +2,7 @@ import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
-import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 
 /// One eager blob to download during provisioning, with its precomputed
 /// identity and store path so the download hot loop is allocation-free.
@@ -13,13 +13,13 @@ typedef ProvisioningBlob = ({
   int size,
 });
 
-/// Policy-aware partition of resource index entries for provisioning.
+/// Resolution-aware partition of resource index entries for provisioning.
 ///
 /// Shared by every creation flow (welcome wizard, checkout creation) so all
-/// of them apply the same download-policy semantics as data updates:
-/// NON_FORCE entries are skipped and fetched lazily on first access; only
-/// FORCE entries (or every entry of a pre-policy index) are downloaded ahead
-/// of time.
+/// of them apply the same Resource Resolution Schema semantics as data
+/// updates: entries resolving to `lazy` are skipped and fetched on first
+/// access, `excluded` entries are never listed, and only `eager` entries are
+/// downloaded ahead of time.
 class ProvisioningWorkList {
   const ProvisioningWorkList({
     required this.toDownload,
@@ -48,12 +48,13 @@ class ProvisioningWorkList {
 ///
 /// Entries are deduplicated by blob identity (identHash, contentHash) across
 /// [indexes], so multi-server provisioning downloads each stored blob exactly
-/// once. Pre-policy indexes contribute every entry (legacy behavior);
-/// policy-aware indexes contribute only FORCE entries.
+/// once. Each entry is resolved against the RRS with [context]; only entries
+/// resolving to [ResourceResolution.eager] contribute.
 Future<ProvisioningWorkList> computeEagerWorkList(
   AssetStore assetStore,
-  Iterable<ResourceIndex> indexes,
-) async {
+  Iterable<ResourceIndex> indexes, {
+  required ResourceResolutionContext context,
+}) async {
   final toDownload = <ProvisioningBlob>[];
   final seen = <String>{};
   var cachedCount = 0;
@@ -63,7 +64,7 @@ Future<ProvisioningWorkList> computeEagerWorkList(
 
   for (final index in indexes) {
     for (final entry in index.entries) {
-      if (!shouldEagerDownload(index, entry)) continue;
+      if (resolveResource(index, entry, context) != ResourceResolution.eager) continue;
       final identHash = RepoHash.hashIdent(entry.resourceId);
       if (!seen.add("$identHash/${entry.contentHash}")) continue;
       final size = entry.size.toInt();
