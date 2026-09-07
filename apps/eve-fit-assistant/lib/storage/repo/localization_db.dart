@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" show min;
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db_native.dart"
     if (dart.library.js_interop) "package:eve_fit_assistant/storage/repo/localization_db_native_stub.dart";
@@ -17,7 +18,7 @@ import "package:sqlite_async/sqlite_async.dart";
 part "localization_db.g.dart";
 
 /// Resource id of the checkout's SQLite localization database.
-const String kLocalizationDbResourceId = "resource://localization/localization.db";
+const String kLocalizationDbResourceId = kLegacyLocalizationDbResourceId;
 
 /// Checkout database spec for the localization database.
 const CheckoutDbSpec kLocalizationDbSpec = CheckoutDbSpec(

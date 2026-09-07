@@ -54,6 +54,23 @@ resource_root = "efa/v2"
 # applies: all images are lazy. Set an empty list to force everything.
 lazy_prefixes = ["static/images/"]
 
+[resolution]
+# The `resolution` section is the shared resource-resolution vocabulary: the
+# strings the app and the data pipeline must agree on (resource-id scheme,
+# localization database paths, image prefix, and the resolution-context
+# placeholder name). It is the single source of truth generated into the app
+# by the resource-vocabulary codegen; both sides consume it so the server's
+# stamped policies and the app's resolution rules cannot silently disagree.
+#
+# All keys have built-in defaults matching the values below; the whole section
+# may be omitted. Override only together with the corresponding app/pipeline
+# changes.
+# scheme = "resource://"
+# legacy_localization_db = "localization/localization.db"
+# localization_locales_prefix = "localization/locales/"
+# static_images_prefix = "static/images/"
+# locale_placeholder = "locale"
+
 [paths]
 # `paths` section defines some global paths used to store resources or outputs
 # Most of the paths are suggested not to change.

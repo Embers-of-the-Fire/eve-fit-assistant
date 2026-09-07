@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 from enum import unique
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
+
+import bootstrap.config
 
 
 if TYPE_CHECKING:
@@ -23,6 +26,12 @@ class PathManager:
     def __init__(self, full_generate_out_path: Path, base_output_path: Path):
         self.__base_generate_out_path = full_generate_out_path
         self.__base_output_path = base_output_path
+
+        # Resource layout vocabulary shared with the app via codegen.
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
+        assert bootstrap.config.CONFIGURATION is not None
+        vocab = bootstrap.config.CONFIGURATION.resolution
+        self.__legacy_localization_db_rel = PurePosixPath(vocab.legacy_localization_db)
 
         self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
@@ -53,7 +62,7 @@ class PathManager:
 
     @property
     def localization_root_path(self) -> Path:
-        path = self.full_generate_out_path / "localization"
+        path = self.full_generate_out_path / self.__legacy_localization_db_rel.parent
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -64,7 +73,7 @@ class PathManager:
         Localization ships only as this database; per-language `.pb2` files
         are no longer emitted.
         """
-        return self.localization_root_path / "localization.db"
+        return self.full_generate_out_path / self.__legacy_localization_db_rel
 
     @property
     def agent_root_path(self) -> Path:

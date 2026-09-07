@@ -70,6 +70,7 @@ from typing import Any
 from typing import Protocol
 from typing import Self
 
+from bootstrap.config import DEFAULT_RESOLUTION_VOCABULARY as _VOCAB
 from bootstrap.constant import NATIVE_LIB_ROOT
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -87,15 +88,15 @@ if TYPE_CHECKING:
 #: Engine data families, mapped to their snapshot resource IDs and the efos
 #: protobuf message used to decode the whole collection.
 ENGINE_FAMILIES: dict[str, tuple[str, str]] = {
-    "types": ("resource://static/native/types.pb2", "Types"),
-    "type_dogma": ("resource://static/native/typeDogma.pb2", "TypeDogma"),
-    "dogma_attributes": ("resource://static/native/dogmaAttributes.pb2", "DogmaAttributes"),
-    "dogma_effects": ("resource://static/native/dogmaEffects.pb2", "DogmaEffects"),
-    "buffs": ("resource://static/native/dbuffcollections.pb2", "BuffCollections"),
+    "types": (f"{_VOCAB.scheme}static/native/types.pb2", "Types"),
+    "type_dogma": (f"{_VOCAB.scheme}static/native/typeDogma.pb2", "TypeDogma"),
+    "dogma_attributes": (f"{_VOCAB.scheme}static/native/dogmaAttributes.pb2", "DogmaAttributes"),
+    "dogma_effects": (f"{_VOCAB.scheme}static/native/dogmaEffects.pb2", "DogmaEffects"),
+    "buffs": (f"{_VOCAB.scheme}static/native/dbuffcollections.pb2", "BuffCollections"),
 }
 
-COLLECTION_RESOURCE_ID = "resource://static/collection.pb2"
-LOCALIZATION_RESOURCE_ID = "resource://localization/localization.db"
+COLLECTION_RESOURCE_ID = f"{_VOCAB.scheme}static/collection.pb2"
+LOCALIZATION_RESOURCE_ID = f"{_VOCAB.scheme}{_VOCAB.legacy_localization_db}"
 
 #: Metadata families built at sync time (not present as snapshot resources).
 META_FAMILIES = ("type_meta", "dogma_attribute_meta", "dogma_effect_meta")

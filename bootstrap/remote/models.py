@@ -218,11 +218,6 @@ def __getattr__(name: str):
 #: storage protocol and is intentionally left untouched.
 RESOURCE_INDEX_FORMAT_VERSION = 2
 
-#: The resource_id URI scheme prefix; lazy prefixes are matched against the
-#: remainder of the resource_id after this prefix.
-RESOURCE_ID_SCHEME = "resource://"
-
-
 def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:
     """Return whether [resource_id] matches any lazy prefix.
 
@@ -230,7 +225,9 @@ def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:
     ``resource://`` (e.g. ``static/images/`` matches
     ``resource://static/images/icons/1.png``).
     """
-    path = resource_id.removeprefix(RESOURCE_ID_SCHEME)
+    from bootstrap.config import DEFAULT_RESOLUTION_VOCABULARY
+
+    path = resource_id.removeprefix(DEFAULT_RESOLUTION_VOCABULARY.scheme)
     return any(path.startswith(prefix) for prefix in lazy_prefixes)
 
 

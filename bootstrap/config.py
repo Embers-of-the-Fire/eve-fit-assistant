@@ -176,6 +176,35 @@ class SchemaConfig(BaseModel):
         return self
 
 
+class ResolutionVocabulary(BaseModel):
+    """Shared resource-resolution vocabulary (paths, prefixes, placeholders).
+
+    Single source of truth for the strings the app and the data pipeline must
+    agree on: resource-id scheme, the legacy combined localization database
+    path, the per-locale database prefix, the static images prefix, and the
+    resolution-context placeholder name. Generated into Dart by
+    ``bootstrap.data.codegen.resource_vocabulary``; overridable via the
+    ``[resolution]`` table in ``efa.config.toml``.
+    """
+
+    model_config = ConfigDict(validate_default=True)
+
+    #: URI scheme prefix of checkout resource ids.
+    scheme: str = Field(default="resource://")
+    #: Path (relative to ``resource://``) of the legacy combined localization db.
+    legacy_localization_db: str = Field(default="localization/localization.db")
+    #: Path prefix (relative to ``resource://``) of the per-locale databases.
+    localization_locales_prefix: str = Field(default="localization/locales/")
+    #: Path prefix (relative to ``resource://``) of the static image resources.
+    static_images_prefix: str = Field(default="static/images/")
+    #: Resolution-context placeholder embedded in resource-id patterns.
+    locale_placeholder: str = Field(default="locale")
+
+
+#: The built-in resolution vocabulary, before any ``efa.config.toml`` override.
+DEFAULT_RESOLUTION_VOCABULARY: ResolutionVocabulary = ResolutionVocabulary()
+
+
 #: Resource path prefixes (relative to ``resource://``) that are marked
 #: NON_FORCE in generated resource snapshots and therefore downloaded lazily
 #: on first access instead of ahead of time. Bound to the data generator
@@ -197,6 +226,7 @@ class ProjectConfiguration(BaseModel):
     paths: ProjectPaths
     data_schema: SchemaConfig = Field(default_factory=SchemaConfig)
     download: DownloadConfig = Field(default_factory=DownloadConfig)
+    resolution: ResolutionVocabulary = Field(default_factory=ResolutionVocabulary)
     version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 

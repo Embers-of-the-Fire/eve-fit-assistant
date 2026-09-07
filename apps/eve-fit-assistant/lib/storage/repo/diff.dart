@@ -1,4 +1,5 @@
 import "package:efa_proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/storage/repo/models/diff.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 
@@ -9,7 +10,7 @@ import "package:fast_immutable_collections/fast_immutable_collections.dart";
 class DiffEngine {
   const DiffEngine();
 
-  static const _resourcePrefix = "resource://";
+  static const _resourcePrefix = kResourceIdScheme;
 
   /// Strips the `resource://` scheme prefix to recover the logical file path.
   static String _logicalPath(String resourceId) {
