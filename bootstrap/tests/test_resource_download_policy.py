@@ -29,15 +29,15 @@ def _config_dict(**overrides: object) -> dict:
 
 
 class TestDownloadConfig:
-    def test_default_lazy_prefixes_cover_all_images(self) -> None:
-        assert DEFAULT_LAZY_PREFIXES == ["static/images/"]
+    def test_default_lazy_prefixes_cover_images_and_per_locale_dbs(self) -> None:
+        assert DEFAULT_LAZY_PREFIXES == ["static/images/", "localization/locales/"]
 
     def test_model_default(self) -> None:
-        assert DownloadConfig().lazy_prefixes == ["static/images/"]
+        assert DownloadConfig().lazy_prefixes == ["static/images/", "localization/locales/"]
 
     def test_project_configuration_defaults_without_table(self) -> None:
         cfg = ProjectConfiguration.model_validate(_config_dict())
-        assert cfg.download.lazy_prefixes == ["static/images/"]
+        assert cfg.download.lazy_prefixes == ["static/images/", "localization/locales/"]
 
     def test_project_configuration_override(self) -> None:
         cfg = ProjectConfiguration.model_validate(
@@ -60,6 +60,14 @@ class TestIsLazyResource:
         assert not is_lazy_resource("resource://localization/localization.db", ["static/images/"])
         assert not is_lazy_resource("resource://agent/agent_resource.db", ["static/images/"])
 
+    def test_locales_prefix_does_not_match_legacy_combined_db(self) -> None:
+        # The legacy combined db must stay FORCE for released clients; the
+        # per-locale prefix matches only the per-locale databases.
+        assert is_lazy_resource("resource://localization/locales/en.db", ["localization/locales/"])
+        assert not is_lazy_resource(
+            "resource://localization/localization.db", ["localization/locales/"]
+        )
+
     def test_empty_prefixes_never_lazy(self) -> None:
         assert not is_lazy_resource("resource://static/images/icons/1.png", [])
 
@@ -70,6 +78,7 @@ class TestMakeResourceIndex:
         ("resource://static/images/icons/1.png", "bb" * 32, 20),
         ("resource://static/images/graphics/2.png", "cc" * 32, 30),
         ("resource://localization/localization.db", "dd" * 32, 40),
+        ("resource://localization/locales/en.db", "ff" * 32, 60),
         ("resource://agent/agent_resource.db", "ee" * 32, 50),
     ]
 
@@ -79,16 +88,19 @@ class TestMakeResourceIndex:
         assert index.schema_version == 1
         assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 2
 
-    def test_default_classification_marks_all_images_lazy(self) -> None:
+    def test_default_classification_marks_images_and_per_locale_dbs_lazy(self) -> None:
         index = make_resource_index(self._entries)
         policy = {e.resource_id: e.download_policy for e in index.entries}
         force = index.DownloadPolicy.FORCE
         non_force = index.DownloadPolicy.NON_FORCE
         assert policy["resource://static/collection.pb2"] == force
+        # The legacy combined db stays FORCE: released native clients open it
+        # via a direct file path that cannot fetch lazily.
         assert policy["resource://localization/localization.db"] == force
         assert policy["resource://agent/agent_resource.db"] == force
         assert policy["resource://static/images/icons/1.png"] == non_force
         assert policy["resource://static/images/graphics/2.png"] == non_force
+        assert policy["resource://localization/locales/en.db"] == non_force
 
     def test_custom_prefixes(self) -> None:
         index = make_resource_index(self._entries, lazy_prefixes=["static/images/graphics/"])

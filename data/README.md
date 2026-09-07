@@ -54,8 +54,9 @@ The protobuf definitions are included in the `schema` folder.
 Basically, all static data are stored collectively in a single protobuf message,
 see [`collections.proto`](./schema/collections.proto) for details.
 
-And, the localizations are stored in a single SQLite database
-(`localization.db`), queried lazily by clients.
+And, the localizations are stored in SQLite databases queried lazily by clients:
+a legacy combined database (`localization.db`, all locales), plus one
+per-locale database (`locales/<locale>.db`) per supported locale.
 
 The converted output shall contain:
 ```text
@@ -72,7 +73,9 @@ The converted output shall contain:
         - <graphic_id>_bp.png   # blueprint image file
         - <graphic_id>_bpc.png  # high quality image file
   - localization/
-    - localization.db            # all localized strings (SQLite)
+    - localization.db            # all localized strings (SQLite, schema "1")
+    - locales/
+      - <locale>.db              # per-locale localized strings (SQLite, schema "2")
   - schema/
     - checkouts/<hash>.json     # V2 checkout catalog
     - assets/                   # content-addressed asset store

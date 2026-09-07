@@ -51,8 +51,10 @@ resource_root = "efa/v2"
 # downloaded eagerly.
 #
 # When the whole section (or this key) is omitted, the built-in default
-# applies: all images are lazy. Set an empty list to force everything.
-lazy_prefixes = ["static/images/"]
+# applies: images and the per-locale localization databases are lazy. The
+# legacy combined localization database is deliberately not lazy — it stays
+# FORCE for released clients. Set an empty list to force everything.
+lazy_prefixes = ["static/images/", "localization/locales/"]
 
 [resolution]
 # The `resolution` section is the shared resource-resolution vocabulary: the

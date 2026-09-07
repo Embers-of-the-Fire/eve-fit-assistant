@@ -209,8 +209,12 @@ DEFAULT_RESOLUTION_VOCABULARY: ResolutionVocabulary = ResolutionVocabulary()
 #: NON_FORCE in generated resource snapshots and therefore downloaded lazily
 #: on first access instead of ahead of time. Bound to the data generator
 #: implementation; overridable via the ``[download]`` table in
-#: ``efa.config.toml``.
-DEFAULT_LAZY_PREFIXES: list[str] = ["static/images/"]
+#: ``efa.config.toml``. The legacy combined localization database is
+#: deliberately absent so it stays FORCE for released clients.
+DEFAULT_LAZY_PREFIXES: list[str] = [
+    DEFAULT_RESOLUTION_VOCABULARY.static_images_prefix,
+    DEFAULT_RESOLUTION_VOCABULARY.localization_locales_prefix,
+]
 
 
 class DownloadConfig(BaseModel):

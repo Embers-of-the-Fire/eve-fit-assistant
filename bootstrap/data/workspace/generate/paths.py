@@ -32,6 +32,7 @@ class PathManager:
         assert bootstrap.config.CONFIGURATION is not None
         vocab = bootstrap.config.CONFIGURATION.resolution
         self.__legacy_localization_db_rel = PurePosixPath(vocab.legacy_localization_db)
+        self.__localization_locales_rel = PurePosixPath(vocab.localization_locales_prefix)
 
         self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
@@ -74,6 +75,17 @@ class PathManager:
         are no longer emitted.
         """
         return self.full_generate_out_path / self.__legacy_localization_db_rel
+
+    @property
+    def localization_locales_root_path(self) -> Path:
+        """Directory of the per-locale localization databases."""
+        path = self.full_generate_out_path / self.__localization_locales_rel
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def localization_locale_db_path(self, lang: str) -> Path:
+        """Per-locale SQLite database with the localized strings of one locale."""
+        return self.localization_locales_root_path / f"{lang}.db"
 
     @property
     def agent_root_path(self) -> Path:
