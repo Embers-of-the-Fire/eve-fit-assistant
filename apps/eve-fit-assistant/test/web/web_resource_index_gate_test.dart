@@ -36,5 +36,16 @@ void main() {
 
       expect(() => validateResourceIndexForPlatform(v2), returnsNormally);
     });
+
+    test("rejects indexes beyond the maximum supported format", () {
+      final v3 = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = kMaxSupportedResourceIndexFormatVersion + 1;
+
+      expect(
+        () => decodeResourceIndex(Uint8List.fromList(v3.writeToBuffer())),
+        throwsA(isA<UnsupportedResourceIndexError>()),
+      );
+    });
   });
 }

@@ -58,5 +58,20 @@ void main() {
         kPolicyAwareResourceIndexFormatVersion,
       );
     });
+
+    test("rejects indexes beyond the maximum supported format", () {
+      final v3 = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = kMaxSupportedResourceIndexFormatVersion + 1;
+
+      expect(
+        () => decodeResourceIndex(Uint8List.fromList(v3.writeToBuffer())),
+        throwsA(
+          isA<UnsupportedResourceIndexError>()
+              .having((e) => e.formatVersion, "formatVersion", 3)
+              .having((e) => e.toString(), "message", contains("update the app")),
+        ),
+      );
+    });
   });
 }

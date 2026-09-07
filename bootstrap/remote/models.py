@@ -218,6 +218,7 @@ def __getattr__(name: str):
 #: storage protocol and is intentionally left untouched.
 RESOURCE_INDEX_FORMAT_VERSION = 2
 
+
 def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:
     """Return whether [resource_id] matches any lazy prefix.
 
