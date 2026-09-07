@@ -70,7 +70,11 @@ To properly handle and manage states, the application follows these principles:
 - `RepoCollectionService`: The structural type-data source.
   It pre-loads ships, skills, items, and icons from the active checkout's `ResourceIndex`.
 - `LocalizationDbService`: Resolves localized strings from the active checkout's
-  prebuilt `localization.db`; `localizedNameProvider` resolves `(id, locale)` on demand.
+  per-locale `localization/locales/<locale>.db` (falling back to the legacy combined
+  `localization.db`, then placeholders); `localizedNameProvider` resolves `(id, locale)`
+  on demand. Download decisions for checkout resources go through the Resource
+  Resolution Schema (`resolveResource`), which resolves each index entry against the
+  active locale instead of reading the server-stamped download policy.
 - `FitService` > `FitServiceStatus`: The fit service.
   This provider offers the fit service status data interface.
   Fit files are decoded through the versioned fit persistence layer,
