@@ -1,7 +1,9 @@
+import "dart:async";
 import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/components/wizard/wizard.dart";
 import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart" hide Locale;
@@ -24,8 +26,14 @@ class LanguageStepPage extends ConsumerWidget {
     final selected = ref.watch(localeProvider);
     final detectedCode = ui.PlatformDispatcher.instance.locale.languageCode;
 
-    void onSelected(Locale value) =>
-        ref.read(appSettingServiceProvider.notifier).update((old) => old.copyWith(locale: value));
+    void onSelected(Locale value) {
+      ref.read(appSettingServiceProvider.notifier).update((old) => old.copyWith(locale: value));
+      // Evaluated after the choice is persisted. In the wizard the per-locale
+      // database is usually downloaded eagerly by the provisioning step that
+      // follows, so this is a no-op (availability: available) or offers the
+      // §5.2 dialog for checkouts provisioned before the split.
+      unawaited(offerLocaleLocalizationDb(context, ref, value));
+    }
 
     return WizardScaffold(
       title: context.l10n.welcomeLanguageTitle,

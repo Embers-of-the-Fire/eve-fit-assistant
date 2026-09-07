@@ -413,6 +413,64 @@ Future<LocalizationDbService?> localizationDbService(Ref ref) async {
   return service;
 }
 
+/// Local availability of a locale's localization database for the active
+/// checkout (spec §4.4).
+sealed class LocalizationDbAvailability {
+  const LocalizationDbAvailability();
+}
+
+/// The locale's database is present locally (or the legacy fallback covers
+/// the locale) and ready to open.
+final class LocalizationDbAvailable extends LocalizationDbAvailability {
+  const LocalizationDbAvailable();
+}
+
+/// The index carries the locale's per-locale database but the blob is not
+/// downloaded yet; the locale-switch dialog offers a sized download.
+final class LocalizationDbDownloadable extends LocalizationDbAvailability {
+  const LocalizationDbDownloadable({required this.sizeBytes});
+
+  /// Download size of the locale's database blob, from the index entry.
+  final int sizeBytes;
+}
+
+/// No per-locale entry exists in the index and no usable legacy fallback is
+/// present; only a data update can bring the locale's database in.
+final class LocalizationDbUpdateRequired extends LocalizationDbAvailability {
+  const LocalizationDbUpdateRequired();
+}
+
+/// Availability of [locale]'s localization database for the active checkout.
+///
+/// A `downloadable` result means the locale-switch flow can fetch the blob on
+/// demand; `updateRequired` means only a full data update can bring the
+/// resource in. Old snapshots carrying only the legacy combined database are
+/// **not** `updateRequired`: the §4.3 fallback covers them.
+@riverpod
+Future<LocalizationDbAvailability> localizationDbAvailability(Ref ref, String locale) async {
+  final store = ref.watch(assetStoreProvider);
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
+  if (proxy == null) return const LocalizationDbUpdateRequired();
+
+  final perLocaleId = localeLocalizationDbResourceId(locale);
+  final perLocaleIdent = proxy.ident(perLocaleId);
+  if (perLocaleIdent != null) {
+    final exists = await store.blobExists(perLocaleIdent.identHash, perLocaleIdent.contentHash);
+    if (exists) return const LocalizationDbAvailable();
+    final size = proxy.entry(perLocaleId)?.size.toInt() ?? 0;
+    return LocalizationDbDownloadable(sizeBytes: size);
+  }
+
+  // No per-locale entry (old snapshot): usable only when the legacy combined
+  // database's blob is present.
+  final legacyIdent = proxy.ident(kLocalizationDbResourceId);
+  if (legacyIdent != null &&
+      await store.blobExists(legacyIdent.identHash, legacyIdent.contentHash)) {
+    return const LocalizationDbAvailable();
+  }
+  return const LocalizationDbUpdateRequired();
+}
+
 /// Resolves the localized string for [id] in [locale] from the active
 /// checkout's localization database.
 ///

@@ -12,6 +12,8 @@ import "package:eve_fit_assistant/pages/setting/version/update_check_tile.dart";
 import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/providers.dart" show activeCheckoutProvider;
 import "package:eve_fit_assistant/storage/repo/repo_version.dart" show currentSchemaVersion;
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart"
+    show kResourceResolutionSchemaVersion;
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show appSettingServiceProvider, developerModeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
@@ -124,6 +126,11 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                             onTap: null,
                           ),
                           (
+                            label: context.l10n.versionPageRrsVersion,
+                            value: kResourceResolutionSchemaVersion.toString(),
+                            onTap: null,
+                          ),
+                          (
                             label: context.l10n.versionPageActiveData,
                             value: _activeCheckoutLabel(context, activeCheckout),
                             onTap: null,
@@ -170,6 +177,11 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                         (
                           label: context.l10n.versionPageSchemaVersion,
                           value: currentSchemaVersion.toString(),
+                          onTap: null,
+                        ),
+                        (
+                          label: context.l10n.versionPageRrsVersion,
+                          value: kResourceResolutionSchemaVersion.toString(),
                           onTap: null,
                         ),
                         (
