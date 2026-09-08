@@ -209,11 +209,16 @@ class ResolutionVocabulary(BaseModel):
 
         The localization generator creates, unlinks, and recreates SQLite files
         at these paths joined to the generated workspace, so they must stay
-        relative POSIX paths without ``..`` segments.
+        relative POSIX paths without ``..`` segments. Backslashes are rejected
+        too: ``PurePosixPath`` treats them as literal characters, but on
+        Windows hosts they act as path separators once the value is joined to
+        a ``pathlib.Path``, re-opening traversal via e.g. ``..\\escape.db``.
         """
         path = PurePosixPath(value)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError(f"must be a relative POSIX path without '..' segments, got {value!r}")
+        if "\\" in value or path.is_absolute() or ".." in path.parts:
+            raise ValueError(
+                f"must be a relative POSIX path without '..' segments or backslashes, got {value!r}"
+            )
         return value
 
 

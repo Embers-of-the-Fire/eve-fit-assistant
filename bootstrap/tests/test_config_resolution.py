@@ -22,6 +22,8 @@ class TestResolutionVocabularyPaths:
             "//host/share/localization.db",
             "../escape.db",
             "localization/../../escape.db",
+            r"..\escape.db",
+            r"localization\..\..\escape.db",
             "..",
         ],
     )
@@ -36,6 +38,8 @@ class TestResolutionVocabularyPaths:
             "//host/share/locales/",
             "../locales/",
             "localization/../locales/",
+            r"..\locales/",
+            r"localization\..\..\locales/",
             "..",
         ],
     )
