@@ -132,13 +132,14 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  CheckoutService _makeService(MockRemoteCatalogService mockRemote) => CheckoutService(
-    assetStore: assetStore,
-    remoteCatalogService: mockRemote,
-    diffEngine: const DiffEngine(),
-    checkoutRegistry: checkoutRegistry,
-    resolutionContext: const ResourceResolutionContext(locale: "en"),
-  );
+  CheckoutService _makeService(MockRemoteCatalogService mockRemote, {String locale = "en"}) =>
+      CheckoutService(
+        assetStore: assetStore,
+        remoteCatalogService: mockRemote,
+        diffEngine: const DiffEngine(),
+        checkoutRegistry: checkoutRegistry,
+        resolutionContext: ResourceResolutionContext(locale: locale),
+      );
 
   Future<_TestSnapshot> _makeSnapshot({
     required String createdAt,
@@ -301,6 +302,90 @@ void main() {
         expect(transition.to, snapshot.hash);
       },
     );
+
+    test("same snapshot after a locale switch downloads newly eager entries", () async {
+      // Snapshot with per-locale dbs: under locale "en", en.db is eager and
+      // zh.db is lazy, so only en.db is present locally. After switching to
+      // "zh" (the provider rebuilds the service with the new locale), zh.db
+      // becomes eager and must be downloaded even though the snapshot hash is
+      // unchanged.
+      const typesRid = "resource://static/native/types.pb2";
+      const enRid = "resource://localization/locales/en.db";
+      const zhRid = "resource://localization/locales/zh.db";
+      final typesContent = Uint8List.fromList([1, 2, 3, 4]);
+      final enContent = Uint8List.fromList([5, 6, 7, 8]);
+      final zhContent = Uint8List.fromList([9, 10, 11, 12]);
+      final zhCH = RepoHash.hashContent(zhContent);
+      final zhIH = RepoHash.hashIdent(zhRid);
+
+      await assetStore.writeBlob(RepoHash.hashIdent(typesRid), typesContent);
+      await assetStore.writeBlob(RepoHash.hashIdent(enRid), enContent);
+
+      final index = ResourceIndex(
+        schemaVersion: 1,
+        formatVersion: 2,
+        entries: [
+          ResourceIndex_Entry(
+            resourceId: typesRid,
+            contentHash: RepoHash.hashContent(typesContent),
+            size: Int64(typesContent.length),
+          ),
+          ResourceIndex_Entry(
+            resourceId: enRid,
+            contentHash: RepoHash.hashContent(enContent),
+            size: Int64(enContent.length),
+            downloadPolicy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+          ResourceIndex_Entry(
+            resourceId: zhRid,
+            contentHash: zhCH,
+            size: Int64(zhContent.length),
+            downloadPolicy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+        ],
+      );
+      final meta = ResourceSnapshotMeta(
+        schemaVersion: 1,
+        serverId: _testServerId,
+        gameBuild: "2026.06.15",
+        gameVersion: "1.0",
+        resourceCount: index.entries.length,
+        createdAt: "2026-06-15T12:00:00Z",
+      );
+      final snapshotHash = await assetStore.writeResourceSnapshot(meta: meta, resourceIndex: index);
+
+      final mockRemote = _mockRemote();
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(zhContent));
+      final service = _makeService(mockRemote, locale: "zh");
+      final checkoutId = await _createCheckout(service, snapshotHash: snapshotHash);
+      _writeChannelHead(_testChannelName, _testGenerationHashNew);
+      _writeChannelResources(_testChannelName, snapshotHash);
+
+      final progressCalls = <(int, int)>[];
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+        onProgress: (downloaded, total) => progressCalls.add((downloaded, total)),
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(result.toNullable(), snapshotHash);
+
+      // Only the newly eager zh.db downloads; already-present eager entries
+      // are not re-fetched and the snapshot is never re-resolved remotely.
+      verify(() => mockRemote.fetchBlob(zhIH, zhCH)).called(1);
+      verifyNever(() => mockRemote.fetchBlob(RepoHash.hashIdent(enRid), any()));
+      verifyNever(() => mockRemote.fetchResourceIndex(any()));
+      expect(await assetStore.blobExists(zhIH, zhCH), isTrue);
+
+      // Progress totals count both eager entries under the new locale.
+      expect(progressCalls.first, (1, 2));
+      expect(progressCalls.last, (2, 2));
+
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
+      expect(updatedMeta.resourceSnapshotHash, snapshotHash);
+    });
 
     test("changed generation with changed snapshot hash performs full update", () async {
       final oldSnapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
