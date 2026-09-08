@@ -18,6 +18,7 @@ import sys
 import tomllib
 
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import SecretStr
 from pydantic import ValidationError
+from pydantic import field_validator
 from pydantic import model_validator
 
 from bootstrap.constant import CACHE_CONFIG_PATH
@@ -199,6 +201,20 @@ class ResolutionVocabulary(BaseModel):
     static_images_prefix: str = Field(default="static/images/")
     #: Resolution-context placeholder embedded in resource-id patterns.
     locale_placeholder: str = Field(default="locale")
+
+    @field_validator("legacy_localization_db", "localization_locales_prefix")
+    @classmethod
+    def _validate_relative_posix_path(cls, value: str) -> str:
+        """Reject paths that could escape the generation output directory.
+
+        The localization generator creates, unlinks, and recreates SQLite files
+        at these paths joined to the generated workspace, so they must stay
+        relative POSIX paths without ``..`` segments.
+        """
+        path = PurePosixPath(value)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"must be a relative POSIX path without '..' segments, got {value!r}")
+        return value
 
 
 #: The built-in resolution vocabulary, before any ``efa.config.toml`` override.
