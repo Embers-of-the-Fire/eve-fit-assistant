@@ -56,8 +56,8 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
       final confirmed =
           await showDialog<bool>(
             context: context,
-            builder: (_) => Localizations.override(
-              context: context,
+            builder: (dialogContext) => Localizations.override(
+              context: dialogContext,
               locale: targetUiLocale,
               child: ConfirmDialog(
                 title: l10n.localeDbDownloadTitle(locale: locale.display),
@@ -70,8 +70,8 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => Localizations.override(
-          context: context,
+        builder: (dialogContext) => Localizations.override(
+          context: dialogContext,
           locale: targetUiLocale,
           child: LocaleDbDownloadDialog(locale: locale.name),
         ),
@@ -79,8 +79,8 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
     case LocalizationDbUpdateRequired():
       await showDialog<void>(
         context: context,
-        builder: (_) => Localizations.override(
-          context: context,
+        builder: (dialogContext) => Localizations.override(
+          context: dialogContext,
           locale: targetUiLocale,
           child: _LocaleDbUpdateRequiredDialog(locale: locale),
         ),
