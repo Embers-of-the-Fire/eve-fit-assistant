@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/config/locale.dart";
+import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_db_download_controller.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_db_download_state.dart";
 import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
@@ -39,25 +41,49 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
   // result when [locale] is no longer the active configured locale.
   if (ref.read(localeProvider) != locale) return;
 
+  // The whole flow must render in the *target* locale: users switch locales
+  // precisely because they cannot read the current one. The captured
+  // [context] still resolves to the previous locale until the app rebuilds
+  // (and eagerly-built dialog strings never update afterwards), so resolve
+  // strings explicitly and override the locale of lazily-built dialogs.
+  final targetUiLocale = ui.Locale(locale.name);
+  final l10n = lookupAppLocalizations(targetUiLocale);
+
   switch (availability) {
     case LocalizationDbAvailable():
       return;
     case LocalizationDbDownloadable(:final sizeBytes):
-      final confirmed = await showConfirmDialog(
-        context,
-        title: context.l10n.localeDbDownloadTitle(locale: locale.display),
-        content: Text(context.l10n.localeDbDownloadBody(size: _formatSize(sizeBytes))),
-      );
+      final confirmed =
+          await showDialog<bool>(
+            context: context,
+            builder: (_) => Localizations.override(
+              context: context,
+              locale: targetUiLocale,
+              child: ConfirmDialog(
+                title: l10n.localeDbDownloadTitle(locale: locale.display),
+                content: Text(l10n.localeDbDownloadBody(size: _formatSize(sizeBytes))),
+              ),
+            ),
+          ) ??
+          false;
       if (!confirmed || !context.mounted) return;
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => LocaleDbDownloadDialog(locale: locale.name),
+        builder: (_) => Localizations.override(
+          context: context,
+          locale: targetUiLocale,
+          child: LocaleDbDownloadDialog(locale: locale.name),
+        ),
       );
     case LocalizationDbUpdateRequired():
       await showDialog<void>(
         context: context,
-        builder: (_) => _LocaleDbUpdateRequiredDialog(locale: locale),
+        builder: (_) => Localizations.override(
+          context: context,
+          locale: targetUiLocale,
+          child: _LocaleDbUpdateRequiredDialog(locale: locale),
+        ),
       );
   }
 }
