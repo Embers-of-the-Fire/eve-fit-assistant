@@ -294,12 +294,18 @@ class CheckoutService {
     // success.
     if (newSnapshotHash == m.resourceSnapshotHash) {
       final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
-      final eagerEntries = ri.match(
-        () => const <ResourceIndex_Entry>[],
-        (r) => r.entries
-            .where((e) => resolveResource(r, e, resolutionContext) == ResourceResolution.eager)
-            .toList(),
-      );
+      // A missing or unparseable local index must not be treated as an empty
+      // candidate list: reconciliation would trivially succeed while required
+      // eager blobs remain absent.
+      if (ri.isNone()) {
+        return const Left("Local resource index not found");
+      }
+      final localIndex = ri.toNullable()!;
+      final eagerEntries = localIndex.entries
+          .where(
+            (e) => resolveResource(localIndex, e, resolutionContext) == ResourceResolution.eager,
+          )
+          .toList();
       final reconciled = await _downloadMissingBlobs(
         candidates: [
           for (final e in eagerEntries)

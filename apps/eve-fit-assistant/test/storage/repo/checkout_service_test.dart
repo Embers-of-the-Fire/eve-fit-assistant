@@ -387,6 +387,38 @@ void main() {
       expect(updatedMeta.resourceSnapshotHash, snapshotHash);
     });
 
+    test("same snapshot fails when the local resource index is missing", () async {
+      // A checkout whose local snapshot index was lost or corrupted must not
+      // reconcile against an empty candidate list and report success.
+      final snapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
+
+      final mockRemote = _mockRemote();
+      final service = _makeService(mockRemote);
+      final checkoutId = await _createCheckout(service, snapshotHash: snapshot.hash);
+      _writeChannelHead(_testChannelName, _testGenerationHashNew);
+      _writeChannelResources(_testChannelName, snapshot.hash);
+
+      // Remove the local index to simulate a missing snapshot.
+      File(RepoPaths.resourceIndexPath(snapshot.hash)).deleteSync();
+
+      final reflogBefore = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
+
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+      );
+
+      expect(result.isLeft(), isTrue);
+      verifyNever(() => mockRemote.fetchBlob(any(), any()));
+
+      // The checkout pointer and reflog are untouched.
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
+      expect(updatedMeta.resourceSnapshotHash, snapshot.hash);
+      final reflogAfter = (await service.readCheckoutReflog(checkoutId)).toNullable()!;
+      expect(reflogAfter.entries.length, reflogBefore.entries.length);
+    });
+
     test("changed generation with changed snapshot hash performs full update", () async {
       final oldSnapshot = await _makeSnapshot(createdAt: "2026-06-15T12:00:00Z");
       final newSnapshot = await _makeSnapshot(createdAt: "2026-06-16T12:00:00Z");
