@@ -170,13 +170,14 @@ class VerificationService {
     final checkouts = registry.toNullable()!.checkouts.entries.toList();
 
     // Load all resource indexes up front so progress totals are accurate.
+    // Only entries verification visits (i.e. not RRS-excluded) are counted.
     final resourceIndexes = <String, ResourceIndex>{};
     var totalBlobs = 0;
     for (final entry in checkouts) {
       final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
       if (ri.isSome()) {
         resourceIndexes[entry.key] = ri.toNullable()!;
-        totalBlobs += ri.toNullable()!.entries.length;
+        totalBlobs += countVerificationTargets(ri.toNullable()!, resolutionContext);
       }
     }
 
@@ -218,7 +219,7 @@ class VerificationService {
                 }
               },
       );
-      checkedOffset += ri.entries.length;
+      checkedOffset += countVerificationTargets(ri, resolutionContext);
 
       if (missing.isNotEmpty) {
         issues.add(
@@ -482,7 +483,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
     final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
     if (ri.isSome()) {
       resourceIndexes[entry.key] = ri.toNullable()!;
-      totalBlobs += ri.toNullable()!.entries.length;
+      totalBlobs += countVerificationTargets(ri.toNullable()!, resolutionContext);
     }
   }
 
@@ -525,7 +526,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
               }
             },
     );
-    checkedOffset += ri.entries.length;
+    checkedOffset += countVerificationTargets(ri, resolutionContext);
 
     if (missing.isNotEmpty) {
       issues.add(

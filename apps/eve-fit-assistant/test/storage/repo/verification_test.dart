@@ -11,6 +11,7 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:efa_proto/checkout_reflog.pb.dart";
 import "package:efa_proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
@@ -126,8 +127,12 @@ void main() {
   /// Sets up a full checkout environment with a resource snapshot,
   /// registry entry, metadata, reflog, and blobs.
   ///
+  /// When [withExcludedEntry] is true, the index also contains the legacy
+  /// combined localization db (RRS-excluded, no blob on disk) and a
+  /// non-active-locale per-locale db (RRS-lazy, no blob on disk).
+  ///
   /// Returns the resource snapshot hash.
-  Future<String> setupCheckout() async {
+  Future<String> setupCheckout({bool withExcludedEntry = false}) async {
     final assetStore = AssetStore(FileBlobStore());
 
     // 1. Create a ResourceIndex with two test entries
@@ -155,6 +160,26 @@ void main() {
           ..contentHash = chashB
           ..size = Int64(blobDataB.length),
       );
+
+    if (withExcludedEntry) {
+      // RRS-excluded: legacy combined localization db superseded by the
+      // per-locale db below. Verification never visits this entry.
+      ri.entries.add(
+        ResourceIndex_Entry()
+          ..resourceId = kLegacyLocalizationDbResourceId
+          ..contentHash = "excluded_hash_0000000000000000000000000000000000000000000000000000000000"
+          ..size = Int64(10),
+      );
+      // RRS-lazy under the "en" context: visited by verification, but a
+      // missing blob is expected and never a failure.
+      ri.entries.add(
+        ResourceIndex_Entry()
+          ..resourceId = "${kLocalizationLocalesResourcePrefix}zh.db"
+          ..contentHash =
+              "lazy_hash_00000000000000000000000000000000000000000000000000000000000000000000"
+          ..size = Int64(10),
+      );
+    }
 
     // 2. Write the resource snapshot to get a deterministic snapshot hash
     final meta = ResourceSnapshotMeta(
@@ -492,6 +517,25 @@ void main() {
       expect(issues.length, 1);
       expect(issues.first, isA<VerificationMissingFiles>());
       expect(service.isRunning, isFalse);
+    });
+
+    test("verifyAsync() progress totals exclude RRS-excluded entries", () async {
+      await setupCheckout(withExcludedEntry: true);
+      final service = await makeService();
+
+      final progress = <(int, int)>[];
+      final issues = await service.verifyAsync(
+        onProgress: (checked, total) => progress.add((checked, total)),
+      );
+
+      // The lazy per-locale db is absent but expected-absent; the excluded
+      // legacy db is never visited.
+      expect(issues, isEmpty);
+      expect(progress, isNotEmpty);
+      // Targets: a.bin, b.bin, and the lazy zh.db. The excluded legacy db
+      // must count toward neither the total nor the final checked count.
+      expect(progress.last.$2, 3, reason: "total should exclude RRS-excluded entries");
+      expect(progress.last.$1, progress.last.$2, reason: "progress should reach the total");
     });
 
     test("repairAll() rejects concurrent invocation", () async {

@@ -88,3 +88,15 @@ ResourceResolution resolveResource(
   // R5: default — fail closed toward availability.
   return ResourceResolution.eager;
 }
+
+/// Counts the entries of [index] that blob verification visits under
+/// [context]: every entry whose RRS resolution is not
+/// [ResourceResolution.excluded].
+///
+/// Verification progress totals and offsets must use this count rather than
+/// `index.entries.length`, since excluded entries are neither checked nor
+/// counted during verification.
+int countVerificationTargets(ResourceIndex index, ResourceResolutionContext context) => index
+    .entries
+    .where((e) => resolveResource(index, e, context) != ResourceResolution.excluded)
+    .length;
