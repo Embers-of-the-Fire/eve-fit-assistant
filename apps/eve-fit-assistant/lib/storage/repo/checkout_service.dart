@@ -329,7 +329,7 @@ class CheckoutService {
       return Right(m.resourceSnapshotHash);
     }
 
-    // 4. Fetch the new ResourceIndex and diff against the previous one.
+    // 4. Fetch the new ResourceIndex and collect the eager entries.
     final indexBytes = await remoteCatalogService.fetchResourceIndex(newSnapshotHash);
     if (indexBytes.isLeft()) {
       final err = indexBytes.getLeft().toNullable()!;
@@ -342,54 +342,27 @@ class CheckoutService {
       return Left(e.toString());
     }
 
-    final previousIndex = await assetStore.readResourceIndex(m.resourceSnapshotHash);
-    final entriesToDownload = <({String resourceId, String contentHash, int size})>[];
-    int downloadedCount = 0;
-
-    if (previousIndex.isNone()) {
-      for (final entry in newIndex.entries) {
-        // Entries resolving to lazy fetch on first access; excluded entries
-        // never enter the download accounting.
-        if (resolveResource(newIndex, entry, resolutionContext) != ResourceResolution.eager) {
-          continue;
-        }
-        entriesToDownload.add((
-          resourceId: entry.resourceId,
-          contentHash: entry.contentHash,
-          size: entry.size.toInt(),
-        ));
-      }
-    } else {
-      final prevMap = <String, String>{};
-      for (final e in previousIndex.toNullable()!.entries) {
-        prevMap[e.resourceId] = e.contentHash;
-      }
-      for (final e in newIndex.entries) {
-        if (resolveResource(newIndex, e, resolutionContext) != ResourceResolution.eager) continue;
-        final prevHash = prevMap[e.resourceId];
-        if (prevHash == null || prevHash != e.contentHash) {
-          entriesToDownload.add((
-            resourceId: e.resourceId,
-            contentHash: e.contentHash,
-            size: e.size.toInt(),
-          ));
-        } else {
-          downloadedCount++;
-        }
-      }
-    }
+    // Every eager entry goes through blob reconciliation, including entries
+    // whose content hash is unchanged from the previous snapshot: an entry
+    // may have become eager after a locale change (or its blob may have been
+    // pruned) without its hash changing, and _downloadMissingBlobs only
+    // verifies candidates. Entries resolving to lazy fetch on first access;
+    // excluded entries never enter the download accounting.
+    final entriesToDownload = <({String resourceId, String contentHash, int size})>[
+      for (final entry in newIndex.entries)
+        if (resolveResource(newIndex, entry, resolutionContext) == ResourceResolution.eager)
+          (resourceId: entry.resourceId, contentHash: entry.contentHash, size: entry.size.toInt()),
+    ];
 
     // Progress counts only eager entries — lazy entries are skipped and
     // excluded entries never enter the accounting; either would otherwise
     // leave the counter permanently short of the total.
-    final totalCount = newIndex.entries
-        .where((e) => resolveResource(newIndex, e, resolutionContext) == ResourceResolution.eager)
-        .length;
+    final totalCount = entriesToDownload.length;
 
     // 5. Download changed blobs with sliding-window concurrency.
     final downloaded = await _downloadMissingBlobs(
       candidates: entriesToDownload,
-      alreadySatisfied: downloadedCount,
+      alreadySatisfied: 0,
       totalCount: totalCount,
       onProgress: onProgress,
     );

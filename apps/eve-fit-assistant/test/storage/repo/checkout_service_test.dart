@@ -387,6 +387,113 @@ void main() {
       expect(updatedMeta.resourceSnapshotHash, snapshotHash);
     });
 
+    test("changed snapshot downloads unchanged-hash entries that became eager", () async {
+      // Regression: a snapshot change used to pre-count eager entries whose
+      // content hash matched the previous snapshot without checking the blob
+      // store. After a locale switch ("en" -> "zh") combined with a snapshot
+      // update, zh.db is eager with an unchanged content hash but its blob was
+      // never downloaded; the update must fetch it instead of reporting
+      // success while the active locale blob is absent.
+      const typesRid = "resource://static/native/types.pb2";
+      const enRid = "resource://localization/locales/en.db";
+      const zhRid = "resource://localization/locales/zh.db";
+      final typesContent = Uint8List.fromList([1, 2, 3, 4]);
+      final enContent = Uint8List.fromList([5, 6, 7, 8]);
+      final zhContent = Uint8List.fromList([9, 10, 11, 12]);
+      final zhCH = RepoHash.hashContent(zhContent);
+      final zhIH = RepoHash.hashIdent(zhRid);
+
+      await assetStore.writeBlob(RepoHash.hashIdent(typesRid), typesContent);
+      await assetStore.writeBlob(RepoHash.hashIdent(enRid), enContent);
+
+      ResourceIndex buildIndex() => ResourceIndex(
+        schemaVersion: 1,
+        formatVersion: 2,
+        entries: [
+          ResourceIndex_Entry(
+            resourceId: typesRid,
+            contentHash: RepoHash.hashContent(typesContent),
+            size: Int64(typesContent.length),
+          ),
+          ResourceIndex_Entry(
+            resourceId: enRid,
+            contentHash: RepoHash.hashContent(enContent),
+            size: Int64(enContent.length),
+            downloadPolicy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+          ResourceIndex_Entry(
+            resourceId: zhRid,
+            contentHash: zhCH,
+            size: Int64(zhContent.length),
+            downloadPolicy: ResourceIndex_DownloadPolicy.NON_FORCE,
+          ),
+        ],
+      );
+      ResourceSnapshotMeta buildMeta(String createdAt) => ResourceSnapshotMeta(
+        schemaVersion: 1,
+        serverId: _testServerId,
+        gameBuild: "2026.06.15",
+        gameVersion: "1.0",
+        resourceCount: 3,
+        createdAt: createdAt,
+      );
+
+      final oldIndex = buildIndex();
+      final oldHash = await assetStore.writeResourceSnapshot(
+        meta: buildMeta("2026-06-15T12:00:00Z"),
+        resourceIndex: oldIndex,
+      );
+      // Identical entries (same content hashes), different snapshot hash.
+      final newIndex = buildIndex();
+      final newMeta = buildMeta("2026-06-16T12:00:00Z");
+      final newHash = await assetStore.writeResourceSnapshot(
+        meta: newMeta,
+        resourceIndex: newIndex,
+      );
+      expect(newHash, isNot(oldHash));
+
+      final mockRemote = _mockRemote(
+        serverIndexResult: ServerIndex(
+          schemaVersion: 1,
+          servers: [
+            ServerIndex_Entry(serverId: _testServerId, gameBuild: "2026.06.16", gameVersion: "1.0"),
+          ],
+        ).writeToBuffer(),
+        generationResourcesResult: _generationResourcesBytes(newHash),
+        resourceIndexResult: newIndex.writeToBuffer(),
+        resourceSnapshotMetaResult: newMeta,
+      );
+      when(() => mockRemote.fetchBlob(any(), any())).thenAnswer((_) async => Right(zhContent));
+
+      final service = _makeService(mockRemote, locale: "zh");
+      final checkoutId = await _createCheckout(service, snapshotHash: oldHash);
+      _writeChannelHead(_testChannelName, _testGenerationHashOld);
+
+      final progressCalls = <(int, int)>[];
+      final result = await service.applyDataUpdate(
+        checkoutId: checkoutId,
+        channel: Channel.testing,
+        channelName: _testChannelName,
+        onProgress: (downloaded, total) => progressCalls.add((downloaded, total)),
+      );
+
+      expect(result.isRight(), isTrue);
+      expect(result.toNullable(), newHash);
+
+      // zh.db's unchanged content hash must not exempt it from blob
+      // reconciliation; the missing blob is downloaded exactly once.
+      verify(() => mockRemote.fetchBlob(zhIH, zhCH)).called(1);
+      verifyNever(() => mockRemote.fetchBlob(RepoHash.hashIdent(enRid), any()));
+      verifyNever(() => mockRemote.fetchBlob(RepoHash.hashIdent(typesRid), any()));
+      expect(await assetStore.blobExists(zhIH, zhCH), isTrue);
+
+      // Progress totals count both eager entries under the new locale.
+      expect(progressCalls.last, (2, 2));
+
+      final updatedMeta = (await service.readCheckoutMeta(checkoutId)).toNullable()!;
+      expect(updatedMeta.resourceSnapshotHash, newHash);
+    });
+
     test("same snapshot fails when the local resource index is missing", () async {
       // A checkout whose local snapshot index was lost or corrupted must not
       // reconcile against an empty candidate list and report success.
