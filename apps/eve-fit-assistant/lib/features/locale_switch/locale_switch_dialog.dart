@@ -7,6 +7,7 @@ import "package:eve_fit_assistant/features/locale_switch/locale_db_download_stat
 import "package:eve_fit_assistant/pages/setting/data/data_update_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -34,6 +35,9 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
     return; // availability resolution is best-effort; the §5.3 indicator stays
   }
   if (!context.mounted) return;
+  // A later locale selection supersedes this flow: discard the availability
+  // result when [locale] is no longer the active configured locale.
+  if (ref.read(localeProvider) != locale) return;
 
   switch (availability) {
     case LocalizationDbAvailable():
