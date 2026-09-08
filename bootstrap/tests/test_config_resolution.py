@@ -24,6 +24,8 @@ class TestResolutionVocabularyPaths:
             "localization/../../escape.db",
             r"..\escape.db",
             r"localization\..\..\escape.db",
+            "C:/escape.db",
+            "C:escape.db",
             "..",
         ],
     )
@@ -40,6 +42,8 @@ class TestResolutionVocabularyPaths:
             "localization/../locales/",
             r"..\locales/",
             r"localization\..\..\locales/",
+            "C:/locales/",
+            "C:locales/",
             "..",
         ],
     )

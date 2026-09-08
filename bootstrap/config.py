@@ -19,6 +19,7 @@ import tomllib
 
 from pathlib import Path
 from pathlib import PurePosixPath
+from pathlib import PureWindowsPath
 from typing import Any
 
 from pydantic import BaseModel
@@ -213,11 +214,21 @@ class ResolutionVocabulary(BaseModel):
         too: ``PurePosixPath`` treats them as literal characters, but on
         Windows hosts they act as path separators once the value is joined to
         a ``pathlib.Path``, re-opening traversal via e.g. ``..\\escape.db``.
+        Drive-qualified Windows paths such as ``C:/escape.db`` or
+        ``C:escape.db`` are rejected for the same reason: ``PurePosixPath``
+        accepts them as relative, but native Windows joins resolve them
+        against the drive root or the drive's current directory.
         """
         path = PurePosixPath(value)
-        if "\\" in value or path.is_absolute() or ".." in path.parts:
+        if (
+            "\\" in value
+            or path.is_absolute()
+            or ".." in path.parts
+            or PureWindowsPath(value).drive
+        ):
             raise ValueError(
-                f"must be a relative POSIX path without '..' segments or backslashes, got {value!r}"
+                f"must be a relative POSIX path without '..' segments, "
+                f"backslashes, or Windows drive components, got {value!r}"
             )
         return value
 
