@@ -1,6 +1,7 @@
 @TestOn("vm")
 library;
 
+import "dart:async";
 import "dart:io";
 
 import "package:eve_fit_assistant/config/logger.dart";
@@ -303,6 +304,26 @@ void main() {
       expect(await service.localizedName(1001, "en"), "legacy en");
       expect(await service.localizedName(1001, "zh"), "legacy zh");
       expect(await service.localizedName(1001, "en"), "legacy en");
+    });
+
+    test("close snapshots in-flight warm-up opens before awaiting them", () async {
+      final service = await _openService([
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "en": {1001: "legacy en"},
+          }),
+        ),
+      ]);
+
+      // Regression: the provider can dispose while its unawaited warm-up call
+      // is still opening the database. The open's finally block removes its
+      // locale from the pending map, so close must not iterate the live map
+      // while awaiting — that would throw ConcurrentModificationError.
+      unawaited(service.warmup("en"));
+      await service.close();
+
+      expect(await service.localizedName(1001, "en"), "");
     });
   });
 }

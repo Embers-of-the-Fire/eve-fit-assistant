@@ -380,10 +380,15 @@ class LocalizationDbService {
   }
 
   Future<void> _closeDatabase() async {
-    // Wait for in-flight opens so their handles are closed too.
-    for (final pending in _pendingHandles.values) {
-      await pending;
+    // Wait for in-flight opens so their handles are closed too. Snapshot the
+    // futures before awaiting: each open removes its locale from
+    // _pendingHandles in its finally block, which would otherwise mutate the
+    // live .values iterator and throw ConcurrentModificationError.
+    final pending = _pendingHandles.values.toList();
+    for (final future in pending) {
+      await future;
     }
+    _pendingHandles.clear();
     final dbs = [?_testDb, for (final db in _handles.values) ?db];
     _handles.clear();
     for (final db in dbs) {
