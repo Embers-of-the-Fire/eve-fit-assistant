@@ -96,28 +96,38 @@ String _formatSize(int bytes) {
 
 /// Non-dismissible progress dialog for a per-locale localization database
 /// download; failure offers retry (spec §5.2).
-class LocaleDbDownloadDialog extends ConsumerWidget {
+class LocaleDbDownloadDialog extends ConsumerStatefulWidget {
   const LocaleDbDownloadDialog({required this.locale, super.key});
 
   /// The locale whose per-locale database is being downloaded.
   final String locale;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(localeDbDownloadControllerProvider(locale));
+  ConsumerState<LocaleDbDownloadDialog> createState() => _LocaleDbDownloadDialogState();
+}
 
-    ref.listen(localeDbDownloadControllerProvider(locale), (_, next) {
+class _LocaleDbDownloadDialogState extends ConsumerState<LocaleDbDownloadDialog> {
+  @override
+  void initState() {
+    super.initState();
+    // Kick off the download exactly once, after the first frame: initState
+    // cannot read providers, and a post-frame callback registered in build
+    // would multiply across rebuilds while the provider stays idle.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(ref.read(localeDbDownloadControllerProvider(widget.locale).notifier).download());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(localeDbDownloadControllerProvider(widget.locale));
+
+    ref.listen(localeDbDownloadControllerProvider(widget.locale), (_, next) {
       if (next is LocaleDbDownloadReady && context.mounted) {
         Navigator.of(context).pop();
       }
     });
-
-    if (state is LocaleDbDownloadIdle) {
-      // Kick off the download on first build.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(ref.read(localeDbDownloadControllerProvider(locale).notifier).download());
-      });
-    }
 
     final l10n = context.l10n;
     final downloading = state is LocaleDbDownloading ? state : null;
@@ -126,7 +136,7 @@ class LocaleDbDownloadDialog extends ConsumerWidget {
     return PopScope(
       canPop: downloading == null,
       child: AlertDialog(
-        title: Text(l10n.localeDbDownloadTitle(locale: locale)),
+        title: Text(l10n.localeDbDownloadTitle(locale: widget.locale)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +163,7 @@ class LocaleDbDownloadDialog extends ConsumerWidget {
                 TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
                 ElevatedButton(
                   onPressed: () => unawaited(
-                    ref.read(localeDbDownloadControllerProvider(locale).notifier).download(),
+                    ref.read(localeDbDownloadControllerProvider(widget.locale).notifier).download(),
                   ),
                   child: Text(l10n.dataUpdateActionRetry),
                 ),

@@ -214,6 +214,35 @@ void main() {
       verifyNever(() => mockAssetStore.writeBlobUncheckedAt(any(), any()));
     });
 
+    test("rejects a concurrent call while a download is in flight", () async {
+      makeContainer(indexIds: [_zhDbId]);
+      final gate = Completer<void>();
+      when(
+        () => mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).thenAnswer((_) async {
+        await gate.future;
+        return Right(_zhDbBytes);
+      });
+      when(() => mockAssetStore.writeBlobUncheckedAt(any(), any())).thenAnswer((_) async {});
+
+      final controller = container.read(localeDbDownloadControllerProvider("zh").notifier);
+      final first = controller.download();
+
+      // The second call observes the in-flight download and is rejected: it
+      // returns without touching the network or the state.
+      await controller.download();
+      expect(container.read(localeDbDownloadControllerProvider("zh")), isA<LocaleDbDownloading>());
+
+      gate.complete();
+      await first;
+
+      expect(container.read(localeDbDownloadControllerProvider("zh")), isA<LocaleDbDownloadReady>());
+      verify(
+        () => mockCatalog.fetchBlob(any(), any(), onReceiveProgress: any(named: "onReceiveProgress")),
+      ).called(1);
+      verify(() => mockAssetStore.writeBlobUncheckedAt(any(), any())).called(1);
+    });
+
     test("entry absent from the index → failed(unknown)", () async {
       makeContainer(); // no per-locale entry
 

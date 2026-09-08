@@ -3,6 +3,8 @@ import "dart:async";
 import "package:eve_fit_assistant/components/dialog/confirm_dialog.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/features/locale_switch/locale_db_download_controller.dart";
+import "package:eve_fit_assistant/features/locale_switch/locale_db_download_state.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
@@ -13,6 +15,20 @@ import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 
 import "../../test_helpers.dart";
+
+/// Counts [download] calls while remaining idle, so tests can observe how
+/// often the dialog kicks off the download.
+class _CountingDownloadController extends LocaleDbDownloadController {
+  int downloadCalls = 0;
+
+  @override
+  LocaleDbDownloadState build(String locale) => const LocaleDbDownloadState.idle();
+
+  @override
+  Future<void> download() async {
+    downloadCalls++;
+  }
+}
 
 class _TestAppSettingService extends AppSettingService {
   _TestAppSettingService(this._initial);
@@ -100,5 +116,43 @@ void main() {
 
     expect(find.byType(ConfirmDialog), findsOneWidget);
     expect(find.textContaining("English"), findsNothing);
+  });
+
+  testWidgets("kicks off the download once across rebuilds while the provider stays idle", (
+    tester,
+  ) async {
+    late _CountingDownloadController controller;
+    final rebuilds = ValueNotifier(0);
+    addTearDown(rebuilds.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          localeDbDownloadControllerProvider(
+            "zh",
+          ).overrideWith(() => controller = _CountingDownloadController()),
+        ],
+        child: testApp(
+          Scaffold(
+            body: ValueListenableBuilder<int>(
+              valueListenable: rebuilds,
+              builder: (_, _, _) => const LocaleDbDownloadDialog(locale: "zh"),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // The one-time lifecycle kick-off ran after the first frame.
+    expect(controller.downloadCalls, 1);
+
+    // Rebuilds arriving before the download state leaves idle must not
+    // schedule further downloads.
+    rebuilds.value++;
+    await tester.pump();
+    rebuilds.value++;
+    await tester.pump();
+
+    expect(controller.downloadCalls, 1);
   });
 }

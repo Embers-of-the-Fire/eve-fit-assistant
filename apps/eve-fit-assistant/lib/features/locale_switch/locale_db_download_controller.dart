@@ -23,7 +23,11 @@ class LocaleDbDownloadController extends _$LocaleDbDownloadController {
 
   /// Downloads the per-locale database for [locale] from the active
   /// checkout's remote catalog.
+  ///
+  /// Single-flight: calls arriving while a download is already in progress
+  /// are rejected, so duplicate kick-offs cannot fetch or write twice.
   Future<void> download() async {
+    if (state is LocaleDbDownloading) return;
     state = const LocaleDbDownloadState.downloading(downloadedBytes: 0, totalBytes: 0);
     try {
       final proxy = await ref.read(resourceBlobProxyProvider.future);
