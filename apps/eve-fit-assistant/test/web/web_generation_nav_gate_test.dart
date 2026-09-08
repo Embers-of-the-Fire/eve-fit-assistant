@@ -4,6 +4,7 @@ library;
 import "package:efa_proto/resource_index.pb.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:fpdart/fpdart.dart";
 import "package:mocktail/mocktail.dart";
@@ -55,6 +56,7 @@ void main() {
     final result = await service.fetchServerSelectionData(
       channel: Channel.testing,
       channelName: fixtureChannelName,
+      context: const ResourceResolutionContext(locale: "en"),
     );
     final data = result.match((e) => fail("fetchServerSelectionData failed: $e"), (d) => d);
 

@@ -16,6 +16,7 @@ import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -130,6 +131,7 @@ void main() {
       name: IMap(const {"en": "Tranquility"}),
       generationHash: _testGenerationHash,
       resourceSnapshotHash: _testSnapshotHash,
+      context: const ResourceResolutionContext(locale: "en"),
     );
   }
 
@@ -672,7 +674,7 @@ void main() {
     });
   });
 
-  group("Download policy", () {
+  group("Resource resolution", () {
     /// Builds a policy-aware (format_version 2) [ResourceIndex].
     ResourceIndex buildPolicyAwareIndex(
       List<({String resourceId, String contentHash, int size, bool force})> entries,
@@ -694,7 +696,7 @@ void main() {
       return ri;
     }
 
-    test("skips NON_FORCE entries and downloads FORCE entries", () async {
+    test("skips entries resolving to lazy and downloads eager entries", () async {
       const ridForce = "resource://static/collection.pb2";
       const ridLazy = "resource://static/images/graphics/1.png";
       final forceBytes = Uint8List.fromList([0x11, 0x22]);
@@ -704,9 +706,11 @@ void main() {
       final lazyCH = RepoHash.hashContent(lazyBytes);
       final lazyIH = RepoHash.hashIdent(ridLazy);
 
+      // The stamped policies are deliberately inverted: the RRS resolution
+      // (collection eager via R5, image lazy via R4) overrides them.
       final ri = buildPolicyAwareIndex([
-        (resourceId: ridForce, contentHash: forceCH, size: 2, force: true),
-        (resourceId: ridLazy, contentHash: lazyCH, size: 2, force: false),
+        (resourceId: ridForce, contentHash: forceCH, size: 2, force: false),
+        (resourceId: ridLazy, contentHash: lazyCH, size: 2, force: true),
       ]);
       final si = _buildServerIndex(_testServerId);
 
@@ -750,7 +754,7 @@ void main() {
       final complete = states.last as ProvisionerComplete;
       expect(complete.failedBlobs, isEmpty);
 
-      // FORCE blob downloaded; NON_FORCE blob untouched.
+      // Eager blob downloaded; lazy blob untouched.
       expect(await fakeAssetStore.blobExists(forceIH, forceCH), isTrue);
       expect(await fakeAssetStore.blobExists(lazyIH, lazyCH), isFalse);
       verifyNever(
@@ -769,13 +773,84 @@ void main() {
       expect(downloading.progress, 1.0);
     });
 
-    test("treats every entry as FORCE for pre-policy indexes", () async {
-      const rid = "resource://static/images/icons/1.png";
+    test("excluded entries are never provisioned", () async {
+      // A snapshot with per-locale dbs: R1 excludes the legacy combined db,
+      // R2 makes the active locale eager, R3 keeps other locales lazy.
+      const ridLegacy = "resource://localization/localization.db";
+      const ridActive = "resource://localization/locales/en.db";
+      const ridOther = "resource://localization/locales/zh.db";
+      final activeBytes = Uint8List.fromList([0x66]);
+      final activeCH = RepoHash.hashContent(activeBytes);
+      final activeIH = RepoHash.hashIdent(ridActive);
+
+      final ri = buildPolicyAwareIndex([
+        (resourceId: ridLegacy, contentHash: "aa" * 32, size: 100, force: true),
+        (resourceId: ridActive, contentHash: activeCH, size: 1, force: false),
+        (resourceId: ridOther, contentHash: "cc" * 32, size: 1, force: false),
+      ]);
+      final si = _buildServerIndex(_testServerId);
+
+      when(
+        () => mockRemoteCatalog.fetchResourceIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(ri.writeToBuffer())));
+      when(() => mockRemoteCatalog.fetchResourceSnapshotMeta(any())).thenAnswer(
+        (_) async => Right(
+          ResourceSnapshotMeta(
+            schemaVersion: 1,
+            serverId: _testServerId,
+            gameBuild: "21.0",
+            gameVersion: "1.0",
+            resourceCount: 3,
+            createdAt: "2026-06-15T12:00:00Z",
+          ),
+        ),
+      );
+      when(
+        () => mockRemoteCatalog.fetchServerIndex(any()),
+      ).thenAnswer((_) async => Right(Uint8List.fromList(si.writeToBuffer())));
+      when(
+        () => mockRemoteCatalog.fetchBlob(
+          any(),
+          any(),
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      ).thenAnswer((_) async => Right(activeBytes));
+
+      configureProvisioner();
+      final states = await collectStates();
+
+      expect(states.last, isA<ProvisionerComplete>());
+
+      // Only the active locale's db downloaded.
+      expect(await fakeAssetStore.blobExists(activeIH, activeCH), isTrue);
+      verifyNever(
+        () => mockRemoteCatalog.fetchBlob(
+          RepoHash.hashIdent(ridLegacy),
+          any(),
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      );
+      verifyNever(
+        () => mockRemoteCatalog.fetchBlob(
+          RepoHash.hashIdent(ridOther),
+          any(),
+          onReceiveProgress: any(named: "onReceiveProgress"),
+        ),
+      );
+
+      // Progress totals count only the eager entry.
+      final preparing = states.whereType<ProvisionerPreparing>().last;
+      expect(preparing.totalBlobs, 1);
+    });
+
+    test("resolves pre-policy index entries via the RRS", () async {
+      const rid = "resource://static/collection.pb2";
       final blobBytes = Uint8List.fromList([0x55]);
       final contentHash = RepoHash.hashContent(blobBytes);
       final identHash = RepoHash.hashIdent(rid);
 
-      // format_version absent (defaults to 1); download_policy is ignored.
+      // format_version absent (defaults to 1); the stamped download_policy
+      // is ignored in favor of the RRS.
       final ri = ResourceIndex()..schemaVersion = 1;
       ri.entries.add(
         ResourceIndex_Entry()

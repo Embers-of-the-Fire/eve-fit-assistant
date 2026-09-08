@@ -53,10 +53,11 @@ def _make_localization_db(strings: dict[tuple[str, int], str]) -> bytes:
 
 def _build_snapshot(schema_root: Path, snapshot_hash: str) -> dict[str, bytes]:
     """Write a minimal snapshot (5 engine blobs + collection + localization)."""
-    from bootstrap.data.d1.sync import COLLECTION_RESOURCE_ID
     from bootstrap.data.d1.sync import ENGINE_FAMILIES
-    from bootstrap.data.d1.sync import LOCALIZATION_RESOURCE_ID
     from bootstrap.data.d1.sync import _load_efos_pb2
+    from bootstrap.data.d1.sync import collection_resource_id
+    from bootstrap.data.d1.sync import engine_resource_id
+    from bootstrap.data.d1.sync import localization_resource_id
     from bootstrap.data.schema import collections_pb2
     from bootstrap.data.schema import resource_index_pb2
 
@@ -127,15 +128,15 @@ def _build_snapshot(schema_root: Path, snapshot_hash: str) -> dict[str, bytes]:
         "dogma_attributes": dogma_attributes.SerializeToString(),
         "dogma_effects": dogma_effects.SerializeToString(),
         "buffs": buffs.SerializeToString(),
-        COLLECTION_RESOURCE_ID: collection.SerializeToString(),
-        LOCALIZATION_RESOURCE_ID: localization,
+        collection_resource_id(): collection.SerializeToString(),
+        localization_resource_id(): localization,
     }
 
     index = resource_index_pb2.ResourceIndex()
     index.schema_version = 1
     index.format_version = 2
-    for family, (resource_id, _msg) in ENGINE_FAMILIES.items():
-        blobs[resource_id] = blobs.pop(family)
+    for family in ENGINE_FAMILIES:
+        blobs[engine_resource_id(family)] = blobs.pop(family)
     for resource_id, data in blobs.items():
         _write_blob(schema_root, resource_id, data)
         from bootstrap.remote.hash import content_hash
@@ -215,6 +216,80 @@ class TestLoadSnapshotEntries:
         )
         assert negative_effect_meta.dogma_effect_id == -64
         assert negative_effect_meta.name == "shipModularity"
+
+
+class TestCustomResolutionVocabulary:
+    def test_d1_resource_ids_follow_custom_scheme(
+        self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from bootstrap.config import ProjectConfiguration
+        from bootstrap.data.d1.sync import collection_resource_id
+        from bootstrap.data.d1.sync import engine_resource_id
+        from bootstrap.data.d1.sync import load_snapshot_entries
+        from bootstrap.data.d1.sync import localization_resource_id
+
+        cfg = ProjectConfiguration.model_validate(
+            {
+                "localizations": {
+                    "default": "en",
+                    "supported": ["en"],
+                    "translation": {"en": "English"},
+                },
+                "paths": {"log": "data/log"},
+                "version": {"major": 0, "minor": 1, "patch": 0},
+                "resolution": {"scheme": "custom://"},
+            }
+        )
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+
+        assert engine_resource_id("types") == "custom://static/native/types.pb2"
+        assert engine_resource_id("buffs") == "custom://static/native/dbuffcollections.pb2"
+        assert collection_resource_id() == "custom://static/collection.pb2"
+        assert localization_resource_id() == "custom://localization/localization.db"
+
+        # The snapshot builder addresses blobs via the same resolver, so the
+        # custom-scheme index is found instead of missed.
+        snapshot_hash = "f1" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+        entries = load_snapshot_entries(schema_root, snapshot_hash)
+        assert {entry.family for entry in entries} == {
+            "types",
+            "type_dogma",
+            "dogma_attributes",
+            "dogma_effects",
+            "buffs",
+            "type_meta",
+            "dogma_attribute_meta",
+            "dogma_effect_meta",
+        }
+
+    def test_custom_legacy_localization_db_path(
+        self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from bootstrap.config import ProjectConfiguration
+        from bootstrap.data.d1.sync import load_snapshot_entries
+        from bootstrap.data.d1.sync import localization_resource_id
+
+        cfg = ProjectConfiguration.model_validate(
+            {
+                "localizations": {
+                    "default": "en",
+                    "supported": ["en"],
+                    "translation": {"en": "English"},
+                },
+                "paths": {"log": "data/log"},
+                "version": {"major": 0, "minor": 1, "patch": 0},
+                "resolution": {"legacy_localization_db": "i18n/combined.db"},
+            }
+        )
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+
+        assert localization_resource_id() == "resource://i18n/combined.db"
+
+        snapshot_hash = "f2" * 32
+        _build_snapshot(schema_root, snapshot_hash)
+        entries = load_snapshot_entries(schema_root, snapshot_hash)
+        assert any(entry.family == "type_meta" for entry in entries)
 
 
 class TestFoldFamily:

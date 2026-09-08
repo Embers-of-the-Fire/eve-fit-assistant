@@ -18,6 +18,8 @@ import sys
 import tomllib
 
 from pathlib import Path
+from pathlib import PurePosixPath
+from pathlib import PureWindowsPath
 from typing import Any
 
 from pydantic import BaseModel
@@ -25,6 +27,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import SecretStr
 from pydantic import ValidationError
+from pydantic import field_validator
 from pydantic import model_validator
 
 from bootstrap.constant import CACHE_CONFIG_PATH
@@ -176,12 +179,74 @@ class SchemaConfig(BaseModel):
         return self
 
 
+class ResolutionVocabulary(BaseModel):
+    """Shared resource-resolution vocabulary (paths, prefixes, placeholders).
+
+    Single source of truth for the strings the app and the data pipeline must
+    agree on: resource-id scheme, the legacy combined localization database
+    path, the per-locale database prefix, the static images prefix, and the
+    resolution-context placeholder name. Generated into Dart by
+    ``bootstrap.data.codegen.resource_vocabulary``; overridable via the
+    ``[resolution]`` table in ``efa.config.toml``.
+    """
+
+    model_config = ConfigDict(validate_default=True)
+
+    #: URI scheme prefix of checkout resource ids.
+    scheme: str = Field(default="resource://")
+    #: Path (relative to ``resource://``) of the legacy combined localization db.
+    legacy_localization_db: str = Field(default="localization/localization.db")
+    #: Path prefix (relative to ``resource://``) of the per-locale databases.
+    localization_locales_prefix: str = Field(default="localization/locales/")
+    #: Path prefix (relative to ``resource://``) of the static image resources.
+    static_images_prefix: str = Field(default="static/images/")
+    #: Resolution-context placeholder embedded in resource-id patterns.
+    locale_placeholder: str = Field(default="locale")
+
+    @field_validator("legacy_localization_db", "localization_locales_prefix")
+    @classmethod
+    def _validate_relative_posix_path(cls, value: str) -> str:
+        """Reject paths that could escape the generation output directory.
+
+        The localization generator creates, unlinks, and recreates SQLite files
+        at these paths joined to the generated workspace, so they must stay
+        relative POSIX paths without ``..`` segments. Backslashes are rejected
+        too: ``PurePosixPath`` treats them as literal characters, but on
+        Windows hosts they act as path separators once the value is joined to
+        a ``pathlib.Path``, re-opening traversal via e.g. ``..\\escape.db``.
+        Drive-qualified Windows paths such as ``C:/escape.db`` or
+        ``C:escape.db`` are rejected for the same reason: ``PurePosixPath``
+        accepts them as relative, but native Windows joins resolve them
+        against the drive root or the drive's current directory.
+        """
+        path = PurePosixPath(value)
+        if (
+            "\\" in value
+            or path.is_absolute()
+            or ".." in path.parts
+            or PureWindowsPath(value).drive
+        ):
+            raise ValueError(
+                f"must be a relative POSIX path without '..' segments, "
+                f"backslashes, or Windows drive components, got {value!r}"
+            )
+        return value
+
+
+#: The built-in resolution vocabulary, before any ``efa.config.toml`` override.
+DEFAULT_RESOLUTION_VOCABULARY: ResolutionVocabulary = ResolutionVocabulary()
+
+
 #: Resource path prefixes (relative to ``resource://``) that are marked
 #: NON_FORCE in generated resource snapshots and therefore downloaded lazily
 #: on first access instead of ahead of time. Bound to the data generator
 #: implementation; overridable via the ``[download]`` table in
-#: ``efa.config.toml``.
-DEFAULT_LAZY_PREFIXES: list[str] = ["static/images/"]
+#: ``efa.config.toml``. The legacy combined localization database is
+#: deliberately absent so it stays FORCE for released clients.
+DEFAULT_LAZY_PREFIXES: list[str] = [
+    DEFAULT_RESOLUTION_VOCABULARY.static_images_prefix,
+    DEFAULT_RESOLUTION_VOCABULARY.localization_locales_prefix,
+]
 
 
 class DownloadConfig(BaseModel):
@@ -197,8 +262,25 @@ class ProjectConfiguration(BaseModel):
     paths: ProjectPaths
     data_schema: SchemaConfig = Field(default_factory=SchemaConfig)
     download: DownloadConfig = Field(default_factory=DownloadConfig)
+    resolution: ResolutionVocabulary = Field(default_factory=ResolutionVocabulary)
     version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _derive_download_defaults(self) -> ProjectConfiguration:
+        """Derive omitted lazy prefixes from the effective resolution vocabulary.
+
+        A custom ``[resolution]`` table relocates the images and per-locale
+        database prefixes; unless ``[download].lazy_prefixes`` is set
+        explicitly, the lazy classification must follow the effective
+        vocabulary instead of the built-in defaults.
+        """
+        if "lazy_prefixes" not in self.download.model_fields_set:
+            self.download.lazy_prefixes = [
+                self.resolution.static_images_prefix,
+                self.resolution.localization_locales_prefix,
+            ]
+        return self
 
     @staticmethod
     def load_from_global():
@@ -222,6 +304,30 @@ class ProjectConfiguration(BaseModel):
     def ensure_loaded():
         if CONFIGURATION is None:
             ProjectConfiguration.load_from_global()
+
+
+def effective_resolution() -> ResolutionVocabulary:
+    """Resolve the effective resolution vocabulary after configuration loading.
+
+    Returns ``CONFIGURATION.resolution`` once the project configuration has
+    been loaded; falls back to the built-in vocabulary otherwise.
+    """
+    if CONFIGURATION is not None:
+        return CONFIGURATION.resolution
+    return DEFAULT_RESOLUTION_VOCABULARY
+
+
+def effective_lazy_prefixes() -> list[str]:
+    """Resolve the effective lazy-download prefixes after configuration loading.
+
+    Returns ``CONFIGURATION.download.lazy_prefixes`` once the project
+    configuration has been loaded (already derived from a custom
+    ``[resolution]`` table unless ``[download]`` overrides it); falls back
+    to the built-in defaults otherwise.
+    """
+    if CONFIGURATION is not None:
+        return list(CONFIGURATION.download.lazy_prefixes)
+    return list(DEFAULT_LAZY_PREFIXES)
 
 
 class DeveloperPaths(BaseModel):

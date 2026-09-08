@@ -28,6 +28,7 @@ import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/repo_error.dart";
 import "package:eve_fit_assistant/storage/repo/repo_state.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
@@ -147,7 +148,8 @@ Future<IList<ServerSummary>> serverList(Ref ref, String channelName) async =>
 ///
 /// Uses [GenerationNavigationService.fetchServerSelectionData] to include
 /// per-server `{contentHash → size}` maps so the server step can compute the
-/// deduplicated download footprint across selected servers.
+/// deduplicated download footprint across selected servers. Resolved against
+/// the active locale, so the eager/lazy split re-computes on locale change.
 @riverpod
 Future<ServerSelectionData> serverSelectionData(Ref ref, String channelName) async =>
     (await ref
@@ -155,6 +157,7 @@ Future<ServerSelectionData> serverSelectionData(Ref ref, String channelName) asy
             .fetchServerSelectionData(
               channel: Channel.tryParse(channelName) ?? Channel.defaultChannel,
               channelName: channelName,
+              context: ResourceResolutionContext(locale: ref.watch(localeProvider).name),
             ))
         .match((e) => throw e, (o) => o);
 
@@ -173,6 +176,8 @@ CheckoutService checkoutService(Ref ref) => CheckoutService(
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
   diffEngine: ref.watch(diffEngineProvider),
   checkoutRegistry: ref.watch(checkoutRegistryServiceProvider),
+  // Rebuilt on locale change so RRS evaluation reads the active locale.
+  resolutionContext: ResourceResolutionContext(locale: ref.watch(localeProvider).name),
 );
 
 @riverpodSingleton
@@ -181,6 +186,8 @@ VerificationService verificationService(Ref ref) => VerificationService(
   assetStore: ref.watch(assetStoreProvider),
   checkoutRegistry: ref.watch(checkoutRegistryServiceProvider),
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
+  // Rebuilt on locale change so RRS evaluation reads the active locale.
+  resolutionContext: ResourceResolutionContext(locale: ref.watch(localeProvider).name),
 );
 
 // ── Top-level orchestrator ─────────────────────────────────────────────────────

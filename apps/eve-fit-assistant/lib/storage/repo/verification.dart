@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart";
@@ -51,12 +52,18 @@ class VerificationService {
     required this.assetStore,
     required this.checkoutRegistry,
     required this.remoteCatalogService,
+    required this.resolutionContext,
   });
 
   final CheckoutService checkoutService;
   final AssetStore assetStore;
   final CheckoutRegistryService checkoutRegistry;
   final RemoteCatalogService remoteCatalogService;
+
+  /// The RRS evaluation context (active app locale) captured when this
+  /// service was built. Verification resolves each index entry through the
+  /// Resource Resolution Schema with this context.
+  final ResourceResolutionContext resolutionContext;
 
   bool _running = false;
 
@@ -99,7 +106,7 @@ class VerificationService {
       if (kIsWeb) {
         return await _verifyInternal(onProgress: onProgress);
       }
-      final paths = _capturePaths();
+      final paths = _capturePaths(resolutionContext.locale);
       if (onProgress == null) {
         return await _spawnVerify(paths, null);
       }
@@ -131,7 +138,7 @@ class VerificationService {
       if (kIsWeb) {
         return await _pruneInternal(onProgress: onProgress);
       }
-      final paths = _capturePaths();
+      final paths = _capturePaths(resolutionContext.locale);
       if (onProgress == null) {
         return await _spawnPrune(paths, null);
       }
@@ -163,13 +170,14 @@ class VerificationService {
     final checkouts = registry.toNullable()!.checkouts.entries.toList();
 
     // Load all resource indexes up front so progress totals are accurate.
+    // Only entries verification visits (i.e. not RRS-excluded) are counted.
     final resourceIndexes = <String, ResourceIndex>{};
     var totalBlobs = 0;
     for (final entry in checkouts) {
       final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
       if (ri.isSome()) {
         resourceIndexes[entry.key] = ri.toNullable()!;
-        totalBlobs += ri.toNullable()!.entries.length;
+        totalBlobs += countVerificationTargets(ri.toNullable()!, resolutionContext);
       }
     }
 
@@ -201,6 +209,7 @@ class VerificationService {
       final offset = checkedOffset;
       final missing = await assetStore.verifyResourceIndex(
         ri,
+        context: resolutionContext,
         onProgress: onProgress == null
             ? null
             : (checked, _) {
@@ -210,7 +219,7 @@ class VerificationService {
                 }
               },
       );
-      checkedOffset += ri.entries.length;
+      checkedOffset += countVerificationTargets(ri, resolutionContext);
 
       if (missing.isNotEmpty) {
         issues.add(
@@ -421,6 +430,7 @@ typedef _IsolatePaths = ({
   String temp,
   String caches,
   String? downloads,
+  String locale,
 });
 
 void _seedPaths(_IsolatePaths paths) {
@@ -431,13 +441,14 @@ void _seedPaths(_IsolatePaths paths) {
   PathProvider.downloadsPath = paths.downloads;
 }
 
-_IsolatePaths _capturePaths() => (
+_IsolatePaths _capturePaths(String locale) => (
   appSupport: PathProvider.appSupportPath,
   logs: PathProvider.logsPath,
   documents: PathProvider.documentsPath,
   temp: PathProvider.tempPath,
   caches: PathProvider.cachesPath,
   downloads: PathProvider.downloadsPath,
+  locale: locale,
 );
 
 Future<IList<VerificationIssue>> _spawnVerify(_IsolatePaths paths, SendPort? sendPort) =>
@@ -459,6 +470,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
   final assetStore = AssetStore();
   final registryService = CheckoutRegistryService();
   await registryService.load();
+  final resolutionContext = ResourceResolutionContext(locale: paths.locale);
 
   final registry = registryService.readRegistry();
   if (registry.isNone()) return const IList.empty();
@@ -471,7 +483,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
     final ri = await assetStore.readResourceIndex(entry.value.resourceSnapshotHash);
     if (ri.isSome()) {
       resourceIndexes[entry.key] = ri.toNullable()!;
-      totalBlobs += ri.toNullable()!.entries.length;
+      totalBlobs += countVerificationTargets(ri.toNullable()!, resolutionContext);
     }
   }
 
@@ -504,6 +516,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
     final offset = checkedOffset;
     final missing = await assetStore.verifyResourceIndex(
       ri,
+      context: resolutionContext,
       onProgress: progress == null
           ? null
           : (checked, _) {
@@ -513,7 +526,7 @@ Future<IList<VerificationIssue>> _isolateVerify(_IsolatePaths paths, SendPort? p
               }
             },
     );
-    checkedOffset += ri.entries.length;
+    checkedOffset += countVerificationTargets(ri, resolutionContext);
 
     if (missing.isNotEmpty) {
       issues.add(

@@ -13,6 +13,8 @@ import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
+import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
+import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:file_picker/file_picker.dart";

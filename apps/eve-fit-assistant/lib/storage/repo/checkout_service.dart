@@ -17,6 +17,7 @@ import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/utils.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
@@ -35,12 +36,19 @@ class CheckoutService {
     required this.remoteCatalogService,
     required this.diffEngine,
     required this.checkoutRegistry,
+    required this.resolutionContext,
   });
 
   final AssetStore assetStore;
   final RemoteCatalogService remoteCatalogService;
   final DiffEngine diffEngine;
   final CheckoutRegistryService checkoutRegistry;
+
+  /// The RRS evaluation context (active app locale) captured when this
+  /// service was built. Download decisions are resolved through the Resource
+  /// Resolution Schema with this context — never from the server-stamped
+  /// `download_policy` directly.
+  final ResourceResolutionContext resolutionContext;
 
   BlobStore get _store => assetStore.store;
 
@@ -279,8 +287,37 @@ class CheckoutService {
       }
     }
 
-    // 3. Same snapshot: update metadata only, skip downloads.
+    // 3. Same snapshot: no diff to apply, but entries that became eager
+    // after a locale change (this service is rebuilt with the new locale's
+    // resolution context) may be missing locally. Reconcile eager entries
+    // against the local blobs and download what is missing before reporting
+    // success.
     if (newSnapshotHash == m.resourceSnapshotHash) {
+      final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
+      // A missing or unparseable local index must not be treated as an empty
+      // candidate list: reconciliation would trivially succeed while required
+      // eager blobs remain absent.
+      if (ri.isNone()) {
+        return const Left("Local resource index not found");
+      }
+      final localIndex = ri.toNullable()!;
+      final eagerEntries = localIndex.entries
+          .where(
+            (e) => resolveResource(localIndex, e, resolutionContext) == ResourceResolution.eager,
+          )
+          .toList();
+      final reconciled = await _downloadMissingBlobs(
+        candidates: [
+          for (final e in eagerEntries)
+            (resourceId: e.resourceId, contentHash: e.contentHash, size: e.size.toInt()),
+        ],
+        alreadySatisfied: 0,
+        totalCount: eagerEntries.length,
+        onProgress: onProgress,
+      );
+      if (!reconciled) {
+        return const Left("Failed to download changed files");
+      }
       await _updateAfterFetch(
         checkoutId,
         channelName,
@@ -289,16 +326,10 @@ class CheckoutService {
         m.resourceSnapshotHash,
         label: remoteLabel,
       );
-      final ri = await assetStore.readResourceIndex(m.resourceSnapshotHash);
-      final total = ri.match(
-        () => 0,
-        (r) => r.entries.where((e) => shouldEagerDownload(r, e)).length,
-      );
-      onProgress?.call(total, total);
       return Right(m.resourceSnapshotHash);
     }
 
-    // 4. Fetch the new ResourceIndex and diff against the previous one.
+    // 4. Fetch the new ResourceIndex and collect the eager entries.
     final indexBytes = await remoteCatalogService.fetchResourceIndex(newSnapshotHash);
     if (indexBytes.isLeft()) {
       final err = indexBytes.getLeft().toNullable()!;
@@ -311,123 +342,32 @@ class CheckoutService {
       return Left(e.toString());
     }
 
-    final previousIndex = await assetStore.readResourceIndex(m.resourceSnapshotHash);
-    final entriesToDownload = <({String resourceId, String contentHash, int size})>[];
-    int downloadedCount = 0;
+    // Every eager entry goes through blob reconciliation, including entries
+    // whose content hash is unchanged from the previous snapshot: an entry
+    // may have become eager after a locale change (or its blob may have been
+    // pruned) without its hash changing, and _downloadMissingBlobs only
+    // verifies candidates. Entries resolving to lazy fetch on first access;
+    // excluded entries never enter the download accounting.
+    final entriesToDownload = <({String resourceId, String contentHash, int size})>[
+      for (final entry in newIndex.entries)
+        if (resolveResource(newIndex, entry, resolutionContext) == ResourceResolution.eager)
+          (resourceId: entry.resourceId, contentHash: entry.contentHash, size: entry.size.toInt()),
+    ];
 
-    if (previousIndex.isNone()) {
-      for (final entry in newIndex.entries) {
-        // NON_FORCE entries fetch lazily on first access; skip them here.
-        if (!shouldEagerDownload(newIndex, entry)) continue;
-        entriesToDownload.add((
-          resourceId: entry.resourceId,
-          contentHash: entry.contentHash,
-          size: entry.size.toInt(),
-        ));
-      }
-    } else {
-      final prevMap = <String, String>{};
-      for (final e in previousIndex.toNullable()!.entries) {
-        prevMap[e.resourceId] = e.contentHash;
-      }
-      for (final e in newIndex.entries) {
-        if (!shouldEagerDownload(newIndex, e)) continue;
-        final prevHash = prevMap[e.resourceId];
-        if (prevHash == null || prevHash != e.contentHash) {
-          entriesToDownload.add((
-            resourceId: e.resourceId,
-            contentHash: e.contentHash,
-            size: e.size.toInt(),
-          ));
-        } else {
-          downloadedCount++;
-        }
-      }
-    }
-
-    // Entries whose blobs are already in the store count as downloaded
-    // immediately. Pre-build identHash and blob path once per entry.
-    final actualToDownload =
-        <({String resourceId, String contentHash, String identHash, String blobPath, int size})>[];
-    for (final dl in entriesToDownload) {
-      final ihash = RepoHash.hashIdent(dl.resourceId);
-      if (await assetStore.blobExists(ihash, dl.contentHash)) {
-        downloadedCount++;
-      } else {
-        actualToDownload.add((
-          resourceId: dl.resourceId,
-          contentHash: dl.contentHash,
-          identHash: ihash,
-          blobPath: RepoPaths.blobPath(ihash, dl.contentHash),
-          size: dl.size,
-        ));
-      }
-    }
-
-    actualToDownload.sort((a, b) => b.size.compareTo(a.size));
-
-    // Progress counts only eager entries — NON_FORCE entries are skipped and
-    // would otherwise leave the counter permanently short of the total.
-    final totalCount = newIndex.entries.where((e) => shouldEagerDownload(newIndex, e)).length;
-    onProgress?.call(downloadedCount, totalCount);
+    // Progress counts only eager entries — lazy entries are skipped and
+    // excluded entries never enter the accounting; either would otherwise
+    // leave the counter permanently short of the total.
+    final totalCount = entriesToDownload.length;
 
     // 5. Download changed blobs with sliding-window concurrency.
-    const blobConcurrency = kBlobDownloadConcurrency;
+    final downloaded = await _downloadMissingBlobs(
+      candidates: entriesToDownload,
+      alreadySatisfied: 0,
+      totalCount: totalCount,
+      onProgress: onProgress,
+    );
 
-    var nextIdx = 0;
-    var completedFromDownload = 0;
-    var downloadFailed = false;
-    var lastProgressMs = 0;
-    const throttleMs = 200;
-
-    void maybeProgress() {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final current = downloadedCount + completedFromDownload;
-      if (now - lastProgressMs >= throttleMs || current >= totalCount) {
-        onProgress?.call(current, totalCount);
-        lastProgressMs = now;
-      }
-    }
-
-    if (actualToDownload.isNotEmpty) {
-      Future<void> downloadNext() async {
-        int idx;
-        while ((idx = nextIdx++) < actualToDownload.length) {
-          final dl = actualToDownload[idx];
-          final blobResult = await remoteCatalogService.fetchBlob(dl.identHash, dl.contentHash);
-
-          if (blobResult.isRight()) {
-            try {
-              await assetStore.writeBlobUncheckedAt(
-                dl.blobPath,
-                blobResult.getRight().toNullable()!,
-              );
-            } catch (e, stackTrace) {
-              warning("Failed to write blob ${dl.blobPath}", stackTrace: stackTrace);
-              downloadFailed = true;
-              return;
-            }
-            completedFromDownload++;
-            maybeProgress();
-          } else {
-            downloadFailed = true;
-            return;
-          }
-        }
-      }
-
-      final tasks = <Future<void>>[
-        for (var i = 0; i < blobConcurrency.clamp(1, actualToDownload.length); i++) downloadNext(),
-      ];
-      await Future.wait(tasks);
-    }
-
-    // Final progress emit after all workers finish.
-    if (actualToDownload.isNotEmpty) {
-      onProgress?.call(downloadedCount + completedFromDownload, totalCount);
-    }
-
-    if (downloadFailed) {
+    if (!downloaded) {
       return const Left("Failed to download changed files");
     }
 
@@ -500,6 +440,100 @@ class CheckoutService {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  /// Ensures the blobs for [candidates] exist locally, downloading the missing
+  /// ones with sliding-window concurrency.
+  ///
+  /// [alreadySatisfied] seeds the progress counter with eager entries that
+  /// need no reconciliation; [totalCount] is the eager-entry denominator
+  /// reported to [onProgress].
+  ///
+  /// Returns true when every candidate blob is present locally afterwards.
+  Future<bool> _downloadMissingBlobs({
+    required List<({String resourceId, String contentHash, int size})> candidates,
+    required int alreadySatisfied,
+    required int totalCount,
+    void Function(int downloaded, int total)? onProgress,
+  }) async {
+    var downloadedCount = alreadySatisfied;
+
+    // Entries whose blobs are already in the store count as downloaded
+    // immediately. Pre-build identHash and blob path once per entry.
+    final actualToDownload =
+        <({String resourceId, String contentHash, String identHash, String blobPath, int size})>[];
+    for (final dl in candidates) {
+      final ihash = RepoHash.hashIdent(dl.resourceId);
+      if (await assetStore.blobExists(ihash, dl.contentHash)) {
+        downloadedCount++;
+      } else {
+        actualToDownload.add((
+          resourceId: dl.resourceId,
+          contentHash: dl.contentHash,
+          identHash: ihash,
+          blobPath: RepoPaths.blobPath(ihash, dl.contentHash),
+          size: dl.size,
+        ));
+      }
+    }
+
+    actualToDownload.sort((a, b) => b.size.compareTo(a.size));
+    onProgress?.call(downloadedCount, totalCount);
+
+    const blobConcurrency = kBlobDownloadConcurrency;
+
+    var nextIdx = 0;
+    var completedFromDownload = 0;
+    var downloadFailed = false;
+    var lastProgressMs = 0;
+    const throttleMs = 200;
+
+    void maybeProgress() {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final current = downloadedCount + completedFromDownload;
+      if (now - lastProgressMs >= throttleMs || current >= totalCount) {
+        onProgress?.call(current, totalCount);
+        lastProgressMs = now;
+      }
+    }
+
+    if (actualToDownload.isNotEmpty) {
+      Future<void> downloadNext() async {
+        int idx;
+        while ((idx = nextIdx++) < actualToDownload.length) {
+          final dl = actualToDownload[idx];
+          final blobResult = await remoteCatalogService.fetchBlob(dl.identHash, dl.contentHash);
+
+          if (blobResult.isRight()) {
+            try {
+              await assetStore.writeBlobUncheckedAt(
+                dl.blobPath,
+                blobResult.getRight().toNullable()!,
+              );
+            } catch (e, stackTrace) {
+              warning("Failed to write blob ${dl.blobPath}", stackTrace: stackTrace);
+              downloadFailed = true;
+              return;
+            }
+            completedFromDownload++;
+            maybeProgress();
+          } else {
+            downloadFailed = true;
+            return;
+          }
+        }
+      }
+
+      final tasks = <Future<void>>[
+        for (var i = 0; i < blobConcurrency.clamp(1, actualToDownload.length); i++) downloadNext(),
+      ];
+      await Future.wait(tasks);
+
+      // Final progress emit after all workers finish.
+      onProgress?.call(downloadedCount + completedFromDownload, totalCount);
+    }
+
+    return !downloadFailed;
+  }
 
   Future<bool> _writeCheckoutMeta(String checkoutId, CheckoutMeta meta) async {
     try {

@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:ui" as ui;
 
 import "package:efa_proto/utils.pb.dart" as pb;
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
@@ -86,13 +87,13 @@ class ImageAssetService {
   final OnDemandBlobFetcher? _fetcher;
 
   ImageProvider<BlobImageKey>? resolveIcon(int iconId) =>
-      _resolve("resource://static/images/icons/$iconId.png");
+      _resolve("${kStaticImagesResourcePrefix}icons/$iconId.png");
 
   ImageProvider<BlobImageKey>? resolveGraphic(int graphicId) =>
-      _resolve("resource://static/images/graphics/$graphicId.png");
+      _resolve("${kStaticImagesResourcePrefix}graphics/$graphicId.png");
 
   ImageProvider<BlobImageKey>? resolveByPath(String resourcePath) =>
-      _resolve("resource://$resourcePath");
+      _resolve("$kResourceIdScheme$resourcePath");
 
   ImageProvider<BlobImageKey>? resolve(
     pb.Icon icon, {

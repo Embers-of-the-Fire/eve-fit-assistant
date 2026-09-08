@@ -1,10 +1,20 @@
 @TestOn("vm")
 library;
 
+import "dart:async";
 import "dart:io";
 
+import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/config/paths.dart";
+import "package:efa_proto/resource_index.pb.dart";
+import "package:eve_fit_assistant/storage/fs/file_blob_store.dart";
+import "package:eve_fit_assistant/storage/repo/assets.dart";
+import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db_native.dart";
+import "package:eve_fit_assistant/storage/repo/paths.dart";
+import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
+import "package:fixnum/fixnum.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as p;
 import "package:sqlite3/sqlite3.dart" as sqlite;
@@ -26,6 +36,35 @@ void _writeFixtureDb(String path) {
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["en", 1002, "Test Item"]);
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["zh", 1001, "加伦特护卫舰"]);
   db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", ["zh", 1003, ""]);
+  db.close();
+}
+
+/// Writes a fixture database with the given schema version and rows.
+void _writeSchemaDb(
+  String path,
+  String schemaVersion,
+  Map<String, Map<int, String>> rows, {
+  String? localeMeta,
+}) {
+  final db = sqlite.sqlite3.open(path);
+  db.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+  db.execute(
+    "CREATE TABLE strings(locale TEXT NOT NULL, id INTEGER NOT NULL, value TEXT NOT NULL, "
+    "PRIMARY KEY(locale, id)) WITHOUT ROWID",
+  );
+  db.execute("INSERT INTO meta(key, value) VALUES ('schema_version', ?)", [schemaVersion]);
+  if (localeMeta != null) {
+    db.execute("INSERT INTO meta(key, value) VALUES ('locale', ?)", [localeMeta]);
+  }
+  for (final locale in rows.keys) {
+    for (final entry in rows[locale]!.entries) {
+      db.execute("INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)", [
+        locale,
+        entry.key,
+        entry.value,
+      ]);
+    }
+  }
   db.close();
 }
 
@@ -142,6 +181,149 @@ void main() {
       } finally {
         await dir.delete(recursive: true);
       }
+    });
+  });
+
+  group("lookup chain", () {
+    late Directory tempDir;
+
+    setUpAll(() {
+      final logDir = Directory.systemTemp.createTempSync("localization_chain_test_log_");
+      GlobalLogger.init(logDir.path, enableDebugLog: false);
+    });
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync("localization_chain_test");
+      PathProvider.appSupportPath = tempDir.path;
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    /// Places [writer]'s database at the blob-store path for [resourceId]
+    /// (with a dummy content hash) and returns its index entry.
+    ResourceIndex_Entry _placeDb(String resourceId, void Function(String path) writer) {
+      final contentHash = "ab" * 32;
+      final blobPath = RepoPaths.blobPath(RepoHash.hashIdent(resourceId), contentHash);
+      File(blobPath).parent.createSync(recursive: true);
+      writer(blobPath);
+      return ResourceIndex_Entry()
+        ..resourceId = resourceId
+        ..contentHash = contentHash
+        ..size = Int64(File(blobPath).lengthSync());
+    }
+
+    Future<LocalizationDbService> _openService(List<ResourceIndex_Entry> entries) async {
+      final index = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = 2
+        ..entries.addAll(entries);
+      final proxy = ResourceBlobProxy(AssetStore(FileBlobStore()), index);
+      final service = await LocalizationDbService.open(proxy);
+      expect(service, isNotNull);
+      return service!;
+    }
+
+    test("prefers the per-locale database when its entry is in the index", () async {
+      final service = await _openService([
+        _placeDb(
+          localeLocalizationDbResourceId("zh"),
+          (path) => _writeSchemaDb(path, "2", {
+            "zh": {1001: "per-locale zh"},
+          }, localeMeta: "zh"),
+        ),
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "zh": {1001: "legacy zh"},
+          }),
+        ),
+      ]);
+      addTearDown(service.close);
+
+      expect(await service.localizedName(1001, "zh"), "per-locale zh");
+    });
+
+    test("falls back to the legacy combined database", () async {
+      final service = await _openService([
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "zh": {1001: "legacy zh"},
+          }),
+        ),
+      ]);
+      addTearDown(service.close);
+
+      expect(await service.localizedName(1001, "zh"), "legacy zh");
+    });
+
+    test("renders placeholders when neither database is present", () async {
+      final service = await _openService([]);
+      addTearDown(service.close);
+
+      expect(await service.localizedName(1001, "zh"), "");
+      expect(await service.searchNames("abc", "zh"), isEmpty);
+    });
+
+    test("an unsupported per-locale schema degrades to the legacy database", () async {
+      final service = await _openService([
+        _placeDb(
+          localeLocalizationDbResourceId("zh"),
+          (path) => _writeSchemaDb(path, "3", {
+            "zh": {1001: "future schema zh"},
+          }, localeMeta: "zh"),
+        ),
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "zh": {1001: "legacy zh"},
+          }),
+        ),
+      ]);
+      addTearDown(service.close);
+
+      expect(await service.localizedName(1001, "zh"), "legacy zh");
+    });
+
+    test("holds at most one open handle per requested locale", () async {
+      final service = await _openService([
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "en": {1001: "legacy en"},
+            "zh": {1001: "legacy zh"},
+          }),
+        ),
+      ]);
+      addTearDown(service.close);
+
+      // Both locales resolve through the same legacy database, cached as one
+      // handle per requested locale.
+      expect(await service.localizedName(1001, "en"), "legacy en");
+      expect(await service.localizedName(1001, "zh"), "legacy zh");
+      expect(await service.localizedName(1001, "en"), "legacy en");
+    });
+
+    test("close snapshots in-flight warm-up opens before awaiting them", () async {
+      final service = await _openService([
+        _placeDb(
+          kLocalizationDbResourceId,
+          (path) => _writeSchemaDb(path, "1", {
+            "en": {1001: "legacy en"},
+          }),
+        ),
+      ]);
+
+      // Regression: the provider can dispose while its unawaited warm-up call
+      // is still opening the database. The open's finally block removes its
+      // locale from the pending map, so close must not iterate the live map
+      // while awaiting — that would throw ConcurrentModificationError.
+      unawaited(service.warmup("en"));
+      await service.close();
+
+      expect(await service.localizedName(1001, "en"), "");
     });
   });
 }

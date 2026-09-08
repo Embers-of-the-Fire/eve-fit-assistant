@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/models/channel_registry.dart";
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -66,9 +67,10 @@ class ServerSummary {
 /// blob content-hash→size maps so the UI can compute the deduplicated download
 /// footprint across selected servers.
 ///
-/// Blob maps are split by download policy so the preview matches what
+/// Blob maps are split by RRS resolution so the preview matches what
 /// provisioning actually downloads up front ([blobsForServer]) versus what is
-/// fetched lazily on first access ([lazyBlobsForServer]).
+/// fetched lazily on first access ([lazyBlobsForServer]); `excluded` entries
+/// are not counted at all.
 class ServerSelectionData {
   ServerSelectionData({
     required this.servers,
@@ -80,10 +82,10 @@ class ServerSelectionData {
 
   final IList<ServerSummary> servers;
 
-  /// Per-server eager (FORCE) blobs: contentHash → size.
+  /// Per-server eager blobs: contentHash → size.
   final Map<String, Map<String, int>> blobsForServer;
 
-  /// Per-server lazy (NON_FORCE) blobs: contentHash → size.
+  /// Per-server lazy blobs: contentHash → size.
   final Map<String, Map<String, int>> lazyBlobsForServer;
 
   /// Maps serverId → resource snapshot hash for the active generation.
@@ -141,14 +143,15 @@ class GenerationNavigationService {
   /// Fetches head metadata, server index, generation resources, and resource
   /// index protobufs for every unique snapshot hash in parallel. Each resource
   /// index is validated for the current platform and parsed into
-  /// `{contentHash → size}` maps split by download policy, so the UI can union
-  /// selected servers' blob sets and display the deduplicated up-front
-  /// download total plus the lazy on-demand tail. Indexes rejected by the
-  /// platform gate are treated like failed fetches (their servers are
+  /// `{contentHash → size}` maps split by RRS resolution under [context], so
+  /// the UI can union selected servers' blob sets and display the deduplicated
+  /// up-front download total plus the lazy on-demand tail. Indexes rejected by
+  /// the platform gate are treated like failed fetches (their servers are
   /// excluded from selection).
   Future<Either<GenerationNavError, ServerSelectionData>> fetchServerSelectionData({
     required Channel channel,
     required String channelName,
+    required ResourceResolutionContext context,
   }) async {
     final headResult = await remoteCatalogService.fetchHeadMeta(channelName);
     if (headResult.isLeft()) {
@@ -197,10 +200,13 @@ class GenerationNavigationService {
           final lazy = <String, int>{};
           for (final entry in index.entries) {
             final size = entry.size.toInt();
-            if (shouldEagerDownload(index, entry)) {
-              eager[entry.contentHash] = size;
-            } else {
-              lazy[entry.contentHash] = size;
+            switch (resolveResource(index, entry, context)) {
+              case ResourceResolution.eager:
+                eager[entry.contentHash] = size;
+              case ResourceResolution.lazy:
+                lazy[entry.contentHash] = size;
+              case ResourceResolution.excluded:
+                break;
             }
           }
           snapshotBlobs[hash] = eager;

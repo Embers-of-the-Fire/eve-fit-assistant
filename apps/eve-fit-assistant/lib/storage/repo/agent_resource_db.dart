@@ -1,5 +1,6 @@
 import "package:efa_constant/eve.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db_web.dart"
     if (dart.library.io) "package:eve_fit_assistant/storage/repo/checkout_db_web_stub.dart";
@@ -13,7 +14,7 @@ import "package:sqlite_async/sqlite_async.dart";
 part "agent_resource_db.g.dart";
 
 /// Resource id of the checkout's SQLite agent resource database.
-const String kAgentResourceDbResourceId = "resource://agent/agent_resource.db";
+const String kAgentResourceDbResourceId = "${kResourceIdScheme}agent/agent_resource.db";
 
 /// Checkout database spec for the agent resource database.
 const CheckoutDbSpec kAgentResourceDbSpec = CheckoutDbSpec(

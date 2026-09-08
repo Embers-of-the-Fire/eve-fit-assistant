@@ -19,9 +19,14 @@ if TYPE_CHECKING:
     from bootstrap.localization import LocalizationType
 
 
-#: Schema version of the emitted localization SQLite database. Bump when the
-#: layout changes; clients refuse to open mismatched versions.
+#: Schema version of the emitted legacy combined localization SQLite database.
+#: Bump when the layout changes; clients refuse to open mismatched versions.
 LOCALIZATION_DB_SCHEMA_VERSION = 1
+
+#: Schema version of the emitted per-locale localization SQLite databases
+#: (`localization/locales/<locale>.db`). Same table shapes as the combined
+#: database, so client query text is identical for both.
+LOCALE_DB_SCHEMA_VERSION = 2
 
 
 async def generate(ws_data: GeneratorDatasource):
@@ -32,6 +37,8 @@ async def generate(ws_data: GeneratorDatasource):
     per_language = await asyncio.gather(*(__generate(ws_data, lang) for lang in target_languages))
 
     __write_localization_db(ws_data.paths.localization_db_path, per_language)
+    for lang, strings in per_language:
+        _write_locale_db(ws_data.paths.localization_locale_db_path(lang), lang, strings)
 
     info(f"Generated {len(target_languages)} localizations.")
 
@@ -55,7 +62,39 @@ async def __generate(
 
 
 def __write_localization_db(path: Path, per_language: list[tuple[str, dict[int, str]]]):
-    """Writes all localized strings into a single SQLite database.
+    """Writes all localized strings into the legacy combined SQLite database.
+
+    Retained indefinitely for older clients; carries every supported locale.
+    """
+    _write_strings_db(path, per_language, schema_version=LOCALIZATION_DB_SCHEMA_VERSION)
+    total = sum(len(strings) for _, strings in per_language)
+    info(f"Generated localization database ({total} strings).")
+
+
+def _write_locale_db(path: Path, locale: str, strings: dict[int, str]):
+    """Writes the per-locale SQLite database for a single locale.
+
+    Carries `meta.locale` for diagnostics and pipeline verification; the
+    `strings.locale` column is retained (single value) so client query text
+    is identical to the combined database.
+    """
+    _write_strings_db(
+        path,
+        [(locale, strings)],
+        schema_version=LOCALE_DB_SCHEMA_VERSION,
+        extra_meta={"locale": locale},
+    )
+    info(f"Generated per-locale localization database for {locale} ({len(strings)} strings).")
+
+
+def _write_strings_db(
+    path: Path,
+    per_language: list[tuple[str, dict[int, str]]],
+    *,
+    schema_version: int,
+    extra_meta: dict[str, str] | None = None,
+):
+    """Writes localized strings into a SQLite database.
 
     Layout: `strings(locale TEXT, id INTEGER, value TEXT, PRIMARY KEY(locale, id))`
     plus a `meta` table carrying the schema version. Clients open the database
@@ -78,19 +117,20 @@ def __write_localization_db(path: Path, per_language: list[tuple[str, dict[int, 
         )
         connection.execute(
             "INSERT INTO meta(key, value) VALUES ('schema_version', ?)",
-            (str(LOCALIZATION_DB_SCHEMA_VERSION),),
+            (str(schema_version),),
         )
+        for key, value in (extra_meta or {}).items():
+            connection.execute(
+                "INSERT INTO meta(key, value) VALUES (?, ?)",
+                (key, value),
+            )
 
-        total = 0
         for lang, strings in per_language:
             connection.executemany(
                 "INSERT INTO strings(locale, id, value) VALUES (?, ?, ?)",
                 [(lang, key, value) for key, value in strings.items()],
             )
-            total += len(strings)
 
         connection.commit()
     finally:
         connection.close()
-
-    info(f"Generated localization database ({total} strings).")

@@ -6,10 +6,27 @@ import "package:flutter/foundation.dart";
 /// first access instead of ahead of time).
 const int kPolicyAwareResourceIndexFormatVersion = 2;
 
+/// The maximum per-snapshot resource list format version this client can
+/// decode.
+///
+/// Forward versioning mechanism: decoding an index whose `format_version`
+/// exceeds this bound raises [UnsupportedResourceIndexError], which the UI
+/// routes to the app-update flow instead of silently degrading. The bound is
+/// set above the current server format, so nothing changes today; any future
+/// incompatible data change bumps the server format and gated clients refuse
+/// the update in favor of an app update.
+const int kMaxSupportedResourceIndexFormatVersion = 2;
+
 /// Parses a [ResourceIndex] from wire bytes and validates it for the current
 /// platform (see [validateResourceIndexForPlatform]).
+///
+/// Throws [UnsupportedResourceIndexError] when the index's `format_version`
+/// exceeds [kMaxSupportedResourceIndexFormatVersion], on every platform.
 ResourceIndex decodeResourceIndex(Uint8List bytes) {
   final index = ResourceIndex.fromBuffer(bytes);
+  if (index.formatVersion > kMaxSupportedResourceIndexFormatVersion) {
+    throw UnsupportedResourceIndexError(formatVersion: index.formatVersion);
+  }
   validateResourceIndexForPlatform(index);
   return index;
 }
@@ -30,18 +47,9 @@ void validateResourceIndexForPlatform(ResourceIndex index) {
   }
 }
 
-/// Whether [entry] must be downloaded ahead of time (provisioning, updates).
-///
-/// Indexes that predate the policy-aware format carry no download policy;
-/// every entry is force-downloaded (legacy behavior). In the policy-aware
-/// format the entry's `download_policy` decides — absent means NON_FORCE,
-/// i.e. the resource is fetched lazily on first access.
-bool shouldEagerDownload(ResourceIndex index, ResourceIndex_Entry entry) =>
-    index.formatVersion < kPolicyAwareResourceIndexFormatVersion ||
-    entry.downloadPolicy == ResourceIndex_DownloadPolicy.FORCE;
-
-/// A [ResourceIndex] whose per-snapshot format is not supported on the
-/// current platform (web requires the policy-aware format).
+/// A [ResourceIndex] whose per-snapshot format is not supported by this
+/// client — either because it exceeds [kMaxSupportedResourceIndexFormatVersion]
+/// (update the app) or, on web, because it predates the policy-aware format.
 class UnsupportedResourceIndexError extends Error {
   UnsupportedResourceIndexError({required this.formatVersion});
 
@@ -49,8 +57,11 @@ class UnsupportedResourceIndexError extends Error {
   final int formatVersion;
 
   @override
-  String toString() =>
-      "UnsupportedResourceIndexError: resource index format_version $formatVersion "
-      "predates the policy-aware format "
-      "($kPolicyAwareResourceIndexFormatVersion) required on web";
+  String toString() => formatVersion > kMaxSupportedResourceIndexFormatVersion
+      ? "UnsupportedResourceIndexError: resource index format_version $formatVersion "
+            "exceeds the maximum supported format "
+            "($kMaxSupportedResourceIndexFormatVersion); update the app"
+      : "UnsupportedResourceIndexError: resource index format_version $formatVersion "
+            "predates the policy-aware format "
+            "($kPolicyAwareResourceIndexFormatVersion) required on web";
 }

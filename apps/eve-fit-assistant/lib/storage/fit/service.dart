@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/config/engine_availability.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
@@ -475,11 +476,11 @@ class NativeFitEngineService extends _$NativeFitEngineService {
     unawaited(Future(() => _initializeFromProxy(proxy)));
   }
 
-  static const _engineTypesId = "resource://static/native/types.pb2";
-  static const _engineDogmaAttributesId = "resource://static/native/dogmaAttributes.pb2";
-  static const _engineDogmaEffectsId = "resource://static/native/dogmaEffects.pb2";
-  static const _engineTypeDogmaId = "resource://static/native/typeDogma.pb2";
-  static const _engineBuffCollectionsId = "resource://static/native/dbuffcollections.pb2";
+  static const _engineTypesId = "${kResourceIdScheme}static/native/types.pb2";
+  static const _engineDogmaAttributesId = "${kResourceIdScheme}static/native/dogmaAttributes.pb2";
+  static const _engineDogmaEffectsId = "${kResourceIdScheme}static/native/dogmaEffects.pb2";
+  static const _engineTypeDogmaId = "${kResourceIdScheme}static/native/typeDogma.pb2";
+  static const _engineBuffCollectionsId = "${kResourceIdScheme}static/native/dbuffcollections.pb2";
 
   /// Resolves the five engine `.pb2` files directly from the content-addressed
   /// blob store using a [ResourceBlobProxy], bypassing any filesystem tree.

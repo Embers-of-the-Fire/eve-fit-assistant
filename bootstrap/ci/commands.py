@@ -622,6 +622,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
             raise click.ClickException(f"Invalid hashes file: {hashes_path}")
 
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
+        # D1 resource IDs follow the effective [resolution] vocabulary.
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
         d1 = bootstrap.config.DEV_CONFIGURATION.d1
 
         resolved_url = url or d1.url

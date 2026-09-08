@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/storage/repo/hash.dart";
 import "package:eve_fit_assistant/storage/repo/models/snapshot_meta.dart";
 import "package:eve_fit_assistant/storage/repo/paths.dart";
 import "package:eve_fit_assistant/storage/repo/resource_policy.dart";
+import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/utils/canonical_json.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
 import "package:flutter/foundation.dart";
@@ -152,12 +153,15 @@ class AssetStore {
     }
   }
 
-  /// Verifies every blob referenced by [resourceIndex] exists with a correct
-  /// content hash.
+  /// Verifies the blobs of [resourceIndex] according to each entry's RRS
+  /// resolution under [context].
   ///
-  /// A NON_FORCE blob that was never fetched is expected to be absent — it
-  /// downloads lazily on first access — so its absence is not a failure. A
-  /// NON_FORCE blob that *is* present must still hash-check clean.
+  /// - `excluded` entries are ignored entirely — never downloaded, never
+  ///   expected, so their blobs are neither checked nor counted.
+  /// - `lazy` entries are expected to be absent (they fetch on first access);
+  ///   a present lazy blob must still hash-check clean.
+  /// - `eager` entries are expected present; a missing or mismatched blob is
+  ///   a failure subject to repair.
   ///
   /// [onProgress] receives (checked, total) blob counts as verification
   /// proceeds. The loop yields to the event loop periodically so it can run
@@ -166,17 +170,21 @@ class AssetStore {
   /// Returns a list of missing or mismatched resource_id values.
   Future<IList<String>> verifyResourceIndex(
     ResourceIndex resourceIndex, {
+    required ResourceResolutionContext context,
     void Function(int checked, int total)? onProgress,
   }) async {
     final failures = <String>[];
-    final total = resourceIndex.entries.length;
+    final targets = resourceIndex.entries
+        .where((e) => resolveResource(resourceIndex, e, context) != ResourceResolution.excluded)
+        .toList();
+    final total = targets.length;
     var checked = 0;
-    for (final entry in resourceIndex.entries) {
+    for (final entry in targets) {
       final ihash = RepoHash.hashIdent(entry.resourceId);
       final assetPath = RepoPaths.blobPath(ihash, entry.contentHash);
       final bytes = await _store.read(assetPath);
       if (bytes == null) {
-        if (shouldEagerDownload(resourceIndex, entry)) {
+        if (resolveResource(resourceIndex, entry, context) == ResourceResolution.eager) {
           failures.add(entry.resourceId);
         }
       } else if (RepoHash.hashContent(bytes) != entry.contentHash) {

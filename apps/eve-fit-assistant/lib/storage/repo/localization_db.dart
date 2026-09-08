@@ -2,30 +2,56 @@ import "dart:async";
 import "dart:math" show min;
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_db.dart";
-import "package:eve_fit_assistant/storage/repo/localization_db_native.dart"
-    if (dart.library.js_interop) "package:eve_fit_assistant/storage/repo/localization_db_native_stub.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db_web.dart"
     if (dart.library.io) "package:eve_fit_assistant/storage/repo/localization_db_web_stub.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
-import "package:flutter/foundation.dart" show kIsWeb, visibleForTesting;
+import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:riverpod_annotation/riverpod_annotation.dart";
 import "package:sqlite_async/sqlite_async.dart";
 
 part "localization_db.g.dart";
 
-/// Resource id of the checkout's SQLite localization database.
-const String kLocalizationDbResourceId = "resource://localization/localization.db";
+/// Resource id of the checkout's legacy combined SQLite localization
+/// database.
+const String kLocalizationDbResourceId = kLegacyLocalizationDbResourceId;
 
-/// Checkout database spec for the localization database.
+/// Checkout database spec for the legacy combined localization database.
 const CheckoutDbSpec kLocalizationDbSpec = CheckoutDbSpec(
   resourceId: kLocalizationDbResourceId,
   dbNamePrefix: "localization",
   supportedSchemaVersion: "1",
   label: "localization",
 );
+
+/// Resource id of the per-locale localization database for [locale].
+String localeLocalizationDbResourceId(String locale) =>
+    kLocaleLocalizationDbResourcePattern.replaceAll(kLocalePlaceholder, locale);
+
+/// Checkout database spec for the per-locale localization database of
+/// [locale].
+///
+/// The OPFS name prefix (`locales_<locale>`) is deliberately disjoint from
+/// the legacy prefix (`localization`): stale-directory pruning matches
+/// directories by `startsWith("<prefix>_")`, so a per-locale prefix beginning
+/// with the legacy prefix would be deleted by the legacy prune sweep.
+CheckoutDbSpec localeLocalizationDbSpec(String locale) => CheckoutDbSpec(
+  resourceId: localeLocalizationDbResourceId(locale),
+  dbNamePrefix: "locales_$locale",
+  supportedSchemaVersion: "2",
+  label: "localization ($locale)",
+);
+
+/// OPFS database name for the per-locale database copy of [contentHash].
+///
+/// Web-only at runtime, but pure so tests on any platform can pin the naming
+/// scheme and its disjointness from the legacy prefix.
+String localeLocalizationDbNameForHash(String locale, String contentHash) =>
+    checkoutDbNameForHash(localeLocalizationDbSpec(locale).dbNamePrefix, contentHash);
 
 /// Root of the OPFS directory tree sqlite3_web uses for its databases
 /// (`drift_db/<dbName>/database`).
@@ -57,11 +83,24 @@ const int _kQueryChunkSize = 500;
 
 /// Read-only access to the active checkout's localized strings.
 ///
-/// Strings live in a prebuilt SQLite database (`localization.db`) shipped as a
-/// regular checkout resource. The database is opened lazily and strings are
-/// resolved on demand by primary-key lookup — nothing is decoded up front,
-/// which replaces the old eager protobuf decode of every localized string at
-/// startup.
+/// Strings live in prebuilt SQLite databases shipped as checkout resources:
+/// one per-locale database (`localization/locales/<locale>.db`, schema "2")
+/// on new snapshots, plus the legacy combined database (`localization.db`,
+/// schema "1") retained indefinitely for older clients. Databases are opened
+/// lazily and strings are resolved on demand by primary-key lookup — nothing
+/// is decoded up front.
+///
+/// Each lookup resolves its database through a fixed chain (spec §4.3),
+/// holding at most one open handle per requested locale:
+///
+/// 1. the per-locale database, when its entry is in the index;
+/// 2. else the legacy combined database, when present;
+/// 3. else no database — lookups yield empty strings and consumers render
+///    their existing placeholders.
+///
+/// A per-locale database that cannot be opened (schema gate, transport
+/// failure) degrades to the next chain step instead of failing. SQL text is
+/// identical for both databases (both keep the `strings.locale` column).
 ///
 /// Platform behavior:
 /// - Native: the content-addressed blob file is opened directly, read-only.
@@ -73,59 +112,101 @@ const int _kQueryChunkSize = 500;
 /// Lookups never throw: an unavailable database or a missing entry yields an
 /// empty string, and consumers render their existing placeholders.
 class LocalizationDbService {
-  LocalizationDbService._(this._db);
+  LocalizationDbService._(this._proxy) : _testDb = null;
 
-  /// Wraps an already-open database; used by tests.
+  /// Wraps an already-open database; used by tests. Queries every locale
+  /// against that database directly, bypassing the lookup chain.
   @visibleForTesting
-  LocalizationDbService.fromDatabase(this._db);
+  LocalizationDbService.fromDatabase(SqliteDatabase db) : _proxy = null, _testDb = db;
 
-  final SqliteDatabase _db;
+  final ResourceBlobProxy? _proxy;
+  final SqliteDatabase? _testDb;
   static const Duration _flushDebounce = Duration(milliseconds: 50);
 
   final Map<String, Map<int, String>> _cache = {};
   final Map<String, Map<int, Completer<String>>> _pending = {};
+
+  /// Open database handles, keyed by requested locale — at most one per
+  /// locale (spec §4.3). A `null` value means the chain found no usable
+  /// database for that locale.
+  final Map<String, SqliteDatabase?> _handles = {};
+  final Map<String, Future<SqliteDatabase?>> _pendingHandles = {};
+
   Timer? _flushTimer;
   DateTime? _lastFlushAt;
   bool _closed = false;
 
-  /// Opens the localization database referenced by [proxy].
+  /// Creates the localization service for the checkout behind [proxy].
   ///
-  /// Returns `null` when the resource is absent (e.g. a checkout created
-  /// before the database existed) or the platform cannot host it.
-  static Future<LocalizationDbService?> open(ResourceBlobProxy proxy) async {
-    try {
-      final db = kIsWeb ? await _openWeb(proxy) : _openNative(proxy);
-      if (db == null) return null;
+  /// The service exists whenever the checkout has a resource proxy; whether
+  /// any database is usable is decided per requested locale through the
+  /// lookup chain, so a checkout with only per-locale databases (or none at
+  /// all) still yields a service whose lookups degrade to empty strings.
+  static Future<LocalizationDbService?> open(ResourceBlobProxy proxy) async =>
+      LocalizationDbService._(proxy);
 
-      final service = LocalizationDbService._(db);
-      if (!await service._schemaSupported()) {
-        warning(
-          "Localization database has an unsupported schema version;"
-          " localized names are unavailable.",
-        );
-        final closeFuture = db.close();
-        // Same ordering as close(): OPFS cleanup must wait for the worker to
-        // release its SyncAccessHandles in the database's OPFS directory.
-        registerLocalizationDbClose(closeFuture);
-        await closeFuture;
-        return null;
+  /// Opens the database serving [locale] ahead of first use (best-effort).
+  Future<void> warmup(String locale) async {
+    await _databaseFor(locale);
+  }
+
+  /// Resolves the database handle serving [locale] through the lookup chain,
+  /// opening it on first use.
+  Future<SqliteDatabase?> _databaseFor(String locale) {
+    final testDb = _testDb;
+    if (testDb != null) return Future.value(testDb);
+    if (_closed) return Future.value();
+    if (_handles.containsKey(locale)) return Future.value(_handles[locale]);
+    final pending = _pendingHandles[locale];
+    if (pending != null) return pending;
+
+    final future = _openForLocale(locale);
+    _pendingHandles[locale] = future;
+    return future;
+  }
+
+  Future<SqliteDatabase?> _openForLocale(String locale) async {
+    final proxy = _proxy;
+    SqliteDatabase? db;
+    try {
+      if (proxy != null) {
+        final perLocaleSpec = localeLocalizationDbSpec(locale);
+        if (proxy.entry(perLocaleSpec.resourceId) != null) {
+          db = await _openChecked(proxy, perLocaleSpec);
+        }
+        if (db == null && proxy.entry(kLocalizationDbSpec.resourceId) != null) {
+          db = await _openChecked(proxy, kLocalizationDbSpec);
+        }
       }
-      return service;
     } on Object catch (e, st) {
-      warning("Failed to open localization database: $e", stackTrace: st);
+      warning("Failed to open localization database for locale $locale: $e", stackTrace: st);
+      db = null;
+    } finally {
+      _handles[locale] = db;
+      _pendingHandles.remove(locale)?.ignore();
+    }
+    return db;
+  }
+
+  /// Opens the database described by [spec], or `null` when it cannot be
+  /// hosted or its `meta.schema_version` is unsupported.
+  static Future<SqliteDatabase?> _openChecked(ResourceBlobProxy proxy, CheckoutDbSpec spec) async {
+    final db = await openCheckoutDb(proxy, spec);
+    if (db == null) return null;
+    if (!await checkoutDbSchemaSupported(db, spec)) {
+      warning(
+        "${spec.label} database has an unsupported schema version;"
+        " localized names fall back along the lookup chain.",
+      );
+      final closeFuture = db.close();
+      // Same ordering as close(): OPFS cleanup must wait for the worker to
+      // release its SyncAccessHandles in the database's OPFS directory.
+      registerLocalizationDbClose(closeFuture);
+      await closeFuture;
       return null;
     }
+    return db;
   }
-
-  static SqliteDatabase? _openNative(ResourceBlobProxy proxy) {
-    final path = proxy.resolvePath(kLocalizationDbResourceId);
-    if (path == null) return null;
-    return openNativeLocalizationDb(path);
-  }
-
-  static Future<SqliteDatabase?> _openWeb(ResourceBlobProxy proxy) => openWebLocalizationDb(proxy);
-
-  Future<bool> _schemaSupported() => checkoutDbSchemaSupported(_db, kLocalizationDbSpec);
 
   /// Resolves the localized string for [id] in [locale].
   ///
@@ -180,9 +261,11 @@ class LocalizationDbService {
   Future<Map<int, String>> searchNames(String query, String locale, {int limit = 20}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const {};
+    final db = await _databaseFor(locale);
+    if (db == null) return const {};
     final escaped = trimmed.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
     try {
-      final rows = await _db.getAll(
+      final rows = await db.getAll(
         "SELECT id, value FROM strings "
         "WHERE locale = ? AND value LIKE ? ESCAPE '\\' "
         "ORDER BY LENGTH(value) ASC LIMIT ?",
@@ -236,13 +319,22 @@ class LocalizationDbService {
 
   Future<void> _fetchIntoCache(Set<int> ids, String locale) async {
     final cache = _cache[locale] ??= {};
+    final db = await _databaseFor(locale);
+    if (db == null) {
+      // No database serves this locale; cache placeholders so the ids are
+      // not re-queried until the service is invalidated.
+      for (final id in ids) {
+        cache.putIfAbsent(id, () => "");
+      }
+      return;
+    }
     final idList = ids.toList();
 
     for (var start = 0; start < idList.length; start += _kQueryChunkSize) {
       final chunk = idList.sublist(start, min(start + _kQueryChunkSize, idList.length));
       final placeholders = List.filled(chunk.length, "?").join(", ");
       try {
-        final rows = await _db.getAll(
+        final rows = await db.getAll(
           "SELECT id, value FROM strings WHERE locale = ? AND id IN ($placeholders)",
           [locale, ...chunk],
         );
@@ -288,16 +380,29 @@ class LocalizationDbService {
   }
 
   Future<void> _closeDatabase() async {
-    try {
-      await _db.close();
-    } on Object catch (e) {
-      debug("Failed to close localization database: $e");
+    // Wait for in-flight opens so their handles are closed too. Snapshot the
+    // futures before awaiting: each open removes its locale from
+    // _pendingHandles in its finally block, which would otherwise mutate the
+    // live .values iterator and throw ConcurrentModificationError.
+    final pending = _pendingHandles.values.toList();
+    for (final future in pending) {
+      await future;
+    }
+    _pendingHandles.clear();
+    final dbs = [?_testDb, for (final db in _handles.values) ?db];
+    _handles.clear();
+    for (final db in dbs) {
+      try {
+        await db.close();
+      } on Object catch (e) {
+        debug("Failed to close localization database: $e");
+      }
     }
   }
 }
 
 /// Localization database for the active checkout, or `null` while loading /
-/// when the checkout has no localization database.
+/// when the checkout has no resource proxy.
 @riverpodSingleton
 Future<LocalizationDbService?> localizationDbService(Ref ref) async {
   final proxy = await ref.watch(resourceBlobProxyProvider.future);
@@ -306,8 +411,69 @@ Future<LocalizationDbService?> localizationDbService(Ref ref) async {
   final service = await LocalizationDbService.open(proxy);
   if (service != null) {
     ref.onDispose(service.close);
+    // Preserve the previous eager warm-up: open the active locale's database
+    // ahead of first lookup.
+    unawaited(service.warmup(ref.read(localeProvider).name));
   }
   return service;
+}
+
+/// Local availability of a locale's localization database for the active
+/// checkout (spec §4.4).
+sealed class LocalizationDbAvailability {
+  const LocalizationDbAvailability();
+}
+
+/// The locale's database is present locally (or the legacy fallback covers
+/// the locale) and ready to open.
+final class LocalizationDbAvailable extends LocalizationDbAvailability {
+  const LocalizationDbAvailable();
+}
+
+/// The index carries the locale's per-locale database but the blob is not
+/// downloaded yet; the locale-switch dialog offers a sized download.
+final class LocalizationDbDownloadable extends LocalizationDbAvailability {
+  const LocalizationDbDownloadable({required this.sizeBytes});
+
+  /// Download size of the locale's database blob, from the index entry.
+  final int sizeBytes;
+}
+
+/// No per-locale entry exists in the index and no usable legacy fallback is
+/// present; only a data update can bring the locale's database in.
+final class LocalizationDbUpdateRequired extends LocalizationDbAvailability {
+  const LocalizationDbUpdateRequired();
+}
+
+/// Availability of [locale]'s localization database for the active checkout.
+///
+/// A `downloadable` result means the locale-switch flow can fetch the blob on
+/// demand; `updateRequired` means only a full data update can bring the
+/// resource in. Old snapshots carrying only the legacy combined database are
+/// **not** `updateRequired`: the §4.3 fallback covers them.
+@riverpod
+Future<LocalizationDbAvailability> localizationDbAvailability(Ref ref, String locale) async {
+  final store = ref.watch(assetStoreProvider);
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
+  if (proxy == null) return const LocalizationDbUpdateRequired();
+
+  final perLocaleId = localeLocalizationDbResourceId(locale);
+  final perLocaleIdent = proxy.ident(perLocaleId);
+  if (perLocaleIdent != null) {
+    final exists = await store.blobExists(perLocaleIdent.identHash, perLocaleIdent.contentHash);
+    if (exists) return const LocalizationDbAvailable();
+    final size = proxy.entry(perLocaleId)?.size.toInt() ?? 0;
+    return LocalizationDbDownloadable(sizeBytes: size);
+  }
+
+  // No per-locale entry (old snapshot): usable only when the legacy combined
+  // database's blob is present.
+  final legacyIdent = proxy.ident(kLocalizationDbResourceId);
+  if (legacyIdent != null &&
+      await store.blobExists(legacyIdent.identHash, legacyIdent.contentHash)) {
+    return const LocalizationDbAvailable();
+  }
+  return const LocalizationDbUpdateRequired();
 }
 
 /// Resolves the localized string for [id] in [locale] from the active
