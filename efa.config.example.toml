@@ -50,10 +50,12 @@ resource_root = "efa/v2"
 # fetch them lazily on first access. Every other resource is FORCE and is
 # downloaded eagerly.
 #
-# When the whole section (or this key) is omitted, the built-in default
-# applies: images and the per-locale localization databases are lazy. The
-# legacy combined localization database is deliberately not lazy — it stays
-# FORCE for released clients. Set an empty list to force everything.
+# When the whole section (or this key) is omitted, the default is derived
+# from the effective `[resolution]` vocabulary: the static images prefix and
+# the per-locale localization prefix are lazy (under the built-in vocabulary,
+# that is the values shown below). The legacy combined localization database
+# is deliberately not lazy — it stays FORCE for released clients. Set an
+# empty list to force everything.
 lazy_prefixes = ["static/images/", "localization/locales/"]
 
 [resolution]

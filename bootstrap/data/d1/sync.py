@@ -70,7 +70,7 @@ from typing import Any
 from typing import Protocol
 from typing import Self
 
-from bootstrap.config import DEFAULT_RESOLUTION_VOCABULARY as _VOCAB
+from bootstrap.config import effective_resolution as _effective_resolution
 from bootstrap.constant import NATIVE_LIB_ROOT
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -85,18 +85,42 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
-#: Engine data families, mapped to their snapshot resource IDs and the efos
-#: protobuf message used to decode the whole collection.
+#: Engine data families, mapped to their snapshot resource path (relative to
+#: the effective resolution scheme) and the efos protobuf message used to
+#: decode the whole collection.
 ENGINE_FAMILIES: dict[str, tuple[str, str]] = {
-    "types": (f"{_VOCAB.scheme}static/native/types.pb2", "Types"),
-    "type_dogma": (f"{_VOCAB.scheme}static/native/typeDogma.pb2", "TypeDogma"),
-    "dogma_attributes": (f"{_VOCAB.scheme}static/native/dogmaAttributes.pb2", "DogmaAttributes"),
-    "dogma_effects": (f"{_VOCAB.scheme}static/native/dogmaEffects.pb2", "DogmaEffects"),
-    "buffs": (f"{_VOCAB.scheme}static/native/dbuffcollections.pb2", "BuffCollections"),
+    "types": ("static/native/types.pb2", "Types"),
+    "type_dogma": ("static/native/typeDogma.pb2", "TypeDogma"),
+    "dogma_attributes": ("static/native/dogmaAttributes.pb2", "DogmaAttributes"),
+    "dogma_effects": ("static/native/dogmaEffects.pb2", "DogmaEffects"),
+    "buffs": ("static/native/dbuffcollections.pb2", "BuffCollections"),
 }
 
-COLLECTION_RESOURCE_ID = f"{_VOCAB.scheme}static/collection.pb2"
-LOCALIZATION_RESOURCE_ID = f"{_VOCAB.scheme}{_VOCAB.legacy_localization_db}"
+#: Resource path (relative to the effective resolution scheme) of the
+#: collection snapshot resource.
+COLLECTION_RESOURCE_PATH = "static/collection.pb2"
+
+
+def engine_resource_id(family: str) -> str:
+    """Snapshot resource ID of an engine family under the effective vocabulary.
+
+    The scheme comes from the ``[resolution]`` configuration after loading,
+    so a custom vocabulary addresses the same generated resources the Dart
+    client resolves.
+    """
+    return f"{_effective_resolution().scheme}{ENGINE_FAMILIES[family][0]}"
+
+
+def collection_resource_id() -> str:
+    """Snapshot resource ID of the collection under the effective vocabulary."""
+    return f"{_effective_resolution().scheme}{COLLECTION_RESOURCE_PATH}"
+
+
+def localization_resource_id() -> str:
+    """Snapshot resource ID of the legacy localization db (effective vocabulary)."""
+    vocab = _effective_resolution()
+    return f"{vocab.scheme}{vocab.legacy_localization_db}"
+
 
 #: Metadata families built at sync time (not present as snapshot resources).
 META_FAMILIES = ("type_meta", "dogma_attribute_meta", "dogma_effect_meta")
@@ -289,7 +313,7 @@ def _resolve_blob(schema_root: Path, index, resource_id: str) -> bytes:
 def split_engine_entries(family: str, data: bytes) -> list[Entry]:
     """Split a whole-collection efos protobuf into per-entry rows."""
     efos_pb2 = _load_efos_pb2()
-    _resource_id, message_name = ENGINE_FAMILIES[family]
+    _resource_path, message_name = ENGINE_FAMILIES[family]
     msg = getattr(efos_pb2, message_name)()
     msg.ParseFromString(data)
     return [
@@ -377,8 +401,8 @@ def load_snapshot_entries(schema_root: Path, snapshot_hash: str) -> list[Entry]:
     index = _load_resource_index(schema_root, snapshot_hash)
 
     entries: list[Entry] = []
-    for family, (resource_id, _message_name) in ENGINE_FAMILIES.items():
-        blob = _resolve_blob(schema_root, index, resource_id)
+    for family in ENGINE_FAMILIES:
+        blob = _resolve_blob(schema_root, index, engine_resource_id(family))
         family_entries = split_engine_entries(family, blob)
         info(f"Snapshot {snapshot_hash[:16]}...: {len(family_entries)} {family} entries")
         entries.extend(family_entries)
@@ -389,8 +413,8 @@ def load_snapshot_entries(schema_root: Path, snapshot_hash: str) -> list[Entry]:
         if entry.family == "dogma_effects"
     }
 
-    collection_blob = _resolve_blob(schema_root, index, COLLECTION_RESOURCE_ID)
-    localization_blob = _resolve_blob(schema_root, index, LOCALIZATION_RESOURCE_ID)
+    collection_blob = _resolve_blob(schema_root, index, collection_resource_id())
+    localization_blob = _resolve_blob(schema_root, index, localization_resource_id())
     meta_entries = build_meta_entries(collection_blob, localization_blob, effect_names)
     info(f"Snapshot {snapshot_hash[:16]}...: {len(meta_entries)} metadata entries")
     entries.extend(meta_entries)

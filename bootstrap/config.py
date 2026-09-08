@@ -250,6 +250,22 @@ class ProjectConfiguration(BaseModel):
     version: ProjectVersion
     resources: dict[str, ProjectResource] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _derive_download_defaults(self) -> ProjectConfiguration:
+        """Derive omitted lazy prefixes from the effective resolution vocabulary.
+
+        A custom ``[resolution]`` table relocates the images and per-locale
+        database prefixes; unless ``[download].lazy_prefixes`` is set
+        explicitly, the lazy classification must follow the effective
+        vocabulary instead of the built-in defaults.
+        """
+        if "lazy_prefixes" not in self.download.model_fields_set:
+            self.download.lazy_prefixes = [
+                self.resolution.static_images_prefix,
+                self.resolution.localization_locales_prefix,
+            ]
+        return self
+
     @staticmethod
     def load_from_global():
         try:
@@ -272,6 +288,30 @@ class ProjectConfiguration(BaseModel):
     def ensure_loaded():
         if CONFIGURATION is None:
             ProjectConfiguration.load_from_global()
+
+
+def effective_resolution() -> ResolutionVocabulary:
+    """Resolve the effective resolution vocabulary after configuration loading.
+
+    Returns ``CONFIGURATION.resolution`` once the project configuration has
+    been loaded; falls back to the built-in vocabulary otherwise.
+    """
+    if CONFIGURATION is not None:
+        return CONFIGURATION.resolution
+    return DEFAULT_RESOLUTION_VOCABULARY
+
+
+def effective_lazy_prefixes() -> list[str]:
+    """Resolve the effective lazy-download prefixes after configuration loading.
+
+    Returns ``CONFIGURATION.download.lazy_prefixes`` once the project
+    configuration has been loaded (already derived from a custom
+    ``[resolution]`` table unless ``[download]`` overrides it); falls back
+    to the built-in defaults otherwise.
+    """
+    if CONFIGURATION is not None:
+        return list(CONFIGURATION.download.lazy_prefixes)
+    return list(DEFAULT_LAZY_PREFIXES)
 
 
 class DeveloperPaths(BaseModel):

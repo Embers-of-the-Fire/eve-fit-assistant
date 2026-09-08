@@ -7,8 +7,11 @@ from typing import ClassVar
 import pytest
 
 from bootstrap.config import DEFAULT_LAZY_PREFIXES
+from bootstrap.config import DEFAULT_RESOLUTION_VOCABULARY
 from bootstrap.config import DownloadConfig
 from bootstrap.config import ProjectConfiguration
+from bootstrap.config import effective_lazy_prefixes
+from bootstrap.config import effective_resolution
 from bootstrap.remote.models import RESOURCE_INDEX_FORMAT_VERSION
 from bootstrap.remote.models import is_lazy_resource
 from bootstrap.remote.models import make_resource_index
@@ -49,6 +52,50 @@ class TestDownloadConfig:
         cfg = ProjectConfiguration.model_validate(_config_dict(download={"lazy_prefixes": []}))
         assert cfg.download.lazy_prefixes == []
 
+    def test_custom_resolution_derives_lazy_prefixes_without_download_override(self) -> None:
+        cfg = ProjectConfiguration.model_validate(
+            _config_dict(
+                resolution={
+                    "static_images_prefix": "assets/images/",
+                    "localization_locales_prefix": "i18n/locales/",
+                }
+            )
+        )
+        assert cfg.download.lazy_prefixes == ["assets/images/", "i18n/locales/"]
+
+    def test_explicit_download_override_wins_over_custom_resolution(self) -> None:
+        cfg = ProjectConfiguration.model_validate(
+            _config_dict(
+                resolution={"static_images_prefix": "assets/images/"},
+                download={"lazy_prefixes": ["assets/images/graphics/"]},
+            )
+        )
+        assert cfg.download.lazy_prefixes == ["assets/images/graphics/"]
+
+    def test_explicit_empty_list_survives_custom_resolution(self) -> None:
+        cfg = ProjectConfiguration.model_validate(
+            _config_dict(
+                resolution={"static_images_prefix": "assets/images/"},
+                download={"lazy_prefixes": []},
+            )
+        )
+        assert cfg.download.lazy_prefixes == []
+
+
+class TestEffectiveVocabulary:
+    def test_falls_back_to_builtin_vocabulary_without_configuration(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", None)
+        assert effective_resolution() is DEFAULT_RESOLUTION_VOCABULARY
+        assert effective_lazy_prefixes() == DEFAULT_LAZY_PREFIXES
+
+    def test_uses_loaded_configuration(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        cfg = ProjectConfiguration.model_validate(_config_dict(resolution={"scheme": "custom://"}))
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+        assert effective_resolution().scheme == "custom://"
+        assert effective_lazy_prefixes() == cfg.download.lazy_prefixes
+
 
 class TestIsLazyResource:
     def test_matches_prefix_relative_to_scheme(self) -> None:
@@ -70,6 +117,15 @@ class TestIsLazyResource:
 
     def test_empty_prefixes_never_lazy(self) -> None:
         assert not is_lazy_resource("resource://static/images/icons/1.png", [])
+
+    def test_strips_custom_scheme_from_loaded_configuration(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = ProjectConfiguration.model_validate(_config_dict(resolution={"scheme": "custom://"}))
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+        assert is_lazy_resource("custom://static/images/icons/1.png", ["static/images/"])
+        # The built-in scheme no longer strips: the path keeps its prefix.
+        assert not is_lazy_resource("resource://static/images/icons/1.png", ["static/images/"])
 
 
 class TestMakeResourceIndex:
@@ -115,6 +171,37 @@ class TestMakeResourceIndex:
         force = index.DownloadPolicy.FORCE
         assert all(e.download_policy == force for e in index.entries)
         assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION
+
+    def test_omitted_prefixes_follow_custom_resolution_without_download_override(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        cfg = ProjectConfiguration.model_validate(
+            _config_dict(
+                resolution={
+                    "scheme": "custom://",
+                    "static_images_prefix": "assets/images/",
+                    "localization_locales_prefix": "i18n/locales/",
+                    "legacy_localization_db": "i18n/combined.db",
+                }
+            )
+        )
+        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+
+        entries = [
+            ("custom://static/collection.pb2", "aa" * 32, 10),
+            ("custom://assets/images/icons/1.png", "bb" * 32, 20),
+            ("custom://i18n/locales/en.db", "cc" * 32, 30),
+            ("custom://i18n/combined.db", "dd" * 32, 40),
+        ]
+        index = make_resource_index(entries)
+        policy = {e.resource_id: e.download_policy for e in index.entries}
+        force = index.DownloadPolicy.FORCE
+        non_force = index.DownloadPolicy.NON_FORCE
+        assert policy["custom://assets/images/icons/1.png"] == non_force
+        assert policy["custom://i18n/locales/en.db"] == non_force
+        # The legacy combined db stays FORCE, as under the built-in defaults.
+        assert policy["custom://i18n/combined.db"] == force
+        assert policy["custom://static/collection.pb2"] == force
 
     def test_roundtrip_preserves_policy(self) -> None:
         from bootstrap.data.schema import resource_index_pb2
