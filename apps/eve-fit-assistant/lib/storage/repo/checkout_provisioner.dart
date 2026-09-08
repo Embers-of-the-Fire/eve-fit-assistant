@@ -99,6 +99,7 @@ class ProvisionerFatal extends ProvisionerState {
 ///   name: IMap({"en": "Tranquility"}),
 ///   generationHash: "abc123",
 ///   resourceSnapshotHash: "def456",
+///   context: const ResourceResolutionContext(locale: "en"),
 /// );
 ///
 /// provisioner.state.listen((s) => print(s));
