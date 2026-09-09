@@ -75,6 +75,12 @@ class CharacterService extends _$CharacterService {
   @override
   CharacterServiceState build() => const CharacterServiceState.notInitialized();
 
+  /// The id of the currently loaded character, or null if not initialized.
+  ///
+  /// Exposed because [state] is protected, and widgets need this check in
+  /// life-cycle methods (e.g. dispose) where reading providers is unsafe.
+  String? get currentCharacterId => state.isInitialized ? state.character.characterId : null;
+
   Future<void> _loadFromDisk(String characterId) async {
     if (state.isInitialized) {
       warning("Character service already initialized, force loading");

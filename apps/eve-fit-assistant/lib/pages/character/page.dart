@@ -286,32 +286,35 @@ class CharacterEditPage extends ConsumerStatefulWidget {
 class _CharacterEditPageState extends ConsumerState<CharacterEditPage>
     with SingleTickerProviderStateMixin {
   late final TabController _controller;
+  // Captured in initState: "ref" is unsafe once the widget is deactivated,
+  // so dispose() and deferred callbacks must go through this field.
+  late final CharacterService _characterService;
   bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TabController(length: 2, vsync: this);
-    unawaited(_mountCharacter());
+    _characterService = ref.read(characterServiceProvider.notifier);
+    // Riverpod forbids mutating a provider from a widget life-cycle, so defer
+    // the mount until the tree has settled.
+    unawaited(Future(_mountCharacter));
   }
 
   @override
   void dispose() {
     _disposed = true;
-    final characterState = ref.read(characterServiceProvider);
-    if (characterState.isInitialized &&
-        characterState.character.characterId == widget.characterId) {
-      unawaited(ref.read(characterServiceProvider.notifier).unmount());
+    if (_characterService.currentCharacterId == widget.characterId) {
+      unawaited(_characterService.unmount());
     }
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _mountCharacter() async {
-    final characterService = ref.read(characterServiceProvider.notifier);
-    await characterService.mount(widget.characterId);
+    await _characterService.mount(widget.characterId);
     if (_disposed) {
-      await characterService.unmount();
+      await _characterService.unmount();
     }
   }
 
