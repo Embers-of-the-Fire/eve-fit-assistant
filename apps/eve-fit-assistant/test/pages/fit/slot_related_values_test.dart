@@ -127,6 +127,36 @@ void main() {
       });
     });
 
+    group("warp scramble range fallback", () {
+      test("used when no optimal range, no charge, and no EMP field range", () {
+        final segments = collectSlotRelatedValues(
+          buildItem(attributes: {EveConstAttrID.warpScrambleRange: 20100}),
+        );
+        expect(segments, hasLength(1));
+        expect(segments.single.iconAttributeId, EveConstAttrID.maxRange);
+        expect(segments.single.text, "20.1 km");
+      });
+
+      test("EMP field range takes priority over warp scramble range", () {
+        final segments = collectSlotRelatedValues(
+          buildItem(
+            attributes: {
+              EveConstAttrID.empFieldRange: 20000,
+              EveConstAttrID.warpScrambleRange: 20100,
+            },
+          ),
+        );
+        expect(segments.single.text, "20.0 km");
+      });
+
+      test("zero scramble range yields no segment", () {
+        final segments = collectSlotRelatedValues(
+          buildItem(attributes: {EveConstAttrID.warpScrambleRange: 0}),
+        );
+        expect(segments, isEmpty);
+      });
+    });
+
     group("capacitor usage", () {
       test("capacitor need per cycle time", () {
         final segments = collectSlotRelatedValues(

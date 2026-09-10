@@ -245,6 +245,10 @@ class EveConstAttrID {
   /// - High is good: True
   static const int empFieldRange = 99;
 
+  /// - Name: warpScrambleRange
+  /// - High is good: True
+  static const int warpScrambleRange = 103;
+
   /// - Name: fighterTubes
   /// - High is good: True
   static const int fighterTubes = 2216;
