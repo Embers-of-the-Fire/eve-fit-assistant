@@ -39,17 +39,18 @@ class _EveTypeSearchFieldState extends State<EveTypeSearchField> {
 
   void _onQueryChanged(String value) {
     _debounce?.cancel();
+    // Invalidate any in-flight search up front; a stale result arriving while
+    // the new query still debounces must not be reported.
+    final generation = ++_generation;
     if (value.trim().isEmpty) {
-      // Back to browse mode; invalidate any in-flight search.
-      _generation++;
+      // Back to browse mode; any in-flight search was invalidated above.
       widget.onResults(null);
       return;
     }
-    _debounce = Timer(_debounceDelay, () => unawaited(_runSearch(value)));
+    _debounce = Timer(_debounceDelay, () => unawaited(_runSearch(value, generation)));
   }
 
-  Future<void> _runSearch(String query) async {
-    final generation = ++_generation;
+  Future<void> _runSearch(String query, int generation) async {
     final hits = await widget.searcher(query);
     // Drop results overtaken by a newer query or a cleared field.
     if (!mounted || generation != _generation) return;
