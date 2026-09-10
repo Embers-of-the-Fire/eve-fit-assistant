@@ -8,7 +8,19 @@
 /**/pnpm-lock.yaml
 /**/Cargo.lock
 /**/uv.lock
+/**/pubspec.yaml
+/**/pyproject.toml
+/**/Cargo.toml
+pnpm-workspace.yaml
+/**/analysis_options.yaml
+/**/devtools_options.yaml
+/**/flutter_launcher_icons.yaml
+/**/flutter_native_splash.yaml
+/**/flutter_rust_bridge.yaml
 
 /packages/eve-fit-os/data/fsd-patches/*.yaml
 /apps/eve-fit-assistant/web/sqlite
 /apps/eve-fit-assistant/web/pkg
+
+/docs
+/**/AGENTS.md
