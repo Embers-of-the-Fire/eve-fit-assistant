@@ -1339,6 +1339,10 @@
       }
     }
   },
+  "itemDetailTabSpool": "预热",
+  "itemDetailSpoolUnavailable": "预热数据暂不可用。",
+  "itemDetailSpoolSetMin": "重置到第一轮",
+  "itemDetailSpoolSetMax": "预热到最高",
   "itemDetailDescription": "描述",
   "itemDetailClassification": "分类",
   "itemDetailTypeId": "类型 ID",

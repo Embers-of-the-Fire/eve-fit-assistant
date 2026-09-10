@@ -44,6 +44,7 @@ fn test_fit() -> FitContainer {
                 },
                 state: ItemState::Active,
                 charge: Some(ItemCharge { type_id: 2613 }),
+                damage_turns: 0,
             })
             .collect(),
         drones: vec![

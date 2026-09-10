@@ -23,6 +23,7 @@ import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show attributeDebugViewProvider, localeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:eve_fit_assistant/utils/precursor_turret.dart";
 import "package:eve_fit_assistant/utils/screen.dart";
 import "package:eve_fit_assistant/utils/skill.dart";
 import "package:fast_immutable_collections/fast_immutable_collections.dart";
@@ -137,6 +138,11 @@ class ItemDetailPage extends ConsumerWidget {
       ),
       _ => null,
     };
+    final spoolEditor = switch ((fitReference, fit?.isInitialized ?? false, emulated)) {
+      (final ItemDetailFitReference reference?, true, final native.Ship ship?) =>
+        _resolveSpoolEditor(fit!.fit, ship, reference),
+      _ => null,
+    };
 
     final attributes = _collectInspectableAttributes(context.l10n, ref, type, resolvedItem);
     final description = type.hasDescription() ? _resolveLocalization(ref, type.description) : null;
@@ -148,6 +154,7 @@ class ItemDetailPage extends ConsumerWidget {
         type: type,
         fitReference: fitReference,
         dynamicEditor: dynamicEditor,
+        spoolEditor: spoolEditor,
         description: description,
         attributes: attributes,
         resolvedItem: resolvedItem,
@@ -162,6 +169,7 @@ class _ItemDetailColumns extends StatelessWidget {
     required this.type,
     required this.fitReference,
     required this.dynamicEditor,
+    required this.spoolEditor,
     required this.description,
     required this.attributes,
     required this.resolvedItem,
@@ -171,13 +179,17 @@ class _ItemDetailColumns extends StatelessWidget {
   final pb_types.Type type;
   final ItemDetailFitReference? fitReference;
   final _DynamicEditorContext? dynamicEditor;
+  final _SpoolEditorContext? spoolEditor;
   final String? description;
   final List<_InspectableAttribute> attributes;
   final native.Item? resolvedItem;
 
   @override
   Widget build(BuildContext context) {
-    final tabCount = _itemDetailTabCount(dynamicEditor != null);
+    final tabCount = _itemDetailTabCount(
+      hasDynamicEditor: dynamicEditor != null,
+      hasSpoolEditor: spoolEditor != null,
+    );
     final columns = columnCount(context);
     final paneCount = columns >= tabCount ? tabCount : columns;
 
@@ -194,6 +206,7 @@ class _ItemDetailColumns extends StatelessWidget {
                 type: type,
                 fitReference: fitReference,
                 dynamicEditor: dynamicEditor,
+                spoolEditor: spoolEditor,
                 description: description,
                 attributes: attributes,
               ),
@@ -212,6 +225,7 @@ class _ItemDetailTabPane extends StatefulWidget {
     required this.type,
     required this.fitReference,
     required this.dynamicEditor,
+    required this.spoolEditor,
     required this.description,
     required this.attributes,
   });
@@ -221,6 +235,7 @@ class _ItemDetailTabPane extends StatefulWidget {
   final pb_types.Type type;
   final ItemDetailFitReference? fitReference;
   final _DynamicEditorContext? dynamicEditor;
+  final _SpoolEditorContext? spoolEditor;
   final String? description;
   final List<_InspectableAttribute> attributes;
 
@@ -232,7 +247,10 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  int get _tabCount => _itemDetailTabCount(widget.dynamicEditor != null);
+  int get _tabCount => _itemDetailTabCount(
+    hasDynamicEditor: widget.dynamicEditor != null,
+    hasSpoolEditor: widget.spoolEditor != null,
+  );
 
   @override
   void initState() {
@@ -247,7 +265,10 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
   @override
   void didUpdateWidget(covariant _ItemDetailTabPane oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final previousCount = _itemDetailTabCount(oldWidget.dynamicEditor != null);
+    final previousCount = _itemDetailTabCount(
+      hasDynamicEditor: oldWidget.dynamicEditor != null,
+      hasSpoolEditor: oldWidget.spoolEditor != null,
+    );
     if (previousCount == _tabCount) return;
 
     final nextIndex = _tabController.index.clamp(0, _tabCount - 1);
@@ -270,6 +291,7 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
         tabs: [
           Tab(text: context.l10n.itemDetailTabInfo),
           if (widget.dynamicEditor != null) Tab(text: context.l10n.itemDetailTabDynamic),
+          if (widget.spoolEditor != null) Tab(text: context.l10n.itemDetailTabSpool),
           Tab(text: context.l10n.itemDetailTabAttributes),
           Tab(text: context.l10n.itemDetailTabSkills),
         ],
@@ -286,6 +308,7 @@ class _ItemDetailTabPaneState extends State<_ItemDetailTabPane>
             ),
             if (widget.dynamicEditor != null)
               _DynamicAttributeTabContent(dynamicEditor: widget.dynamicEditor!),
+            if (widget.spoolEditor != null) _SpoolTabContent(spoolEditor: widget.spoolEditor!),
             _AttributeTabContent(
               typeId: widget.typeId,
               fitReference: widget.fitReference,
@@ -1906,8 +1929,8 @@ class _ModifierValueDisplay {
 
 enum _ValueTone { positive, negative }
 
-int _itemDetailTabCount(bool hasDynamicEditor) =>
-    _baseItemDetailTabCount + (hasDynamicEditor ? 1 : 0);
+int _itemDetailTabCount({required bool hasDynamicEditor, required bool hasSpoolEditor}) =>
+    _baseItemDetailTabCount + (hasDynamicEditor ? 1 : 0) + (hasSpoolEditor ? 1 : 0);
 
 _DynamicEditorContext? _resolveDynamicEditor(
   WidgetRef ref,
@@ -1955,6 +1978,209 @@ _DynamicEditorContext? _resolveDynamicEditor(
     modifierType: modifierType,
     dynamicMutator: dynamicMutator,
   );
+}
+
+class _SpoolEditorContext {
+  const _SpoolEditorContext({
+    required this.fitId,
+    required this.slotType,
+    required this.index,
+    required this.reference,
+  });
+
+  final String fitId;
+  final native.OutSlotType slotType;
+  final int index;
+  final ItemDetailFitReference reference;
+}
+
+_SpoolEditorContext? _resolveSpoolEditor(
+  FitStorage fit,
+  native.Ship ship,
+  ItemDetailFitReference reference,
+) {
+  if (reference.kind != ItemDetailFitObjectKind.module || reference.inspectCharge) {
+    return null;
+  }
+
+  final index = reference.index;
+  final slotType = reference.slotType;
+  if (index == null || slotType == null) {
+    return null;
+  }
+
+  final slot = _resolveStoredModule(fit, slotType, index);
+  final item = _resolveNativeItem(ship, reference);
+  if (slot == null || item == null) {
+    return null;
+  }
+  if (precursorTurretSpool(item, slot) == null) {
+    return null;
+  }
+
+  return _SpoolEditorContext(
+    fitId: fit.metadata.fitId,
+    slotType: slotType,
+    index: index,
+    reference: reference,
+  );
+}
+
+FitStorage _withModuleDamageTurns(
+  FitStorage fit,
+  native.OutSlotType slotType,
+  int index,
+  int damageTurns,
+) {
+  Option<FitModuleItem> update(Option<FitModuleItem> slot) =>
+      slot.map((item) => item.copyWith(damageTurns: damageTurns));
+
+  final slots = fit.body.slots;
+  final updated = switch (slotType) {
+    native.OutSlotType_High() => slots.copyWith(high: slots.high.replaceBy(index, update)),
+    native.OutSlotType_Medium() => slots.copyWith(medium: slots.medium.replaceBy(index, update)),
+    native.OutSlotType_Low() => slots.copyWith(low: slots.low.replaceBy(index, update)),
+    native.OutSlotType_Rig() => slots.copyWith(rig: slots.rig.replaceBy(index, update)),
+    native.OutSlotType_SubSystem() => slots.copyWith(
+      subsystem: slots.subsystem.replaceBy(index, update),
+    ),
+    native.OutSlotType_Service() => slots.copyWith(service: slots.service.replaceBy(index, update)),
+    _ => slots,
+  };
+  if (identical(updated, slots)) return fit;
+  return fit.copyWith(body: fit.body.copyWith(slots: updated));
+}
+
+class _SpoolTabContent extends ConsumerStatefulWidget {
+  const _SpoolTabContent({required this.spoolEditor});
+
+  final _SpoolEditorContext spoolEditor;
+
+  @override
+  ConsumerState<_SpoolTabContent> createState() => _SpoolTabContentState();
+}
+
+class _SpoolTabContentState extends ConsumerState<_SpoolTabContent> {
+  /// Local slider position while dragging. `Slider` is fully controlled and
+  /// only repaints from `value`, so the thumb must be tracked here for the
+  /// drag to be visible; the fit itself is only committed on drag end.
+  double? _dragValue;
+
+  PrecursorTurretSpool? _resolveSpool() {
+    final editor = widget.spoolEditor;
+    final fitState = ref.watch(fitProvider(editor.fitId));
+    if (!fitState.isInitialized) return null;
+    final emulated = ref.watch(nativeEmulatedShipProvider(editor.fitId));
+    if (emulated == null) return null;
+
+    final slot = _resolveStoredModule(fitState.fit, editor.slotType, editor.index);
+    final item = _resolveNativeItem(emulated, editor.reference);
+    if (slot == null || item == null) return null;
+    return precursorTurretSpool(item, slot);
+  }
+
+  Future<void> _setDamageTurns(int turns) {
+    final editor = widget.spoolEditor;
+    return ref
+        .read(fitProvider(editor.fitId).notifier)
+        .update((fit) => _withModuleDamageTurns(fit, editor.slotType, editor.index, turns));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final spool = _resolveSpool();
+    if (spool == null) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SectionCard(
+            title: context.l10n.itemDetailTabSpool,
+            child: Text(context.l10n.itemDetailSpoolUnavailable),
+          ),
+        ],
+      );
+    }
+
+    final shownTurns = (_dragValue ?? spool.turns.toDouble()).round();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SectionCard(
+          title: context.l10n.itemDetailTabSpool,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${spool.minDps.toStringAsFixed(1)} DPS",
+                      style: context.theme.textTheme.labelMedium,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      "${spool.currentDps.toStringAsFixed(1)} DPS",
+                      textAlign: TextAlign.center,
+                      style: context.theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      "${spool.maxDps.toStringAsFixed(1)} DPS",
+                      textAlign: TextAlign.end,
+                      style: context.theme.textTheme.labelMedium?.copyWith(
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: context.l10n.itemDetailSpoolSetMin,
+                    onPressed: spool.turns > 0 ? () => _setDamageTurns(0) : null,
+                    icon: const Icon(Icons.keyboard_double_arrow_left),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: context.l10n.itemDetailSpoolSetMax,
+                    onPressed: spool.turns < spool.maxTurns
+                        ? () => _setDamageTurns(spool.maxTurns)
+                        : null,
+                    icon: const Icon(Icons.keyboard_double_arrow_right),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: _dragValue ?? spool.turns.toDouble(),
+                      max: spool.maxTurns.toDouble(),
+                      divisions: spool.maxTurns,
+                      label: "${shownTurns + 1}/${spool.maxTurns + 1}",
+                      onChanged: (value) => setState(() => _dragValue = value),
+                      onChangeEnd: (value) {
+                        setState(() => _dragValue = null);
+                        unawaited(_setDamageTurns(value.round()));
+                      },
+                    ),
+                  ),
+                  Text(
+                    "${shownTurns + 1}/${spool.maxTurns + 1}",
+                    style: context.theme.textTheme.labelMedium,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 FitModuleItem? _resolveStoredModule(FitStorage fit, native.OutSlotType slotType, int index) =>

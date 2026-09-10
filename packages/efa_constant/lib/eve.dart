@@ -225,6 +225,18 @@ class EveConstAttrID {
   /// - High is good: True
   static const int maxRange = 54;
 
+  /// - Name: damageMultiplier
+  /// - High is good: True
+  static const int damageMultiplier = 64;
+
+  /// - Name: damageMultiplierBonusPerCycle
+  /// - High is good: True
+  static const int damageMultiplierBonusPerCycle = 2733;
+
+  /// - Name: damageMultiplierBonusMax
+  /// - High is good: True
+  static const int damageMultiplierBonusMax = 2734;
+
   /// - Name: maxGroupFitted
   /// - High is good: True
   static const int maxGroupFitted = 1544;

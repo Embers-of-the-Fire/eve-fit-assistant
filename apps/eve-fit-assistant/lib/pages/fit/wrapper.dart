@@ -623,6 +623,16 @@ class FitWrapper {
     }
   }
 
+  /// Set the number of completed damage ramp-up cycles (damage turns) of a
+  /// precursor turret in a slot (0 = first shot, base damage).
+  Future<void> setSlotDamageTurns(SlotIdentifier slotIdent, int damageTurns) => wrapped.update(
+    (fit) => updateSlot(
+      fit,
+      slotIdent,
+      (slotOpt) => slotOpt.map((slot) => slot.copyWith(damageTurns: damageTurns)),
+    ),
+  );
+
   Future<void> copySlot(SlotIdentifier fromIdent, SlotIdentifier toIdent) async {
     await wrapped.update((fit) {
       final fromSlot = getSlot(fit, fromIdent);

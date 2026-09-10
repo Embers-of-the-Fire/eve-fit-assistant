@@ -45,6 +45,9 @@ pub struct Module {
     pub slot: Slot,
     pub state: State,
     pub charge: Option<Charge>,
+    /// Number of completed damage ramp-up cycles of a precursor turret
+    /// (0 = first shot, base damage).
+    pub damage_turns: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,6 +190,7 @@ impl Module {
             slot: self.slot.into_native(),
             state: self.state.into_native(),
             charge: self.charge.map(|c| c.into_native()),
+            damage_turns: self.damage_turns,
         }
     }
 }

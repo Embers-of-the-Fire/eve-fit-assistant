@@ -292,6 +292,7 @@ pub fn apply_edit_ops(
                         },
                         state,
                         charge: charge_type_id.map(|type_id| ItemCharge { type_id }),
+                        damage_turns: 0,
                     })
                 })();
                 match result {

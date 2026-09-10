@@ -495,6 +495,7 @@ Map<String, Object?> _encodeNativeModule(native_storage.Module m) => {
   "slot": {"slot_type": _slotTypeName(m.slot.slotType), "index": m.slot.index},
   "state": _stateName(m.state),
   if (m.charge case final charge?) "charge": {"type_id": charge.typeId},
+  "damage_turns": m.damageTurns,
 };
 
 String _stateName(native_storage.State state) => switch (state) {

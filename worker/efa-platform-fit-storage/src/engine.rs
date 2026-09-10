@@ -261,6 +261,7 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
             charge: module.charge_type_id.map(|type_id| ef::ItemCharge {
                 type_id: type_id as i32,
             }),
+            damage_turns: 0,
         });
     }
     // Selected tactical mode → synthetic module (app convention).
@@ -273,6 +274,7 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
             },
             state: ef::ItemState::Online,
             charge: None,
+            damage_turns: 0,
         });
     }
 
