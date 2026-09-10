@@ -37,6 +37,7 @@ class _AddChargeDialog extends ConsumerWidget {
       child: EveSelectList(
         root: const EveSelectListRoot.marketGroup(marketGroupId: EveConstMarketGroupId.charge),
         validator: (node) => _isSupportedChargeNode(ref, node),
+        enableSearch: true,
         shallPopToSelect: (node) => node is EveSelectListRootType,
         onSelect: (node) => switch (node) {
           EveSelectListRootType(:final typeId) => Navigator.of(context).pop(typeId),

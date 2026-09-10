@@ -295,21 +295,71 @@ class _CharacterImplantTabState extends ConsumerState<_CharacterImplantTab>
   }
 }
 
-class _ImplantSetDialog extends ConsumerWidget {
+class _ImplantSetDialog extends ConsumerStatefulWidget {
   const _ImplantSetDialog({required this.sets});
 
   final IList<ImplantSet> sets;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ImplantSetDialog> createState() => _ImplantSetDialogState();
+}
+
+class _ImplantSetDialogState extends ConsumerState<_ImplantSetDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final Map<int, ExpansibleController> _expansionControllers = {};
+  String _query = "";
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    for (final controller in _expansionControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // initiallyExpanded only applies at tile initialization and PageStorage can
+  // restore a collapsed state, so expansion must follow the query explicitly:
+  // every query change expands (or, when cleared, collapses) all families.
+  void _updateQuery(String value) {
+    setState(() {
+      _query = value;
+      final expand = value.trim().isNotEmpty;
+      for (final controller in _expansionControllers.values) {
+        if (expand) {
+          controller.expand();
+        } else {
+          controller.collapse();
+        }
+      }
+    });
+  }
+
+  ExpansibleController _expansionControllerFor(int familyId, {required bool expanded}) =>
+      _expansionControllers.putIfAbsent(familyId, () {
+        final controller = ExpansibleController();
+        if (expanded) controller.expand();
+        return controller;
+      });
+
+  @override
+  Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider).name;
+    final query = _query.trim().toLowerCase();
 
     String nameOf(ImplantSet set) => _localized(set.names, locale, "${set.setId}");
     String familyOf(ImplantSet set) => _localized(set.familyNames, locale, nameOf(set));
 
+    // Names are already in memory, so filtering is synchronous; a set matches
+    // on its own name or its family name.
+    bool matches(ImplantSet set) =>
+        query.isEmpty ||
+        nameOf(set).toLowerCase().contains(query) ||
+        familyOf(set).toLowerCase().contains(query);
+
     // Sets of one family share setId ~/ 100; grade ranks ascend with strength.
     final families = <int, List<ImplantSet>>{};
-    for (final set in sets) {
+    for (final set in widget.sets.where(matches)) {
       families.putIfAbsent(set.setId ~/ 100, () => []).add(set);
     }
     for (final members in families.values) {
@@ -320,22 +370,70 @@ class _ImplantSetDialog extends ConsumerWidget {
 
     return AppDialog(
       title: context.l10n.fitImplantSetDialogTitle,
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final members in sortedFamilies)
-              if (members.length == 1)
-                _ImplantSetTile(set: members.single, title: nameOf(members.single))
-              else
-                ExpansionTile(
-                  title: Text(familyOf(members.first)),
-                  children: [
-                    for (final set in members) _ImplantSetTile(set: set, title: nameOf(set)),
-                  ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const .fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _controller,
+              onChanged: _updateQuery,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: context.l10n.typeSearchHint,
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: ListenableBuilder(
+                  listenable: _controller,
+                  builder: (context, _) => _controller.text.isEmpty
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                          tooltip: context.l10n.typeSearchClear,
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _controller.clear();
+                            _updateQuery("");
+                          },
+                        ),
                 ),
-          ],
-        ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final members in sortedFamilies)
+                    if (members.length == 1)
+                      _ImplantSetTile(set: members.single, title: nameOf(members.single))
+                    else
+                      ExpansionTile(
+                        controller: _expansionControllerFor(
+                          members.first.setId ~/ 100,
+                          expanded: query.isNotEmpty,
+                        ),
+                        title: Text(familyOf(members.first)),
+                        children: [
+                          for (final set in members) _ImplantSetTile(set: set, title: nameOf(set)),
+                        ],
+                      ),
+                  if (sortedFamilies.isEmpty)
+                    Padding(
+                      padding: const .symmetric(horizontal: 24, vertical: 16),
+                      child: Text(
+                        context.l10n.typeSearchNoResults,
+                        style: context.theme.textTheme.titleMedium?.copyWith(
+                          color: context.theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

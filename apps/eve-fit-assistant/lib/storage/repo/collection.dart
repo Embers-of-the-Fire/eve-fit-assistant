@@ -42,7 +42,7 @@ RepoCollectionService? repoCollection(Ref ref) {
 /// file referenced by the repo's ResourceIndex. Localized names resolve
 /// via `LocalizationDbService`.
 class RepoCollectionService {
-  const RepoCollectionService._({
+  RepoCollectionService._({
     required Collection collection,
     required IMap<int, Ship> ships,
     required IMap<int, pb_types.Type> types,
@@ -359,6 +359,19 @@ class RepoCollectionService {
 
   Ship? getShip(int typeId) => _ships[typeId];
   pb_types.Type? getType(int typeId) => _types[typeId];
+
+  /// Reverse index from localized type-name string id to type id, built
+  /// lazily: localization string ids live in their own namespace (shared with
+  /// group and market group names), so name-search hits must be mapped back
+  /// through this index instead of [getType].
+  late final IMap<int, int> _typeNameIdToTypeId = IMap.fromEntries([
+    for (final type in _types.values) MapEntry(type.typeName.id, type.typeId),
+  ]);
+
+  /// Resolves a localization string id to the type whose name it carries, or
+  /// `null` when the id names something else (group, market group, ...).
+  int? getTypeIdByNameId(int nameId) => _typeNameIdToTypeId[nameId];
+
   Slots get slots => _collection.slots;
   IList<pb_types.Type> getAllTypes() => _types.values.toIList();
   IList<int> getSkillTypeIds() => _skillTypeIds;

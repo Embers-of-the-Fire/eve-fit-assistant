@@ -27,6 +27,7 @@ class FitCreationPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => Layout(
     title: context.l10n.fitCreationPageTitle,
     child: EveSelectList(
+      enableSearch: true,
       shallPopToSelect: (t) => switch (t) {
         EveSelectListRootType(typeId: final _) => true,
         _ => false,

@@ -1,5 +1,8 @@
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
 import "package:eve_fit_assistant/components/list/meta_filter_bar.dart";
+import "package:eve_fit_assistant/components/list/search/type_search_field.dart";
+import "package:eve_fit_assistant/components/list/search/type_search_results.dart";
+import "package:eve_fit_assistant/components/list/search/type_searcher.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/components/skeleton.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
@@ -33,6 +36,7 @@ class EveSelectList extends ConsumerStatefulWidget {
     this.validator = _defaultToTrue,
     this.shallPopToSelect = _defaultToFalse,
     this.enableMetaFilter = false,
+    this.enableSearch = false,
     this.onSelect,
   });
 
@@ -40,6 +44,11 @@ class EveSelectList extends ConsumerStatefulWidget {
   final bool Function(EveSelectListRoot) validator;
   final bool Function(EveSelectListRoot) shallPopToSelect;
   final bool enableMetaFilter;
+
+  /// Shows a search field on top; while a query is active the browse tree is
+  /// replaced by a flat result list restricted to [root], [validator], and
+  /// the active meta filter.
+  final bool enableSearch;
   final void Function(EveSelectListRoot)? onSelect;
 
   @override
@@ -48,6 +57,9 @@ class EveSelectList extends ConsumerStatefulWidget {
 
 class _EveSelectListState extends ConsumerState<EveSelectList> {
   MetaFilter _metaFilter = const MetaFilter.all();
+
+  /// Active search hits; `null` while the search field is empty (browse mode).
+  List<int>? _searchHits;
 
   static Widget _displayNode(EveSelectListRoot node) => node.when(
     category: (categoryId) => CategoryNameText(categoryId: categoryId),
@@ -120,49 +132,103 @@ class _EveSelectListState extends ConsumerState<EveSelectList> {
 
     return Column(
       children: [
+        if (widget.enableSearch)
+          Padding(
+            padding: const .fromLTRB(16, 8, 16, 4),
+            child: EveTypeSearchField(
+              searcher: LocalizationTypeSearcher.fromRef(ref).search,
+              onResults: (hits) => setState(() => _searchHits = hits),
+            ),
+          ),
         if (widget.enableMetaFilter)
           MetaFilterBar(
             filter: _metaFilter,
             onChanged: (filter) => setState(() => _metaFilter = filter),
           ),
         Expanded(
-          child: SelectList<EveSelectListRoot>(
-            root: widget.root,
-            fetchChildren: fetchChildren,
-            validator: widget.validator,
-            shallSelect: widget.shallPopToSelect,
-            onSelect: widget.onSelect,
-            returnBehavior: ref.watch(
-              appSettingServiceProvider.select((setting) => setting.typeListReturnBehavior),
-            ),
-            breadcrumbBuilder: (node) =>
-                Padding(padding: const .symmetric(horizontal: 4), child: _displayNode(node)),
-            itemBuilder: (node, onTap) => node.when(
-              category: (categoryId) => CategoryListTile(
-                categoryId: categoryId,
-                fallbackLeading: const Icon(Icons.list),
-                onTap: onTap,
-              ),
-              group: (groupId) => GroupListTile(
-                groupId: groupId,
-                fallbackLeading: const Icon(Icons.list),
-                onTap: onTap,
-              ),
-              marketGroup: (marketGroupId) => MarketGroupListTile(
-                marketGroupId: marketGroupId,
-                fallbackLeading: const Icon(Icons.list),
-                onTap: onTap,
-              ),
-              type: (typeId) => TypeListTile(
-                typeId: typeId,
-                fallbackLeading: const Image(image: ImageAssets.unknownIcon, height: 32),
-                onTap: onTap,
-                onLongPress: () => showItemDetailPage(context, typeId: typeId),
-              ),
-            ),
-          ),
+          child: _searchHits == null
+              ? SelectList<EveSelectListRoot>(
+                  root: widget.root,
+                  fetchChildren: fetchChildren,
+                  validator: widget.validator,
+                  shallSelect: widget.shallPopToSelect,
+                  onSelect: widget.onSelect,
+                  returnBehavior: ref.watch(
+                    appSettingServiceProvider.select((setting) => setting.typeListReturnBehavior),
+                  ),
+                  breadcrumbBuilder: (node) =>
+                      Padding(padding: const .symmetric(horizontal: 4), child: _displayNode(node)),
+                  itemBuilder: (node, onTap) => node.when(
+                    category: (categoryId) => CategoryListTile(
+                      categoryId: categoryId,
+                      fallbackLeading: const Icon(Icons.list),
+                      onTap: onTap,
+                    ),
+                    group: (groupId) => GroupListTile(
+                      groupId: groupId,
+                      fallbackLeading: const Icon(Icons.list),
+                      onTap: onTap,
+                    ),
+                    marketGroup: (marketGroupId) => MarketGroupListTile(
+                      marketGroupId: marketGroupId,
+                      fallbackLeading: const Icon(Icons.list),
+                      onTap: onTap,
+                    ),
+                    type: (typeId) => TypeListTile(
+                      typeId: typeId,
+                      fallbackLeading: const Image(image: ImageAssets.unknownIcon, height: 32),
+                      onTap: onTap,
+                      onLongPress: () => showItemDetailPage(context, typeId: typeId),
+                    ),
+                  ),
+                )
+              : _buildSearchResults(),
         ),
       ],
+    );
+  }
+
+  /// Whether [typeId] sits under the picker [EveSelectList.root], keeping
+  /// search hits within the same scope as browsing.
+  bool _isInRootScope(RepoCollectionService? collection, int typeId) {
+    final type = collection?.getType(typeId);
+    if (type == null) return false;
+    return widget.root.when(
+      category: (categoryId) => collection!.getGroup(type.groupId)?.categoryId == categoryId,
+      group: (groupId) => type.groupId == groupId,
+      marketGroup: (marketGroupId) {
+        if (!type.hasMarketGroupId()) return false;
+        int? current = type.marketGroupId;
+        while (current != null && current != marketGroupId) {
+          final group = collection!.getMarketGroup(current);
+          current = group != null && group.hasParentGroupId() ? group.parentGroupId : null;
+        }
+        return current == marketGroupId;
+      },
+      type: (rootTypeId) => typeId == rootTypeId,
+    );
+  }
+
+  /// Flat search results restricted to descendants of the picker
+  /// [EveSelectList.root], then by [EveSelectList.validator] and the active
+  /// meta filter, keeping search consistent with browsing.
+  Widget _buildSearchResults() {
+    final collection = ref.read(repoCollectionProvider);
+    final typeIds = (_searchHits ?? const []).where((typeId) {
+      if (!_isInRootScope(collection, typeId)) return false;
+      if (!widget.validator(EveSelectListRoot.type(typeId: typeId))) return false;
+      if (widget.enableMetaFilter) {
+        final type = collection?.getType(typeId);
+        if (type == null || !_metaFilter.passes(type)) return false;
+      }
+      return true;
+    }).toList();
+
+    return TypeSearchResults(
+      typeIds: typeIds,
+      onSelect: widget.onSelect == null
+          ? null
+          : (typeId) => widget.onSelect!(EveSelectListRoot.type(typeId: typeId)),
     );
   }
 }
