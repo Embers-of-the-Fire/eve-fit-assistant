@@ -46,7 +46,8 @@ class EveSelectList extends ConsumerStatefulWidget {
   final bool enableMetaFilter;
 
   /// Shows a search field on top; while a query is active the browse tree is
-  /// replaced by a flat, validator- and meta-filtered result list.
+  /// replaced by a flat result list restricted to [root], [validator], and
+  /// the active meta filter.
   final bool enableSearch;
   final void Function(EveSelectListRoot)? onSelect;
 
@@ -187,11 +188,34 @@ class _EveSelectListState extends ConsumerState<EveSelectList> {
     );
   }
 
-  /// Flat search results restricted by the picker [EveSelectList.validator]
-  /// and the active meta filter, keeping search consistent with browsing.
+  /// Whether [typeId] sits under the picker [EveSelectList.root], keeping
+  /// search hits within the same scope as browsing.
+  bool _isInRootScope(RepoCollectionService? collection, int typeId) {
+    final type = collection?.getType(typeId);
+    if (type == null) return false;
+    return widget.root.when(
+      category: (categoryId) => collection!.getGroup(type.groupId)?.categoryId == categoryId,
+      group: (groupId) => type.groupId == groupId,
+      marketGroup: (marketGroupId) {
+        if (!type.hasMarketGroupId()) return false;
+        int? current = type.marketGroupId;
+        while (current != null && current != marketGroupId) {
+          final group = collection!.getMarketGroup(current);
+          current = group != null && group.hasParentGroupId() ? group.parentGroupId : null;
+        }
+        return current == marketGroupId;
+      },
+      type: (rootTypeId) => typeId == rootTypeId,
+    );
+  }
+
+  /// Flat search results restricted to descendants of the picker
+  /// [EveSelectList.root], then by [EveSelectList.validator] and the active
+  /// meta filter, keeping search consistent with browsing.
   Widget _buildSearchResults() {
     final collection = ref.read(repoCollectionProvider);
     final typeIds = (_searchHits ?? const []).where((typeId) {
+      if (!_isInRootScope(collection, typeId)) return false;
       if (!widget.validator(EveSelectListRoot.type(typeId: typeId))) return false;
       if (widget.enableMetaFilter) {
         final type = collection?.getType(typeId);
