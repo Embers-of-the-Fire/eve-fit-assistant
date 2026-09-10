@@ -101,4 +101,13 @@ void main() {
     );
     expect(await searcher.search("Rifter"), isEmpty);
   });
+
+  test("failed localization database initialization yields no results", () async {
+    final searcher = LocalizationTypeSearcher(
+      localizationDb: () => Future.error(StateError("localization db failed to load")),
+      locale: () => "en",
+      typeIdOfNameId: (nameId) => nameIdToTypeId[nameId],
+    );
+    expect(await searcher.search("Rifter"), isEmpty);
+  });
 }

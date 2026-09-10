@@ -47,7 +47,14 @@ class LocalizationTypeSearcher {
   Future<List<int>> search(String query, {int limit = 50}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
-    final db = await localizationDb();
+    // Localization database initialization may fail (e.g. a broken checkout);
+    // fall back to the empty result instead of throwing through the picker.
+    final LocalizationDbService? db;
+    try {
+      db = await localizationDb();
+    } on Object {
+      return const [];
+    }
     if (db == null) return const [];
     final hits = await db.searchNames(trimmed, locale(), limit: limit * _overFetchFactor);
     return hits.keys.map(typeIdOfNameId).nonNulls.take(limit).toList();
