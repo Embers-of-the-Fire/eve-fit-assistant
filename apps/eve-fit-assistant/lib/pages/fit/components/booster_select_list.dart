@@ -6,6 +6,9 @@ import "package:efa_proto/utils.pb.dart" as pb_utils;
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/components/icon/eve_icon.dart";
 import "package:eve_fit_assistant/components/list/eve_list_tile.dart";
+import "package:eve_fit_assistant/components/list/search/type_search_field.dart";
+import "package:eve_fit_assistant/components/list/search/type_search_results.dart";
+import "package:eve_fit_assistant/components/list/search/type_searcher.dart";
 import "package:eve_fit_assistant/components/list/select_list.dart";
 import "package:eve_fit_assistant/constant/assets.dart";
 import "package:eve_fit_assistant/pages/item-detail/page.dart";
@@ -282,7 +285,7 @@ final class _BoosterPickType extends _BoosterPickNode {
   final int typeId;
 }
 
-class _BoosterSelectDialog extends ConsumerWidget {
+class _BoosterSelectDialog extends ConsumerStatefulWidget {
   const _BoosterSelectDialog({
     required this.title,
     required this.sections,
@@ -293,13 +296,28 @@ class _BoosterSelectDialog extends ConsumerWidget {
   final List<BoosterSlotSection> sections;
   final bool slotFiltered;
 
+  @override
+  ConsumerState<_BoosterSelectDialog> createState() => _BoosterSelectDialogState();
+}
+
+class _BoosterSelectDialogState extends ConsumerState<_BoosterSelectDialog> {
+  /// Active search hits; `null` while the search field is empty (browse mode).
+  List<int>? _searchHits;
+
+  /// Type ids the current picker configuration allows; already reflects the
+  /// published gate and the optional slot filter baked into the sections.
+  late final Set<int> _selectableTypeIds = {
+    for (final section in widget.sections)
+      for (final family in section.families) ...family.typeIds,
+  };
+
   List<_BoosterPickNode> _childrenOf(_BoosterPickNode node) => switch (node) {
     _BoosterPickRoot() => [
       // With a slot filter the slot level is redundant: start at families.
-      if (slotFiltered)
-        for (final family in sections.single.families) _BoosterPickFamily(family)
+      if (widget.slotFiltered)
+        for (final family in widget.sections.single.families) _BoosterPickFamily(family)
       else
-        for (final section in sections) _BoosterPickSlot(section),
+        for (final section in widget.sections) _BoosterPickSlot(section),
     ],
     _BoosterPickSlot(:final section) => [
       for (final family in section.families) _BoosterPickFamily(family),
@@ -310,54 +328,78 @@ class _BoosterSelectDialog extends ConsumerWidget {
     _BoosterPickType() => const [],
   };
   @override
-  Widget build(BuildContext context, WidgetRef ref) => AppDialog(
-    title: title,
-    content: SizedBox(
-      width: double.maxFinite,
-      child: SelectList<_BoosterPickNode>(
-        root: const _BoosterPickRoot(),
-        fetchChildren: (node, ref) => _childrenOf(node),
-        shallSelect: (node) => node is _BoosterPickType,
-        onSelect: (node) => switch (node) {
-          _BoosterPickType(:final typeId) => Navigator.of(context).pop(typeId),
-          _ => {},
-        },
-        returnBehavior: ref.watch(
-          appSettingServiceProvider.select((setting) => setting.typeListReturnBehavior),
+  Widget build(BuildContext context) {
+    final hits = _searchHits;
+    return AppDialog(
+      title: widget.title,
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const .fromLTRB(16, 0, 16, 4),
+              child: EveTypeSearchField(
+                searcher: LocalizationTypeSearcher.fromRef(ref).search,
+                onResults: (results) => setState(() => _searchHits = results),
+              ),
+            ),
+            Flexible(
+              child: hits == null
+                  ? SelectList<_BoosterPickNode>(
+                      root: const _BoosterPickRoot(),
+                      fetchChildren: (node, ref) => _childrenOf(node),
+                      shallSelect: (node) => node is _BoosterPickType,
+                      onSelect: (node) => switch (node) {
+                        _BoosterPickType(:final typeId) => Navigator.of(context).pop(typeId),
+                        _ => {},
+                      },
+                      returnBehavior: ref.watch(
+                        appSettingServiceProvider.select(
+                          (setting) => setting.typeListReturnBehavior,
+                        ),
+                      ),
+                      breadcrumbBuilder: (node) => Padding(
+                        padding: const .symmetric(horizontal: 4),
+                        child: switch (node) {
+                          _BoosterPickRoot() => Text(widget.title),
+                          _BoosterPickSlot(:final section) => Text(section.label),
+                          _BoosterPickFamily(:final family) => Text(family.label),
+                          _BoosterPickType(:final typeId) => TypeNameText(typeId: typeId),
+                        },
+                      ),
+                      itemBuilder: (node, onTap) => switch (node) {
+                        _BoosterPickSlot(:final section) => ListTile(
+                          leading: section.icon == null
+                              ? const Icon(Icons.list)
+                              : EveIcon(icon: section.icon!, acceptGraphic: false),
+                          title: Text(section.label),
+                          onTap: onTap,
+                        ),
+                        _BoosterPickFamily(:final family) => ListTile(
+                          leading: family.icon == null
+                              ? const Icon(Icons.list)
+                              : EveIcon(icon: family.icon!, acceptGraphic: false),
+                          title: Text(family.label),
+                          onTap: onTap,
+                        ),
+                        _BoosterPickType(:final typeId) => TypeListTile(
+                          typeId: typeId,
+                          fallbackLeading: const Image(image: ImageAssets.unknownIcon, height: 32),
+                          onTap: onTap,
+                          onLongPress: () => showItemDetailPage(context, typeId: typeId),
+                        ),
+                        _BoosterPickRoot() => const SizedBox.shrink(),
+                      },
+                    )
+                  : TypeSearchResults(
+                      typeIds: hits.where(_selectableTypeIds.contains).toList(),
+                      onSelect: (typeId) => Navigator.of(context).pop(typeId),
+                    ),
+            ),
+          ],
         ),
-        breadcrumbBuilder: (node) => Padding(
-          padding: const .symmetric(horizontal: 4),
-          child: switch (node) {
-            _BoosterPickRoot() => Text(title),
-            _BoosterPickSlot(:final section) => Text(section.label),
-            _BoosterPickFamily(:final family) => Text(family.label),
-            _BoosterPickType(:final typeId) => TypeNameText(typeId: typeId),
-          },
-        ),
-        itemBuilder: (node, onTap) => switch (node) {
-          _BoosterPickSlot(:final section) => ListTile(
-            leading: section.icon == null
-                ? const Icon(Icons.list)
-                : EveIcon(icon: section.icon!, acceptGraphic: false),
-            title: Text(section.label),
-            onTap: onTap,
-          ),
-          _BoosterPickFamily(:final family) => ListTile(
-            leading: family.icon == null
-                ? const Icon(Icons.list)
-                : EveIcon(icon: family.icon!, acceptGraphic: false),
-            title: Text(family.label),
-            onTap: onTap,
-          ),
-          _BoosterPickType(:final typeId) => TypeListTile(
-            typeId: typeId,
-            fallbackLeading: const Image(image: ImageAssets.unknownIcon, height: 32),
-            onTap: onTap,
-            onLongPress: () => showItemDetailPage(context, typeId: typeId),
-          ),
-          _BoosterPickRoot() => const SizedBox.shrink(),
-        },
       ),
-    ),
-  );
+    );
+  }
 }

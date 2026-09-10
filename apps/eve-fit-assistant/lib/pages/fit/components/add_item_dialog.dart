@@ -48,6 +48,7 @@ class _AddItemDialog extends ConsumerWidget {
         root: EveSelectListRoot.marketGroup(marketGroupId: metadata.initialMarketGroupId),
         validator: metadata.validator,
         enableMetaFilter: enableMetaFilter,
+        enableSearch: true,
         shallPopToSelect: (node) => node is EveSelectListRootType,
         onSelect: (node) => switch (node) {
           EveSelectListRootType(:final typeId) => Navigator.of(context).pop(typeId),

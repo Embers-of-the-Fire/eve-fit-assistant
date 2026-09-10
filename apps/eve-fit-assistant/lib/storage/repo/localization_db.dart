@@ -255,21 +255,27 @@ class LocalizationDbService {
     };
   }
 
-  /// Searches localized names by case-insensitive substring, returning up to
-  /// [limit] `id → name` matches ordered by shortest (most specific) name
-  /// first. Used by the chat fit tools to resolve item names to type ids.
+  /// Searches localized names by whitespace-separated tokens: every token
+  /// must appear as a case-insensitive substring (AND semantics), so
+  /// "exotic M" matches "Exotic Plasma Charge M" while a lone "M" no longer
+  /// floods the result cap with unrelated short names.
+  ///
+  /// Returns up to [limit] `id → name` matches ordered by shortest (most
+  /// specific) name first.
   Future<Map<int, String>> searchNames(String query, String locale, {int limit = 20}) async {
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) return const {};
+    final tokens = query.trim().split(RegExp(r"\s+")).where((token) => token.isNotEmpty).toList();
+    if (tokens.isEmpty) return const {};
     final db = await _databaseFor(locale);
     if (db == null) return const {};
-    final escaped = trimmed.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
+    String escape(String token) =>
+        token.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
+    final tokenClauses = List.filled(tokens.length, "value LIKE ? ESCAPE '\\'").join(" AND ");
     try {
       final rows = await db.getAll(
         "SELECT id, value FROM strings "
-        "WHERE locale = ? AND value LIKE ? ESCAPE '\\' "
+        "WHERE locale = ? AND $tokenClauses "
         "ORDER BY LENGTH(value) ASC LIMIT ?",
-        [locale, "%$escaped%", limit],
+        [locale, for (final token in tokens) "%${escape(token)}%", limit],
       );
       return {
         for (final row in rows)
