@@ -41,6 +41,7 @@ def _get_language_colors() -> dict[str, str]:
         "PHP": "#777bb4",
         "Ruby": "#cc342d",
         "Swift": "#fa7343",
+        "Svelte": "#ff3e00",
         "Kotlin": "#7f52ff",
         "HTML": "#e34f26",
         "CSS": "#1572b6",
