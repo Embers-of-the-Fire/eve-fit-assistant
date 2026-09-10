@@ -59,6 +59,8 @@ pub struct ModuleDto {
     pub state: StateDto,
     #[serde(default)]
     pub charge: Option<ChargeDto>,
+    #[serde(default)]
+    pub damage_turns: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -218,6 +220,7 @@ impl ModuleDto {
             charge: self.charge.map(|charge| ItemCharge {
                 type_id: charge.type_id,
             }),
+            damage_turns: self.damage_turns,
         }
     }
 }

@@ -172,6 +172,10 @@ abstract class FitModuleItem with _$FitModuleItem {
     required FitStorageItemId itemId,
     required FitItemState state,
     required Option<FitChargeItem> charge,
+
+    /// Number of completed damage ramp-up cycles of a precursor turret
+    /// (0 = first shot, base damage).
+    @Default(0) int damageTurns,
   }) = _FitModuleItem;
 
   factory FitModuleItem.fromJson(Map<String, dynamic> json) => _$FitModuleItemFromJson(json);
@@ -398,6 +402,7 @@ List<native.Module> convertModulesToNative(FitStorage fitStorage) {
             },
             charge: slot.charge.map((charge) => native.Charge(typeId: charge.typeId)).nullable,
             slot: native.Slot(slotType: slotGroup.$2, index: index),
+            damageTurns: slot.damageTurns,
           ),
         );
       });
@@ -502,6 +507,7 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage) {
           itemId: native.ItemID.item(value),
           state: native.State.online,
           slot: const native.Slot(slotType: native.SlotType.tacticalMode, index: 0),
+          damageTurns: 0,
         ),
     ],
     drones: drones,

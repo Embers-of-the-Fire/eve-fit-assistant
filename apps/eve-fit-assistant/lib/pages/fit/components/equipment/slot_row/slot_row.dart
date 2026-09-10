@@ -198,6 +198,11 @@ class _SlotRowDisplay extends ConsumerWidget {
       if (relatedValues.isNotEmpty) {
         subtitleWidgets.add(_SlotRelatedValuesRow(segments: relatedValues));
       }
+
+      final spool = precursorTurretSpool(moduleItem, slotInfo.slot);
+      if (spool != null) {
+        subtitleWidgets.add(_PrecursorTurretSpoolDpsLine(spool: spool));
+      }
     }
 
     final startActions = _buildStartActions(context, ref);
