@@ -38,6 +38,14 @@ List<SlotRelatedValueSegment> collectSlotRelatedValues(native.Item item) {
       final fieldRange = item.getAttribute(EveConstAttrID.empFieldRange);
       if (fieldRange > 0) {
         segments.add((iconAttributeId: EveConstAttrID.maxRange, text: _formatRangeKm(fieldRange)));
+      } else {
+        final scrambleRange = item.getAttribute(EveConstAttrID.warpScrambleRange);
+        if (scrambleRange > 0) {
+          segments.add((
+            iconAttributeId: EveConstAttrID.maxRange,
+            text: _formatRangeKm(scrambleRange),
+          ));
+        }
       }
     }
   }
