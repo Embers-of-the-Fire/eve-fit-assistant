@@ -306,13 +306,41 @@ class _ImplantSetDialog extends ConsumerStatefulWidget {
 
 class _ImplantSetDialogState extends ConsumerState<_ImplantSetDialog> {
   final TextEditingController _controller = TextEditingController();
+  final Map<int, ExpansibleController> _expansionControllers = {};
   String _query = "";
 
   @override
   void dispose() {
     _controller.dispose();
+    for (final controller in _expansionControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
+
+  // initiallyExpanded only applies at tile initialization and PageStorage can
+  // restore a collapsed state, so expansion must follow the query explicitly:
+  // every query change expands (or, when cleared, collapses) all families.
+  void _updateQuery(String value) {
+    setState(() {
+      _query = value;
+      final expand = value.trim().isNotEmpty;
+      for (final controller in _expansionControllers.values) {
+        if (expand) {
+          controller.expand();
+        } else {
+          controller.collapse();
+        }
+      }
+    });
+  }
+
+  ExpansibleController _expansionControllerFor(int familyId, {required bool expanded}) =>
+      _expansionControllers.putIfAbsent(familyId, () {
+        final controller = ExpansibleController();
+        if (expanded) controller.expand();
+        return controller;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +377,7 @@ class _ImplantSetDialogState extends ConsumerState<_ImplantSetDialog> {
             padding: const .fromLTRB(16, 0, 16, 8),
             child: TextField(
               controller: _controller,
-              onChanged: (value) => setState(() => _query = value),
+              onChanged: _updateQuery,
               decoration: InputDecoration(
                 isDense: true,
                 hintText: context.l10n.typeSearchHint,
@@ -363,7 +391,7 @@ class _ImplantSetDialogState extends ConsumerState<_ImplantSetDialog> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _controller.clear();
-                            setState(() => _query = "");
+                            _updateQuery("");
                           },
                         ),
                 ),
@@ -381,8 +409,10 @@ class _ImplantSetDialogState extends ConsumerState<_ImplantSetDialog> {
                       _ImplantSetTile(set: members.single, title: nameOf(members.single))
                     else
                       ExpansionTile(
-                        key: PageStorageKey(familyOf(members.first)),
-                        initiallyExpanded: query.isNotEmpty,
+                        controller: _expansionControllerFor(
+                          members.first.setId ~/ 100,
+                          expanded: query.isNotEmpty,
+                        ),
                         title: Text(familyOf(members.first)),
                         children: [
                           for (final set in members) _ImplantSetTile(set: set, title: nameOf(set)),
