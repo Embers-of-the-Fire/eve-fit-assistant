@@ -527,11 +527,20 @@ def _make_catalog_page(
 
 
 def _version_sort_key(version: str) -> tuple:
-    """Sort key for simple semver strings (pre-release ranks below its release)."""
-    core, sep, pre = version.partition("-")
+    """Sort key implementing SemVer 2.0.0 precedence.
+
+    Build metadata (everything after the first ``+``) is ignored. Pre-release
+    identifiers compare per SemVer: numeric identifiers numerically and below
+    alphanumeric ones, alphanumeric identifiers lexically; a version with a
+    pre-release ranks below the plain release.
+    """
+    core_pre, _, _build = version.partition("+")
+    core, sep, pre = core_pre.partition("-")
     core_key = tuple(int(p) for p in core.split(".") if p.isdigit())
-    pre_key: tuple = (0, pre) if sep else (1,)
-    return (*core_key, *pre_key)
+    if not sep:
+        return (*core_key, 1)
+    pre_key = tuple((0, int(ident)) if ident.isdigit() else (1, ident) for ident in pre.split("."))
+    return (*core_key, 0, *pre_key)
 
 
 def _page_summary_constraints(entries: list[AnnouncementEntry]) -> tuple[list[str], str]:

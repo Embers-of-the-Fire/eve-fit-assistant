@@ -840,6 +840,28 @@ class TestPreflightValidation:
         assert channels == ["nightly", "testing"]
         assert min_version == "0.0.0"
 
+    @pytest.mark.parametrize(
+        ("versions", "expected"),
+        [
+            # Numeric pre-release identifiers compare numerically, not lexically.
+            (["1.0.0-alpha.10", "1.0.0-alpha.2"], "1.0.0-alpha.2"),
+            (["1.0.0-alpha.2", "1.0.0-alpha.10"], "1.0.0-alpha.2"),
+            # Build metadata is ignored; it must not corrupt the core key.
+            (["1.0.1+build", "1.0.0+build"], "1.0.0+build"),
+            (["1.0.0+build", "1.0.1+build"], "1.0.0+build"),
+            # A plain release ranks above any of its pre-releases.
+            (["1.0.0", "1.0.0-alpha"], "1.0.0-alpha"),
+            # Numeric identifiers rank below alphanumeric ones.
+            (["1.0.0-1", "1.0.0-alpha"], "1.0.0-1"),
+            # A hyphen inside build metadata is not a pre-release separator.
+            (["1.0.0+build-x", "1.0.0-alpha"], "1.0.0-alpha"),
+        ],
+    )
+    def test_page_summary_constraints_semver_precedence(self, versions: list[str], expected: str):
+        entries = [_make_entry(entry_id=f"e{i}", min_app_version=v) for i, v in enumerate(versions)]
+        _, min_version = _page_summary_constraints(entries)
+        assert min_version == expected
+
     def test_unchanged_remote_bodies_not_required_locally(self, workspace: AnnouncementWorkspace):
         """Publish scenario: remote entries keep their bodies on the remote.
 
