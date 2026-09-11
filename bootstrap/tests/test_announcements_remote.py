@@ -556,6 +556,64 @@ class TestBuildPublishWorkspace:
         entry = next(e for e in archived_page.entries if e.id == "a0")
         assert entry.localizations["zh"].title == "Edited Archived"
 
+    def test_archived_overlay_refreshes_catalog_summary(
+        self, workspace: AnnouncementWorkspace, temp_dir: Path
+    ):
+        """Editing an archived entry refreshes the page's catalog constraints.
+
+        Clients skip closed pages whose summary channels do not contain their
+        channel, so a stale summary would hide edited entries.
+        """
+        a_uuid = "44444444-4444-4444-4444-444444444444"
+        archive_entries = [
+            _make_entry(entry_id=f"a{i}", zh_body="b", en_body="b") for i in range(20)
+        ]
+        _setup_remote(
+            workspace,
+            [_make_entry(entry_id="r1", zh_body="b", en_body="b")],
+            uuid=SAMPLE_UUID,
+            archived_pages=[(a_uuid, archive_entries)],
+        )
+        edited = _make_entry(
+            entry_id="a0",
+            zh_body="b",
+            en_body="b",
+            channels=["nightly"],
+            min_app_version="0.9.0",
+        )
+        overlay = workspace.overlay_upsert_entry(a_uuid, edited)
+        workspace.write_overlay(overlay)
+        workspace.build_publish_workspace(temp_dir)
+
+        meta = next(p for p in workspace._read_catalog(temp_dir).pages if p.uuid == a_uuid)
+        assert meta.channels == ["nightly", "testing"]
+        assert meta.min_app_version == "0.0.0"  # other entries are unrestricted
+        assert meta.count == 20
+
+    def test_no_rotation_refreshes_active_summary(
+        self, workspace: AnnouncementWorkspace, temp_dir: Path
+    ):
+        """Staging an entry below the rotation threshold refreshes the active summary."""
+        _setup_remote(
+            workspace,
+            [_make_entry(entry_id="r1", zh_body="b", en_body="b", min_app_version="0.8.0")],
+        )
+        staged = _make_entry(
+            entry_id="s1",
+            zh_body="b",
+            en_body="b",
+            channels=["nightly"],
+            min_app_version="0.9.0",
+        )
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, staged)
+        workspace.write_overlay(overlay)
+        workspace.build_publish_workspace(temp_dir)
+
+        meta = next(p for p in workspace._read_catalog(temp_dir).pages if p.active)
+        assert meta.channels == ["nightly", "testing"]
+        assert meta.min_app_version == "0.8.0"
+        assert meta.count == 2
+
     def test_preserves_archived_pages_without_overlay(
         self, workspace: AnnouncementWorkspace, temp_dir: Path
     ):

@@ -339,6 +339,11 @@ class AnnouncementWorkspace:
             shutil.rmtree(temp_dir)
         shutil.copytree(self.remote_dir, temp_dir)
 
+        active_uuid = self._get_active_uuid(temp_dir)
+        if active_uuid is None:
+            raise RuntimeError("Remote has no active page — cannot construct workspace")
+        temp_catalog = self._read_catalog(temp_dir)
+
         # 1. Apply overlay to archived pages
         for page_key, page_overlay in overlay.pages.items():
             if page_key == ACTIVE_KEY:
@@ -357,12 +362,17 @@ class AnnouncementWorkspace:
                 entries_by_id.values(), key=lambda e: e.published_at, reverse=True
             )
             self._write_page(temp_dir, page)
+            # Refresh the catalog summary: clients use archived-page summaries
+            # to decide whether to fetch the page at all.
+            channels, min_app_version = _page_summary_constraints(page.entries)
+            for p in temp_catalog.pages:
+                if p.uuid == page_key:
+                    p.channels = channels
+                    p.min_app_version = min_app_version
+                    p.count = len(page.entries)
+                    break
 
         # 2. Apply overlay to active page
-        active_uuid = self._get_active_uuid(temp_dir)
-        if active_uuid is None:
-            raise RuntimeError("Remote has no active page — cannot construct workspace")
-
         active_page = self._read_active(temp_dir)
         active_overlay = overlay.pages.get(ACTIVE_KEY, {})
 
@@ -376,8 +386,6 @@ class AnnouncementWorkspace:
         all_entries = sorted(entries_by_id.values(), key=lambda e: e.published_at, reverse=True)
 
         # 3. Rotation: chunk into pages of 20
-        temp_catalog = self._read_catalog(temp_dir)
-
         if len(all_entries) >= 20:
             chunks = [all_entries[i : i + 20] for i in range(0, len(all_entries), 20)]
 
@@ -428,9 +436,12 @@ class AnnouncementWorkspace:
             # No rotation — just update
             active_page.entries = all_entries
             self._write_active(temp_dir, active_page)
+            channels, min_app_version = _page_summary_constraints(all_entries)
             for p in temp_catalog.pages:
                 if p.uuid == active_uuid:
                     p.count = len(all_entries)
+                    p.channels = channels
+                    p.min_app_version = min_app_version
                     break
 
         self._write_catalog(temp_dir, temp_catalog)
