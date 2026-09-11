@@ -23,6 +23,7 @@ from bootstrap.docs.announcements_remote import AnnouncementLocalization
 from bootstrap.docs.announcements_remote import AnnouncementPage
 from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.announcements_remote import StagingOverlay
+from bootstrap.docs.announcements_remote import _page_summary_constraints
 from bootstrap.docs.announcements_remote import compute_status_diff
 from bootstrap.docs.announcements_remote import run_preflight_validation
 
@@ -555,6 +556,64 @@ class TestBuildPublishWorkspace:
         entry = next(e for e in archived_page.entries if e.id == "a0")
         assert entry.localizations["zh"].title == "Edited Archived"
 
+    def test_archived_overlay_refreshes_catalog_summary(
+        self, workspace: AnnouncementWorkspace, temp_dir: Path
+    ):
+        """Editing an archived entry refreshes the page's catalog constraints.
+
+        Clients skip closed pages whose summary channels do not contain their
+        channel, so a stale summary would hide edited entries.
+        """
+        a_uuid = "44444444-4444-4444-4444-444444444444"
+        archive_entries = [
+            _make_entry(entry_id=f"a{i}", zh_body="b", en_body="b") for i in range(20)
+        ]
+        _setup_remote(
+            workspace,
+            [_make_entry(entry_id="r1", zh_body="b", en_body="b")],
+            uuid=SAMPLE_UUID,
+            archived_pages=[(a_uuid, archive_entries)],
+        )
+        edited = _make_entry(
+            entry_id="a0",
+            zh_body="b",
+            en_body="b",
+            channels=["nightly"],
+            min_app_version="0.9.0",
+        )
+        overlay = workspace.overlay_upsert_entry(a_uuid, edited)
+        workspace.write_overlay(overlay)
+        workspace.build_publish_workspace(temp_dir)
+
+        meta = next(p for p in workspace._read_catalog(temp_dir).pages if p.uuid == a_uuid)
+        assert meta.channels == ["nightly", "testing"]
+        assert meta.min_app_version == "0.0.0"  # other entries are unrestricted
+        assert meta.count == 20
+
+    def test_no_rotation_refreshes_active_summary(
+        self, workspace: AnnouncementWorkspace, temp_dir: Path
+    ):
+        """Staging an entry below the rotation threshold refreshes the active summary."""
+        _setup_remote(
+            workspace,
+            [_make_entry(entry_id="r1", zh_body="b", en_body="b", min_app_version="0.8.0")],
+        )
+        staged = _make_entry(
+            entry_id="s1",
+            zh_body="b",
+            en_body="b",
+            channels=["nightly"],
+            min_app_version="0.9.0",
+        )
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, staged)
+        workspace.write_overlay(overlay)
+        workspace.build_publish_workspace(temp_dir)
+
+        meta = next(p for p in workspace._read_catalog(temp_dir).pages if p.active)
+        assert meta.channels == ["nightly", "testing"]
+        assert meta.min_app_version == "0.8.0"
+        assert meta.count == 2
+
     def test_preserves_archived_pages_without_overlay(
         self, workspace: AnnouncementWorkspace, temp_dir: Path
     ):
@@ -719,6 +778,89 @@ class TestPreflightValidation:
             check_remote=True,
         )
         assert any("exists on remote but not in staging" in e for e in errors)
+
+    def test_remote_compat_passes_after_rotation(self, workspace: AnnouncementWorkspace):
+        """19 remote entries + 1 staged entry triggers rotation; preflight must stay green.
+
+        Regression test: the compatibility check used to match pages by UUID,
+        but rotation re-chunks entries into freshly generated page UUIDs, so
+        every remote entry was falsely reported as deleted.
+        """
+        workspace.store_document("b")
+        _setup_remote(
+            workspace,
+            [_make_entry(entry_id=f"r{i}", zh_body="b", en_body="b") for i in range(19)],
+        )
+        new_entry = _make_entry(entry_id="s19", zh_body="b", en_body="b")
+        overlay = workspace.overlay_upsert_entry(ACTIVE_KEY, new_entry)
+        workspace.write_overlay(overlay)
+
+        temp = workspace.root / "temp"
+        workspace.build_publish_workspace(temp)
+
+        # Rotation happened: one full archived page + an empty active page.
+        catalog = workspace._read_catalog(temp)
+        archived = [p for p in catalog.pages if not p.active]
+        assert len(archived) == 1
+
+        # The archived page summary stays visible to clients: they skip closed
+        # pages whose summary channels do not contain the client's channel, so
+        # rotation must aggregate entry constraints into the summary.
+        assert archived[0].channels == ["testing"]
+        assert archived[0].min_app_version == "0.0.0"
+
+        errors = run_preflight_validation(
+            workspace_dir=temp,
+            documents_dir=workspace.documents_dir,
+            remote_dir=workspace.remote_dir,
+            check_remote=True,
+        )
+        assert errors == []
+
+        # All 20 entries survive in the rotated workspace.
+        surviving: set[str] = set()
+        for page_meta in catalog.pages:
+            page = workspace._read_any_page(temp, page_meta.uuid)
+            surviving.update(e.id for e in page.entries)
+        assert surviving == {f"r{i}" for i in range(19)} | {"s19"}
+
+    def test_page_summary_constraints_aggregates_entries(self):
+        """Summary channels are the union; minAppVersion is the entry minimum."""
+        entries = [
+            _make_entry(entry_id="e1", channels=["testing"], min_app_version="0.10.0"),
+            _make_entry(entry_id="e2", channels=["testing", "nightly"], min_app_version="0.9.1"),
+        ]
+        channels, min_version = _page_summary_constraints(entries)
+        assert channels == ["nightly", "testing"]
+        assert min_version == "0.9.1"
+
+        # Any unrestricted entry drops the page minimum to 0.0.0.
+        entries.append(_make_entry(entry_id="e3", channels=["testing"], min_app_version=None))
+        channels, min_version = _page_summary_constraints(entries)
+        assert channels == ["nightly", "testing"]
+        assert min_version == "0.0.0"
+
+    @pytest.mark.parametrize(
+        ("versions", "expected"),
+        [
+            # Numeric pre-release identifiers compare numerically, not lexically.
+            (["1.0.0-alpha.10", "1.0.0-alpha.2"], "1.0.0-alpha.2"),
+            (["1.0.0-alpha.2", "1.0.0-alpha.10"], "1.0.0-alpha.2"),
+            # Build metadata is ignored; it must not corrupt the core key.
+            (["1.0.1+build", "1.0.0+build"], "1.0.0+build"),
+            (["1.0.0+build", "1.0.1+build"], "1.0.0+build"),
+            # A plain release ranks above any of its pre-releases.
+            (["1.0.0", "1.0.0-alpha"], "1.0.0-alpha"),
+            # Numeric identifiers rank below alphanumeric ones.
+            (["1.0.0-1", "1.0.0-alpha"], "1.0.0-1"),
+            # A hyphen inside build metadata is not a pre-release separator.
+            (["1.0.0+build-x", "1.0.0-alpha"], "1.0.0-alpha"),
+        ],
+    )
+    def test_page_summary_constraints_semver_precedence(self, versions: list[str], expected: str):
+        entries = [_make_entry(entry_id=f"e{i}", min_app_version=v) for i, v in enumerate(versions)]
+        _, min_version = _page_summary_constraints(entries)
+        assert min_version == expected
 
     def test_unchanged_remote_bodies_not_required_locally(self, workspace: AnnouncementWorkspace):
         """Publish scenario: remote entries keep their bodies on the remote.

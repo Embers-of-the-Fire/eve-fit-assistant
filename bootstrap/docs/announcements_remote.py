@@ -339,6 +339,11 @@ class AnnouncementWorkspace:
             shutil.rmtree(temp_dir)
         shutil.copytree(self.remote_dir, temp_dir)
 
+        active_uuid = self._get_active_uuid(temp_dir)
+        if active_uuid is None:
+            raise RuntimeError("Remote has no active page — cannot construct workspace")
+        temp_catalog = self._read_catalog(temp_dir)
+
         # 1. Apply overlay to archived pages
         for page_key, page_overlay in overlay.pages.items():
             if page_key == ACTIVE_KEY:
@@ -357,12 +362,17 @@ class AnnouncementWorkspace:
                 entries_by_id.values(), key=lambda e: e.published_at, reverse=True
             )
             self._write_page(temp_dir, page)
+            # Refresh the catalog summary: clients use archived-page summaries
+            # to decide whether to fetch the page at all.
+            channels, min_app_version = _page_summary_constraints(page.entries)
+            for p in temp_catalog.pages:
+                if p.uuid == page_key:
+                    p.channels = channels
+                    p.min_app_version = min_app_version
+                    p.count = len(page.entries)
+                    break
 
         # 2. Apply overlay to active page
-        active_uuid = self._get_active_uuid(temp_dir)
-        if active_uuid is None:
-            raise RuntimeError("Remote has no active page — cannot construct workspace")
-
         active_page = self._read_active(temp_dir)
         active_overlay = overlay.pages.get(ACTIVE_KEY, {})
 
@@ -376,8 +386,6 @@ class AnnouncementWorkspace:
         all_entries = sorted(entries_by_id.values(), key=lambda e: e.published_at, reverse=True)
 
         # 3. Rotation: chunk into pages of 20
-        temp_catalog = self._read_catalog(temp_dir)
-
         if len(all_entries) >= 20:
             chunks = [all_entries[i : i + 20] for i in range(0, len(all_entries), 20)]
 
@@ -412,17 +420,28 @@ class AnnouncementWorkspace:
                     max_entries=50,
                     entries=last_chunk,
                 )
+                channels, min_app_version = _page_summary_constraints(last_chunk)
                 temp_catalog.pages.append(
-                    _make_catalog_page(new_active.uuid, now, count=len(last_chunk), active=True)
+                    _make_catalog_page(
+                        new_active.uuid,
+                        now,
+                        count=len(last_chunk),
+                        active=True,
+                        channels=channels,
+                        min_app_version=min_app_version,
+                    )
                 )
                 self._write_active(temp_dir, new_active)
         else:
             # No rotation — just update
             active_page.entries = all_entries
             self._write_active(temp_dir, active_page)
+            channels, min_app_version = _page_summary_constraints(all_entries)
             for p in temp_catalog.pages:
                 if p.uuid == active_uuid:
                     p.count = len(all_entries)
+                    p.channels = channels
+                    p.min_app_version = min_app_version
                     break
 
         self._write_catalog(temp_dir, temp_catalog)
@@ -442,7 +461,17 @@ class AnnouncementWorkspace:
             entries=entries,
         )
         self._write_page(temp_dir, archive_page)
-        catalog.pages.append(_make_catalog_page(archive_uuid, now, count=20, active=False))
+        channels, min_app_version = _page_summary_constraints(entries)
+        catalog.pages.append(
+            _make_catalog_page(
+                archive_uuid,
+                now,
+                count=20,
+                active=False,
+                channels=channels,
+                min_app_version=min_app_version,
+            )
+        )
 
     # -- document I/O ----------------------------------------------------------
 
@@ -494,6 +523,41 @@ def _make_catalog_page(
         channels=channels or [],
         count=count,
         active=active,
+    )
+
+
+def _version_sort_key(version: str) -> tuple:
+    """Sort key implementing SemVer 2.0.0 precedence.
+
+    Build metadata (everything after the first ``+``) is ignored. Pre-release
+    identifiers compare per SemVer: numeric identifiers numerically and below
+    alphanumeric ones, alphanumeric identifiers lexically; a version with a
+    pre-release ranks below the plain release.
+    """
+    core_pre, _, _build = version.partition("+")
+    core, sep, pre = core_pre.partition("-")
+    core_key = tuple(int(p) for p in core.split(".") if p.isdigit())
+    if not sep:
+        return (*core_key, 1)
+    pre_key = tuple((0, int(ident)) if ident.isdigit() else (1, ident) for ident in pre.split("."))
+    return (*core_key, 0, *pre_key)
+
+
+def _page_summary_constraints(entries: list[AnnouncementEntry]) -> tuple[list[str], str]:
+    """Aggregate entry constraints for a catalog page summary.
+
+    Clients skip a closed (archived) page unless the summary's channels contain
+    the client's channel, so the summary must carry the union of its entries'
+    channels; the page-level minAppVersion is the minimum across entries
+    ("0.0.0" when any entry is unrestricted). Entry-level filters still apply
+    after the page is fetched.
+    """
+    channels = sorted({c for e in entries for c in e.channels})
+    if not entries or any(e.min_app_version is None for e in entries):
+        return channels, "0.0.0"
+    return channels, min(
+        (e.min_app_version for e in entries if e.min_app_version is not None),
+        key=_version_sort_key,
     )
 
 
@@ -710,7 +774,13 @@ def _run_remote_compatibility_check(
     remote_dir: Path,
     workspace_dir: Path,
 ) -> list[str]:
-    """Check that publishing won't delete entries present on remote."""
+    """Check that publishing won't delete entries present on remote.
+
+    Entry IDs are compared globally across the whole constructed workspace,
+    not per page: rotation in ``build_publish_workspace`` re-chunks entries
+    into freshly generated page UUIDs, so a remote page's UUID is not stable
+    across a publish.
+    """
     errors: list[str] = []
 
     remote_catalog_path = remote_dir / "catalog.json"
@@ -725,8 +795,24 @@ def _run_remote_compatibility_check(
         errors.append(f"failed to load remote catalog: {e}")
         return errors
 
+    workspace_catalog_path = workspace_dir / "catalog.json"
+    if not workspace_catalog_path.exists():
+        errors.append("workspace catalog.json is missing — cannot verify remote entries")
+        return errors
+
     ws_remote = _FakeWorkspaceRead(remote_dir)
     ws_temp = _FakeWorkspaceRead(workspace_dir)
+
+    workspace_entries: dict[str, AnnouncementEntry] = {}
+    try:
+        workspace_catalog = ws_temp._read_catalog(workspace_dir)
+        for page_meta in workspace_catalog.pages:
+            page = ws_temp._read_any_page(workspace_dir, page_meta.uuid)
+            for entry in page.entries:
+                workspace_entries[entry.id] = entry
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"failed to load workspace pages: {e}")
+        return errors
 
     for remote_page_meta in remote_catalog.pages:
         remote_uuid = remote_page_meta.uuid
@@ -736,15 +822,7 @@ def _run_remote_compatibility_check(
             errors.append(f"page {remote_uuid} listed in remote catalog but file is missing")
             continue
 
-        remote_ids = {e.id for e in remote_page.entries}
-
-        try:
-            staging_page = ws_temp._read_any_page(workspace_dir, remote_uuid)
-            staging_ids = {e.id for e in staging_page.entries}
-        except FileNotFoundError:
-            staging_ids = set()
-
-        only_on_remote = remote_ids - staging_ids
+        only_on_remote = {e.id for e in remote_page.entries} - workspace_entries.keys()
         for entry_id in sorted(only_on_remote):
             remote_entry = next(e for e in remote_page.entries if e.id == entry_id)
             zh_title = (
