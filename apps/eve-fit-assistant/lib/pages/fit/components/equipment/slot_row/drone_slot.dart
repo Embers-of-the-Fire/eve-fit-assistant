@@ -233,6 +233,32 @@ class _DroneSlotRow extends ConsumerWidget {
 
     final quantity = fitContext.fit.body.drones.getOrNull(slotIdent.index)?.quantity ?? 0;
 
+    final droneItems =
+        fitContext.emulated?.modules
+            .where(
+              (item) => switch (item.slot.slotType) {
+                native.OutSlotType_DroneBay(:final groupId) => groupId == slotIdent.index,
+                _ => false,
+              },
+            )
+            .toList() ??
+        const <native.Item>[];
+    final representative = droneItems.isEmpty ? null : droneItems.first;
+    final isActive =
+        fitContext.fit.body.drones.getOrNull(slotIdent.index)?.state == FitItemState.active;
+    final dps = representative?.getAttribute(EveConstExtendedAttrID.damagePerSecondWithoutReload);
+    final volley = representative?.getAttribute(EveConstExtendedAttrID.damageVolley);
+    final dpsText = !isActive || dps == null || volley == null
+        ? null
+        : Text(
+            "$quantity x "
+            "${dps.toStringAsFixed(1)}/s = "
+            "${(dps * quantity).toStringAsFixed(1)}/s\n"
+            "$quantity x "
+            "${volley.toStringAsFixed(1)} = "
+            "${(volley * quantity).toStringAsFixed(1)}",
+          );
+
     final content = ListTile(
       leading: StateIcon.rect(
         state: slotInfo.state.toEfa(),
@@ -242,6 +268,7 @@ class _DroneSlotRow extends ConsumerWidget {
         child: EveIcon(icon: typeDef.icon, overlayIcon: metaGroupIcon, size: 35),
       ),
       title: LocalizedTypeName(typeId: displayTypeId),
+      subtitle: dpsText,
       trailing: Text("x $quantity"),
       onTap: interactionOptions.allowInspect
           ? () => showItemDetailPage(
