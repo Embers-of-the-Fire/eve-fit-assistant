@@ -254,17 +254,23 @@ function holdIcon(kind: HoldKindType): EfaIconName {
                         <span>{ctx.t("neutralizationResistance", { percent: neutPercent.toFixed(1) })}</span>
                         <span class="efa-sep">|</span>
                         {#if neutralization.selfSustainable}
-                            <span class="efa-success">
-                                {ctx.t("neutralizationBreak", {
-                                    rate: toMaxDecimals(neutralization.gjPerSToBreak, 2),
-                                })}
-                            </span>
-                        {:else}
+                            {#if Number.isFinite(neutralization.gjPerSToBreak)}
+                                <span class="efa-success">
+                                    {ctx.t("neutralizationBreak", {
+                                        rate: toMaxDecimals(neutralization.gjPerSToBreak, 2),
+                                    })}
+                                </span>
+                            {:else}
+                                <span class="efa-success">{ctx.t("neutralizationImmune")}</span>
+                            {/if}
+                        {:else if Number.isFinite(neutralization.gjToClear)}
                             <span class="efa-danger">
                                 {ctx.t("neutralizationClear", {
                                     amount: Math.round(neutralization.gjToClear),
                                 })}
                             </span>
+                        {:else}
+                            <span class="efa-success">{ctx.t("neutralizationImmune")}</span>
                         {/if}
                     </div>
                 </div>
