@@ -70,7 +70,9 @@ List<Text> _getNeutralizationTextGroup(
     );
     texts.add(
       Text(
-        l10n.fitAttributeTabNeutralizationClear(amount: clearAmount.round().toString()),
+        l10n.fitAttributeTabNeutralizationClear(
+          amount: clearAmount.isFinite ? clearAmount.round().toString() : "∞",
+        ),
         style: const TextStyle(color: Colors.red),
       ),
     );

@@ -335,7 +335,11 @@ class _NeutralizationSection extends StatelessWidget {
               )
             else
               Text(
-                l10n.neutralizationClear(amount: neutralization.gjToClear.round().toString()),
+                l10n.neutralizationClear(
+                  amount: neutralization.gjToClear.isFinite
+                      ? neutralization.gjToClear.round().toString()
+                      : "∞",
+                ),
                 style: const TextStyle(color: Colors.red),
               ),
           ],
