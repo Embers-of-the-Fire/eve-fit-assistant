@@ -74,6 +74,7 @@ part "components/attribute/capacitor.dart";
 part "components/attribute/cargo.dart";
 part "components/attribute/hp.dart";
 part "components/attribute/miscellaneous.dart";
+part "components/attribute/neutralization.dart";
 part "components/attribute/resource.dart";
 part "components/attribute/ship_info.dart";
 part "components/attribute/weapon.dart";

@@ -43,6 +43,9 @@ abstract final class EfaAssets {
   static final ImageProvider<Object> weaponLauncherNum = _asset("weapon-launcher-num.png");
 
   static final ImageProvider<Object> attrCapacitorCharge = _asset("attr-capacitor-charge.png");
+  static final ImageProvider<Object> attrEnergyWarfareResistance = _asset(
+    "attr-energy-warfare-resistance.png",
+  );
   static final ImageProvider<Object> attrDamageAlpha = _asset("attr-damage-alpha.png");
   static final ImageProvider<Object> attrWeaponTurret = _asset("attr-weapon-turret.png");
   static final ImageProvider<Object> attrWeaponDrone = _asset("attr-weapon-drone.png");

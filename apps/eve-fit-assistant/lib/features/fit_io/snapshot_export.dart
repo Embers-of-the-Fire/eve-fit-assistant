@@ -419,6 +419,12 @@ class FitSnapshotExporter {
           SnapshotStatistics_Cargo_Hold(kind: kind, capacityM3: hull.getAttribute(attribute)),
     ];
 
+    final warfareResistance = hull.getAttribute(EveConstAttrID.energyWarfareResistance, 1);
+    final breakPeakRate = neutralizationBreakPeakRate(
+      peakDelta: peakDelta,
+      energyWarfareResistance: warfareResistance,
+    );
+
     return SnapshotStatistics(
       capacitor: SnapshotStatistics_Capacitor(
         isStable: isStable,
@@ -499,6 +505,17 @@ class FitSnapshotExporter {
         massKg: hull.getAttribute(EveConstExtendedAttrID.totalMass),
         capacityM3: hull.getAttribute(EveConstAttrID.capacity),
         holds: holds,
+      ),
+      neutralization: SnapshotStatistics_Neutralization(
+        resistanceRate: neutralizationResistanceRate(warfareResistance),
+        selfSustainable: isStable,
+        gjToClear: isStable
+            ? null
+            : neutralizationClearAmount(
+                capacity: capacity,
+                energyWarfareResistance: warfareResistance,
+              ),
+        gjPerSToBreak: isStable && breakPeakRate.isFinite ? breakPeakRate : null,
       ),
     );
   }

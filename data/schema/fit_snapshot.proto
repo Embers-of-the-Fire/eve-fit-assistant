@@ -365,4 +365,22 @@ message SnapshotStatistics {
     repeated Hold holds = 3;
   }
   required Cargo cargo = 10;
+
+  /// Defensive capacitor-warfare statistics (energy neutralization).
+  message Neutralization {
+    /// Fraction (0..1) of incoming neutralizer/nosferatu drain the ship
+    /// resists, derived from `energyWarfareResistance`; UI shows `%`.
+    required double resistance_rate = 1;
+    /// Whether the capacitor is self-sustainable (stable).
+    required bool self_sustainable = 2;
+    /// Total GJ of neutralization (pre-resistance) needed to empty a full
+    /// capacitor, excluding regeneration; present only when not
+    /// self-sustainable.
+    optional double gj_to_clear = 3;
+    /// Sustained incoming drain rate in GJ/s (pre-resistance) needed to break
+    /// the peak recharge margin; present only when self-sustainable.
+    optional double gj_per_s_to_break = 4;
+  }
+  /// Optional so snapshots created before this field still decode.
+  optional Neutralization neutralization = 11;
 }

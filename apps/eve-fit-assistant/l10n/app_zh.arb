@@ -1183,6 +1183,30 @@
       }
     }
   },
+  "fitAttributeTabNeutralizationResistance": "{percent}% 抗性",
+  "@fitAttributeTabNeutralizationResistance": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "fitAttributeTabNeutralizationBreak": "击穿 +{rate} GJ/s",
+  "@fitAttributeTabNeutralizationBreak": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "fitAttributeTabNeutralizationClear": "排空 ~{amount} GJ",
+  "@fitAttributeTabNeutralizationClear": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "fitFighterAbilityTurret": "炮塔",
   "fitFighterAbilityMissiles": "导弹",
   "fitFighterAbilityVolley": "齐射",

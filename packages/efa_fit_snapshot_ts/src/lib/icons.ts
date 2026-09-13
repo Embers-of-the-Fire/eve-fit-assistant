@@ -15,6 +15,7 @@ import attrDmgKineticResistanceIcon from "./assets/icons/attr-dmg-kinetic-resist
 import attrDmgThermalResistanceIcon from "./assets/icons/attr-dmg-thermal-resistance.png";
 import attrDroneIcon from "./assets/icons/attr-drone.png";
 import attrDroneRangeIcon from "./assets/icons/attr-drone-range.png";
+import attrEnergyWarfareResistanceIcon from "./assets/icons/attr-energy-warfare-resistance.png";
 import attrHpArmorIcon from "./assets/icons/attr-hp-armor.png";
 import attrHpHullIcon from "./assets/icons/attr-hp-hull.png";
 import attrHpShieldIcon from "./assets/icons/attr-hp-shield.png";
@@ -66,6 +67,7 @@ function srcOf(mod: string | { src: string }): string {
 
 export const ICONS = {
     capacitor: srcOf(attrCapacitorChargeIcon),
+    "warfare-resistance": srcOf(attrEnergyWarfareResistanceIcon),
     alpha: srcOf(attrDamageAlphaIcon),
     cpu: srcOf(attrCpuIcon),
     power: srcOf(attrPowerIcon),

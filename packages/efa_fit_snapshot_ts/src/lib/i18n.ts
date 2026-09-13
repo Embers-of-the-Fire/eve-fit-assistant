@@ -21,6 +21,9 @@ const en = {
     fighterAbilityBomb: "Bomb",
     capacitorStable: "{percent}% Stable",
     capacitorUnstable: "Unstable",
+    neutralizationResistance: "{percent}% Resistance",
+    neutralizationBreak: "Break +{rate} GJ/s",
+    neutralizationClear: "Clear ~{amount} GJ",
 } as const;
 
 const zh: Record<keyof typeof en, string> = {
@@ -46,6 +49,9 @@ const zh: Record<keyof typeof en, string> = {
     fighterAbilityBomb: "炸弹",
     capacitorStable: "{percent}% 稳定",
     capacitorUnstable: "不稳定",
+    neutralizationResistance: "{percent}% 抗性",
+    neutralizationBreak: "击穿 +{rate} GJ/s",
+    neutralizationClear: "排空 ~{amount} GJ",
 };
 
 export type SnapshotMessageKey = keyof typeof en;

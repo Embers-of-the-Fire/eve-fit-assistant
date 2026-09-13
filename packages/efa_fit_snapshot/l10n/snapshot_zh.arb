@@ -37,5 +37,23 @@
       "percent": { "type": "String" }
     }
   },
-  "capacitorUnstable": "不稳定"
+  "capacitorUnstable": "不稳定",
+  "neutralizationResistance": "{percent}% 抗性",
+  "@neutralizationResistance": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "neutralizationBreak": "击穿 +{rate} GJ/s",
+  "@neutralizationBreak": {
+    "placeholders": {
+      "rate": { "type": "String" }
+    }
+  },
+  "neutralizationClear": "排空 ~{amount} GJ",
+  "@neutralizationClear": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  }
 }

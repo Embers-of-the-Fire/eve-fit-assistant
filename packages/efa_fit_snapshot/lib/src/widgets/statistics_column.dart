@@ -49,6 +49,7 @@ class SnapshotStatisticsColumn extends StatelessWidget {
         _WeaponsSection(weapons: stats.weapons),
         _ResourcesSection(resources: stats.resources),
         _DefenseSection(snapshot: snapshot),
+        if (stats.hasNeutralization()) _NeutralizationSection(neutralization: stats.neutralization),
         _MobilityTargetingSection(stats: stats),
         _DronesSection(drones: stats.drones),
         _CargoSection(cargo: stats.cargo),
@@ -301,6 +302,45 @@ class _DefenseSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NeutralizationSection extends StatelessWidget {
+  const _NeutralizationSection({required this.neutralization});
+
+  final SnapshotStatistics_Neutralization neutralization;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.snapshotL10n;
+    final percent = (neutralization.resistanceRate * 100).clamp(0.0, 100.0);
+
+    return ListTile(
+      minTileHeight: 0,
+      leading: efaIconImage(EfaAssets.attrEnergyWarfareResistance, height: 28),
+      title: DefaultTextStyle.merge(
+        style: const TextStyle(fontSize: 16),
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          children: [
+            Text(l10n.neutralizationResistance(percent: percent.toStringAsFixed(1))),
+            const Text(" | "),
+            if (neutralization.selfSustainable)
+              Text(
+                l10n.neutralizationBreak(
+                  rate: neutralization.gjPerSToBreak.toStringAsMaxDecimals(2),
+                ),
+                style: const TextStyle(color: Colors.green),
+              )
+            else
+              Text(
+                l10n.neutralizationClear(amount: neutralization.gjToClear.round().toString()),
+                style: const TextStyle(color: Colors.red),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
