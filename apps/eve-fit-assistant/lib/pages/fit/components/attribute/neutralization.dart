@@ -59,7 +59,9 @@ List<Text> _getNeutralizationTextGroup(
     );
     texts.add(
       Text(
-        l10n.fitAttributeTabNeutralizationBreak(rate: breakRate.toStringAsMaxDecimals(2)),
+        l10n.fitAttributeTabNeutralizationBreak(
+          rate: breakRate.isFinite ? breakRate.toStringAsMaxDecimals(2) : "∞",
+        ),
         style: const TextStyle(color: Colors.green),
       ),
     );
