@@ -26,6 +26,11 @@ const stats = $derived(snapshot.statistics);
 const ship = $derived(snapshot.ship?.type);
 const profile = $derived(snapshot.damageProfile);
 
+const neutralization = $derived(stats?.neutralization);
+const neutPercent = $derived(
+    Math.min(Math.max((neutralization?.resistanceRate ?? 0) * 100, 0), 100),
+);
+
 const capacitor = $derived(stats?.capacitor);
 const capPercent = $derived(
     capacitor?.isStable === true ? Math.min(Math.max(capacitor.stableFraction * 100, 0), 100) : 0,
@@ -240,6 +245,37 @@ function holdIcon(kind: HoldKindType): EfaIconName {
                 </tr>
             </tbody>
         </table>
+
+        {#if neutralization}
+            <div class="efa-stat-row">
+                <EfaIcon name="warfare-resistance" size={28} />
+                <div class="efa-stat-body">
+                    <div class="efa-stat-line">
+                        <span>{ctx.t("neutralizationResistance", { percent: neutPercent.toFixed(1) })}</span>
+                        <span class="efa-sep">|</span>
+                        {#if neutralization.selfSustainable}
+                            {#if Number.isFinite(neutralization.gjPerSToBreak)}
+                                <span class="efa-success">
+                                    {ctx.t("neutralizationBreak", {
+                                        rate: toMaxDecimals(neutralization.gjPerSToBreak, 2),
+                                    })}
+                                </span>
+                            {:else}
+                                <span class="efa-success">{ctx.t("neutralizationImmune")}</span>
+                            {/if}
+                        {:else if Number.isFinite(neutralization.gjToClear)}
+                            <span class="efa-danger">
+                                {ctx.t("neutralizationClear", {
+                                    amount: Math.round(neutralization.gjToClear),
+                                })}
+                            </span>
+                        {:else}
+                            <span class="efa-success">{ctx.t("neutralizationImmune")}</span>
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        {/if}
 
         {#if (stats.mobility && stats.targeting) || stats.drones}
             <table class="efa-pairs">

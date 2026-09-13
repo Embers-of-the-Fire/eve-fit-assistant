@@ -85,6 +85,13 @@ class EveConstAttrID {
   /// - High is good: True
   static const int rechargeRate = 55;
 
+  /// - Name: energyWarfareResistance
+  /// - High is good: False
+  ///
+  /// Multiplier applied to incoming energy neutralizer / nosferatu drain.
+  /// Defaults to 1.0 (no resistance) when a ship does not carry the attribute.
+  static const int energyWarfareResistance = 2045;
+
   /// - Name: hp
   /// - High is good: True
   static const int hp = 9;

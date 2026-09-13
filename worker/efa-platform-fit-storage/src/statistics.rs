@@ -53,6 +53,7 @@ pub mod attr_id {
     pub const COMMAND_CENTER_HOLD_CAPACITY: i32 = 1646;
     pub const PLANETARY_COMMODITIES_HOLD_CAPACITY: i32 = 1653;
     pub const FIGHTER_CAPACITY: i32 = 2055;
+    pub const ENERGY_WARFARE_RESISTANCE: i32 = 2045;
     pub const ICE_HOLD_CAPACITY: i32 = 3136;
 }
 
@@ -88,6 +89,36 @@ pub fn capacitor_stable_at(capacity: f64, target_recharge_rate: f64, recharge_ti
     let solve1 = (5.0 * cm + sqrt_delta - v * t) / (10.0 * cm);
     let solve2 = (5.0 * cm - sqrt_delta - v * t) / (10.0 * cm);
     solve1.max(solve2) * 100.0
+}
+
+/// Fraction (0..1) of incoming neutralizer/nosferatu drain the ship resists;
+/// port of `neutralizationResistanceRate` in
+/// `lib/utils/native/algo/neutralization.dart`.
+fn neutralization_resistance_rate(energy_warfare_resistance: f64) -> f64 {
+    (1.0 - energy_warfare_resistance).clamp(0.0, 1.0)
+}
+
+/// Sustained incoming drain rate (GJ/s, pre-resistance) needed to break the
+/// peak recharge margin of a capacitor-stable fit; port of
+/// `neutralizationBreakPeakRate`. Returns infinity when the ship resists all
+/// incoming drain.
+fn neutralization_break_peak_rate(peak_delta: f64, energy_warfare_resistance: f64) -> f64 {
+    if energy_warfare_resistance > 0.0 {
+        peak_delta.max(0.0) / energy_warfare_resistance
+    } else {
+        f64::INFINITY
+    }
+}
+
+/// Total GJ of neutralization (pre-resistance) needed to empty a full
+/// capacitor, excluding regeneration; port of `neutralizationClearAmount`.
+/// Returns infinity when the ship resists all incoming drain.
+fn neutralization_clear_amount(capacity: f64, energy_warfare_resistance: f64) -> f64 {
+    if energy_warfare_resistance > 0.0 {
+        capacity / energy_warfare_resistance
+    } else {
+        f64::INFINITY
+    }
 }
 
 /// Attribute IDs backing one defense layer. Named fields make transposed
@@ -282,6 +313,16 @@ pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
         holds,
     };
 
+    let warfare_resistance = get_or(hull, attr_id::ENERGY_WARFARE_RESISTANCE, 1.0);
+    let break_peak_rate = neutralization_break_peak_rate(peak_delta, warfare_resistance);
+    let neutralization = pb::snapshot_statistics::Neutralization {
+        resistance_rate: neutralization_resistance_rate(warfare_resistance),
+        self_sustainable: is_stable,
+        gj_to_clear: (!is_stable)
+            .then(|| neutralization_clear_amount(capacity, warfare_resistance)),
+        gj_per_s_to_break: (is_stable && break_peak_rate.is_finite()).then_some(break_peak_rate),
+    };
+
     pb::SnapshotStatistics {
         capacitor,
         weapons,
@@ -293,6 +334,7 @@ pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
         targeting,
         drones,
         cargo,
+        neutralization: Some(neutralization),
     }
 }
 
@@ -446,6 +488,47 @@ mod tests {
             pb::snapshot_statistics::cargo::HoldKind::FleetHangar as i32
         );
         assert_eq!(cargo.holds[0].capacity_m3, 10_000.0);
+
+        // No resistance attribute set → default 1.0 (no resistance), stable
+        // capacitor → break rate equals the peak recharge margin.
+        let neutralization = stats.neutralization.expect("neutralization");
+        assert_eq!(neutralization.resistance_rate, 0.0);
+        assert!(neutralization.self_sustainable);
+        assert_eq!(neutralization.gj_per_s_to_break, Some(15.0));
+        assert!(neutralization.gj_to_clear.is_none());
+    }
+
+    #[test]
+    fn unstable_capacitor_reports_neutralization_clear_amount() {
+        let mut ship = Ship::new(0);
+        ship.hull = item_with(&[
+            (patch::ATTR_CAPACITOR_DEPLETES_IN, 120.0),
+            (attr_id::CAPACITOR_CAPACITY, 1875.0),
+            (attr_id::ENERGY_WARFARE_RESISTANCE, 0.6),
+        ]);
+        let neutralization = build_statistics(&ship)
+            .neutralization
+            .expect("neutralization");
+        assert!((neutralization.resistance_rate - 0.4).abs() < 1e-12);
+        assert!(!neutralization.self_sustainable);
+        assert_eq!(neutralization.gj_to_clear, Some(3125.0));
+        assert!(neutralization.gj_per_s_to_break.is_none());
+    }
+
+    #[test]
+    fn full_resistance_makes_neutralization_pressure_infinite() {
+        assert_eq!(neutralization_break_peak_rate(12.5, 0.0), f64::INFINITY);
+        assert_eq!(neutralization_clear_amount(1875.0, 0.0), f64::INFINITY);
+        // Negative peak delta (unstable margin) breaks at zero drain.
+        assert_eq!(neutralization_break_peak_rate(-3.0, 1.0), 0.0);
+        // Fully resisted stable fit reports no finite break rate.
+        let mut ship = Ship::new(0);
+        ship.hull = item_with(&[(attr_id::ENERGY_WARFARE_RESISTANCE, 0.0)]);
+        let neutralization = build_statistics(&ship)
+            .neutralization
+            .expect("neutralization");
+        assert!(neutralization.self_sustainable);
+        assert!(neutralization.gj_per_s_to_break.is_none());
     }
 
     #[test]
@@ -546,6 +629,10 @@ mod tests {
             ),
             ("fighterCapacity", attr_id::FIGHTER_CAPACITY),
             ("specialIceHoldCapacity", attr_id::ICE_HOLD_CAPACITY),
+            (
+                "energyWarfareResistance",
+                attr_id::ENERGY_WARFARE_RESISTANCE,
+            ),
         ];
 
         // The mapping must cover every constant declared in `attr_id`.

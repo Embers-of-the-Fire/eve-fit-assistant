@@ -21,5 +21,8 @@
   "fighterAbilityAttackMissiles": "Attack Missiles",
   "fighterAbilityBomb": "Bomb",
   "capacitorStable": "{percent}% Stable",
-  "capacitorUnstable": "Unstable"
+  "capacitorUnstable": "Unstable",
+  "neutralizationResistance": "{percent}% Resistance",
+  "neutralizationBreak": "Break +{rate} GJ/s",
+  "neutralizationClear": "Clear ~{amount} GJ"
 }

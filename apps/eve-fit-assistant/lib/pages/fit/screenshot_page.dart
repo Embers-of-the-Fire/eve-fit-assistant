@@ -642,6 +642,7 @@ class _ScreenshotAttributeColumn extends ConsumerWidget {
           issues: _collectFitIssuesForSection(context, ref, fitContext, _FitIssueSection.ship),
         ),
         Hp(ship: emulated, interactionOptions: FitInteractionOptions.screenshot),
+        Neutralization(ship: emulated),
         Miscellaneous(ship: emulated),
         Cargo(ship: emulated),
       ],
