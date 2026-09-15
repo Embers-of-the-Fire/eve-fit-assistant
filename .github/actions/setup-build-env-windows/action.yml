@@ -48,10 +48,13 @@ runs:
     # The Nix shells ship protoc-gen-dart directly; on Windows it only exists
     # as a pub-global package. Its shim lives in the pub cache bin dir, which
     # is not on PATH by default — export it for all later job steps.
+    # Pin the plugin to the version built against the protobuf runtime locked
+    # in pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin 25.0.0); protoc_plugin
+    # 25.1.0 emits code that requires protobuf 6.1.0 and breaks compilation.
     - name: Install protoc-gen-dart
       shell: pwsh
       run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
-        dart pub global activate protoc_plugin
+        dart pub global activate protoc_plugin 25.0.0
         Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
 
     # flutter_secure_storage_windows includes <atlstr.h>, which ships with the

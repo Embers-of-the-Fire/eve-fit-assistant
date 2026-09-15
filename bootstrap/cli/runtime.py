@@ -166,7 +166,12 @@ def env_install() -> None:
             styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
         )
         dart = get_command("dart")
-        execute([dart, "pub", "global", "activate", "protoc_plugin"], "DART ACTIVATE OUTPUT")
+        # Pin to the plugin version matching the protobuf runtime locked in
+        # pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin 25.0.0); 25.1.0 emits
+        # code that requires protobuf 6.1.0 and breaks compilation.
+        execute(
+            [dart, "pub", "global", "activate", "protoc_plugin", "25.0.0"], "DART ACTIVATE OUTPUT"
+        )
 
     uv = get_command("uv")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")
