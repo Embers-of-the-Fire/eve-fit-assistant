@@ -76,6 +76,7 @@ dependencies:
   font_awesome_flutter: ^11.0.0
   fpdart: ^1.2.0
   freezed_annotation: ^3.1.0
+  gal: ^2.3.3
   hive_ce: ^2.18.0
   http_cache_hive_store: ^5.1.1
   html: ^0.15.6

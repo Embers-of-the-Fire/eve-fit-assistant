@@ -112,11 +112,12 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _handleSave(fitContext),
-                  icon: const Icon(Icons.download_outlined),
-                  label: Text(context.l10n.fitScreenshotSave),
-                ),
+                if (!kIsWeb)
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => _handleSave(fitContext),
+                    icon: const Icon(Icons.download_outlined),
+                    label: Text(context.l10n.fitScreenshotSave),
+                  ),
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => _handleShare(fitContext),
                   icon: const Icon(Icons.share_outlined),
@@ -145,28 +146,77 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
 
   Future<void> _handleSave(FitContext fitContext) async {
     await _runCaptureAction((pngBytes) async {
-      final file = await _writePng(
-        pngBytes,
-        fitContext: fitContext,
-        directoryPath: PathProvider.downloadsPath ?? PathProvider.documentsPath,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotSaved(path: file.path))));
+      final baseName = _screenshotBaseName(fitContext);
+      if (Platform.isAndroid || Platform.isIOS) {
+        await _saveToGallery(pngBytes, baseName);
+      } else if (Platform.isWindows || Platform.isLinux) {
+        await _saveWithFileDialog(pngBytes, "$baseName.png");
+      } else {
+        throw UnsupportedError("Image save is not supported on this platform.");
+      }
     });
+  }
+
+  Future<void> _saveToGallery(Uint8List pngBytes, String baseName) async {
+    final hasAccess = await Gal.hasAccess() || await Gal.requestAccess();
+    if (!hasAccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotGalleryPermissionDenied)));
+      }
+      return;
+    }
+    try {
+      await Gal.putImageBytes(pngBytes, name: baseName);
+    } on GalException catch (e) {
+      warning("Failed to save screenshot to gallery: ${e.type.message}");
+      if (mounted) {
+        final message = e.type == GalExceptionType.accessDenied
+            ? context.l10n.fitScreenshotGalleryPermissionDenied
+            : context.l10n.fitScreenshotExportFailed;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotSavedToGallery)));
+  }
+
+  Future<void> _saveWithFileDialog(Uint8List pngBytes, String fileName) async {
+    // saveFile writes the bytes to the chosen path itself on desktop.
+    final outputPath = await FilePicker.saveFile(
+      dialogTitle: context.l10n.fitScreenshotSaveDialogTitle,
+      fileName: fileName,
+      bytes: pngBytes,
+    );
+    if (outputPath == null || !mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotSaved(path: outputPath))));
   }
 
   Future<void> _handleShare(FitContext fitContext) async {
     await _runCaptureAction((pngBytes) async {
+      final subject = fitContext.fit.metadata.name;
+      if (kIsWeb) {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile.fromData(pngBytes, mimeType: "image/png")],
+            fileNameOverrides: ["${_screenshotBaseName(fitContext)}.png"],
+            subject: subject,
+          ),
+        );
+        return;
+      }
       final file = await _writePng(
         pngBytes,
         fitContext: fitContext,
         directoryPath: PathProvider.tempPath,
       );
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], subject: fitContext.fit.metadata.name),
-      );
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: subject));
     });
   }
 
@@ -174,8 +224,15 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     setState(() => _busy = true);
     try {
       final pngBytes = await _capturePng();
-      if (pngBytes == null) return;
+      if (pngBytes == null || !mounted) return;
       await action(pngBytes);
+    } on Object catch (e, stackTrace) {
+      warning("Screenshot export action failed", stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotExportFailed)));
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -193,6 +250,11 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     return byteData?.buffer.asUint8List();
   }
 
+  String _screenshotBaseName(FitContext fitContext) {
+    final safeName = fitContext.fit.metadata.name.replaceAll(RegExp("[^A-Za-z0-9._-]+"), "_");
+    return "${safeName.isEmpty ? "fit" : safeName}_${DateTime.now().millisecondsSinceEpoch}";
+  }
+
   Future<File> _writePng(
     Uint8List pngBytes, {
     required String directoryPath,
@@ -203,10 +265,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
       await directory.create(recursive: true);
     }
 
-    final safeName = fitContext.fit.metadata.name.replaceAll(RegExp("[^A-Za-z0-9._-]+"), "_");
-    final fileName =
-        "${safeName.isEmpty ? "fit" : safeName}_${DateTime.now().millisecondsSinceEpoch}.png";
-    final file = File(p.join(directory.path, fileName));
+    final file = File(p.join(directory.path, "${_screenshotBaseName(fitContext)}.png"));
     await file.writeAsBytes(pngBytes, flush: true);
     return file;
   }
