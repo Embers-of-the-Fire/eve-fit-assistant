@@ -1161,6 +1161,10 @@
       }
     }
   },
+  "fitScreenshotSavedToGallery": "已保存到相册",
+  "fitScreenshotSaveDialogTitle": "保存配置图片",
+  "fitScreenshotGalleryPermissionDenied": "相册访问被拒绝，请在系统设置中授予权限后再保存图片。",
+  "fitScreenshotExportFailed": "导出图片失败。",
   "fitScreenshotDamageProfile": "伤害分布",
   "fitScreenshotEquipment": "装备",
   "fitScreenshotSupport": "植入体与增效剂",
