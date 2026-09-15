@@ -17,7 +17,16 @@ setup_android_shim() {
     return 0
   fi
 
-  mkdir -p "$sdk_shim/emulator"
+  mkdir -p "$sdk_shim"
+  # Replace the placeholder emulator dir with a link to the Nix emulator so
+  # Flutter finds a working emulator at $ANDROID_SDK_ROOT/emulator/emulator
+  # instead of falling back to the legacy tools/emulator from the Nix SDK.
+  # The Nix emulator is wrapped with the libraries it needs on NixOS; the
+  # host SDK emulator cannot run here (missing system libs such as libX11).
+  if [ -d "$sdk_shim/emulator" ] && [ ! -L "$sdk_shim/emulator" ]; then
+    rmdir "$sdk_shim/emulator" 2>/dev/null || true
+  fi
+  ln -sfnT "$NIX_ANDROID_SDK_ROOT/emulator" "$sdk_shim/emulator"
   ln -sfn "$NIX_ANDROID_SDK_ROOT/build-tools" "$sdk_shim/build-tools"
   ln -sfn "$NIX_ANDROID_SDK_ROOT/cmake" "$sdk_shim/cmake"
   ln -sfn "$NIX_ANDROID_SDK_ROOT/cmdline-tools" "$sdk_shim/cmdline-tools"
