@@ -224,7 +224,7 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
     setState(() => _busy = true);
     try {
       final pngBytes = await _capturePng();
-      if (pngBytes == null) return;
+      if (pngBytes == null || !mounted) return;
       await action(pngBytes);
     } on Object catch (e, stackTrace) {
       warning("Screenshot export action failed", stackTrace: stackTrace);
