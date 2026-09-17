@@ -65,6 +65,12 @@ SPEED_ATTR = 51
 OVERLOAD_DAMAGE_ATTR = 1211
 
 OVERLOAD_EFFECT_CATEGORY = 5
+ACTIVE_EFFECT_CATEGORY = 1
+
+# The "online" effect is miscategorized as "active" in the raw dogma data
+# (the native engine re-categorizes it via `data/patches/onlineEffect.yaml`);
+# it must not mark a module as activatable.
+ONLINE_EFFECT_ID = 16
 
 CHARGE_GROUP_IDS = {604, 605, 606, 609, 610}
 

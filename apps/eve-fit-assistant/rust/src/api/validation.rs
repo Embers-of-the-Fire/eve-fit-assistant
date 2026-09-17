@@ -125,6 +125,7 @@ pub enum ValidationErrorKey {
         state: ValidationState,
         max_state: ValidationState,
     },
+    RequiresActiveIndustrialCore,
 }
 
 /// FRB DTO mirror of `eve_fit_os::validate::ValidationWarningKey`.
@@ -239,6 +240,9 @@ impl ValidationErrorKey {
                     state: ValidationState::from_engine(state),
                     max_state: ValidationState::from_engine(max_state),
                 }
+            }
+            engine::ValidationErrorKey::RequiresActiveIndustrialCore => {
+                Self::RequiresActiveIndustrialCore
             }
         }
     }

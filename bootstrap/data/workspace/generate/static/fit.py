@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic import Field
 
+from bootstrap.constant import ACTIVE_EFFECT_CATEGORY
 from bootstrap.constant import BOOSTER_SLOT_ATTR_ID
 from bootstrap.constant import CHARGE_GROUP_IDS
 from bootstrap.constant import DURATION_ATTR
@@ -27,7 +28,9 @@ from bootstrap.constant import MAX_SUBSYSTEM_SLOT_ATTR
 from bootstrap.constant import MED_EFFECT_ID
 from bootstrap.constant import MEDIUM_SLOT_ATTR
 from bootstrap.constant import MEDIUM_SLOT_MODIFIER_ATTR
+from bootstrap.constant import ONLINE_EFFECT_ID
 from bootstrap.constant import OVERLOAD_DAMAGE_ATTR
+from bootstrap.constant import OVERLOAD_EFFECT_CATEGORY
 from bootstrap.constant import RIG_EFFECT_ID
 from bootstrap.constant import RIG_SLOT_ATTR
 from bootstrap.constant import SERVICE_EFFECT_ID
@@ -294,7 +297,17 @@ def _find_max_state(
             break
 
     for effect in effect_view:
-        if effects[effect["effectID"]]["effectCategory"] == 5:
+        effect_id = effect["effectID"]
+        if effect_id == ONLINE_EFFECT_ID:
+            continue
+        category = effects[effect_id]["effectCategory"]
+        # effectCategory 1 (active) marks the module as activatable, mirroring
+        # the native engine's effect-category-based `max_state`. Some modules
+        # (e.g. the Pulse Activated Nexus Invulnerability Core) have an active
+        # effect but no capacitor/duration/speed attributes.
+        if category == ACTIVE_EFFECT_CATEGORY and max_state < fit_pb2.Slots.SlotState.ACTIVE:
+            max_state = fit_pb2.Slots.SlotState.ACTIVE
+        elif category == OVERLOAD_EFFECT_CATEGORY:
             max_state = fit_pb2.Slots.SlotState.OVERLOAD
             break
 

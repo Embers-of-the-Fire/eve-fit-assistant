@@ -370,6 +370,7 @@
   "fitIssueFighterSquadronHeavy": "heavy fighter",
   "fitIssueStateExceedsMax": "Module state exceeds its supported maximum.",
   "fitIssueStateExceedsMaxDetails": "Current state {state}; maximum state {maxState}.",
+  "fitIssueRequiresActiveIndustrialCore": "Module requires an active industrial core.",
   "fitIssueUnknownValidationIssue": "Unknown validation issue.",
   "fitTabsCharacter": "Char",
   "fitTabsEquipment": "Equip",

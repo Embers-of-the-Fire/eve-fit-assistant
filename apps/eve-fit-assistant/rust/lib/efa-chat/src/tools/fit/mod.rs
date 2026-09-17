@@ -1440,6 +1440,11 @@ fn validation_issue_entry(issue: eve_fit_os::validate::ValidationIssue) -> Valid
         ValidationIssueKind::Warning(W::MissingCharge) => {
             ("warning", "missing_charge", serde_json::json!({}))
         }
+        ValidationIssueKind::Error(E::RequiresActiveIndustrialCore) => (
+            "error",
+            "requires_active_industrial_core",
+            serde_json::json!({}),
+        ),
     };
     ValidationIssueEntry {
         slot_type,
