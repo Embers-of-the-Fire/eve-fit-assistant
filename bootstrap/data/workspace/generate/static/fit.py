@@ -298,7 +298,9 @@ def _find_max_state(
 
     for effect in effect_view:
         effect_id = effect["effectID"]
-        if effect_id == ONLINE_EFFECT_ID:
+        # The raw effectID may be a string (e.g. "16"), so normalize only for
+        # the online-effect comparison while keeping the raw key for `effects`.
+        if int(effect_id) == ONLINE_EFFECT_ID:
             continue
         category = effects[effect_id]["effectCategory"]
         # effectCategory 1 (active) marks the module as activatable, mirroring
