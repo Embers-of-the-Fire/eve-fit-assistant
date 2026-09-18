@@ -812,6 +812,7 @@
   "fitIssueFighterSquadronHeavy": "重型舰载机",
   "fitIssueStateExceedsMax": "装备状态超出其支持的最大状态。",
   "fitIssueStateExceedsMaxDetails": "当前状态：{state}；最大状态：{maxState}。",
+  "fitIssueRequiresActiveIndustrialCore": "装备需要已启动的工业核心。",
   "@fitIssueStateExceedsMaxDetails": {
     "placeholders": {
       "state": {

@@ -425,6 +425,7 @@ fn error_kind_code(key: &ValidationErrorKey) -> &'static str {
         ValidationErrorKey::TooMuchFighterTube { .. } => "TooMuchFighterTube",
         ValidationErrorKey::TooMuchFighterSquadron { .. } => "TooMuchFighterSquadron",
         ValidationErrorKey::StateExceedsMax { .. } => "StateExceedsMax",
+        ValidationErrorKey::RequiresActiveIndustrialCore => "RequiresActiveIndustrialCore",
     }
 }
 

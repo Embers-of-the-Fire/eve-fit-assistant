@@ -382,6 +382,11 @@ _FitIssue _localizeValidationError(
       maxState: _validationStateName(context, maxState),
     ),
   ),
+  native_validation.ValidationErrorKey_RequiresActiveIndustrialCore() => _FitIssue(
+    severity: _FitIssueSeverity.error,
+    title: context.l10n.fitIssueRequiresActiveIndustrialCore,
+    details: "",
+  ),
 };
 
 _FitIssue _localizeValidationWarning(
