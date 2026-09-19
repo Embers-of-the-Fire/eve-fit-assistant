@@ -258,7 +258,7 @@ class _EnvironmentPresetRow extends ConsumerWidget {
     // here only races a snapshot switch and is dropped silently.
     final buffs = resolvePresetBuffs(preset, dogma.attrsOf);
     if (buffs == null) return;
-    await fitContext.fitWrapper.setSystemEffectPreset(preset.id, buffs);
+    await fitContext.fitWrapper.replaceSystemEffectPreset(presetId, preset.id, buffs);
   }
 }
 
@@ -571,7 +571,7 @@ class _EditSystemBuffValueDialogState extends State<_EditSystemBuffValueDialog> 
 
   void _submit(String text) {
     final value = double.tryParse(text.trim());
-    if (value == null) return;
+    if (value == null || !value.isFinite) return;
     Navigator.of(context).pop(value);
   }
 }

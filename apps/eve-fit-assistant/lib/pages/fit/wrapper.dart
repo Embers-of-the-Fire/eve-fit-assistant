@@ -261,6 +261,21 @@ class FitWrapper {
         return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
       });
 
+  /// Atomically swaps [previousPresetId]'s entries for [presetBuffs] of
+  /// [presetId], so re-picking a row's preset never leaves both active.
+  Future<void> replaceSystemEffectPreset(
+    String previousPresetId,
+    String presetId,
+    List<FitSystemBuff> presetBuffs,
+  ) => wrapped.update((fit) {
+    final buffs =
+        fit.body.systemBuffs
+            .where((b) => b.presetId != previousPresetId && b.presetId != presetId)
+            .toList()
+          ..addAll(presetBuffs);
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+  });
+
   Future<void> removeSystemEffectPreset(String presetId) => wrapped.update((fit) {
     final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toIList();
     return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
