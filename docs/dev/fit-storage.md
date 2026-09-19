@@ -68,14 +68,14 @@ wrapping the versioned fit storage envelope.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "registry": {
     "fits": {}
   }
 }
 ```
 
-As with fit files, an unversioned registry payload is accepted as legacy alpha data,
+As with fit files, an unversioned or version-1 registry payload is accepted as legacy alpha data,
 then rewritten immediately in the versioned format.
 
 ### Native Text Payloads
