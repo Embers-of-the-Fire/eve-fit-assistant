@@ -93,7 +93,9 @@ without tying future native text versions directly to on-disk file versions.
 ## Current Limits
 
 - There is no multi-step historical migration chain yet.
-  The current alpha implementation only normalizes legacy unversioned payloads into version `1` envelopes.
+  The current alpha implementation only normalizes legacy payloads
+  (unversioned, or fit storage versions 1-3 and registry version 1)
+  into the current versioned envelope (fit storage version `4`, registry version `2`).
 - Unknown future versions are rejected instead of partially decoded.
   This applies both to persisted fit payloads and to native text imports with explicit prefixes.
 - Additive compatibility is only relaxed where the current JSON decoding already tolerates extra fields.
