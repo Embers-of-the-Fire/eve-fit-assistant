@@ -145,7 +145,7 @@ void main() {
       expect(schemaFile.existsSync(), isTrue);
     });
 
-    test("fits are written with version 2 and checkoutRef at new path", () async {
+    test("fits are written with the legacy v2 envelope and checkoutRef at new path", () async {
       final oldFittingsPath = PathProvider.oldFittingsPath;
       Directory(oldFittingsPath).createSync(recursive: true);
 
@@ -157,7 +157,7 @@ void main() {
 
       final newPath = File(p.join(PathProvider.fittingsPath, "fit-1.json"));
       final content = jsonDecode(newPath.readAsStringSync()) as Map<String, dynamic>;
-      expect(content["version"], 2);
+      expect(content["version"], migratedFitStorageVersion);
       final metadata = content["fit"]["metadata"] as Map<String, dynamic>;
       expect(metadata["checkoutRef"], isNotNull);
       expect(metadata.containsKey("bundleId"), isFalse);

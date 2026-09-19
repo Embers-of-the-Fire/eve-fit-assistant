@@ -59,6 +59,8 @@ rewritten into the current envelope on save (version 3 introduced
 `CheckoutRef`, version 2 the versioned envelope itself).
 The shareable native text payload (`EFA<n>:`) is at payload version 3,
 wrapping the versioned fit storage envelope.
+This inner payload version is independent of the outer `EFA<n>:` prefix
+version (currently `EFA2:`).
 
 ### Fit Registry
 
@@ -81,9 +83,10 @@ then rewritten immediately in the versioned format.
 ### Native Text Payloads
 
 - Native text import/export lives in [`lib/features/fit_io`](../../apps/eve-fit-assistant/lib/features/fit_io).
-- Export currently emits the `EFA:` prefix only.
-- Import accepts both the legacy `EFA:` prefix and the explicit `EFA1:` prefix.
-- Explicit numeric prefixes newer than `EFA1:` are rejected as unsupported.
+- Export currently emits the `EFA2:` prefix.
+- Import accepts the legacy bare `EFA:` prefix (treated as version 1), the
+  explicit `EFA1:` prefix, and the current `EFA2:` prefix.
+- Explicit numeric prefixes newer than `EFA2:` are rejected as unsupported.
 - The compressed payload inside `EFA:` still contains its own `version` field,
   validated through `decodeNativeFitPayload(...)`.
 

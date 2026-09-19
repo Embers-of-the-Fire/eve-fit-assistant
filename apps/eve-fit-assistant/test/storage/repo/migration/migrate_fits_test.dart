@@ -109,7 +109,7 @@ void main() {
       if (parentDir.existsSync()) parentDir.deleteSync(recursive: true);
     });
 
-    test("migrates legacy fit files to version 2 with checkoutRef", () async {
+    test("migrates legacy fit files to the legacy v2 envelope with checkoutRef", () async {
       final fitFile = File(p.join(sourceDir, "fit-1.json"));
       fitFile.createSync(recursive: true);
       fitFile.writeAsStringSync(
@@ -131,7 +131,7 @@ void main() {
       final destFile = File(p.join(destDir, "fit-1.json"));
       expect(destFile.existsSync(), isTrue);
       final content = jsonDecode(destFile.readAsStringSync()) as Map<String, dynamic>;
-      expect(content["version"], 2);
+      expect(content["version"], migratedFitStorageVersion);
       final metadata = content["fit"]["metadata"] as Map<String, dynamic>;
       final cr = metadata["checkoutRef"] as Map<String, dynamic>;
       expect(cr["checkoutId"], "abc123");

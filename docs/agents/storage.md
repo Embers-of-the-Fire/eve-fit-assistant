@@ -67,3 +67,15 @@ Repository-module tests run from the app directory with `dart test test/storage/
 Migration tests use `dart test test/storage/repo/migration/`. Data-flow
 integration tests use `package:mocktail` for network and filesystem mocks; async tests require
 `flutter test` or `dart test` with the Flutter SDK on `PATH`.
+
+## Version Axes
+
+The storage version numbers are independent axes, each single-sourced: fit-storage and
+fit-registry envelopes and the native payload envelope live in
+`lib/storage/fit/persistence.dart`, the `EFA<n>:` prefix version in
+`packages/efa_fit/lib/src/efa_format.dart`, and the repo data schema version in
+`efa.config.toml` (`[version].data_schema`, generated into `repo_version.dart`).
+Do not bake version numbers into file or resource names. When bumping any axis, update
+`docs/dev/fit-storage.md` examples in the same commit and run
+`uv run pytest bootstrap/tests/test_version_alignment.py`, which enforces cross-file
+alignment.

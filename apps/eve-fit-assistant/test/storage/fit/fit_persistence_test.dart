@@ -81,10 +81,7 @@ void main() {
             "name": "Plain Drone Fit",
             "lastModified": 0,
             "description": "",
-            "checkoutRef": <String, dynamic>{
-              "checkoutId": "checkout-abc",
-              "serverId": "Serenity",
-            },
+            "checkoutRef": <String, dynamic>{"checkoutId": "checkout-abc", "serverId": "Serenity"},
           },
           "body": <String, dynamic>{
             "shipTypeId": 1234,
@@ -134,7 +131,8 @@ void main() {
       final migratedFixture = _roundTripJson(fixture);
       migratedFixture["version"] = 4;
       ((migratedFixture["fit"] as Map<String, dynamic>)["body"]
-          as Map<String, dynamic>)["systemBuffs"] = <dynamic>[];
+              as Map<String, dynamic>)["systemBuffs"] =
+          <dynamic>[];
       expect(reEncoded, migratedFixture);
     });
   });
