@@ -227,22 +227,21 @@ class _EnvironmentPresetRow extends ConsumerWidget {
 
     if (!interactionOptions.allowMutations) return content;
 
-    return Slidable(
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => fitContext.fitWrapper.removeSystemEffectPreset(presetId),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+    final actions = [
+      TileAction(
+        onPressed: (_) => fitContext.fitWrapper.removeSystemEffectPreset(presetId),
+        backgroundColor: colorActionDelete,
+        foregroundColor: Colors.white,
+        icon: Icons.delete,
+        label: context.l10n.delete,
       ),
-      child: SlidableEdgeZone(child: content),
+    ];
+
+    return Slidable(
+      endActionPane: buildTileActionPane(actions, overflowFirst: true),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: actions, child: content),
+      ),
     );
   }
 
@@ -287,27 +286,31 @@ class _CustomSystemBuffRow extends ConsumerWidget {
             : context.l10n.fitEnvironmentUnknownBuff(buffId: buff.buffId),
       ),
       trailing: Text("${context.l10n.fitEnvironmentBuffValue} ${buff.value}"),
-      onTap: interactionOptions.allowMutations ? () => _handleEditValue(context) : null,
     );
 
     if (!interactionOptions.allowMutations) return content;
 
+    final editAction = TileAction(
+      onPressed: (_) => _handleEditValue(context),
+      backgroundColor: context.theme.colorScheme.secondaryContainer,
+      foregroundColor: context.theme.colorScheme.onSecondaryContainer,
+      icon: Icons.edit,
+      label: context.l10n.edit,
+    );
+    final deleteAction = TileAction(
+      onPressed: (_) => fitContext.fitWrapper.removeCustomSystemBuff(buff.buffId),
+      backgroundColor: colorActionDelete,
+      foregroundColor: Colors.white,
+      icon: Icons.delete,
+      label: context.l10n.delete,
+    );
+
     return Slidable(
-      endActionPane: ActionPane(
-        extentRatio: 0.15,
-        motion: const StretchMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (_) => fitContext.fitWrapper.removeCustomSystemBuff(buff.buffId),
-            backgroundColor: colorActionDelete,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            label: context.l10n.delete,
-            padding: .zero,
-          ),
-        ],
+      startActionPane: buildTileActionPane([editAction]),
+      endActionPane: buildTileActionPane([deleteAction], overflowFirst: true),
+      child: SlidableEdgeZone(
+        child: TileSecondaryActionRegion(actions: [editAction, deleteAction], child: content),
       ),
-      child: SlidableEdgeZone(child: content),
     );
   }
 
