@@ -90,9 +90,32 @@ abstract class FitStorageBody with _$FitStorageBody {
     required IList<FitFighterItem> fighters,
     required IList<FitImplantItem> implants,
     required IList<FitBoosterItem> boosters,
+
+    /// System-wide warfare buffs (environmental effects such as wormhole
+    /// system effects or weather) applied to the whole fit.
+    @Default(IList<FitSystemBuff>.empty()) IList<FitSystemBuff> systemBuffs,
   }) = _FitStorageBody;
 
   factory FitStorageBody.fromJson(Map<String, dynamic> json) => _$FitStorageBodyFromJson(json);
+}
+
+/// One system-wide warfare buff applied to a fit.
+///
+/// Entries expanded from an environment preset carry its [presetId] for
+/// display grouping; custom entries leave it null.
+@freezed
+abstract class FitSystemBuff with _$FitSystemBuff {
+  const factory FitSystemBuff({
+    /// Buff collection ID (`dbuffcollections`); negative IDs are reserved
+    /// for hand-authored buffs (e.g. wormhole system effects).
+    required int buffId,
+
+    /// Buff strength, interpreted per the buff's operation.
+    required double value,
+    String? presetId,
+  }) = _FitSystemBuff;
+
+  factory FitSystemBuff.fromJson(Map<String, dynamic> json) => _$FitSystemBuffFromJson(json);
 }
 
 Object? _readCharacterId(Map<dynamic, dynamic> json, String key) =>
@@ -514,6 +537,10 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage) {
     fighters: fighters,
     implants: implants,
     boosters: boosters,
+    systemBuffs: [
+      for (final systemBuff in fitStorage.body.systemBuffs)
+        native.SystemBuff(buffId: systemBuff.buffId, value: systemBuff.value),
+    ],
   );
 }
 

@@ -22,7 +22,7 @@ resource snapshots, channel discovery, checkout lifecycle handling, and Riverpod
 | Checkout DB Transport | `lib/storage/repo/checkout_db*.dart` | Shared transport for prebuilt checkout SQLite databases: `CheckoutDbSpec` (resource id, OPFS name prefix, schema version, label), native read-only open, web OPFS copy and worker open, and the `meta.schema_version` check. |
 | Agent Resource DB | `lib/storage/repo/agent_resource_db.dart` | `AgentResourceDbService` opens `agent_resource.db`, a FORCE resource backing AI chat tools. Its schema-v2 `type_names(locale, id, value, group_id, category_id, slot_index, slot_kind)` table provides localized names plus group/category and implant/booster slot metadata for `search_items`. This is a hard dependency: opening/providers throw when absent or schema-mismatched. |
 | Migration Layer | `lib/storage/repo/migration/` | `action/` contains `MigrateService` (fits → characters → finalize), `MigrateFits`, `MigrateCharacters`, the freezed `MigrateProgress` state machine and `MigrateProgressStore`, and the migration result types. Progress persists to `.migration_progress.json`. |
-| Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit and character storage schemas; fits support storage version 3 with `CheckoutRef`. |
+| Persistence | `lib/storage/fit/`, `lib/storage/character/` | Fit and character storage schemas; fits support storage version 4 with `systemBuffs` (v3 added `CheckoutRef`). |
 | Settings | `lib/storage/setting/` | User settings, including remote content and platform account configuration. |
 | Account/Auth | `lib/features/account/` | `PlatformSession` providers (from `packages/efa_platform_client`), the secure-storage `SecurePlatformSessionStore` adapter, and settings UI. |
 | Platform | `lib/features/platform/` | Riverpod state for the platform community pages (`lib/pages/platform/`): the cursor-paginated post feed, post detail (record + `FitSnapshot` rendered by `packages/efa_fit_snapshot`), and comment listing/creation. Comment deletion/editing is deferred. |
@@ -67,3 +67,15 @@ Repository-module tests run from the app directory with `dart test test/storage/
 Migration tests use `dart test test/storage/repo/migration/`. Data-flow
 integration tests use `package:mocktail` for network and filesystem mocks; async tests require
 `flutter test` or `dart test` with the Flutter SDK on `PATH`.
+
+## Version Axes
+
+The storage version numbers are independent axes, each single-sourced: fit-storage and
+fit-registry envelopes and the native payload envelope live in
+`lib/storage/fit/persistence.dart`, the `EFA<n>:` prefix version in
+`packages/efa_fit/lib/src/efa_format.dart`, and the repo data schema version in
+`efa.config.toml` (`[version].data_schema`, generated into `repo_version.dart`).
+Do not bake version numbers into file or resource names. When bumping any axis, update
+`docs/dev/fit-storage.md` examples in the same commit and run
+`uv run pytest bootstrap/tests/test_version_alignment.py`, which enforces cross-file
+alignment.

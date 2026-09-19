@@ -135,6 +135,15 @@ pub fn decode_buff(entry: &efos::buff_collections::Buff) -> (ef::Buff, bool) {
                 skill_id: m.skill_id,
             })
             .collect(),
+        charge_required_skill_modifiers: entry
+            .charge_required_skill_modifiers
+            .iter()
+            .map(|m| ef::BuffSkillModifier {
+                dogma_attribute_id: m.dogma_attribute_id,
+                skill_id: m.skill_id,
+            })
+            .collect(),
+        penalized: entry.penalized.unwrap_or(true),
         operation,
     };
     (buff, degraded)
@@ -191,6 +200,8 @@ impl Default for FitDataProvider {
                 location_modifiers: Vec::new(),
                 location_group_modifiers: Vec::new(),
                 location_required_skill_modifiers: Vec::new(),
+                charge_required_skill_modifiers: Vec::new(),
+                penalized: true,
                 operation: ef::BuffOperation::PostAssign,
             },
         }
@@ -295,6 +306,8 @@ mod tests {
             location_group_modifiers: vec![],
             location_modifiers: vec![],
             location_required_skill_modifiers: vec![],
+            charge_required_skill_modifiers: vec![],
+            penalized: None,
             operation_name: 42,
             show_output_value_in_ui: 0,
         };

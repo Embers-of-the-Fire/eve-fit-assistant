@@ -143,7 +143,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
   final _edgeTracker = SlidableEdgeTracker();
   final Map<int, double> _pointerDownX = {};
 
-  static const _tabCount = 5;
+  static const _tabCount = 6;
   static const _swipeThreshold = 50.0;
 
   @override
@@ -178,6 +178,7 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
                 ? context.l10n.fitTabsFighter
                 : context.l10n.fitTabsDrone,
           ),
+          Tab(text: context.l10n.fitTabsEnvironment),
           Tab(text: context.l10n.fitTabsUtils),
         ],
       ),
@@ -214,6 +215,10 @@ class _FitDisplayTabState extends State<_FitDisplayTab> with SingleTickerProvide
                   )
                 else
                   _DroneTab(fitContext: widget.fitContext, interactionOptions: _interactionOptions),
+                _EnvironmentTab(
+                  fitContext: widget.fitContext,
+                  interactionOptions: _interactionOptions,
+                ),
                 _UtilsTab(fitContext: widget.fitContext),
               ],
             ),

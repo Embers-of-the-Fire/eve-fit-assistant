@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use eve_fit_os::calculate::item::FighterAbility;
 use eve_fit_os::fit::{
     DynamicItem, FitContainer, ItemBooster, ItemCharge, ItemDrone, ItemFighter, ItemFit,
-    ItemImplant, ItemModule, ItemSlot, ItemSlotType, ItemState,
+    ItemImplant, ItemModule, ItemSlot, ItemSlotType, ItemState, ItemSystemBuff,
 };
 use serde::Deserialize;
 
@@ -42,6 +42,8 @@ pub struct FitDto {
     pub implants: Vec<ImplantDto>,
     #[serde(default)]
     pub boosters: Vec<BoosterDto>,
+    #[serde(default)]
+    pub system_buffs: Vec<SystemBuffDto>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,6 +131,12 @@ pub struct BoosterDto {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct SystemBuffDto {
+    pub buff_id: i32,
+    pub value: f64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct DynamicItemDto {
     pub base_type: i32,
     #[serde(default)]
@@ -188,6 +196,14 @@ impl FitDto {
             fighters: self.fighters.into_iter().map(|f| f.into_native()).collect(),
             implants: self.implants.into_iter().map(|i| i.into_native()).collect(),
             boosters: self.boosters.into_iter().map(|b| b.into_native()).collect(),
+            system_buffs: self
+                .system_buffs
+                .into_iter()
+                .map(|b| ItemSystemBuff {
+                    buff_id: b.buff_id,
+                    value: b.value,
+                })
+                .collect(),
         }
     }
 }
@@ -297,6 +313,7 @@ mod tests {
                 fighters: vec![],
                 implants: vec![],
                 boosters: vec![],
+                system_buffs: vec![],
             },
             skills: HashMap::new(),
             dynamic_items: HashMap::new(),

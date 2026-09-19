@@ -585,6 +585,11 @@ where
                 .iter()
                 .map(|m| m.dogma_attribute_id),
         );
+        attribute_ids.extend(
+            buff.charge_required_skill_modifiers
+                .iter()
+                .map(|m| m.dogma_attribute_id),
+        );
     }
     let wanted = missing(attribute_ids.iter(), &cached_keys(&data.dogma_attributes));
     if !wanted.is_empty() {
@@ -922,16 +927,23 @@ mod tests {
         .encode_to_vec()
     }
 
-    fn buff(attr_id: i32) -> Vec<u8> {
+    fn buff(item_attr_id: i32, charge_attr_id: i32) -> Vec<u8> {
         efos::buff_collections::Buff {
             aggregate_mode: 0,
             buff_id: 1,
             item_modifiers: vec![efos::buff_collections::buff::ItemModifier {
-                dogma_attribute_id: attr_id,
+                dogma_attribute_id: item_attr_id,
             }],
             location_group_modifiers: vec![],
             location_modifiers: vec![],
             location_required_skill_modifiers: vec![],
+            charge_required_skill_modifiers: vec![
+                efos::buff_collections::buff::LocationRequiredSkillModifier {
+                    dogma_attribute_id: charge_attr_id,
+                    skill_id: 400,
+                },
+            ],
+            penalized: None,
             operation_name: 7,
             show_output_value_in_ui: 0,
         }
@@ -1010,13 +1022,13 @@ mod tests {
         );
         fixture.insert_family(
             Family::DogmaAttributes,
-            [10, 11, 12, 13, 14, 15, 20, 21, 30]
+            [10, 11, 12, 13, 14, 15, 20, 21, 30, 31]
                 .into_iter()
                 .chain(WARFARE_BUFF_ATTRIBUTE_IDS)
                 .map(|id| (id, attr()))
                 .collect(),
         );
-        fixture.insert_family(Family::Buffs, vec![(1, buff(30))]);
+        fixture.insert_family(Family::Buffs, vec![(1, buff(30, 31))]);
         fixture.insert_family(
             Family::TypeMeta,
             [100, 200, 201, 300, 400]
@@ -1045,7 +1057,7 @@ mod tests {
         assert!(data.type_meta.contains_key(&210));
         assert!(!data.types.contains_key(&210));
         assert!(data.dogma_effects.contains_key(&1000));
-        for id in [10, 11, 12, 13, 14, 15, 20, 21, 30] {
+        for id in [10, 11, 12, 13, 14, 15, 20, 21, 30, 31] {
             assert!(data.dogma_attributes.contains_key(&id), "attribute {id}");
         }
         for id in WARFARE_BUFF_ATTRIBUTE_IDS {

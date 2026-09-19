@@ -2,6 +2,13 @@ import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fit/migrations.dart";
 import "package:eve_fit_assistant/storage/repo/migration/action/migrate_runner.dart";
 
+/// Fit storage version emitted for migrated legacy fit files.
+///
+/// This is intentionally a legacy envelope: decodeFitStorage accepts version 2
+/// payloads and rewrites them into the current envelope on the next save, so
+/// the migration does not need to chase the current schema shape.
+const migratedFitStorageVersion = 2;
+
 class MigrateFits {
   const MigrateFits();
 
@@ -31,7 +38,7 @@ class MigrateFits {
     final payload = json["fit"] as Map<String, dynamic>;
 
     return Map<String, dynamic>.from(json)
-      ..["version"] = 2
+      ..["version"] = migratedFitStorageVersion
       ..["fit"] = upgradeLegacyFitStorageJson(payload);
   }
 }

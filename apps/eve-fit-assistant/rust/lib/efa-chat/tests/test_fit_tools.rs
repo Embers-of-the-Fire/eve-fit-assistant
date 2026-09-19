@@ -61,6 +61,7 @@ fn test_fit() -> FitContainer {
         ],
         implants: vec![],
         boosters: vec![],
+        system_buffs: vec![],
     };
     FitContainer::new(fit, test_skills(), HashMap::new())
 }
@@ -857,6 +858,7 @@ fn apply_edit_subsystems_redefine_slot_capacity() {
             fighters: vec![],
             implants: vec![],
             boosters: vec![],
+            system_buffs: vec![],
         },
         test_skills(),
         HashMap::new(),

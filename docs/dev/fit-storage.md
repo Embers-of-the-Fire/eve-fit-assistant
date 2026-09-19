@@ -44,14 +44,23 @@ The current on-disk fit file shape is:
 
 ```json
 {
-  "version": 1,
+  "version": 4,
   "fit": {
     "metadata": { "fitId": "..." },
-    "body": { "shipTypeId": 0 },
+    "body": { "shipTypeId": 0, "systemBuffs": [] },
     "dynamicRegistry": { "dynamicItems": {} }
   }
 }
 ```
+
+Storage version 4 adds `body.systemBuffs` (system-wide warfare buffs /
+environmental effects); versions 1-3 are accepted as legacy payloads and
+rewritten into the current envelope on save (version 3 introduced
+`CheckoutRef`, version 2 the versioned envelope itself).
+The shareable native text payload (`EFA<n>:`) is at payload version 3,
+wrapping the versioned fit storage envelope.
+This inner payload version is independent of the outer `EFA<n>:` prefix
+version (currently `EFA2:`).
 
 ### Fit Registry
 
@@ -61,22 +70,23 @@ The current on-disk fit file shape is:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "registry": {
     "fits": {}
   }
 }
 ```
 
-As with fit files, an unversioned registry payload is accepted as legacy alpha data,
+As with fit files, an unversioned or version-1 registry payload is accepted as legacy alpha data,
 then rewritten immediately in the versioned format.
 
 ### Native Text Payloads
 
 - Native text import/export lives in [`lib/features/fit_io`](../../apps/eve-fit-assistant/lib/features/fit_io).
-- Export currently emits the `EFA:` prefix only.
-- Import accepts both the legacy `EFA:` prefix and the explicit `EFA1:` prefix.
-- Explicit numeric prefixes newer than `EFA1:` are rejected as unsupported.
+- Export currently emits the `EFA2:` prefix.
+- Import accepts the legacy bare `EFA:` prefix (treated as version 1), the
+  explicit `EFA1:` prefix, and the current `EFA2:` prefix.
+- Explicit numeric prefixes newer than `EFA2:` are rejected as unsupported.
 - The compressed payload inside `EFA:` still contains its own `version` field,
   validated through `decodeNativeFitPayload(...)`.
 
@@ -86,7 +96,9 @@ without tying future native text versions directly to on-disk file versions.
 ## Current Limits
 
 - There is no multi-step historical migration chain yet.
-  The current alpha implementation only normalizes legacy unversioned payloads into version `1` envelopes.
+  The current alpha implementation only normalizes legacy payloads
+  (unversioned, or fit storage versions 1-3 and registry version 1)
+  into the current versioned envelope (fit storage version `4`, registry version `2`).
 - Unknown future versions are rejected instead of partially decoded.
   This applies both to persisted fit payloads and to native text imports with explicit prefixes.
 - Additive compatibility is only relaxed where the current JSON decoding already tolerates extra fields.

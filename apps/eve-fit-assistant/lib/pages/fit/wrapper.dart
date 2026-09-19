@@ -249,6 +249,65 @@ class FitWrapper {
   Future<void> clearBoosters() =>
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(boosters: IList())));
 
+  // ---- System buffs (environmental effects) ----
+
+  /// Adds (or replaces) an environment preset's buff entries, resolved from
+  /// the active snapshot by the caller. Entries of the same preset are
+  /// replaced; entries of other presets and custom entries are kept.
+  Future<void> setSystemEffectPreset(String presetId, List<FitSystemBuff> presetBuffs) =>
+      wrapped.update((fit) {
+        final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toList()
+          ..addAll(presetBuffs);
+        return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+      });
+
+  /// Atomically swaps [previousPresetId]'s entries for [presetBuffs] of
+  /// [presetId], so re-picking a row's preset never leaves both active.
+  Future<void> replaceSystemEffectPreset(
+    String previousPresetId,
+    String presetId,
+    List<FitSystemBuff> presetBuffs,
+  ) => wrapped.update((fit) {
+    final buffs =
+        fit.body.systemBuffs
+            .where((b) => b.presetId != previousPresetId && b.presetId != presetId)
+            .toList()
+          ..addAll(presetBuffs);
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+  });
+
+  Future<void> removeSystemEffectPreset(String presetId) => wrapped.update((fit) {
+    final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toIList();
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+  });
+
+  /// Adds a custom buff entry, replacing any existing custom entry for the
+  /// same buff.
+  Future<void> addCustomSystemBuff(int buffId, double value) => wrapped.update((fit) {
+    final buffs =
+        fit.body.systemBuffs.where((b) => b.presetId != null || b.buffId != buffId).toList()
+          ..add(FitSystemBuff(buffId: buffId, value: value));
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+  });
+
+  /// Updates the strength of a custom buff entry.
+  Future<void> updateCustomSystemBuff(int buffId, double value) => wrapped.update((fit) {
+    final buffs = fit.body.systemBuffs
+        .map((b) => b.presetId == null && b.buffId == buffId ? b.copyWith(value: value) : b)
+        .toIList();
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+  });
+
+  Future<void> removeCustomSystemBuff(int buffId) => wrapped.update((fit) {
+    final buffs = fit.body.systemBuffs
+        .where((b) => b.presetId != null || b.buffId != buffId)
+        .toIList();
+    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+  });
+
+  Future<void> clearSystemBuffs() =>
+      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(systemBuffs: IList())));
+
   int? findImplantStorageIndex(FitStorage fit, int slotId, WidgetRef ref) {
     final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
     if (slotsInfo == null) return null;

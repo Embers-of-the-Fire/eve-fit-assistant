@@ -5,6 +5,14 @@ use flutter_rust_bridge::frb;
 
 use crate::api::{output::Ship, storage::FitStorage, validation::ValidationIssue};
 
+/// A raw dogma attribute value of a type in the active engine data.
+///
+/// Tuples are not FRB-friendly, hence a dedicated struct.
+pub struct DogmaAttributeValue {
+    pub attribute_id: i32,
+    pub value: f64,
+}
+
 /// Resolved file paths for the five `.pb2` data files the fitting engine requires.
 ///
 /// Construct with [`FitEnginePath::from_root`] to derive all paths from a single
@@ -131,6 +139,32 @@ impl FitEngineData {
     #[frb(sync)]
     pub fn share(&self) -> Self {
         self.clone()
+    }
+
+    /// Raw dogma attributes of a type in the active engine data.
+    ///
+    /// Used to resolve environment-effect preset values from the active
+    /// snapshot at runtime (e.g. wormhole/storm effect beacons). Returns an
+    /// empty list for type IDs absent from the active snapshot.
+    ///
+    /// Deliberately a *normal* (neither `async` nor `#[frb(sync)]`) function,
+    /// like [`Self::init`]: potentially chatty calls must not block the
+    /// browser event loop.
+    #[frb]
+    pub fn get_dogma_attributes(&self, type_id: i32) -> Vec<DogmaAttributeValue> {
+        self.database
+            .type_dogma
+            .get(&type_id)
+            .map(|t| {
+                t.attributes
+                    .iter()
+                    .map(|a| DogmaAttributeValue {
+                        attribute_id: a.attribute_id,
+                        value: a.value,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }
 
