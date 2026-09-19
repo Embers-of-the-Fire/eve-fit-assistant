@@ -1,9 +1,9 @@
 import "package:eve_fit_assistant/storage/fit/migrations.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 
-const currentFitStorageVersion = 2;
+const currentFitStorageVersion = 4;
 const currentFitRegistryVersion = 2;
-const currentNativeFitPayloadVersion = 2;
+const currentNativeFitPayloadVersion = 3;
 const legacyNativeFitPayloadVersion = 1;
 
 enum FitPersistencePayloadKind { fitStorage, fitRegistry, nativeText }
@@ -66,7 +66,7 @@ DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
         fit: _readFitStorageJson(
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
-        didMigrate: false,
+        didMigrate: true,
       );
     case 3:
       return DecodedFitStorage(
@@ -74,6 +74,13 @@ DecodedFitStorage decodeFitStorage(Map<String, dynamic> json) {
           _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
         ),
         didMigrate: true,
+      );
+    case currentFitStorageVersion:
+      return DecodedFitStorage(
+        fit: _readFitStorageJson(
+          _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.fitStorage),
+        ),
+        didMigrate: false,
       );
   }
 
@@ -145,6 +152,16 @@ DecodedFitStorage decodeNativeFitPayload(Map<String, dynamic> json) {
           ),
           kind: FitPersistencePayloadKind.nativeText,
         ),
+        didMigrate: true,
+      );
+    case 2:
+      // Payload version 2 wraps a versioned fit storage payload; delegate so
+      // older inner storage versions still migrate. The payload itself is
+      // superseded by version 3, so consumers should rewrite on export.
+      return DecodedFitStorage(
+        fit: decodeFitStorage(
+          _readPayloadMap(json, "fit", kind: FitPersistencePayloadKind.nativeText),
+        ).fit,
         didMigrate: true,
       );
     case currentNativeFitPayloadVersion:

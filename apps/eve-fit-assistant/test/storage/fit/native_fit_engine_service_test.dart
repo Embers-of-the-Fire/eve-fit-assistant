@@ -31,6 +31,10 @@ class _StubFitEngineData implements native_server.FitEngineData {
 
   @override
   native_server.FitEngineData share() => this;
+
+  @override
+  Future<List<native_server.DogmaAttributeValue>> getDogmaAttributes({required int typeId}) =>
+      Future.value(const []);
 }
 
 class _StubFitEngine implements native_server.FitEngine {

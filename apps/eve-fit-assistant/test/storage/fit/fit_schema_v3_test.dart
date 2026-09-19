@@ -41,13 +41,13 @@ Map<String, dynamic> _roundTripJson(Map<String, dynamic> json) =>
     jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
 
 void main() {
-  group("FitStorage v2 encoding", () {
-    test("encodes with version 2 and checkoutRef", () {
+  group("FitStorage v4 encoding", () {
+    test("encodes with version 4 and checkoutRef", () {
       final fit = _makeFitStorage();
       final encoded = encodeFitStorage(fit);
       final json = _roundTripJson(encoded);
 
-      expect(json["version"], 2);
+      expect(json["version"], 4);
       final fitPayload = json["fit"] as Map<String, dynamic>;
       final metadata = fitPayload["metadata"] as Map<String, dynamic>;
       final cr = metadata["checkoutRef"] as Map<String, dynamic>;
@@ -57,7 +57,7 @@ void main() {
       expect(metadata.containsKey("bundleSnapshot"), isFalse);
     });
 
-    test("round-trips v2 fit storage through persistence", () {
+    test("round-trips v4 fit storage through persistence", () {
       final fit = _makeFitStorage();
       final encoded = encodeFitStorage(fit);
 
@@ -71,7 +71,7 @@ void main() {
       expect(decoded.fit.metadata.checkoutRef.serverId, "Serenity");
     });
 
-    test("decodes a plain-drone v2 fixture with decode-encode equality", () {
+    test("decodes a plain-drone v2 fixture and migrates to the current shape", () {
       final fixture = <String, dynamic>{
         "version": 2,
         "fit": <String, dynamic>{
@@ -119,15 +119,23 @@ void main() {
         },
       };
 
+      // Storage version 2 predates `systemBuffs`; it migrates into the
+      // current (v4) envelope, whose body carries an empty `systemBuffs`.
       final decoded = decodeFitStorage(_roundTripJson(fixture));
-      expect(decoded.didMigrate, isFalse);
+      expect(decoded.didMigrate, isTrue);
       expect(decoded.fit.body.drones.single.quantity, 5);
       expect(decoded.fit.body.drones.single.itemId.asId, 2203);
+      expect(decoded.fit.body.systemBuffs, isEmpty);
 
       final reEncoded = _roundTripJson(encodeFitStorage(decoded.fit));
       final reDecoded = decodeFitStorage(reEncoded);
       expect(reDecoded.didMigrate, isFalse);
-      expect(reEncoded, _roundTripJson(fixture));
+
+      final migratedFixture = _roundTripJson(fixture);
+      migratedFixture["version"] = 4;
+      ((migratedFixture["fit"] as Map<String, dynamic>)["body"]
+          as Map<String, dynamic>)["systemBuffs"] = <dynamic>[];
+      expect(reEncoded, migratedFixture);
     });
   });
 

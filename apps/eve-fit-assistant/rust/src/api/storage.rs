@@ -4,7 +4,7 @@ use eve_fit_os::{
     calculate::item::FighterAbility,
     fit::{
         FitContainer, ItemBooster, ItemCharge, ItemDrone, ItemFighter, ItemFit, ItemImplant,
-        ItemModule, ItemSlot, ItemSlotType, ItemState,
+        ItemModule, ItemSlot, ItemSlotType, ItemState, ItemSystemBuff,
     },
 };
 use flutter_rust_bridge::frb;
@@ -82,6 +82,15 @@ pub struct Booster {
     pub index: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SystemBuff {
+    /// Buff collection ID (`dbuffcollections`); negative IDs are reserved
+    /// for hand-authored buffs (e.g. wormhole system effects).
+    pub buff_id: i32,
+    /// Buff strength, interpreted per the buff's operation.
+    pub value: f64,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Fit {
     pub ship_type_id: i32,
@@ -91,6 +100,9 @@ pub struct Fit {
     pub fighters: Vec<Fighter>,
     pub implants: Vec<Implant>,
     pub boosters: Vec<Booster>,
+    /// System-wide warfare buffs (environmental effects) applied to the
+    /// whole fit.
+    pub system_buffs: Vec<SystemBuff>,
 }
 
 pub struct FitStorage {
@@ -242,6 +254,15 @@ impl Booster {
     }
 }
 
+impl SystemBuff {
+    pub(crate) fn into_native(self) -> ItemSystemBuff {
+        ItemSystemBuff {
+            buff_id: self.buff_id,
+            value: self.value,
+        }
+    }
+}
+
 impl Fit {
     pub(crate) fn into_native(self) -> ItemFit {
         ItemFit {
@@ -252,6 +273,11 @@ impl Fit {
             fighters: self.fighters.into_iter().map(|f| f.into_native()).collect(),
             implants: self.implants.into_iter().map(|i| i.into_native()).collect(),
             boosters: self.boosters.into_iter().map(|b| b.into_native()).collect(),
+            system_buffs: self
+                .system_buffs
+                .into_iter()
+                .map(|b| b.into_native())
+                .collect(),
         }
     }
 }

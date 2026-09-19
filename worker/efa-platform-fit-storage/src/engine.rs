@@ -376,6 +376,9 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
             fighters,
             implants,
             boosters,
+            // System-wide warfare buffs are deliberately not part of the
+            // upload format: snapshot sharing excludes environment effects.
+            system_buffs: Vec::new(),
         },
         skills,
         dynamic,

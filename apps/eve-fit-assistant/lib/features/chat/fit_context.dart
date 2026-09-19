@@ -488,6 +488,9 @@ Map<String, Object?> _encodeNativeFit(native_storage.Fit fit) => {
   "boosters": [
     for (final b in fit.boosters) {"type_id": b.typeId, "index": b.index},
   ],
+  "system_buffs": [
+    for (final b in fit.systemBuffs) {"buff_id": b.buffId, "value": b.value},
+  ],
 };
 
 Map<String, Object?> _encodeNativeModule(native_storage.Module m) => {

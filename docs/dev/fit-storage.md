@@ -44,14 +44,21 @@ The current on-disk fit file shape is:
 
 ```json
 {
-  "version": 1,
+  "version": 4,
   "fit": {
     "metadata": { "fitId": "..." },
-    "body": { "shipTypeId": 0 },
+    "body": { "shipTypeId": 0, "systemBuffs": [] },
     "dynamicRegistry": { "dynamicItems": {} }
   }
 }
 ```
+
+Storage version 4 adds `body.systemBuffs` (system-wide warfare buffs /
+environmental effects); versions 1-3 are accepted as legacy payloads and
+rewritten into the current envelope on save (version 3 introduced
+`CheckoutRef`, version 2 the versioned envelope itself).
+The shareable native text payload (`EFA<n>:`) is at payload version 3,
+wrapping the versioned fit storage envelope.
 
 ### Fit Registry
 

@@ -154,18 +154,18 @@ Map<String, dynamic> _dynamicDroneV2FitJson() => <String, dynamic>{
 
 void main() {
   group("encodeNativeFitPayload", () {
-    test("emits version 2 envelope wrapping the fit storage envelope", () {
+    test("emits version 3 envelope wrapping the fit storage envelope", () {
       final encoded = _roundTripJson(encodeNativeFitPayload(_makeFitStorage()));
 
-      expect(encoded["version"], 2);
+      expect(encoded["version"], 3);
       final inner = encoded["fit"] as Map<String, dynamic>;
-      expect(inner["version"], 2);
+      expect(inner["version"], 4);
       expect(inner["fit"], isA<Map<String, dynamic>>());
     });
   });
 
   group("decodeNativeFitPayload", () {
-    test("round-trips current v2 payloads without migration", () {
+    test("round-trips current v3 payloads without migration", () {
       final fit = _makeFitStorage();
       final decoded = decodeNativeFitPayload(_roundTripJson(encodeNativeFitPayload(fit)));
 

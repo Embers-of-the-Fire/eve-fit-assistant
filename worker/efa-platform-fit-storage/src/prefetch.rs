@@ -932,6 +932,8 @@ mod tests {
             location_group_modifiers: vec![],
             location_modifiers: vec![],
             location_required_skill_modifiers: vec![],
+            charge_required_skill_modifiers: vec![],
+            penalized: None,
             operation_name: 7,
             show_output_value_in_ui: 0,
         }

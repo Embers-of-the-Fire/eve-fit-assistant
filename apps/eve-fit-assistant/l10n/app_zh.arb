@@ -830,6 +830,17 @@
   "fitTabsDrone": "无人机",
   "fitTabsFighter": "舰载机",
   "fitTabsUtils": "杂项",
+  "fitTabsEnvironment": "环境",
+  "fitEnvironmentPresets": "环境效果",
+  "fitEnvironmentAddPreset": "添加环境效果",
+  "fitEnvironmentCustomBuffs": "自定义增益",
+  "fitEnvironmentAddCustomBuff": "添加自定义增益",
+  "fitEnvironmentBuffValue": "强度",
+  "fitEnvironmentUnknownPreset": "未知环境（{presetId}）",
+  "fitEnvironmentUnknownBuff": "未知增益（{buffId}）",
+  "fitEnvironmentEmpty": "未应用环境效果",
+  "fitEnvironmentEditBuffValue": "编辑增益强度",
+  "fitEnvironmentEngineUnavailable": "引擎数据不可用，无法解析当前快照中的环境效果。",
   "fitSkillPolicyPresetTitle": "技能档案：{profileName}",
   "@fitSkillPolicyPresetTitle": {
     "placeholders": {

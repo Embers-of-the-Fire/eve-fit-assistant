@@ -80,10 +80,12 @@ Map<String, dynamic> _roundTripJson(Map<String, dynamic> json) =>
 
 void main() {
   group("dynamic drone forward compatibility (v2 fixture)", () {
-    test("decodes a dynamic drone stack without migration", () {
+    test("decodes a dynamic drone stack with migration to the current shape", () {
       final decoded = decodeFitStorage(_roundTripJson(_dynamicDroneV2FitJson()));
 
-      expect(decoded.didMigrate, isFalse);
+      // Storage version 2 predates `systemBuffs`; it is accepted as a legacy
+      // payload and rewritten into the current version on save.
+      expect(decoded.didMigrate, isTrue);
       final drone = decoded.fit.body.drones.single;
       expect(drone.itemId.dynamicIdOrNull, 0);
       expect(drone.quantity, 5);
