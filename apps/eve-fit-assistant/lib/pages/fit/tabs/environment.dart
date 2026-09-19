@@ -2,6 +2,13 @@ part of "../page.dart";
 
 String _localizedSystemEffectName(String zh, String en, String locale) => locale == "zh" ? zh : en;
 
+String _localizedBuffName(BuildContext context, int buffId, String locale) {
+  final entry = systemBuffLibraryById[buffId];
+  return entry != null
+      ? _localizedSystemEffectName(entry.zh, entry.en, locale)
+      : context.l10n.fitEnvironmentUnknownBuff(buffId: buffId);
+}
+
 /// Snapshot of the engine-side beacon dogma used to resolve environment
 /// presets and custom-buff defaults against the active snapshot.
 class _EnvironmentDogma {
@@ -185,23 +192,37 @@ class _EnvironmentPresetRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider).name;
     final preset = systemEffectPresetById[presetId];
-    final buffCount = fitContext.fit.body.systemBuffs
+    final presetBuffs = fitContext.fit.body.systemBuffs
         .where((buff) => buff.presetId == presetId)
-        .length;
+        .toList();
 
-    final content = ListTile(
-      leading: const Icon(Icons.public),
-      title: Text(
-        preset != null
-            ? _localizedSystemEffectName(preset.zh, preset.en, locale)
-            : context.l10n.fitEnvironmentUnknownPreset(presetId: presetId),
-      ),
-      subtitle: preset != null
-          ? Text(
-              "${_localizedSystemEffectName(preset.category.zh, preset.category.en, locale)} ×$buffCount",
-            )
-          : null,
-      onTap: interactionOptions.allowMutations ? () => _handleReplace(context, ref) : null,
+    final content = Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.public),
+          title: Text(
+            preset != null
+                ? _localizedSystemEffectName(preset.zh, preset.en, locale)
+                : context.l10n.fitEnvironmentUnknownPreset(presetId: presetId),
+          ),
+          subtitle: preset != null
+              ? Text(
+                  "${_localizedSystemEffectName(preset.category.zh, preset.category.en, locale)} ×${presetBuffs.length}",
+                )
+              : null,
+          onTap: interactionOptions.allowMutations ? () => _handleReplace(context, ref) : null,
+        ),
+        for (final buff in presetBuffs)
+          ListTile(
+            dense: true,
+            contentPadding: const .only(left: 56, right: 24),
+            title: Text(
+              _localizedBuffName(context, buff.buffId, locale),
+              style: context.theme.textTheme.bodySmall,
+            ),
+            trailing: Text("${buff.value}", style: context.theme.textTheme.bodySmall),
+          ),
+      ],
     );
 
     if (!interactionOptions.allowMutations) return content;
@@ -340,6 +361,15 @@ class _SystemEffectPresetDialogState extends ConsumerState<_SystemEffectPresetDi
     bool resolvable(SystemEffectPreset preset) =>
         resolvePresetBuffs(preset, widget.dogma.attrsOf) != null;
 
+    /// One-line preview of the preset's resolved strengths, e.g.
+    /// "Shield Hitpoint Bonus (Pulsar) 1.3, Signature Radius Penalty 1.3".
+    String presetBuffSummary(SystemEffectPreset preset) {
+      final buffs = resolvePresetBuffs(preset, widget.dogma.attrsOf) ?? const [];
+      return buffs
+          .map((buff) => "${_localizedBuffName(context, buff.buffId, locale)} ${buff.value}")
+          .join(", ");
+    }
+
     final grouped = <SystemEffectCategory, List<SystemEffectPreset>>{};
     for (final preset in systemEffectCatalog.where(matches).where(resolvable)) {
       grouped.putIfAbsent(preset.category, () => []).add(preset);
@@ -387,6 +417,12 @@ class _SystemEffectPresetDialogState extends ConsumerState<_SystemEffectPresetDi
                           for (final preset in grouped[category]!)
                             ListTile(
                               title: Text(nameOf(preset)),
+                              subtitle: Text(
+                                presetBuffSummary(preset),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.theme.textTheme.bodySmall,
+                              ),
                               onTap: () => Navigator.of(context).pop(preset),
                             ),
                         ],
