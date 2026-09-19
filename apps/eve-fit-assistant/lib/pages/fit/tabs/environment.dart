@@ -361,15 +361,6 @@ class _SystemEffectPresetDialogState extends ConsumerState<_SystemEffectPresetDi
     bool resolvable(SystemEffectPreset preset) =>
         resolvePresetBuffs(preset, widget.dogma.attrsOf) != null;
 
-    /// One-line preview of the preset's resolved strengths, e.g.
-    /// "Shield Hitpoint Bonus (Pulsar) 1.3, Signature Radius Penalty 1.3".
-    String presetBuffSummary(SystemEffectPreset preset) {
-      final buffs = resolvePresetBuffs(preset, widget.dogma.attrsOf) ?? const [];
-      return buffs
-          .map((buff) => "${_localizedBuffName(context, buff.buffId, locale)} ${buff.value}")
-          .join(", ");
-    }
-
     final grouped = <SystemEffectCategory, List<SystemEffectPreset>>{};
     for (final preset in systemEffectCatalog.where(matches).where(resolvable)) {
       grouped.putIfAbsent(preset.category, () => []).add(preset);
@@ -417,12 +408,6 @@ class _SystemEffectPresetDialogState extends ConsumerState<_SystemEffectPresetDi
                           for (final preset in grouped[category]!)
                             ListTile(
                               title: Text(nameOf(preset)),
-                              subtitle: Text(
-                                presetBuffSummary(preset),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.theme.textTheme.bodySmall,
-                              ),
                               onTap: () => Navigator.of(context).pop(preset),
                             ),
                         ],
