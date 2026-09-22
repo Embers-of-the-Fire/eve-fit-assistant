@@ -101,7 +101,7 @@ jobs:
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
     steps:
       - name: Prepare data release workspace
-        uses: ./.github/actions/prepare-data-workspace
+        uses: $/.github/actions/prepare-data-workspace
 
       - name: Start MinIO mock
         if: inputs.test_mode
@@ -179,7 +179,7 @@ jobs:
     environment: production-data
     steps:
       - name: Prepare data release workspace
-        uses: ./.github/actions/prepare-data-workspace
+        uses: $/.github/actions/prepare-data-workspace
 
       - name: Sync snapshots to platform D1
         uses: ./.github/actions/sync-platform-d1
