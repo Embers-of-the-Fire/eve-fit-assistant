@@ -53,10 +53,11 @@ remote `testing` channel, and creates the Git tag.
 The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is
 `_release-data.yml`. Their PR/cron/dispatch entry points are merged into multi-trigger
 workflows: `release-test.yml` (PR app/data release tests for both the `V-*` and the
-`D-Full CI`/`D-CI-App Release` label sets), `release-data.yml` (`workflow_call` from
-`update-raw-data.yml`, manual dispatch, and PR test via `D-CI-Data Release`), and
+`D-Full CI`/`D-CI-App Release` label sets), `release-data.yml` (the human manual-dispatch
+entry for data snapshot releases, plus the PR test via `D-CI-Data Release`), and
 `update-raw-data.yml` (daily cron, dispatch, and PR test via `D-CI-Data Update`; cron runs
-chain into `release-data.yml` when servers changed). All PR label gates — including
+call `_release-data.yml` directly when servers changed, without nesting through
+`release-data.yml`). All PR label gates — including
 `web-preview.yml`'s `D-CI-Page Preview` — are evaluated by the shared composite action
 `.github/actions/pr-gate`, which also applies the upstream-repository and non-fork-head
 guards; fork PRs never run these jobs.
@@ -77,14 +78,18 @@ guards; fork PRs never run these jobs.
    releases only. Depends only on `publish`, never on `d1-sync`, so a platform D1 sync
    failure does not suppress the announcement.
 
-Real-release paths are never canceled mid-flight: `release-data.yml` (cron chain and manual
+Real-release paths are never canceled mid-flight: `release-data.yml` (manual
 dispatch) and `update-raw-data.yml`'s non-PR runs use `cancel-in-progress: false`, so
 same-group runs queue sequentially at concurrency 1 (one running, one pending; a newer arrival
-replaces the pending one). Interrupting the session → commit → publish cycle could leave the
+replaces the pending one). Both workflows share the literal `data-release-` concurrency group
+prefix, so a human-dispatched snapshot release can never overlap the cron chain's nested
+`_release-data.yml` publish. Interrupting the session → commit → publish cycle could leave the
 remote channel in an unrecoverable state. PR test runs target the local MinIO mock and remain
-cancelable. `release-data.yml` also uses a literal `release-data-` group prefix because a
-workflow called via `workflow_call` resolves `github.workflow` to the caller's name, which
-would collide with the caller's own group.
+cancelable.
+
+The `publish` and `d1-sync` jobs share their preamble (checkout, Python env, `v2-snapshots`
+artifact download, protobuf regeneration) through the
+`.github/actions/prepare-data-workspace` composite action.
 
 ## App Release Workflow
 
