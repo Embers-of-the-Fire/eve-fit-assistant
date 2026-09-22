@@ -415,7 +415,11 @@ class FitEmulatorService extends _$FitEmulatorService {
       if (!ref.mounted || _emulationGeneration != activeGeneration) {
         return;
       }
-      final nativeCompatible = convertToNative(fitStorage, characterSkills: characterSkills);
+      final nativeCompatible = convertToNative(
+        fitStorage,
+        characterSkills: characterSkills,
+        implantSlots: implantSlotIndexMap(collection.slots.implantSlots),
+      );
       final emulatedOutput = await engine.emulate(fit: nativeCompatible);
       if (!ref.mounted || _emulationGeneration != activeGeneration) {
         return;

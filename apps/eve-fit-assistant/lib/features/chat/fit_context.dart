@@ -85,7 +85,11 @@ Future<void> pushAttachedFit(Ref ref, native_chat.ChatSession session) async {
   final skills = await ref
       .read(characterRegistryManagerProvider.notifier)
       .resolveCharacterSkills(fit.body.characterId, collection.getSkillTypeIds());
-  final nativeFit = convertToNative(fit, characterSkills: skills);
+  final nativeFit = convertToNative(
+    fit,
+    characterSkills: skills,
+    implantSlots: implantSlotIndexMap(collection.slots.implantSlots),
+  );
 
   final locale = ref.read(localeProvider).name;
   final localization = await ref.read(localizationDbServiceProvider.future);
@@ -411,7 +415,15 @@ Future<String> _encodeFitPayloadResult(
       ? const <int, String>{}
       : await localization.localizedNames({...referencedTypeIds(fit), ...skills.keys}, locale);
 
-  return jsonEncode({...encodeFitPayload(fit, characterSkills: skills, names: names), ...extra});
+  return jsonEncode({
+    ...encodeFitPayload(
+      fit,
+      characterSkills: skills,
+      names: names,
+      implantSlots: implantSlotIndexMap(collection.slots.implantSlots),
+    ),
+    ...extra,
+  });
 }
 
 /// Reads and decodes a fit directly from the fits document store, bypassing
@@ -437,8 +449,9 @@ Map<String, Object?> encodeFitPayload(
   FitStorage fitStorage, {
   required Map<int, int> characterSkills,
   required Map<int, String> names,
+  required Map<int, int> implantSlots,
 }) {
-  final fit = convertFitBodyToNative(fitStorage);
+  final fit = convertFitBodyToNative(fitStorage, implantSlots: implantSlots);
   final validDynamicIds = collectReferencedDynamicItemIds(
     fitStorage,
   ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());

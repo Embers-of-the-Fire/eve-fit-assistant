@@ -99,7 +99,7 @@ void main() {
     test("convertFitBodyToNative passes dynamic drone item ids through", () {
       final fit = decodeFitStorage(_roundTripJson(_dynamicDroneV2FitJson())).fit;
 
-      final nativeFit = convertFitBodyToNative(fit);
+      final nativeFit = convertFitBodyToNative(fit, implantSlots: const {});
 
       expect(nativeFit.drones, hasLength(5));
       for (final drone in nativeFit.drones) {
