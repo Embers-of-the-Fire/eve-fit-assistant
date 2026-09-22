@@ -12,12 +12,14 @@ on:
     branches: [dev]
 
 # Non-PR runs must never be canceled mid-flight: the upload job writes to CI
-# storage, and the chained release-data.yml publish runs nested inside this
+# storage, and the chained _release-data.yml publish runs nested inside this
 # run against the remote channel, whose publish cycle is not interruptible.
-# They queue sequentially instead. PR test runs have no remote side effects
-# and stay cancelable.
+# They queue sequentially instead. The literal `data-release-` group prefix is
+# shared with release-data.yml (the manual dispatch entry) so a human-dispatched
+# data release can never overlap this run's publish. PR test runs have no
+# remote side effects and stay cancelable.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: data-release-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -188,11 +190,11 @@ jobs:
     if: |
       github.event_name != 'pull_request' &&
       needs.check.outputs.has_updates == 'true'
-    uses: ./.github/workflows/release-data.yml
     # CI_STORAGE_* are repo-level read-only; _release-data.yml's build job
     # needs them.  Remote/ write-scoped credentials come from per-job
     # environments downstream and are not available here.
     secrets: inherit # zizmor: ignore[secrets-inherit]
+    uses: ./.github/workflows/_release-data.yml
     with:
       test_mode: false
       servers: ${{ needs.check.outputs.matrix }}

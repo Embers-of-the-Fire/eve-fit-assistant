@@ -8,7 +8,9 @@ templates.
 - Workflow files in `.github/workflows/` are the CI/CD source of truth; consult them before
   changing release behavior.
 - Keep reusable workflow boundaries intact: `_release.yml` for app releases and
-  `_release-data.yml` for data snapshots.
+  `_release-data.yml` for data snapshots. Entry-point workflows call them directly
+  (`update-raw-data.yml`'s cron chain included); `release-data.yml` is the manual-dispatch
+  entry for humans and must not be reintroduced as a `workflow_call` hop.
 - The `D-*`/`V-*` PR label contract (gates for the raw-data update, data/app release tests,
   and web preview) lives in `.github/actions/pr-gate`; extend it there instead of copying
   `contains(labels, ...)` expressions into workflows.

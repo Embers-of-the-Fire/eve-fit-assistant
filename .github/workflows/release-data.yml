@@ -3,21 +3,14 @@ name: Release Data Snapshot
 permissions:
   contents: read
 
+# Manual-dispatch entry point for data snapshot releases, plus the PR test
+# path. The automated cron chain in update-raw-data.yml calls
+# _release-data.yml directly instead of nesting through this workflow.
 on:
-  workflow_call:
-    inputs:
-      test_mode:
-        description: "Run in test mode (skip publish)"
-        type: boolean
-        default: false
-      servers:
-        description: "JSON array of server IDs to rebuild (default: all)"
-        type: string
-        default: "[]"
   workflow_dispatch:
     inputs:
       test_mode:
-        description: "Run in test mode (skip publish)"
+        description: "Run in test mode (publish to a local MinIO mock instead of the real remote)"
         type: boolean
         default: false
       servers:
@@ -28,15 +21,14 @@ on:
     types: [opened, synchronize, reopened, labeled]
     branches: [dev]
 
-# Literal group prefix: a workflow called via workflow_call resolves
-# github.workflow to the CALLER's name, so ${{ github.workflow }} here would
-# collide with update-raw-data.yml's group and could cancel the still-running
-# caller. Real releases (cron chain, dispatch) touch the remote channel, whose
-# publish cycle is not interruptible — they must queue sequentially and never
-# be canceled. PR test runs only target the local MinIO mock and stay
+# Real releases (manual dispatch) touch the remote channel, whose publish
+# cycle is not interruptible — they must queue sequentially and never be
+# canceled. The literal `data-release-` group prefix is shared with
+# update-raw-data.yml so a manual dispatch can never overlap the cron chain's
+# nested publish. PR test runs only target the local MinIO mock and stay
 # cancelable for fast iteration.
 concurrency:
-  group: release-data-${{ github.ref }}
+  group: data-release-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
