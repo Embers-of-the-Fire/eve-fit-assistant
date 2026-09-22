@@ -435,7 +435,13 @@ List<native.Module> convertModulesToNative(FitStorage fitStorage) {
   return modules;
 }
 
-native.Fit convertFitBodyToNative(FitStorage fitStorage) {
+/// Projects bundle implant-slot metadata (`Slots.implantSlots`) into the
+/// `typeId -> slotIndex` (1-based) map expected by [convertFitBodyToNative].
+Map<int, int> implantSlotIndexMap(Map<int, Slots_ImplantSlot> implantSlots) => {
+  for (final entry in implantSlots.entries) entry.key: entry.value.slotIndex,
+};
+
+native.Fit convertFitBodyToNative(FitStorage fitStorage, {required Map<int, int> implantSlots}) {
   final modules = convertModulesToNative(fitStorage);
 
   final drones = <native.Drone>[];
@@ -499,7 +505,14 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage) {
       context: "implant $index in fit ${fitStorage.metadata.fitId}",
     );
     if (typeId == null) continue;
-    implants.add(native.Implant(typeId: typeId, index: index));
+    final slotIndex = implantSlots[typeId];
+    if (slotIndex == null) {
+      warning(
+        "Missing implant slot metadata for type $typeId while converting fit ${fitStorage.metadata.fitId}",
+      );
+      continue;
+    }
+    implants.add(native.Implant(typeId: typeId, index: slotIndex - 1));
   }
 
   final boosters = <native.Booster>[];
@@ -544,13 +557,17 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage) {
   );
 }
 
-native.FitStorage convertToNative(FitStorage fitStorage, {required Map<int, int> characterSkills}) {
+native.FitStorage convertToNative(
+  FitStorage fitStorage, {
+  required Map<int, int> characterSkills,
+  required Map<int, int> implantSlots,
+}) {
   final validDynamicIds = collectReferencedDynamicItemIds(
     fitStorage,
   ).intersection(fitStorage.dynamicRegistry.dynamicItems.keys.toSet());
 
   return native.FitStorage(
-    fit: convertFitBodyToNative(fitStorage),
+    fit: convertFitBodyToNative(fitStorage, implantSlots: implantSlots),
     skills: characterSkills,
     dynamicItems: Map<int, native.DynamicItem>.fromEntries(
       fitStorage.dynamicRegistry.dynamicItems.entries

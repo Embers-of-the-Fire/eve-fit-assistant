@@ -148,8 +148,11 @@ List<_FitIssue> _collectFitIssuesForSection(
         addItemIssue(slot.itemId, context.l10n.fighter, index);
       }
     case _FitIssueSection.implant:
+      final implantSlots = ref.read(repoCollectionProvider)?.slots.implantSlots;
       for (final (index, slot) in fit.body.implants.mapWithIndex((slot, index) => (index, slot))) {
-        addItemIssue(slot.itemId, context.l10n.implantSlot, index);
+        final typeId = slot.itemId.when(item: (id) => id, dynamic: (_) => null);
+        final slotIndex = typeId == null ? null : implantSlots?[typeId]?.slotIndex;
+        addItemIssue(slot.itemId, context.l10n.implantSlot, (slotIndex ?? index + 1) - 1);
       }
     case _FitIssueSection.booster:
       for (final slot in fit.body.boosters) {

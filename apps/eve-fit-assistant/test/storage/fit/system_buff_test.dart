@@ -47,8 +47,7 @@ void main() {
     test("defaults to an empty list when the field is absent", () {
       final fit = _makeFitStorage(const IList.empty());
       final json = _roundTripJson(encodeFitStorage(fit));
-      ((json["fit"] as Map<String, dynamic>)["body"] as Map<String, dynamic>)
-          .remove("systemBuffs");
+      ((json["fit"] as Map<String, dynamic>)["body"] as Map<String, dynamic>).remove("systemBuffs");
 
       final decoded = decodeFitStorage(json);
 
@@ -85,7 +84,7 @@ void main() {
         ]),
       );
 
-      final nativeFit = convertFitBodyToNative(fit);
+      final nativeFit = convertFitBodyToNative(fit, implantSlots: const {});
 
       expect(nativeFit.systemBuffs, hasLength(2));
       expect(nativeFit.systemBuffs[0].buffId, -2021);
@@ -97,7 +96,12 @@ void main() {
     test("native fit type exposes system buffs for the engine bridge", () {
       final fit = native.Fit(
         shipTypeId: 1234,
-        damageProfile: native.DamageProfile(em: 0.25, explosive: 0.25, kinetic: 0.25, thermal: 0.25),
+        damageProfile: native.DamageProfile(
+          em: 0.25,
+          explosive: 0.25,
+          kinetic: 0.25,
+          thermal: 0.25,
+        ),
         modules: const [],
         drones: const [],
         fighters: const [],

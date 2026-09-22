@@ -160,7 +160,13 @@ class FitWrapper {
         return null;
       }
       final output = await engine.emulate(
-        fit: convertToNative(tempFit, characterSkills: characterSkills),
+        fit: convertToNative(
+          tempFit,
+          characterSkills: characterSkills,
+          implantSlots: implantSlotIndexMap(
+            ref.read(repoCollectionProvider)?.slots.implantSlots ?? const {},
+          ),
+        ),
       );
       if (ref.read(fitProvider(fitId)).fit.body.characterId != characterId) {
         return null;

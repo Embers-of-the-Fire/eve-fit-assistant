@@ -112,7 +112,7 @@ void main() {
         ),
       );
 
-      final nativeFit = convertFitBodyToNative(fit);
+      final nativeFit = convertFitBodyToNative(fit, implantSlots: const {});
 
       expect(nativeFit.drones, hasLength(3));
       for (final drone in nativeFit.drones) {
@@ -137,7 +137,45 @@ void main() {
         ),
       );
 
-      expect(convertFitBodyToNative(fit).drones, isEmpty);
+      expect(convertFitBodyToNative(fit, implantSlots: const {}).drones, isEmpty);
+    });
+  });
+
+  group("convertFitBodyToNative implants", () {
+    FitStorage withImplants(List<FitImplantItem> implants) {
+      final base = _makeFit();
+      return base.copyWith(body: base.body.copyWith(implants: IList(implants)));
+    }
+
+    FitImplantItem implant(int typeId, [FitItemState state = FitItemState.online]) =>
+        FitImplantItem(
+          itemId: FitStorageItemId.item(id: typeId),
+          state: state,
+        );
+
+    test("uses bundle slot metadata, not the storage array position", () {
+      final fit = withImplants([implant(1007), implant(1006, FitItemState.passive), implant(1002)]);
+
+      final nativeFit = convertFitBodyToNative(
+        fit,
+        implantSlots: const {1002: 2, 1006: 6, 1007: 7},
+      );
+
+      expect(nativeFit.implants, hasLength(2));
+      expect(nativeFit.implants[0].typeId, 1007);
+      expect(nativeFit.implants[0].index, 6);
+      expect(nativeFit.implants[1].typeId, 1002);
+      expect(nativeFit.implants[1].index, 1);
+    });
+
+    test("skips implants without slot metadata", () {
+      final fit = withImplants([implant(1001), implant(1002)]);
+
+      final nativeFit = convertFitBodyToNative(fit, implantSlots: const {1002: 2});
+
+      expect(nativeFit.implants, hasLength(1));
+      expect(nativeFit.implants.single.typeId, 1002);
+      expect(nativeFit.implants.single.index, 1);
     });
   });
 }
