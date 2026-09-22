@@ -23,12 +23,13 @@ on:
 
 # Real releases (manual dispatch) touch the remote channel, whose publish
 # cycle is not interruptible — they must queue sequentially and never be
-# canceled. The literal `data-release-` group prefix is shared with
-# update-raw-data.yml so a manual dispatch can never overlap the cron chain's
-# nested publish. PR test runs only target the local MinIO mock and stay
-# cancelable for fast iteration.
+# canceled. All non-PR runs share the fixed `data-release` group with
+# update-raw-data.yml: a manual dispatch may target a branch or tag other
+# than the cron ref, so a ref-dependent group would let it overlap the cron
+# chain's nested publish. PR test runs only target the local MinIO mock and
+# stay per-ref and cancelable for fast iteration.
 concurrency:
-  group: data-release-${{ github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('data-release-{0}', github.ref) || 'data-release' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

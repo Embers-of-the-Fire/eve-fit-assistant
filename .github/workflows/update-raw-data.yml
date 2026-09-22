@@ -15,12 +15,13 @@ on:
 # Non-PR runs must never be canceled mid-flight: the upload job writes to CI
 # storage, and the chained _release-data.yml publish runs nested inside this
 # run against the remote channel, whose publish cycle is not interruptible.
-# They queue sequentially instead. The literal `data-release-` group prefix is
-# shared with release-data.yml (the manual dispatch entry) so a human-dispatched
-# data release can never overlap this run's publish. PR test runs have no
-# remote side effects and stay cancelable.
+# They queue sequentially instead. All non-PR runs share the fixed
+# `data-release` group with release-data.yml (the manual dispatch entry): a
+# manual dispatch may target a branch or tag other than this run's cron ref,
+# so a ref-dependent group would let it overlap this run's publish. PR test
+# runs have no remote side effects and stay per-ref and cancelable.
 concurrency:
-  group: data-release-${{ github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('data-release-{0}', github.ref) || 'data-release' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
