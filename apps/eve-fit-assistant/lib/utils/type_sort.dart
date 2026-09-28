@@ -28,6 +28,55 @@ int compareTypesByMeta(pb_types.Type left, pb_types.Type right) {
   return left.typeId.compareTo(right.typeId);
 }
 
+/// Sort keys offered by the type database page.
+enum TypeSortKey { name, typeId, metaLevel, group, category }
+
+enum TypeSortDirection { ascending, descending }
+
+int _compareNames(pb_types.Type left, pb_types.Type right, Map<int, String> names) {
+  final leftName = names[left.typeId];
+  final rightName = names[right.typeId];
+  if (leftName == null && rightName == null) return 0;
+  if (leftName == null) return 1;
+  if (rightName == null) return -1;
+  final byLowercase = leftName.toLowerCase().compareTo(rightName.toLowerCase());
+  if (byLowercase != 0) return byLowercase;
+  return leftName.compareTo(rightName);
+}
+
+/// Builds a comparator over [pb_types.Type] for [key] and [direction].
+///
+/// [names] maps type id to its localized name and is only consulted for
+/// [TypeSortKey.name]; types without a resolved name sort after named ones.
+/// [categoryOfGroup] resolves a group id to its category id and is only
+/// consulted for [TypeSortKey.category]; unknown categories sort first.
+/// Ties always break by type id so the ordering is stable.
+Comparator<pb_types.Type> typeComparator(
+  TypeSortKey key,
+  TypeSortDirection direction, {
+  Map<int, String> names = const {},
+  int? Function(int groupId)? categoryOfGroup,
+}) {
+  int compareAscending(pb_types.Type left, pb_types.Type right) {
+    final result = switch (key) {
+      TypeSortKey.name => _compareNames(left, right, names),
+      TypeSortKey.typeId => 0,
+      TypeSortKey.metaLevel => compareTypesByMeta(left, right),
+      TypeSortKey.group => left.groupId.compareTo(right.groupId),
+      TypeSortKey.category => (categoryOfGroup?.call(left.groupId) ?? -1).compareTo(
+        categoryOfGroup?.call(right.groupId) ?? -1,
+      ),
+    };
+    if (result != 0) return result;
+    return left.typeId.compareTo(right.typeId);
+  }
+
+  return switch (direction) {
+    TypeSortDirection.ascending => compareAscending,
+    TypeSortDirection.descending => (left, right) => compareAscending(right, left),
+  };
+}
+
 enum MetaFilterBucket { techTree, faction, deadspace, officer }
 
 MetaFilterBucket metaFilterBucketOf(int metaGroupId) => switch (metaGroupId) {
