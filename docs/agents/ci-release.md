@@ -35,6 +35,31 @@ JSON, and `uv run x.py ci web-gate` for the web-bundle rebuild decision.
 Release preflight (`ci release verify --check-all`) intentionally stays full-scope: a release
 must build and test everything regardless of what changed.
 
+## Dependency Updates (Renovate)
+
+`renovate.json5` (repo root) plus `.github/workflows/renovate.yml` provide Dependabot-style
+automatic dependency bumping for `flake.lock` (nix manager, beta opt-in), `pyproject.toml` /
+`uv.lock`, `Cargo.toml` / `Cargo.lock`, `package.json` / `pnpm-lock.yaml`,
+`pubspec.yaml` / `pubspec.lock`, and the SHA-pinned GitHub Actions. The bot never
+automerges: it opens one grouped PR per ecosystem against `dev` twice a month (05:00 UTC+8
+on the 2nd and 16th; "bi-weekly" is not expressible in cron syntax), with the fast-moving
+nix flake inputs batched only in the first window of each month,
+labeled with existing repository labels (`T-Dependencies`, plus `T-CI` for action bumps).
+Each PR's change set flows through the change-aware resolver like any other PR — lockfile
+blast radii instantiate the affected ecosystem's full task set (`flake.lock` escalates to the
+entire catalog) — so a batch only merges after `CI / Required` proves it works. The
+`packages/eve-fit-os` submodule is excluded (`ignorePaths` and a disabled `git-submodules`
+manager). The runner is a twice-monthly cron workflow using the full Renovate image, which
+installs lockfile toolchains (uv, cargo, pnpm, dart/flutter, nix) on demand; it mints a token
+from the repository-level GitHub App credentials (`BOT_CLIENT_ID` / `BOT_PRIVATE_KEY`) —
+a GitHub App token rather than the default `GITHUB_TOKEN` is required because
+`GITHUB_TOKEN`-authored PRs do not trigger `pull_request` workflows, so `CI / Required`
+would never run on the bot's batches. The `renovate` environment gates the job to `dev`
+(see "Secrets and environments" in `RELEASING.md`). The
+hosted Mend Renovate app is a drop-in alternative runner for the same config — use one or
+the other, not both. Validate config edits with `renovate-config-validator`.
+
+
 ## Release Pull Requests
 
 Release PRs target the `dev` branch and use three labels:

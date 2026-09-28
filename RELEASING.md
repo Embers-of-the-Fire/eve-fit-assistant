@@ -181,6 +181,7 @@ environment protection rules gate which refs may do so.
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
 | `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews) and `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
 | `nightly-web` | `dev` branch only | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `site-nightly.yml` (targeting the `efa-app-nightly` Pages project) |
+| `renovate` | `dev` branch only | Nothing itself — the job mints a token from the repository-level GitHub App credentials `BOT_CLIENT_ID` / `BOT_PRIVATE_KEY` (the app needs contents, pull-requests, issues, and workflows read/write on this repository). The environment exists only for branch gating. | `renovate.yml` (twice-monthly dependency-update batches) |
 
 Each environment holds a separately generated token/endpoint group scoped to the
 permissions that environment needs; endpoints therefore live in secrets alongside

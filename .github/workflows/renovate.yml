@@ -1,0 +1,56 @@
+name: Dependency Update
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # 21:00 UTC on the 1st and 15th = 05:00 UTC+8 on the 2nd and 16th,
+    # inside the renovate.json5 windows (twice-monthly batch).
+    - cron: "0 21 1,15 * *"
+  workflow_dispatch:
+
+# Runs open/refresh PR branches; canceling mid-run can leave a half-updated
+# branch, so runs queue sequentially instead.
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    name: Renovate
+    if: |
+      github.ref == 'refs/heads/dev' &&
+      github.repository == 'Embers-of-the-Fire/eve-fit-assistant' &&
+      github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    # BOT_CLIENT_ID / BOT_PRIVATE_KEY are the repo-level GitHub App
+    # credentials. The environment adds dev-branch gating and needs no
+    # secrets of its own; see RELEASING.md.
+    environment: renovate
+    steps:
+      # A GitHub App token is required (not the default GITHUB_TOKEN):
+      # GITHUB_TOKEN-authored PRs do not trigger pull_request workflows, so
+      # CI / Required would never run on the bot's batches.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: bot-token
+        with:
+          app-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-workflows: write
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # The full Renovate image installs lockfile toolchains on demand
+      # (uv, cargo, pnpm, dart/flutter, nix via containerbase), so every
+      # manager in renovate.json5 can regenerate its lockfile in-container.
+      - uses: renovatebot/github-action@1cd96b855fee0da6f230617e89dbff0e06ea393a # v46.3.5
+        with:
+          token: ${{ steps.bot-token.outputs.token }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}

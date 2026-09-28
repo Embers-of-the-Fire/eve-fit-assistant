@@ -26,6 +26,10 @@ templates.
   names, or per-kind conditional logic. CI workload changes belong in the task catalog
   (`bootstrap/ci/catalog.py`), not in the workflow. Branch protection references only the
   terminal aggregation check (`CI / Required`).
+- Dependency-bump behavior (schedules, grouping, labels) lives in `renovate.json5` at the
+  repo root; `renovate.yml` is only its runner. Labels used there must already exist in the
+  repository (check `gh label list`). The bot never automerges; its PRs are proven by the
+  same `CI / Required` gate as human PRs.
 
 ## Validation
 

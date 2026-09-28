@@ -1,0 +1,70 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  description:
+    "Batched, never-automerged dependency bumps. Every batch is one PR per ecosystem against dev and must pass the `CI / Required` check before a human merges it.",
+  extends: ["config:recommended", "helpers:pinGitHubActionDigests"],
+  baseBranches: ["dev"],
+  timezone: "Asia/Shanghai",
+  // Twice-monthly batch ("bi-weekly" is not expressible in cron syntax).
+  // The self-hosted runner (.github/workflows/renovate.yml) fires at 05:00
+  // inside each window; the hosted Mend app honors the windows as-is.
+  schedule: ["* 0-6 2,16 * *"],
+  // packages/eve-fit-os is a submodule with independent history and
+  // versioning; parent-repo tooling must not touch it.
+  ignorePaths: ["packages/eve-fit-os/**"],
+  automerge: false,
+  // One PR per ecosystem even when a batch mixes major and minor updates.
+  separateMajorMinor: false,
+  dependencyDashboard: true,
+  minimumReleaseAge: "3 days",
+  prBodyNotes: [
+    "This is a batched dependency update opened by Renovate. Merging is manual: the `CI / Required` check (the change-aware matrix instantiated for the touched ecosystem) must pass first. Details on the bot's role: `docs/agents/ci-release.md`.",
+  ],
+  // Only labels that exist in this repository are used (validated against
+  // `gh label list`): T-Dependencies and T-CI.
+  labels: ["T-Dependencies"],
+  vulnerabilityAlerts: {
+    labels: ["T-Dependencies"],
+  },
+  postUpdateOptions: ["pnpmDedupe"],
+  nix: {
+    // Beta manager: flake.lock input updates (opt-in required).
+    enabled: true,
+  },
+  packageRules: [
+    {
+      groupName: "Nix flake inputs",
+      matchManagers: ["nix"],
+      // Flake upstreams move almost daily; batch them monthly instead of
+      // twice-monthly.
+      schedule: ["* 0-6 2 * *"],
+    },
+    {
+      groupName: "Python dependencies (uv)",
+      matchManagers: ["pep621", "pep723", "uv"],
+    },
+    {
+      groupName: "Rust dependencies (cargo)",
+      matchManagers: ["cargo"],
+    },
+    {
+      groupName: "JS dependencies (pnpm)",
+      matchManagers: ["npm"],
+    },
+    {
+      groupName: "Dart/Flutter dependencies (pub)",
+      matchManagers: ["pub"],
+    },
+    {
+      groupName: "GitHub Actions",
+      matchManagers: ["github-actions"],
+      pinDigests: true,
+      labels: ["T-Dependencies", "T-CI"],
+    },
+    {
+      // Independent submodule history; see ignorePaths above.
+      matchManagers: ["git-submodules"],
+      enabled: false,
+    },
+  ],
+}
