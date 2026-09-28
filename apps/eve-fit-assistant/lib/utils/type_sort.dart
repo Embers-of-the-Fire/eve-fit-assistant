@@ -71,9 +71,18 @@ Comparator<pb_types.Type> typeComparator(
     return left.typeId.compareTo(right.typeId);
   }
 
+  int compareDescending(pb_types.Type left, pb_types.Type right) {
+    if (key == TypeSortKey.name) {
+      final leftMissing = !names.containsKey(left.typeId);
+      final rightMissing = !names.containsKey(right.typeId);
+      if (leftMissing != rightMissing) return leftMissing ? 1 : -1;
+    }
+    return compareAscending(right, left);
+  }
+
   return switch (direction) {
     TypeSortDirection.ascending => compareAscending,
-    TypeSortDirection.descending => (left, right) => compareAscending(right, left),
+    TypeSortDirection.descending => compareDescending,
   };
 }
 

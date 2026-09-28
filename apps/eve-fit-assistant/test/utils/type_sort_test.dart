@@ -121,6 +121,13 @@ void main() {
       expect(types.map((t) => t.typeId), [2, 3, 1]);
     });
 
+    test("descending name sort keeps unnamed types last", () {
+      final names = {2: "Beta", 3: "Alpha"};
+      final types = [_type(1), _type(2), _type(3)]
+        ..sort(typeComparator(TypeSortKey.name, TypeSortDirection.descending, names: names));
+      expect(types.map((t) => t.typeId), [2, 3, 1]);
+    });
+
     test("descending reverses the ascending order", () {
       final types = [_type(1), _type(2), _type(3)]
         ..sort(typeComparator(TypeSortKey.typeId, TypeSortDirection.descending));
