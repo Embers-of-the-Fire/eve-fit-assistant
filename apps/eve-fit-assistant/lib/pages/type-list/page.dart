@@ -305,6 +305,9 @@ class _TypeDatabasePageState extends ConsumerState<TypeDatabasePage> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(localeProvider, (_, _) {
+      setState(_invalidateSortNames);
+    });
     final collectionLoading = ref.watch(
       dataReadinessProvider.select((DataReadinessState s) => s is DataReadinessLoading),
     );
