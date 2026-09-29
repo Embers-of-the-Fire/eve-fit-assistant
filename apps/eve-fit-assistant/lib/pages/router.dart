@@ -31,6 +31,7 @@ import "package:eve_fit_assistant/pages/setting/data/storage.dart";
 import "package:eve_fit_assistant/pages/setting/developer-tools/page.dart";
 import "package:eve_fit_assistant/pages/setting/developer/page.dart";
 import "package:eve_fit_assistant/pages/setting/version/page.dart";
+import "package:eve_fit_assistant/pages/type-list/page.dart";
 import "package:eve_fit_assistant/pages/view.dart";
 import "package:eve_fit_assistant/pages/workspace/create-fit/page.dart";
 import "package:flutter/material.dart";
@@ -59,6 +60,16 @@ class AppRouter extends RootStackRouter {
       page: FitCreationRoute.page,
       meta: const {
         DeepLinkMeta.key: DeepLinkMeta(title: "Create fit", usage: "create a new fit for a ship"),
+      },
+    ),
+    AutoRoute(
+      path: "/types",
+      page: TypeDatabaseRoute.page,
+      meta: const {
+        DeepLinkMeta.key: DeepLinkMeta(
+          title: "Item database",
+          usage: "browse, search, filter and sort all EVE types",
+        ),
       },
     ),
     AutoRoute(

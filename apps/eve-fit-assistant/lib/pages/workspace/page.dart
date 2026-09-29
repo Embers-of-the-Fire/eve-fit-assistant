@@ -45,6 +45,11 @@ class WorkspacePage extends ConsumerWidget {
           }
         },
       ),
+      _WorkspaceShortcutItem(
+        title: context.l10n.workspaceTabTypeDatabaseTitle,
+        icon: Icons.inventory_2_outlined,
+        onTap: () => context.router.push(const TypeDatabaseRoute()),
+      ),
       if (!kIsWeb)
         _WorkspaceShortcutItem(
           title: context.l10n.workspaceTabAnnouncementTitle,
