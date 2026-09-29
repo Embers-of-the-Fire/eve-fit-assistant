@@ -86,6 +86,13 @@ void main() {
       expect(types.map((t) => t.typeId), [2, 3, 1]);
     });
 
+    test("name sort breaks exact-name ties by type id", () {
+      final names = {1: "alpha", 2: "alpha", 3: "beta"};
+      final types = [_type(3), _type(2), _type(1)]
+        ..sort(typeComparator(TypeSortKey.name, TypeSortDirection.ascending, names: names));
+      expect(types.map((t) => t.typeId), [1, 2, 3]);
+    });
+
     test("name sort places types without a resolved name last", () {
       final names = {2: "Beta", 3: "Alpha"};
       final types = [_type(1), _type(2), _type(3)]
