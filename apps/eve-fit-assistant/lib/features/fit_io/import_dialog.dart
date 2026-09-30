@@ -3,6 +3,7 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/features/fit_io/text_import.dart";
+import "package:eve_fit_assistant/features/killmail_import/killmail_import_dialog.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -66,6 +67,15 @@ class _FitImportDialogState extends ConsumerState<FitImportDialog> {
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () async {
+                  Navigator.of(context).pop();
+                  await showKillmailImportDialog(context, ref);
+                },
+          child: Text(context.l10n.killmailImportOpenButton),
+        ),
         TextButton(
           onPressed: _busy ? null : _handlePaste,
           child: Text(context.l10n.fitImportPasteButton),

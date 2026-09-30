@@ -1173,6 +1173,26 @@
     }
   },
   "fitImportUnknownError": "无法导入该配置。",
+  "killmailImportOpenButton": "从击毁报告导入",
+  "killmailImportDialogTitle": "导入击毁报告",
+  "killmailImportDialogDescription": "粘贴 zKillboard 的击毁报告链接（或击毁 ID），将遇难舰船的配置导入为本地配置。",
+  "killmailImportUrlLabel": "击毁报告链接或 ID",
+  "killmailImportJsonLabel": "击毁报告 JSON",
+  "killmailImportJsonModeButton": "改为粘贴 JSON",
+  "killmailImportUrlModeButton": "改为使用链接",
+  "killmailImportErrorEmpty": "请先粘贴击毁报告链接或 JSON 再导入。",
+  "killmailImportErrorInvalidUrl": "无法识别该链接。请使用 zKillboard 的击毁报告链接。",
+  "killmailImportErrorNotFound": "未找到击毁报告 {killmailId}。击毁刚发生时站点需要几分钟才会公开 API 数据，请稍后重试；否则请确认 ID 是否正确。",
+  "@killmailImportErrorNotFound": {
+    "placeholders": {
+      "killmailId": {
+        "type": "String"
+      }
+    }
+  },
+  "killmailImportErrorBlocked": "击毁报告站点拦截了应用的请求。请在该站点页面上复制击毁报告 JSON，然后改用粘贴 JSON 导入。",
+  "killmailImportErrorFetchFailed": "获取击毁报告失败。请检查网络连接后重试。",
+  "killmailImportErrorInvalid": "该击毁报告数据无效或不完整。",
   "fitScreenshotPageTitle": "配置图片导出",
   "fitScreenshotSave": "保存图片",
   "fitScreenshotShare": "分享图片",
