@@ -162,6 +162,21 @@ void main() {
       client.dispose();
     });
 
+    test("maps unparseable JSON to invalidResponse", () async {
+      final client = _clientWith((options) async => _jsonBody("{broken"));
+      expect(
+        () => client.fetchKillmail(KillboardServer.zkillboard, 1),
+        throwsA(
+          isA<KillboardFetchException>().having(
+            (e) => e.code,
+            "code",
+            KillboardFetchErrorCode.invalidResponse,
+          ),
+        ),
+      );
+      client.dispose();
+    });
+
     test("maps network failures to fetchFailed", () async {
       final client = _clientWith(
         (options) async => throw DioException(

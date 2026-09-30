@@ -84,7 +84,13 @@ class KillboardClient {
     if (trimmed == "[]") {
       throw KillboardFetchException(KillboardFetchErrorCode.notFound, detail: "$killmailId");
     }
-    final Object? decoded = jsonDecode(trimmed);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(trimmed);
+    } on FormatException {
+      warning("Killmail fetch for $uri returned malformed JSON: ${_preview(trimmed)}");
+      throw const KillboardFetchException(KillboardFetchErrorCode.invalidResponse);
+    }
     if (decoded is Map<String, dynamic> && decoded["error"] != null) {
       warning("Killmail fetch for $uri returned an error object: ${decoded["error"]}");
       throw KillboardFetchException(
