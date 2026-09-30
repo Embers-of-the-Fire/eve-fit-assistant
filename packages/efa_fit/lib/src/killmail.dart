@@ -53,7 +53,12 @@ class KillmailFit {
   final int killmailId;
   final int shipTypeId;
   final DateTime? killmailTime;
-  final Map<KillmailRack, Map<int, int>> racks;
+
+  /// Candidate type IDs per module slot. ESI lists loaded charges as ordinary
+  /// items reusing the module's flag, so a rack/index can hold more than one
+  /// candidate; importers resolve the module against static slot data and
+  /// treat the remaining candidates as charges.
+  final Map<KillmailRack, Map<int, List<int>>> racks;
   final List<KillmailStack> drones;
   final List<KillmailStack> fighters;
   final List<int> skippedTypeIds;
@@ -184,10 +189,12 @@ KillmailItem? _parseItem(Object? raw) {
 
 /// Reconstructs the victim's fitting from a killmail. Cargo, ammo holds, and
 /// any item with an unrecognized flag are dropped and reported through
-/// [KillmailFit.skippedTypeIds]. Killmails do not record loaded charges or
-/// module online/offline state, so neither is reconstructed.
+/// [KillmailFit.skippedTypeIds]. ESI reports loaded charges as ordinary items
+/// sharing the module's flag, so all same-flag candidates are preserved in
+/// [KillmailFit.racks] for the importer to disambiguate. Killmails do not
+/// record module online/offline state, so it is not reconstructed.
 KillmailFit killmailToFit(Killmail killmail) {
-  final racks = <KillmailRack, Map<int, int>>{};
+  final racks = <KillmailRack, Map<int, List<int>>>{};
   final drones = <int, int>{};
   final fighters = <int, int>{};
   final skipped = <int>[];
@@ -198,7 +205,7 @@ KillmailFit killmailToFit(Killmail killmail) {
     final slot = killmailFlagToRack(item.flag);
     if (slot != null) {
       final (rack, index) = slot;
-      racks.putIfAbsent(rack, () => {})[index] = item.typeId;
+      racks.putIfAbsent(rack, () => {}).putIfAbsent(index, () => []).add(item.typeId);
       continue;
     }
     if (_isDroneBayFlag(item.flag)) {

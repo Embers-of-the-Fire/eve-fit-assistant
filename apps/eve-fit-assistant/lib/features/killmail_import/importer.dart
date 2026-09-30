@@ -124,16 +124,22 @@ class KillmailImporter {
       final slots = parsed.racks[rack];
       if (slots == null) continue;
       for (final entry in slots.entries) {
+        // ESI lists loaded charges as ordinary items under the module's flag,
+        // so a slot may carry several candidates. The static slot data decides
+        // which one is the module (quantity/singleton are unreliable: slot
+        // entries can arrive with singleton 0 and quantity 1); the rest are
+        // ignored as charges.
+        final typeId = _resolveModuleType(collection.slots, rack, entry.value);
         fit = _setModuleAt(
           fit,
           rack,
           entry.key,
           FitModuleItem(
-            itemId: FitStorageItemId.item(id: entry.value),
+            itemId: FitStorageItemId.item(id: typeId),
             // Killmails do not record module state; default like the app's
             // own equip paths: activatable modules come in active,
             // passive-only ones online.
-            state: _defaultModuleState(collection.slots, rack, entry.value),
+            state: _defaultModuleState(collection.slots, rack, typeId),
             charge: const Option.none(),
           ),
         );
@@ -163,6 +169,25 @@ class KillmailImporter {
     );
 
     return ref.read(fitManagerProvider.notifier).importFit(fit);
+  }
+
+  bool _isSlotType(Slots slotsInfo, KillmailRack rack, int typeId) => switch (rack) {
+    KillmailRack.high => slotsInfo.highSlots.containsKey(typeId),
+    KillmailRack.medium => slotsInfo.mediumSlots.containsKey(typeId),
+    KillmailRack.low => slotsInfo.lowSlots.containsKey(typeId),
+    KillmailRack.rig => slotsInfo.rigSlots.containsKey(typeId),
+    KillmailRack.subsystem => slotsInfo.subsystemSlots.containsKey(typeId),
+    KillmailRack.service => slotsInfo.serviceSlots.containsKey(typeId),
+  };
+
+  /// Picks the module among same-flag candidates: the first candidate the
+  /// static data recognizes as a module for [rack], falling back to the first
+  /// candidate when none is recognized.
+  int _resolveModuleType(Slots slotsInfo, KillmailRack rack, List<int> candidates) {
+    for (final typeId in candidates) {
+      if (_isSlotType(slotsInfo, rack, typeId)) return typeId;
+    }
+    return candidates.first;
   }
 
   FitItemState _defaultModuleState(Slots slotsInfo, KillmailRack rack, int typeId) {

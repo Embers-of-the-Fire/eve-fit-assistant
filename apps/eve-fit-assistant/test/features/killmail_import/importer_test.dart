@@ -19,7 +19,8 @@ const _shipTypeId = 11985;
 // Trimmed zKillboard response (killID 126861807) with the flags the importer
 // consumes: 6 high, 5 med, 2 low, 2 rigs, 5 drones, plus cargo that must be
 // dropped.
-const _killmailJson = """
+const _killmailJson =
+    """
 {
   "killmail_id": 126861807,
   "killmail_time": "2025-05-05T20:18:06Z",
@@ -176,6 +177,34 @@ void main() {
       // Cargo items are dropped: 17 items in, 16 fitted.
       expect(fit.body.implants, isEmpty);
       expect(fit.body.boosters, isEmpty);
+    });
+
+    testWidgets("selects the module when a loaded charge shares its flag", (tester) async {
+      final fitManager = _FakeFitManager();
+      final ref = await _pumpRef(tester, fitManager: fitManager);
+
+      // The charge (2456) is listed before the module (8641) and both reuse
+      // flag 27 with singleton 0; only 8641 is a known high-slot module.
+      const json =
+          """
+      {
+        "killmail_id": 42,
+        "victim": {
+          "ship_type_id": $_shipTypeId,
+          "items": [
+            {"flag": 27, "item_type_id": 2456, "quantity_destroyed": 320, "singleton": 0},
+            {"flag": 27, "item_type_id": 8641, "quantity_destroyed": 1, "singleton": 0}
+          ]
+        }
+      }
+      """;
+
+      await KillmailImporter(ref).importFromJson(json);
+
+      final module = fitManager.imported.single.body.slots.high[0].toNullable();
+      expect(module?.itemId.asId, 8641);
+      expect(module?.state, FitItemState.active);
+      expect(module?.charge.toNullable(), isNull);
     });
 
     testWidgets("rejects invalid JSON", (tester) async {

@@ -72,10 +72,7 @@ void main() {
     });
 
     test("rejects non-JSON input", () {
-      expect(
-        () => parseKillmailJson("not json"),
-        throwsA(isA<KillmailFormatException>()),
-      );
+      expect(() => parseKillmailJson("not json"), throwsA(isA<KillmailFormatException>()));
     });
 
     test("rejects JSON without victim", () {
@@ -86,10 +83,7 @@ void main() {
     });
 
     test("rejects empty list", () {
-      expect(
-        () => parseKillmailJson("[]"),
-        throwsA(isA<KillmailFormatException>()),
-      );
+      expect(() => parseKillmailJson("[]"), throwsA(isA<KillmailFormatException>()));
     });
   });
 
@@ -126,22 +120,28 @@ void main() {
       expect(fit.killmailId, 126861807);
       expect(fit.shipTypeId, 11985);
       expect(fit.racks[KillmailRack.high], {
-        0: 8641,
-        1: 16487,
-        2: 8641,
-        3: 8641,
-        4: 16487,
-        5: 8635,
+        0: [8641],
+        1: [16487],
+        2: [8641],
+        3: [8641],
+        4: [16487],
+        5: [8635],
       });
       expect(fit.racks[KillmailRack.medium], {
-        0: 35660,
-        1: 3841,
-        2: 2301,
-        3: 3841,
-        4: 2281,
+        0: [35660],
+        1: [3841],
+        2: [2301],
+        3: [3841],
+        4: [2281],
       });
-      expect(fit.racks[KillmailRack.low], {0: 1355, 1: 2048});
-      expect(fit.racks[KillmailRack.rig], {0: 31796, 1: 31796});
+      expect(fit.racks[KillmailRack.low], {
+        0: [1355],
+        1: [2048],
+      });
+      expect(fit.racks[KillmailRack.rig], {
+        0: [31796],
+        1: [31796],
+      });
       expect(fit.drones, hasLength(1));
       expect(fit.drones.single.typeId, 2488);
       expect(fit.drones.single.quantity, 5);
@@ -179,6 +179,22 @@ void main() {
 
       expect(fit.racks, isEmpty);
       expect(fit.skippedTypeIds, [2002]);
+    });
+
+    test("preserves all same-flag candidates (module and loaded charge)", () {
+      final fit = killmailToFit(
+        parseKillmailJson(
+          '{"killmail_id": 1, "victim": {"ship_type_id": 638, "items": ['
+          '{"flag": 27, "item_type_id": 1003, "quantity_destroyed": 1, "singleton": 0},'
+          '{"flag": 27, "item_type_id": 2003, "quantity_destroyed": 200, "singleton": 0}'
+          "]}}",
+        ),
+      );
+
+      expect(fit.racks[KillmailRack.high], {
+        0: [1003, 2003],
+      });
+      expect(fit.skippedTypeIds, isEmpty);
     });
 
     test("ignores items with zero quantity", () {
