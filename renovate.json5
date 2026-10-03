@@ -10,8 +10,11 @@
   // inside each window; the hosted Mend app honors the windows as-is.
   schedule: ["* 0-6 2,16 * *"],
   // packages/eve-fit-os is a submodule with independent history and
-  // versioning; parent-repo tooling must not touch it.
+  // versioning; parent-repo tooling must not touch it. It is still cloned
+  // read-only so `cargo update --workspace` can resolve the path dependency
+  // when regenerating Cargo.lock.
   ignorePaths: ["packages/eve-fit-os/**"],
+  cloneSubmodules: ["packages/eve-fit-os"],
   automerge: false,
   // One PR per ecosystem even when a batch mixes major and minor updates.
   separateMajorMinor: false,
