@@ -14,7 +14,8 @@
   // read-only so `cargo update --workspace` can resolve the path dependency
   // when regenerating Cargo.lock.
   ignorePaths: ["packages/eve-fit-os/**"],
-  cloneSubmodules: ["packages/eve-fit-os"],
+  cloneSubmodules: true,
+  cloneSubmodulesFilter: ["packages/eve-fit-os"],
   automerge: false,
   // One PR per ecosystem even when a batch mixes major and minor updates.
   separateMajorMinor: false,
