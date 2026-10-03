@@ -41,9 +41,13 @@ runs:
       shell: pwsh
       # Prebuilt binary via cargo-binstall; falls back to source build if no
       # artifact matches the runner.
-      run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.13.0-beta.6
+      run: cargo binstall --no-confirm flutter_rust_bridge_codegen@2.13.0
 
+    # Pin protoc to the version shipped by the pinned nixpkgs (protobuf 36.2)
+    # so codegen output matches the Nix shells.
     - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
+      with:
+        version: "36.2"
 
     # The Nix shells ship protoc-gen-dart directly; on Windows it only exists
     # as a pub-global package. Its shim lives in the pub cache bin dir, which

@@ -306,7 +306,7 @@ class AppUpdateService {
 
         final verifyResult = await _verifyApk(apkFile.path, artifact.contentHash);
         if (verifyResult.isLeft()) apkFile.deleteSync();
-        return verifyResult.fold(Left.new, (_) => Right(apkFile.path));
+        return verifyResult.map((_) => apkFile.path);
       } finally {
         if (sink != null) await sink.close();
         dio.close();

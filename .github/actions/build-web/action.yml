@@ -41,7 +41,7 @@ runs:
           packages/eve-fit-os/data/out/pb2
 
     - name: Init dev env
-      uses: ./.github/actions/init-dev-env
+      uses: $/.github/actions/init-dev-env
 
     - name: Install Python dependencies
       shell: bash

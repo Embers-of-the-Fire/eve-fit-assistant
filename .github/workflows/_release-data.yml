@@ -48,7 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
         with:
           init-dev-env: true
 
@@ -86,7 +86,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-data-build
           redact-values: |
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-data-publish
           redact-values: |
@@ -182,13 +182,13 @@ jobs:
         uses: $/.github/actions/prepare-data-workspace
 
       - name: Sync snapshots to platform D1
-        uses: ./.github/actions/sync-platform-d1
+        uses: $/.github/actions/sync-platform-d1
         with:
           token: ${{ secrets.D1_SYNC_TOKEN }}
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-data-d1-sync
           redact-values: |

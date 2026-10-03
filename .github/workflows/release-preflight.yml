@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
 
       - name: Run fast release preflight checks
         env:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-preflight
 

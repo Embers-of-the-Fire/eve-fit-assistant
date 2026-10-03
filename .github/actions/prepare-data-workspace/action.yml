@@ -23,7 +23,7 @@ runs:
         persist-credentials: false
 
     - name: Setup Python env
-      uses: ./.github/actions/setup-python-env
+      uses: $/.github/actions/setup-python-env
       with:
         init-dev-env: true
 

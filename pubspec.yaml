@@ -30,7 +30,7 @@ melos:
     dependencies:
       dio: ^5.11.0
       fpdart: ^1.2.0
-      flutter_rust_bridge: 2.13.0-beta.6
+      flutter_rust_bridge: 2.13.0
 
       canonical_json: ^1.1.3
       crypto: ^3.0.7

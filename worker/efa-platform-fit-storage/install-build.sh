@@ -14,7 +14,7 @@ rustup target add wasm32-unknown-unknown
 cargo install -q "worker-build@^0.8"
 
 # Install protoc (pinned version for reproducible codegen)
-PROTOC_VERSION="35.1"
+PROTOC_VERSION="36.2"
 URL="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
 curl -fLO "$URL"
 unzip "$(basename "$URL")" -d "$HOME/.local"
