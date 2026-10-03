@@ -54,3 +54,5 @@ jobs:
           token: ${{ steps.bot-token.outputs.token }}
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # Temporary: diagnosing deterministic repository-changed aborts.
+          LOG_LEVEL: debug
