@@ -20,7 +20,7 @@ class FileBlobStore implements BlobStore {
     final file = File(path);
     if (!file.existsSync()) return null;
     try {
-      return file.readAsBytes();
+      return await file.readAsBytes();
     } on FileSystemException {
       return null;
     }
