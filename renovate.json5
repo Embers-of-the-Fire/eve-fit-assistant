@@ -66,6 +66,12 @@
       labels: ["T-Dependencies", "T-CI"],
     },
     {
+      // Android platform deps (AGP, androidx, Gradle wrapper) are pinned to
+      // the Flutter toolchain; bumping them independently breaks the build.
+      matchManagers: ["gradle", "gradle-wrapper"],
+      enabled: false,
+    },
+    {
       // Independent submodule history; see ignorePaths above.
       matchManagers: ["git-submodules"],
       enabled: false,
