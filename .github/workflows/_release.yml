@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
 
       - name: Verify release version
         id: verify
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-release-verify
 
@@ -59,7 +59,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build env
-        uses: ./.github/actions/setup-build-env
+        uses: $/.github/actions/setup-build-env
         with:
           shell: android
 
@@ -103,7 +103,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-android-release
           redact-values: |
@@ -128,7 +128,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build env
-        uses: ./.github/actions/setup-build-env
+        uses: $/.github/actions/setup-build-env
         with:
           shell: linux
 
@@ -148,7 +148,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-linux-release
 
@@ -164,7 +164,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build env
-        uses: ./.github/actions/setup-build-env-windows
+        uses: $/.github/actions/setup-build-env-windows
 
       - name: Build Windows variants
         shell: pwsh
@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-windows-release
 
@@ -216,13 +216,13 @@ jobs:
           fi
 
       - name: Build web bundle
-        uses: ./.github/actions/build-web
+        uses: $/.github/actions/build-web
         with:
           app-key-sha256: ${{ !inputs.test_mode && vars.APP_KEY_SHA256 || '' }}
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-site-release
 
@@ -246,7 +246,7 @@ jobs:
           persist-credentials: false
 
       - name: Deploy web bundle
-        uses: ./.github/actions/deploy-web-pages
+        uses: $/.github/actions/deploy-web-pages
         with:
           flavor: ${{ inputs.test_mode && 'nightly' || 'prod' }}
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -275,7 +275,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
         with:
           init-dev-env: true
 
@@ -488,7 +488,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-app-publish
           redact-values: |

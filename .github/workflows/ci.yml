@@ -77,10 +77,10 @@ jobs:
         run: nix develop .#${{ matrix.shell }} --command bash -c 'pnpm install'
       - name: Fetch native CI data
         if: matrix.native_data
-        uses: ./.github/actions/fetch-native-data
+        uses: $/.github/actions/fetch-native-data
       - name: Init dev env
         if: matrix.dev_env
-        uses: ./.github/actions/init-dev-env
+        uses: $/.github/actions/init-dev-env
       - name: Setup CI dev config
         if: matrix.dev_env
         run: nix develop .#${{ matrix.shell }} --command bash -c 'uv run x.py dev env write-backend'
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-ci-${{ matrix.slug }}
 

@@ -24,4 +24,4 @@ runs:
 
     - name: Init dev env
       if: inputs.init-dev-env == 'true'
-      uses: ./.github/actions/init-dev-env
+      uses: $/.github/actions/init-dev-env

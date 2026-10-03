@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - name: Evaluate gates
         id: gate
-        uses: ./.github/actions/pr-gate
+        uses: $/.github/actions/pr-gate
         with:
           labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           repository: ${{ github.repository }}
@@ -41,7 +41,7 @@ jobs:
           persist-credentials: false
       - name: Check web preview relevance
         id: filter
-        uses: ./.github/actions/web-gate
+        uses: $/.github/actions/web-gate
         with:
           target: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha }}
@@ -66,7 +66,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: Build web bundle
-        uses: ./.github/actions/build-web
+        uses: $/.github/actions/build-web
 
   deploy-preview:
     needs: build
@@ -82,7 +82,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: Deploy preview to Cloudflare Pages
-        uses: ./.github/actions/deploy-web-pages
+        uses: $/.github/actions/deploy-web-pages
         with:
           flavor: nightly
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}

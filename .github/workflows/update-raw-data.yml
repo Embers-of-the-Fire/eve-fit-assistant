@@ -37,7 +37,7 @@ jobs:
 
       - name: Evaluate gates
         id: gate
-        uses: ./.github/actions/pr-gate
+        uses: $/.github/actions/pr-gate
         with:
           labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           repository: ${{ github.repository }}
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
         with:
           init-dev-env: true
 
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-raw-check
 
@@ -108,7 +108,7 @@ jobs:
         run: uv sync
 
       - name: Init dev env
-        uses: ./.github/actions/init-dev-env
+        uses: $/.github/actions/init-dev-env
 
       - name: Download portable Python 2.7
         run: uv run x.py ci raw-data setup-py27
@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-raw-update-${{ matrix.server }}
 
@@ -156,7 +156,7 @@ jobs:
           path: raw-artifacts/${{ matrix.server }}/
 
       - name: Setup Python env
-        uses: ./.github/actions/setup-python-env
+        uses: $/.github/actions/setup-python-env
         with:
           init-dev-env: true
 
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload diagnostics
         if: failure()
-        uses: ./.github/actions/upload-diagnostics
+        uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-raw-upload-${{ matrix.server }}
           redact-values: |
@@ -196,7 +196,7 @@ jobs:
     # needs them.  Remote/ write-scoped credentials come from per-job
     # environments downstream and are not available here.
     secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: ./.github/workflows/_release-data.yml
+    uses: $/.github/workflows/_release-data.yml
     with:
       test_mode: false
       servers: ${{ needs.check.outputs.matrix }}

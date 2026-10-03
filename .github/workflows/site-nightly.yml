@@ -65,7 +65,7 @@ jobs:
             core.setOutput("sha", sha);
       - name: Decide whether to deploy
         id: decide
-        uses: ./.github/actions/web-gate
+        uses: $/.github/actions/web-gate
         with:
           # Empty or unfetchable last-deployed sha => deploy=true (the action
           # deploys rather than risking a stale nightly).
@@ -83,7 +83,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: Build web bundle
-        uses: ./.github/actions/build-web
+        uses: $/.github/actions/build-web
 
   deploy:
     name: Deploy nightly to Cloudflare Pages
@@ -99,7 +99,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Deploy nightly to Cloudflare Pages
-        uses: ./.github/actions/deploy-web-pages
+        uses: $/.github/actions/deploy-web-pages
         with:
           flavor: nightly
           api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}

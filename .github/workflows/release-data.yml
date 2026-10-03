@@ -45,7 +45,7 @@ jobs:
 
       - name: Evaluate gates
         id: gate
-        uses: ./.github/actions/pr-gate
+        uses: $/.github/actions/pr-gate
         with:
           labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           repository: ${{ github.repository }}
@@ -54,7 +54,7 @@ jobs:
   release:
     name: Build and publish
     if: github.event_name != 'pull_request'
-    uses: ./.github/workflows/_release-data.yml
+    uses: $/.github/workflows/_release-data.yml
     # Inherit repo-level CI_STORAGE_* for the build job (no environment).
     # The publish job gets REMOTE_STORAGE_* from environment: production-data
     # and does not need them via workflow_call.
@@ -67,7 +67,7 @@ jobs:
     name: Build and test publish
     needs: gate
     if: github.event_name == 'pull_request' && needs.gate.outputs.run == 'true'
-    uses: ./.github/workflows/_release-data.yml
+    uses: $/.github/workflows/_release-data.yml
     secrets:
       CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
       CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}

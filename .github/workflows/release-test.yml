@@ -26,7 +26,7 @@ jobs:
 
       - name: Evaluate gates
         id: gate
-        uses: ./.github/actions/pr-gate
+        uses: $/.github/actions/pr-gate
         with:
           labels: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           repository: ${{ github.repository }}
@@ -42,7 +42,7 @@ jobs:
       # _release.yml's site-deploy job declares pull-requests: write; caller
       # grants must cover it even though deploy_web: false skips that job.
       pull-requests: write
-    uses: ./.github/workflows/_release.yml
+    uses: $/.github/workflows/_release.yml
     with:
       test_mode: true
       deploy_web: false
@@ -57,7 +57,7 @@ jobs:
       contents: write
       # site-deploy pins a comment with the test deployment URL on this PR.
       pull-requests: write
-    uses: ./.github/workflows/_release.yml
+    uses: $/.github/workflows/_release.yml
     # Inherit so site-deploy's `environment: ci-testing-web` secrets resolve
     # (Cloudflare Pages credentials) inside the reusable workflow.
     secrets: inherit # zizmor: ignore[secrets-inherit]
@@ -68,7 +68,7 @@ jobs:
     name: Data release test
     needs: gate
     if: needs.gate.outputs.full == 'true'
-    uses: ./.github/workflows/_release-data.yml
+    uses: $/.github/workflows/_release-data.yml
     secrets:
       CI_STORAGE_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
       CI_STORAGE_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
