@@ -41,6 +41,13 @@ jobs:
           permission-pull-requests: write
           permission-issues: write
           permission-workflows: write
+          # Renovate sets commit statuses (artifact-error check and the
+          # minimumReleaseAge stability check); without this the run aborts
+          # with "repository-changed" after the first branch push.
+          permission-statuses: write
+          # Lets Renovate read Dependabot vulnerability alerts
+          # (vulnerabilityAlerts in renovate.json5).
+          permission-security-events: read
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
