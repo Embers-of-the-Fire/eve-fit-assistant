@@ -77,11 +77,11 @@ runs:
 
     - name: Deploy to Cloudflare Pages
       id: deploy
-      uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+      uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
       with:
         apiToken: ${{ inputs.api-token }}
         accountId: ${{ inputs.account-id }}
-        wranglerVersion: "4.118.0"
+        wranglerVersion: "4.144.0"
         # The repo root carries a pnpm lockfile, which the action would
         # auto-detect and use to install wrangler; pnpm is not preinstalled
         # on the runner and npm suffices for a global wrangler install.

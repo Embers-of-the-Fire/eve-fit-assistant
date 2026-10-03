@@ -49,14 +49,14 @@ jobs:
           # (vulnerabilityAlerts in renovate.json5).
           permission-security-events: read
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       # The full Renovate image installs lockfile toolchains on demand
       # (uv, cargo, pnpm, dart/flutter, nix via containerbase), so every
       # manager in renovate.json5 can regenerate its lockfile in-container.
-      - uses: renovatebot/github-action@1cd96b855fee0da6f230617e89dbff0e06ea393a # v46.3.5
+      - uses: renovatebot/github-action@6d26fcf0275dc65624cbc3d51fe78bc773f98321 # v46.3.6
         with:
           token: ${{ steps.bot-token.outputs.token }}
         env:
