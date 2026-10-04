@@ -193,9 +193,12 @@ class _FitScreenshotPageState extends ConsumerState<FitScreenshotPage> {
       bytes: pngBytes,
     );
     if (outputPath == null || !mounted) return;
+    final displayPath = outputPath.isScheme("file")
+        ? outputPath.toFilePath()
+        : outputPath.toString();
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotSaved(path: outputPath))));
+    ).showSnackBar(SnackBar(content: Text(context.l10n.fitScreenshotSaved(path: displayPath))));
   }
 
   Future<void> _handleShare(FitContext fitContext) async {
