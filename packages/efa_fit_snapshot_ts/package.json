@@ -7,13 +7,14 @@
         ".": "./src/lib/index.ts"
     },
     "scripts": {
-        "check": "svelte-check --tsconfig ./tsconfig.json"
+        "check": "svelte-check --tsconfig ./tsconfig.json --tsgo"
     },
     "dependencies": {
         "@bufbuild/protobuf": "^2.14.0",
         "efa-proto-ts": "workspace:*"
     },
     "devDependencies": {
+        "@typescript/native": "npm:typescript@^7.0.0",
         "svelte": "^5.56.9",
         "svelte-check": "^4.7.5",
         "typescript": "^6.0.3"
