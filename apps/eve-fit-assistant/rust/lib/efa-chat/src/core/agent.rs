@@ -3,7 +3,6 @@ use std::sync::{Arc, RwLock};
 
 use futures::StreamExt;
 use rig::agent::Agent;
-use rig::completion::CompletionModel;
 use rig::message::{Message, ToolResultContent};
 use rig::prelude::*;
 use rig::providers::{anthropic, deepseek, openai};
@@ -27,14 +26,6 @@ pub struct ChatAgent {
     active_fit: Arc<RwLock<Option<ActiveFit>>>,
     fit_callbacks: Option<Arc<FitCallbacks>>,
     skills: Arc<SkillRegistry>,
-}
-
-/// A per-turn agent for one of the supported providers (enum dispatch over
-/// rig's statically-typed provider agents).
-enum TurnAgent {
-    OpenAiCompatible(Agent<openai::CompletionModel>),
-    Anthropic(Agent<anthropic::completion::CompletionModel>),
-    DeepSeek(Agent<deepseek::CompletionModel>),
 }
 
 impl ChatAgent {
@@ -143,14 +134,11 @@ impl ChatAgent {
         }
     }
 
-    fn attach_tools<M>(&self, builder: rig::agent::AgentBuilder<M>) -> Agent<M>
-    where
-        M: CompletionModel + 'static,
-    {
+    fn attach_tools(&self, builder: rig::agent::AgentBuilder) -> Agent {
         let builder = builder.preamble(&self.config.full_system_prompt(&self.prompt_context()));
         // The static `.tool()` builder is type-state based and cannot be
         // conditional, so the fit toolset goes through the dynamic-tool path.
-        let mut builder = match &self.fit_engine {
+        let fit_tools = match &self.fit_engine {
             Some(engine) => {
                 let mut context = FitToolContext::new(
                     engine.clone(),
@@ -161,15 +149,14 @@ impl ChatAgent {
                 if let Some(callbacks) = &self.fit_callbacks {
                     context = context.with_callbacks(callbacks.clone());
                 }
-                builder.dynamic_tools(
-                    crate::tools::fit::tools::fit_tools(context)
-                        .into_iter()
-                        .map(rig::tool::DynamicTool::from)
-                        .collect(),
-                )
+                crate::tools::fit::tools::fit_tools(context)
+                    .into_iter()
+                    .map(rig::tool::DynamicTool::from)
+                    .collect()
             }
-            None => builder.dynamic_tools(vec![]),
+            None => vec![],
         };
+        let mut builder = builder.dynamic_tools(fit_tools);
         if let Some(corpus) = &self.manual_corpus {
             builder = builder
                 .tool(ManualSearchTool::new(corpus.clone(), self.config.language))
@@ -184,11 +171,11 @@ impl ChatAgent {
         builder.build()
     }
 
-    fn build_agent(&self) -> Result<TurnAgent, ChatError> {
+    fn build_agent(&self) -> Result<Agent, ChatError> {
         let base_url = self.config.resolved_base_url();
         let model = self.config.model.clone();
         let http = self.config.http_client()?;
-        let agent = match self.config.provider {
+        let builder = match self.config.provider {
             ChatProviderKind::OpenAiCompatible => {
                 let builder = openai::CompletionsClient::builder()
                     .api_key(self.config.api_key.clone())
@@ -200,7 +187,7 @@ impl ChatAgent {
                     None => builder.build(),
                 }
                 .map_err(|e| ChatError::Client(e.to_string()))?;
-                TurnAgent::OpenAiCompatible(self.attach_tools(client.agent(model)))
+                client.agent(model)
             }
             ChatProviderKind::Anthropic => {
                 let builder = anthropic::Client::builder()
@@ -211,7 +198,7 @@ impl ChatAgent {
                     None => builder.build(),
                 }
                 .map_err(|e| ChatError::Client(e.to_string()))?;
-                TurnAgent::Anthropic(self.attach_tools(client.agent(model)))
+                client.agent(model)
             }
             ChatProviderKind::DeepSeek => {
                 let builder = deepseek::Client::builder()
@@ -222,10 +209,10 @@ impl ChatAgent {
                     None => builder.build(),
                 }
                 .map_err(|e| ChatError::Client(e.to_string()))?;
-                TurnAgent::DeepSeek(self.attach_tools(client.agent(model)))
+                client.agent(model)
             }
         };
-        Ok(agent)
+        Ok(self.attach_tools(builder))
     }
 
     /// Snapshot everything a single turn needs (the per-turn agent, history
@@ -260,7 +247,7 @@ impl ChatAgent {
 /// only the outcome is committed back via [`ChatAgent::commit_chat_turn`] or
 /// [`ChatAgent::commit_stream_turn`].
 pub struct PreparedTurn {
-    agent: TurnAgent,
+    agent: Agent,
     history: Vec<Message>,
     max_turns: usize,
 }
@@ -274,13 +261,7 @@ impl PreparedTurn {
             history,
             max_turns,
         } = self;
-        match &agent {
-            TurnAgent::OpenAiCompatible(agent) => {
-                drive_chat(agent, prompt, history, max_turns).await
-            }
-            TurnAgent::Anthropic(agent) => drive_chat(agent, prompt, history, max_turns).await,
-            TurnAgent::DeepSeek(agent) => drive_chat(agent, prompt, history, max_turns).await,
-        }
+        drive_chat(&agent, prompt, history, max_turns).await
     }
 
     /// Run one streaming turn, reporting events through [on_event]. Emits
@@ -296,17 +277,7 @@ impl PreparedTurn {
             history,
             max_turns,
         } = self;
-        let accumulated = match &agent {
-            TurnAgent::OpenAiCompatible(agent) => {
-                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
-            }
-            TurnAgent::Anthropic(agent) => {
-                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
-            }
-            TurnAgent::DeepSeek(agent) => {
-                drive_stream(agent, prompt, history, max_turns, &mut on_event).await?
-            }
-        };
+        let accumulated = drive_stream(&agent, prompt, history, max_turns, &mut on_event).await?;
         on_event(ChatEvent::Done(accumulated.clone()));
         Ok(accumulated)
     }
@@ -315,15 +286,12 @@ impl PreparedTurn {
 /// Drive one non-streaming turn (rig's `Chat::chat` with a configurable
 /// multi-turn depth). Returns the assistant output plus the turn's messages;
 /// the caller commits them to session history.
-async fn drive_chat<M>(
-    agent: &Agent<M>,
+async fn drive_chat(
+    agent: &Agent,
     prompt: &str,
     history: Vec<Message>,
     max_turns: usize,
-) -> Result<(String, Option<Vec<Message>>), ChatError>
-where
-    M: CompletionModel + 'static,
-{
+) -> Result<(String, Option<Vec<Message>>), ChatError> {
     let response = agent
         .prompt(prompt.to_string())
         .history(history)
@@ -336,16 +304,13 @@ where
 
 /// Drive one streaming turn, reporting text deltas and tool-call lifecycle
 /// events through [on_event] and returning the accumulated assistant text.
-async fn drive_stream<M>(
-    agent: &Agent<M>,
+async fn drive_stream(
+    agent: &Agent,
     prompt: &str,
     history: Vec<Message>,
     max_turns: usize,
     on_event: &mut impl FnMut(ChatEvent),
-) -> Result<String, ChatError>
-where
-    M: CompletionModel + 'static,
-{
+) -> Result<String, ChatError> {
     let mut stream = agent
         .stream_chat(prompt.to_string(), history)
         .max_turns(max_turns)
@@ -420,7 +385,7 @@ where
 
 /// Flatten a tool result's content items into displayable text: text items
 /// are joined verbatim, JSON items serialized, and images skipped.
-fn tool_result_text(content: &OneOrMany<ToolResultContent>) -> String {
+fn tool_result_text(content: &[ToolResultContent]) -> String {
     let mut out = String::new();
     for item in content.iter() {
         match item {
@@ -684,19 +649,18 @@ mod tests {
 
     #[test]
     fn tool_result_text_joins_text_and_json_items() {
-        let content = OneOrMany::many([
+        let content = vec![
             ToolResultContent::Text(rig::message::Text::new("alpha")),
             ToolResultContent::Json {
                 value: serde_json::json!({"k": 1}),
             },
-        ])
-        .unwrap();
+        ];
         assert_eq!(tool_result_text(&content), "alpha\n{\"k\":1}");
     }
 
     #[test]
     fn tool_result_text_single_text_item() {
-        let content = OneOrMany::one(ToolResultContent::Text(rig::message::Text::new("beta")));
+        let content = vec![ToolResultContent::Text(rig::message::Text::new("beta"))];
         assert_eq!(tool_result_text(&content), "beta");
     }
 

@@ -29,6 +29,8 @@ analyzer:
     - "**/*.pbenum.dart"
     - "**/*.g.dart"
     - "**/*.freezed.dart"
+    - windows/**
+    - linux/**
   # plugins:
   #   - custom_lint
 
