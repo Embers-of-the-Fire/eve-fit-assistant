@@ -83,12 +83,23 @@
     },
     {
       description:
-        'Block vitest 5 in workers until @cloudflare/vitest-plugin supports it (cloudflare/workers-sdk#15618)',
+        'Pin TypeScript 6 repo-wide: svelte-check --tsgo still requires a TS6 + @typescript/native dual install and astro check has no TS7 support at all (needs @astrojs/ts-content-mapper, TS 7.1+); see PR #503',
       matchManagers: [
         'npm',
       ],
-      matchFileNames: [
-        'worker/**/package.json',
+      matchPackageNames: [
+        'typescript',
+      ],
+      matchUpdateTypes: [
+        'major',
+      ],
+      enabled: false,
+    },
+    {
+      description:
+        'Block vitest 5 repo-wide until @cloudflare/vitest-plugin supports it (cloudflare/workers-sdk#15618)',
+      matchManagers: [
+        'npm',
       ],
       matchPackageNames: [
         'vitest',
