@@ -71,6 +71,23 @@
       ],
     },
     {
+      description:
+        'Block vitest 5 in workers until @cloudflare/vitest-plugin supports it (cloudflare/workers-sdk#15618)',
+      matchManagers: [
+        'npm',
+      ],
+      matchFileNames: [
+        'worker/**/package.json',
+      ],
+      matchPackageNames: [
+        'vitest',
+      ],
+      matchUpdateTypes: [
+        'major',
+      ],
+      enabled: false,
+    },
+    {
       groupName: 'Dart/Flutter dependencies (pub)',
       matchManagers: [
         'pub',
