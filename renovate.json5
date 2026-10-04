@@ -65,6 +65,17 @@
       ],
     },
     {
+      description:
+        'Pin rig: upstream ships breaking changes on every minor bump (0.42 to 0.43 broke efa-chat, see PR #499), so rig updates are manual',
+      matchManagers: [
+        'cargo',
+      ],
+      matchPackageNames: [
+        'rig',
+      ],
+      enabled: false,
+    },
+    {
       groupName: 'JS dependencies (pnpm)',
       matchManagers: [
         'npm',
