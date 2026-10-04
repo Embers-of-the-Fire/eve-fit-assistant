@@ -31,8 +31,15 @@ export class RateLimitWindow extends DurableObject {
             rateWindowHit(this.ctx.storage, limit, windowSec, nowMs),
         );
         // Re-arm the cleanup alarm at the window boundary. setAlarm replaces
-        // any pending alarm, so a hit in a later window simply moves it.
-        await this.ctx.storage.setAlarm(rateWindowBoundaryMs(windowSec, nowMs));
+        // any pending alarm, so a hit in a later window simply moves it. A
+        // past-due boundary (possible when nowMs lags the wall clock, as in
+        // tests with fixed timestamps) is skipped: newer workerd fires
+        // past-due alarms immediately, and the handler sweeps with the real
+        // clock, wiping the row just written.
+        const boundaryMs = rateWindowBoundaryMs(windowSec, nowMs);
+        if (boundaryMs > Date.now()) {
+            await this.ctx.storage.setAlarm(boundaryMs);
+        }
         return outcome;
     }
 
