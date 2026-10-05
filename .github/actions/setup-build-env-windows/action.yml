@@ -48,6 +48,7 @@ runs:
     - uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
       with:
         version: "36.2"
+        repo-token: ${{ github.token }}
 
     # The Nix shells ship protoc-gen-dart directly; on Windows it only exists
     # as a pub-global package. Its shim lives in the pub cache bin dir, which
