@@ -350,6 +350,7 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
                 item.dynamic_id as i32,
                 ef::DynamicItem {
                     base_type: item.base_type_id as i32,
+                    resulting_type: item.type_id.map(|t| t as i32).unwrap_or(0),
                     dynamic_attributes: item
                         .attributes
                         .iter()

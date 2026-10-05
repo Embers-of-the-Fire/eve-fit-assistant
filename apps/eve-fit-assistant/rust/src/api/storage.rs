@@ -112,6 +112,9 @@ pub struct FitStorage {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DynamicItem {
     pub base_type: i32,
+    /// The mutated type created by the mutator (e.g. Light Mutated Drone);
+    /// `0` falls back to `base_type`.
+    pub resulting_type: i32,
     /// attr key, factor
     pub dynamic_attributes: HashMap<i32, f64>,
 }
@@ -120,6 +123,7 @@ impl DynamicItem {
     fn into_native(self) -> eve_fit_os::fit::DynamicItem {
         eve_fit_os::fit::DynamicItem {
             base_type: self.base_type,
+            resulting_type: self.resulting_type,
             dynamic_attributes: self.dynamic_attributes,
         }
     }

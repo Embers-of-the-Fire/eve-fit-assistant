@@ -466,6 +466,7 @@ Map<String, Object?> encodeFitPayload(
         if (validDynamicIds.contains(e.key))
           "${e.key}": {
             "base_type": e.value.originTypeId,
+            "resulting_type": e.value.typeId,
             "dynamic_attributes": {
               for (final a in e.value.dynamicAttributes.unlock.entries) "${a.key}": a.value,
             },

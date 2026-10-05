@@ -139,6 +139,10 @@ pub struct SystemBuffDto {
 #[derive(Debug, Deserialize)]
 pub struct DynamicItemDto {
     pub base_type: i32,
+    /// The mutated type created by the mutator; absent/`0` falls back to
+    /// `base_type`.
+    #[serde(default)]
+    pub resulting_type: i32,
     #[serde(default)]
     pub dynamic_attributes: HashMap<i32, f64>,
 }
@@ -170,6 +174,7 @@ impl FitPayload {
                             id,
                             DynamicItem {
                                 base_type: item.base_type,
+                                resulting_type: item.resulting_type,
                                 dynamic_attributes: item.dynamic_attributes,
                             },
                         )
@@ -342,6 +347,7 @@ mod tests {
             7,
             DynamicItemDto {
                 base_type: 2456,
+                resulting_type: 0,
                 dynamic_attributes: HashMap::new(),
             },
         );
