@@ -577,6 +577,7 @@ native.FitStorage convertToNative(
               entry.key,
               native.DynamicItem(
                 baseType: entry.value.originTypeId,
+                resultingType: entry.value.typeId,
                 dynamicAttributes: Map<int, double>.from(entry.value.dynamicAttributes.unlock),
               ),
             ),

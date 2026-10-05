@@ -145,8 +145,9 @@ message FitDynamicItem {
   repeated FitDynamicAttribute attributes = 3;
 
   /// The mutated (abyssal) type, distinct from the unmutated `base_type_id`.
-  /// Display-only: the engine calculates on the base type plus `attributes`,
-  /// but the snapshot shows this type's name/icon. Absent → show the base.
+  /// The engine merges this type's template attributes (notably its required
+  /// skills) with the base type's values plus `attributes`, and the snapshot
+  /// shows this type's name/icon. Absent → calculate on/show the base.
   optional uint32 type_id = 4;
 }
 
