@@ -61,6 +61,7 @@
         pkgs.openssl
         pkgs.curl
         pkgs.libsecret
+        pkgs.libgcrypt
       ];
 
       fenixPkgs = fenix.packages.${system};
@@ -160,7 +161,7 @@
       appimagetoolAppImage = pkgs.fetchurl {
         name = "appimagetool-x86_64.AppImage";
         url = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage";
-        hash = "sha256-ptceK2zWb46NFsN60WRliYXgz1/KqVDJCkgokMudE+A=";
+        hash = "sha256-lcvnzOlxf86QxITjQFLufH8ddjWzPBJSW0d2gmp9KbY=";
       };
 
       appimagetool = pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; } ''
@@ -218,6 +219,7 @@
 
                 # linux platform support
                 pkgs.libsecret
+                pkgs.libgcrypt
                 pkgs.xdg-user-dirs
               ];
 
@@ -283,11 +285,12 @@
           linuxShell = pkgs.mkShell {
             packages =
               basePackages
-              ++ appimageTools
-              ++ [
-                pkgs.libsecret
-                pkgs.xdg-user-dirs
-              ];
+               ++ appimageTools
+               ++ [
+                 pkgs.libsecret
+                 pkgs.libgcrypt
+                 pkgs.xdg-user-dirs
+               ];
 
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
@@ -401,8 +404,8 @@
               ++ dartPackages
               ++ protobufPackages
               ++ frbPackages
-              ++ jsPackages
-              ++ [ pkgs.libsecret ];
+               ++ jsPackages
+               ++ [ pkgs.libsecret ];
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
