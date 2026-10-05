@@ -168,6 +168,16 @@ explicit `nowMs` parameters at the helper level.
 `./x test web` runs headless Chrome through `flutter test --platform chrome`. Chrome resolves
 from `CHROME_EXECUTABLE` or `google-chrome`, `chromium`, or `chrome` on `PATH`.
 
+The web test runner executes the host's Chrome binary, so `x.py test web` strips
+`LD_LIBRARY_PATH` from the environment before invoking the test command. The Nix dev shells
+export it (Nix runtime libs for the uv-managed Python's PyPI wheels, e.g. numpy needing
+`libstdc++.so.6`), but it makes host binaries load Nix-built libraries — e.g.
+`libgcrypt.so.20` pulled in by Chrome's `libsecret` dependency — that require a newer glibc
+than the host provides. Chrome then fails to start, and the web test harness has no
+browser-launch timeout, so `flutter test --platform chrome` hangs indefinitely instead of
+failing. Do not remove that strip, and do not pass a Nix `LD_LIBRARY_PATH` to web tests in
+any other way.
+
 Suites are platform-aware: VM-only suites carry `@TestOn("vm")`, and web-only suites under
 `test/web/` carry `@TestOn("browser")`. The web test pipeline compiles every selected suite
 regardless of `@TestOn`, so `x.py test web` excludes VM-only suites whose `dart:ffi`-only

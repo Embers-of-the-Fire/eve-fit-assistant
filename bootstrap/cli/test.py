@@ -203,6 +203,17 @@ def register_test_commands(cli_group: click.Group) -> None:
             )
         os.environ["CHROME_EXECUTABLE"] = chrome
 
+        # The Nix dev shells export LD_LIBRARY_PATH (Nix runtime libs for the
+        # uv-managed Python's PyPI wheels, e.g. numpy needing libstdc++). Web
+        # tests launch the host's Chrome, and a Nix LD_LIBRARY_PATH forces host
+        # binaries to load Nix-built libraries (e.g. libgcrypt via Chrome's
+        # libsecret dependency) built against a newer glibc than the host
+        # provides. Chrome then crashes at startup, and the web test harness has
+        # no browser-launch timeout, so `flutter test --platform chrome` hangs
+        # forever. Web tests run no native code, so strip the variable for the
+        # whole test subprocess tree.
+        os.environ.pop("LD_LIBRARY_PATH", None)
+
         suites = _collect_web_test_suites()
         if not suites:
             raise click.ClickException("No web-compatible test suites found under test/.")

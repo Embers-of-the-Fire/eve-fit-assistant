@@ -1,5 +1,10 @@
 # Usage: source scripts/setup-ld-library-path.sh
 # Expects LD_LIBRARY_PATH_RUNTIME to be set by the Nix shellHook.
+#
+# The exported path is required by the uv-managed Python (PyPI wheels such as
+# numpy need the Nix libstdc++), but it must never reach the host's Chrome:
+# `x.py test web` strips LD_LIBRARY_PATH before launching web tests (see
+# docs/agents/build-and-test.md, "Web Test Pipeline").
 
 # NOTE: The Flutter Linux debug bundle lib dir (build/linux/x64/debug/bundle/lib)
 # is intentionally NOT added here. Its bundled libsqlite3.so is a trimmed build
