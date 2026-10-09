@@ -40,7 +40,29 @@
   nix: {
     enabled: true,
   },
+  customManagers: [
+    {
+      description:
+        "Renovate has no uv manager and its built-in pyenv matcher for .python-version only supports the docker datasource (which renders Python as a Docker dependency), so pyenv is disabled and this file is matched here against the python-version datasource instead",
+      customType: 'regex',
+      managerFilePatterns: [
+        '/(^|/)\\.python-version$/',
+      ],
+      matchStrings: [
+        '^(?<currentValue>\\d+\\.\\d+(\\.\\d+)?)\\s*$',
+      ],
+      datasourceTemplate: 'python-version',
+      depNameTemplate: 'python',
+      versioningTemplate: 'python',
+    },
+  ],
   packageRules: [
+    {
+      matchManagers: [
+        'pyenv',
+      ],
+      enabled: false,
+    },
     {
       groupName: 'Nix flake inputs',
       matchManagers: [
@@ -55,7 +77,13 @@
       matchManagers: [
         'pep621',
         'pep723',
-        'uv',
+      ],
+    },
+    {
+      description: 'Keep the .python-version pin in the Python batch',
+      groupName: 'Python dependencies (uv)',
+      matchDatasources: [
+        'python-version',
       ],
     },
     {
