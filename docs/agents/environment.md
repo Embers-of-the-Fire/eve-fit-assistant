@@ -16,8 +16,11 @@ The equivalent inside the dev shell is `flutter pub get` plus `uv sync`.
 
 ## Local Configuration
 
-- Python requires 3.13+ and is managed by `uv`. Run the workspace CLI through `./x`,
-  `./x.ps1`, or `uv run x.py`, not through a global Python interpreter.
+- Python requires 3.13+ and is managed by `uv`: the interpreter is uv-downloaded
+  (python-build-standalone) and pinned by `.python-version`, which Renovate's uv manager
+  bumps. The Nix shell deliberately ships no CPython and sets
+  `UV_PYTHON_PREFERENCE=only-managed`; run the workspace CLI through `./x`, `./x.ps1`, or
+  `uv run x.py`, not through a global Python interpreter.
 - Backend Rust builds, tests, and code generation need `packages/eve-fit-os/.env`. Normally
   create `efa.dev.toml` with `./x dev init-cfg`, set `[native]`, then run
   `./x dev env write-backend`.

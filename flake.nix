@@ -102,12 +102,13 @@
       inherit (pkgs)
         flutter
         jdk17
-        python3
         ;
 
       # --- Named package sets ---
+      # Python itself is NOT provided here: uv downloads and manages the
+      # interpreter pinned by .python-version (single source of truth,
+      # bumped by Renovate's uv manager). Only uv comes from nixpkgs.
       pythonPackages = with pkgs; [
-        python3
         uv
       ];
 
@@ -233,8 +234,7 @@
             ANDROID_HOME = developmentAndroidSdkRoot;
             ANDROID_NDK_ROOT = "${developmentAndroidSdkRoot}/ndk-bundle";
             NDK_HOME = "${developmentAndroidSdkRoot}/ndk-bundle";
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.lld}/bin/wasm-ld";
 
@@ -266,8 +266,7 @@
             ANDROID_HOME = androidSdkRoot;
             ANDROID_NDK_ROOT = "${androidSdkRoot}/ndk-bundle";
             NDK_HOME = "${androidSdkRoot}/ndk-bundle";
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
             CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "${pkgs.lld}/bin/wasm-ld";
 
@@ -285,20 +284,19 @@
           linuxShell = pkgs.mkShell {
             packages =
               basePackages
-               ++ appimageTools
-               ++ [
-                 pkgs.libsecret
-                 pkgs.libgcrypt
-                 pkgs.xdg-user-dirs
-               ];
+              ++ appimageTools
+              ++ [
+                pkgs.libsecret
+                pkgs.libgcrypt
+                pkgs.xdg-user-dirs
+              ];
 
             LANG = "C.UTF-8";
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
             FLUTTER_ROOT = "${pkgs.flutter}";
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
             shellHook = ''
@@ -324,8 +322,7 @@
             ];
 
             inherit (localeEnv) LANG LC_ALL;
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -338,8 +335,7 @@
             packages = pythonPackages ++ dartPackages ++ protobufPackages;
 
             inherit (localeEnv) LANG LC_ALL;
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
             JAVA_HOME = jdk17.home;
             FLUTTER_ROOT = "${pkgs.flutter}";
 
@@ -357,8 +353,7 @@
             packages = pythonPackages ++ [ rustHostToolchain ] ++ protobufPackages ++ nativeBuildPackages;
 
             inherit (localeEnv) LANG LC_ALL;
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -371,8 +366,7 @@
             packages = pythonPackages ++ jsPackages;
 
             inherit (localeEnv) LANG LC_ALL;
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -385,8 +379,7 @@
             packages = pythonPackages ++ ciPackages;
 
             inherit (localeEnv) LANG LC_ALL;
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -404,14 +397,13 @@
               ++ dartPackages
               ++ protobufPackages
               ++ frbPackages
-               ++ jsPackages
-               ++ [ pkgs.libsecret ];
+              ++ jsPackages
+              ++ [ pkgs.libsecret ];
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
             FLUTTER_ROOT = "${pkgs.flutter}";
-            UV_PYTHON = "${python3}/bin/python3";
-            UV_PYTHON_DOWNLOADS = "never";
+            UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
             shellHook = ''
