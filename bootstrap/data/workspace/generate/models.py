@@ -204,7 +204,7 @@ async def generate(data: GeneratorDatasource):
         json.dumps(
             {
                 "dataBlack": str(data_black.local_path),
-                "texture": {"format": "webp", "quality": 90},
+                "texture": {"format": "webp"},
                 "geometry": "meshopt",
                 "jobs": convert_jobs,
             }
