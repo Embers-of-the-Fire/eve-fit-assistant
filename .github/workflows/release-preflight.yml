@@ -32,10 +32,23 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           # shellcheck disable=SC2016
+          intent_json=$(nix develop .#python --command bash -c \
+            'uv run x.py ci release intent --base-ref "origin/${BASE_REF}"' | tail -n 1)
+          echo "Intent: $intent_json"
+          action=$(echo "$intent_json" | jq -r '.action')
+          if [ "$action" = "none" ]; then
+            reason=$(echo "$intent_json" | jq -r '.reason')
+            echo "::error::V-Release PR carries no release intent: $reason"
+            exit 1
+          fi
+          track=$(echo "$intent_json" | jq -r '.track')
           nix develop .#python --command bash -c \
-            'uv run x.py ci release verify \
-              --base-ref "origin/${BASE_REF}" \
-              --check-notes --check-tag --check-note-content'
+            "uv run x.py release version sync --track \"${track}\""
+          nix develop .#python --command bash -c \
+            "uv run x.py ci release verify \
+              --base-ref \"origin/\${BASE_REF}\" \
+              --track \"${track}\" \
+              --check-notes --check-tag --check-note-content"
 
       - name: Upload diagnostics
         if: failure()

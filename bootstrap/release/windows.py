@@ -32,7 +32,7 @@ from bootstrap.utils import execute_command
 
 
 if TYPE_CHECKING:
-    from bootstrap.config import ProjectVersion
+    from bootstrap.config import ReleaseVersion
 
 
 BINARY_NAME = "eve_fit_assistant"
@@ -75,10 +75,10 @@ def _zip_tree(src_dir: Path, root_name: str, dst: Path) -> None:
 
 
 def pack_native_zip(
-    *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, dry_run: bool
+    *, bundle_dir: Path, output_dir: Path, version: ReleaseVersion, dry_run: bool
 ) -> Path:
     """Pack the raw Flutter Windows release bundle into a zip archive as-is."""
-    ver = version.render_full()
+    ver = version.full
     dst = output_dir / f"{ver}-windows-native.zip"
     if dry_run:
         info(f"[DRY-RUN] Would pack native zip archive: {dst}")
@@ -91,15 +91,15 @@ def pack_native_zip(
     return dst
 
 
-def msi_version(version: ProjectVersion) -> str:
-    """Map the project version to MSI's strictly numeric four-part version.
+def msi_version(version: ReleaseVersion) -> str:
+    """Map the release version to MSI's strictly numeric four-part version.
 
     Prerelease labels cannot appear in MSI versions, and Windows Installer
     compares only the first three fields, so same-triple prerelease upgrades
     rely on MajorUpgrade AllowSameVersionUpgrades in Package.wxs. The fourth
     field is display-only (ARP) to distinguish builds.
     """
-    return f"{version.major}.{version.minor}.{version.patch}.{version.build}"
+    return f"{version.triplet}.{version.build}"
 
 
 def upgrade_code() -> str:
@@ -114,7 +114,7 @@ def upgrade_code() -> str:
 
 
 def pack_msi(
-    *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, wix: str, dry_run: bool
+    *, bundle_dir: Path, output_dir: Path, version: ReleaseVersion, wix: str, dry_run: bool
 ) -> Path:
     """Build the per-user multi-language MSI installer from the WiX source."""
     wxs = _PACKAGING_DIR / "Package.wxs"
@@ -124,7 +124,7 @@ def pack_msi(
         wxl = _wxl_path(culture)
         if not wxl.exists():
             raise click.ClickException(f"WiX localization file not found: {wxl}")
-    ver = version.render_full()
+    ver = version.full
     dst = output_dir / f"{ver}-windows-setup.msi"
 
     extensions = execute_command(
@@ -189,7 +189,7 @@ def _wxl_path(culture: str) -> Path:
 
 
 def _build_msi_args(
-    wix: str, wxs: Path, bundle_dir: Path, version: ProjectVersion, culture: str, out: Path
+    wix: str, wxs: Path, bundle_dir: Path, version: ReleaseVersion, culture: str, out: Path
 ) -> list[str]:
     return [
         wix,

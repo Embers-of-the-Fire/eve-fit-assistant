@@ -16,23 +16,40 @@ zh = "简体中文"
 
 [version]
 # The `version` section is the canonical version source for the project.
-# All version files (pubspec.yaml, Cargo.toml, pyproject.toml) are synced from here.
-# Edit this section directly and run `./x generate -f all` to regenerate dependent files.
+# It carries the fields shared by both release tracks; the per-track
+# versions live in [version.testing] and [version.stable] below.
+# All version files (pubspec.yaml, Cargo.toml, pyproject.toml) are synced
+# from here, rendered for a selected track (local development: testing).
+# Edit this section directly and run `./x generate -f all` to regenerate
+# dependent files.
 #
-# Pre-release: set `pre_label` to a non-empty string and `pre_num >= 1`.
-#   Example: pre_label = "beta", pre_num = 4 → 0.1.0-beta.4+1
-# Release: set `pre_label = ""` and `pre_num = 0`.
-#   Example: 0.1.0+1
-# `build` is the Flutter/Android build number (versionCode).
-major = 0
-minor = 1
-patch = 0
-pre_label = "beta"
-pre_num = 1
+# `build` is the Flutter/Android build number (versionCode). It is shared
+# by both tracks and must strictly increase between any two consecutive
+# release-triggering merges.
 build = 1
 # `data_schema` is the data schema version used for storage and bundle format.
 # Increment when data format or storage layout changes.
 data_schema = 1
+
+[version.testing]
+# The testing track serves developers and early testers. It renders as
+#   major.minor.patch-beta.num+build     (e.g. 1.0.0-beta.1+42)
+# `beta` is the only prerelease label and is implied by the track.
+# `num` is the prerelease counter; `num = 0` marks the ceremonial
+# "rebased, not yet cut" state after a ship commit and is never published.
+major = 1
+minor = 0
+patch = 0
+num = 1
+
+[version.stable]
+# The stable track serves normal users. It renders as
+#   major.minor.patch+build              (e.g. 1.0.0+42)
+# major.minor changes only via ship commits (promoting the tested triplet);
+# between ships, patch changes only via backport releases.
+major = 0
+minor = 21
+patch = 0
 
 [data_schema]
 # The `data_schema` section defines the v2 schema configuration.

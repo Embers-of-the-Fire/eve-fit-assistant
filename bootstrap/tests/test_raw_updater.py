@@ -713,13 +713,13 @@ class TestConfigOverrides:
         cfg = _apply_overrides(
             {},
             [
-                ("version.major", "42"),
-                ("version.pre_label", '"beta"'),
+                ("version.testing.major", "42"),
+                ("version.testing.num", "3"),
                 ("remote.verify_upload", "true"),
             ],
         )
-        assert cfg["version"]["major"] == 42
-        assert cfg["version"]["pre_label"] == "beta"
+        assert cfg["version"]["testing"]["major"] == 42
+        assert cfg["version"]["testing"]["num"] == 3
         assert cfg["remote"]["verify_upload"] is True
 
     def test_apply_overrides_falls_back_to_literal_string(self) -> None:

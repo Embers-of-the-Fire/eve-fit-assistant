@@ -9,6 +9,10 @@ message ReleaseIndex {
   optional AndroidArtifacts android = 4;
   optional LinuxArtifacts linux = 5;
   optional WindowsArtifacts windows = 6;
+  /// Shared, monotonic build number (Android versionCode). Absent in legacy
+  /// indexes published before dual-track versioning; clients fall back to
+  /// version-only comparison when unset.
+  optional uint32 build = 7;
 }
 
 message AndroidArtifactVariant {

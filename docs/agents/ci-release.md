@@ -72,8 +72,28 @@ Release PRs target the `dev` branch and use three labels:
   tests pass.
 
 Merging a `V-Release` PR that also has `V-Tested Release` triggers the real release through
-`release.yml`. The release builds all platform artifacts, publishes the joined release to the
-remote `testing` channel, and creates the Git tag.
+`release.yml`. The labels only gate the run: the workflow classifies the parsed
+`efa.config.toml` diff against the pre-push ref with
+`uv run x.py ci release intent --base-ref <before>` — a `[version.testing]` bump
+with `num > 0` means a testing release, a ship commit (`[version.stable]` set to
+the old testing triplet, testing rebased to `num = 0`) means a stable release,
+and a `V-Release` merge whose diff carries no intent fails the workflow. The
+classified track is passed to `_release.yml` as its `track` input, and the
+release builds all platform artifacts, publishes the joined release to the
+remote channel of that track, and creates the Git tag. An idempotency guard in
+the publish step skips the release as a no-op when the rendered version already
+heads the target channel, absorbing reruns and backport merge-backs.
+
+`release-preflight.yml` runs the same classifier on `V-Release` PRs (failing a
+PR whose diff carries no intent) and then the fast `ci release verify --track
+<track>` checks. `release-test.yml` classifies the PR diff the same way before
+its test-mode builds, falling back to the `testing` track for runs without a
+version diff. `release-backport.yml` (push to `backport/*`) runs the classifier
+against the newest reachable stable tag with the backport carve-out — a
+stable-only patch bump that the mainline rules reject — and dispatches
+`_release.yml` with `track: stable` and `deploy_web: false` under the
+reviewer-gated `production-app` environment. See `RELEASING.md` for the ship
+and backport procedures.
 
 The reusable app release workflow is `_release.yml`; the reusable data snapshot workflow is
 `_release-data.yml`. Their PR/cron/dispatch entry points are merged into multi-trigger
@@ -118,9 +138,12 @@ artifact download, protobuf regeneration) through the
 
 ## App Release Workflow
 
-`_release.yml` is a symmetric multi-platform pipeline:
+`_release.yml` is a symmetric multi-platform pipeline, parameterized by its `track`
+input (`testing` or `stable`, default `testing`):
 
-1. `verify` — version check; exports `tag` and `version`.
+1. `verify` — re-syncs the manifests for the input track (`release version sync
+   --track`, because committed manifests carry the testing rendering) and runs the
+   track-parameterized version check; exports `tag` and `version`.
 2. Platform build jobs — `android` and `linux` both need `verify`, are blocking, and share
    `.github/actions/setup-build-env` parameterized by dev shell. `windows` runs on
    `windows-latest` with the non-Nix `.github/actions/setup-build-env-windows` composite

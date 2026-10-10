@@ -22,8 +22,8 @@ class ReleaseSyncVersionParseError extends ReleaseSyncError {
   final String message;
 }
 
-/// Tri-state outcome of comparing the installed app version against the
-/// remote release index.
+/// Outcome of comparing the installed app version against the remote release
+/// index.
 sealed class ReleaseCheckStatus {
   const ReleaseCheckStatus();
 }
@@ -50,6 +50,16 @@ class ReleaseCheckAheadOfRemote extends ReleaseCheckStatus {
 /// A newer release is available on the remote.
 class ReleaseCheckUpdateAvailable extends ReleaseCheckStatus {
   const ReleaseCheckUpdateAvailable({required this.release});
+
+  final RemoteAppRelease release;
+}
+
+/// The remote release is newer by version but carries a lower build number
+/// than the installed app. This happens on a testing→stable track switch
+/// (e.g. a backport published after newer testing builds); Android would
+/// refuse the install, so the release is informational only.
+class ReleaseCheckDowngradeGuarded extends ReleaseCheckStatus {
+  const ReleaseCheckDowngradeGuarded({required this.release});
 
   final RemoteAppRelease release;
 }
@@ -85,7 +95,9 @@ class ReleaseSyncService {
   }) async {
     final compared = await _compareWithRemote(snapshotHash: snapshotHash);
     return compared.map((result) {
-      if (result.cmp == null || result.cmp! <= 0) return const None();
+      if (result.cmp == null || result.cmp! <= 0 || _isDowngradeGuarded(result)) {
+        return const None();
+      }
       return Some(
         RemoteAppRelease(
           releaseId: result.index.id,
@@ -97,7 +109,7 @@ class ReleaseSyncService {
     });
   }
 
-  /// Full tri-state check starting from a [generationHash].
+  /// Full status check starting from a [generationHash].
   ///
   /// Unlike [check], this distinguishes "up to date" from "installed version
   /// is newer than the remote release". When [ignoreBugfix] is true, a newer
@@ -115,7 +127,7 @@ class ReleaseSyncService {
     );
   }
 
-  /// Full tri-state check given an already-resolved release snapshot hash.
+  /// Full status check given an already-resolved release snapshot hash.
   Future<Either<ReleaseSyncError, ReleaseCheckStatus>> checkStatusFromSnapshotHash({
     required String snapshotHash,
     bool ignoreBugfix = false,
@@ -129,14 +141,14 @@ class ReleaseSyncService {
           isBugfixOnlyUpgrade(installed: result.installedVersion, remote: result.index.version)) {
         return const ReleaseCheckUpToDate();
       }
-      return ReleaseCheckUpdateAvailable(
-        release: RemoteAppRelease(
-          releaseId: result.index.id,
-          version: result.index.version,
-          snapshotHash: snapshotHash,
-          index: result.index,
-        ),
+      final release = RemoteAppRelease(
+        releaseId: result.index.id,
+        version: result.index.version,
+        snapshotHash: snapshotHash,
+        index: result.index,
       );
+      if (_isDowngradeGuarded(result)) return ReleaseCheckDowngradeGuarded(release: release);
+      return ReleaseCheckUpdateAvailable(release: release);
     });
   }
 
@@ -165,7 +177,12 @@ class ReleaseSyncService {
   /// when equal, negative when the installed version is newer, and `null` when
   /// the versions cannot be compared. An unparseable installed or remote
   /// version instead yields a [ReleaseSyncVersionParseError].
-  Future<Either<ReleaseSyncError, ({ReleaseIndex index, int? cmp, String installedVersion})>>
+  Future<
+    Either<
+      ReleaseSyncError,
+      ({ReleaseIndex index, int? cmp, String installedVersion, int? installedBuild})
+    >
+  >
   _compareWithRemote({required String snapshotHash}) async {
     final indexResult = await remoteCatalogService.fetchReleaseIndex(snapshotHash);
     if (indexResult.isLeft()) {
@@ -177,6 +194,7 @@ class ReleaseSyncService {
 
     final installedVersionRaw = await currentVersionProvider();
     final installedVersion = _stripBuildMetadata(installedVersionRaw);
+    final installedBuild = _buildNumberOf(installedVersionRaw);
 
     if (!_isValidVersion(installedVersion)) {
       return Left(
@@ -194,7 +212,24 @@ class ReleaseSyncService {
     }
 
     final cmp = _compareVersions(remoteVersion, installedVersion);
-    return Right((index: index, cmp: cmp, installedVersion: installedVersion));
+    return Right((
+      index: index,
+      cmp: cmp,
+      installedVersion: installedVersion,
+      installedBuild: installedBuild,
+    ));
+  }
+
+  /// Whether [result] describes a track-switch downgrade: the remote release
+  /// is newer by version but its build number is lower than the installed
+  /// one. Legacy indexes without the build field never trigger the guard.
+  bool _isDowngradeGuarded(
+    ({ReleaseIndex index, int? cmp, String installedVersion, int? installedBuild}) result,
+  ) {
+    if (result.cmp == null || result.cmp! <= 0) return false;
+    final installedBuild = result.installedBuild;
+    if (installedBuild == null) return false;
+    return result.index.hasBuild() && result.index.build < installedBuild;
   }
 }
 
@@ -204,6 +239,12 @@ String _stripBuildMetadata(String version) {
   final plusIndex = version.indexOf("+");
   if (plusIndex == -1) return version;
   return version.substring(0, plusIndex);
+}
+
+int? _buildNumberOf(String fullVersion) {
+  final plusIndex = fullVersion.indexOf("+");
+  if (plusIndex == -1) return null;
+  return int.tryParse(fullVersion.substring(plusIndex + 1));
 }
 
 bool _isValidVersion(String version) {

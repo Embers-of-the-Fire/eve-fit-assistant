@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/user_store.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -291,7 +292,16 @@ class AppSettingService extends _$AppSettingService {
     } else {
       json = {};
     }
-    final setting = AppSetting.fromJson({"locale": _defaultLocale().name, ...json});
+    final setting = AppSetting.fromJson({
+      "locale": _defaultLocale().name,
+      ...json,
+      // Fresh installs track the channel matching their build flavor; a
+      // persisted channel always wins.
+      "remoteContent": {
+        "channel": Channel.defaultChannel.value,
+        ...ensure(json["remoteContent"], <String, dynamic>{}),
+      },
+    });
     _appSetting = setting;
   }
 

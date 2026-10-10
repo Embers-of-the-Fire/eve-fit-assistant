@@ -15,8 +15,9 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 /// Shows one of three primary states:
 /// - a newer release is available (tap to open the update dialog),
 /// - the app is already on the latest release,
-/// - the installed version is newer than the latest remote release
-///   (unexpected, but surfaced for transparency).
+/// - the installed version is newer than the latest remote release, or the
+///   latest release carries a lower build number after a track switch
+///   (informational only — it cannot be installed).
 class AppUpdateCheckTile extends ConsumerStatefulWidget {
   const AppUpdateCheckTile({super.key});
 
@@ -83,6 +84,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
 
     final theme = context.theme;
     final l10n = context.l10n;
+    final isWarning = status is ReleaseCheckAheadOfRemote || status is ReleaseCheckDowngradeGuarded;
 
     final subtitle = switch (status) {
       _ when busy => l10n.versionPageCheckUpdateChecking,
@@ -90,6 +92,9 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
       ReleaseCheckUpToDate() => l10n.versionPageCheckUpdateUpToDate,
       ReleaseCheckAheadOfRemote(:final remoteVersion) => l10n.versionPageCheckUpdateAhead(
         version: remoteVersion,
+      ),
+      ReleaseCheckDowngradeGuarded(:final release) => l10n.versionPageCheckUpdateDowngradeGuarded(
+        version: release.version,
       ),
       _ => l10n.versionPageCheckUpdateUnavailable,
     };
@@ -120,10 +125,8 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
           child: Row(
             children: [
               Icon(
-                status is ReleaseCheckAheadOfRemote ? Icons.warning_amber_outlined : Icons.update,
-                color: status is ReleaseCheckAheadOfRemote
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.primary,
+                isWarning ? Icons.warning_amber_outlined : Icons.update,
+                color: isWarning ? theme.colorScheme.error : theme.colorScheme.primary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -138,7 +141,7 @@ class _AppUpdateCheckTileState extends ConsumerState<AppUpdateCheckTile> {
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: status is ReleaseCheckAheadOfRemote || hasError
+                        color: isWarning || hasError
                             ? theme.colorScheme.error
                             : theme.colorScheme.onSurfaceVariant,
                       ),

@@ -113,56 +113,251 @@ class ProjectResource(BaseModel):
     descriptor: ProjectPath
 
 
-class ProjectVersion(BaseModel):
+class StableTrackVersion(BaseModel):
+    """Stable-track version triplet. Stable releases never carry a prerelease label."""
+
     major: int
     minor: int
     patch: int
-    pre_label: str = ""
-    pre_num: int = 0
+
+    @model_validator(mode="after")
+    def _validate_triplet(self) -> StableTrackVersion:
+        for field in ("major", "minor", "patch"):
+            if getattr(self, field) < 0:
+                raise ValueError(f"{field} must be >= 0, got {getattr(self, field)}")
+        return self
+
+    def render_semver(self) -> str:
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+
+class TestingTrackVersion(StableTrackVersion):
+    """Testing-track version: triplet plus the beta prerelease counter.
+
+    ``num = 0`` is the ceremonial "rebased, not yet cut" state produced by a
+    ship commit; a version rendered with ``num = 0`` must never be published.
+    """
+
+    num: int = 0
+
+    @model_validator(mode="after")
+    def _validate_num(self) -> TestingTrackVersion:
+        if self.num < 0:
+            raise ValueError(f"num must be >= 0, got {self.num}")
+        return self
+
+    def render_semver(self) -> str:
+        return f"{self.major}.{self.minor}.{self.patch}-beta.{self.num}"
+
+
+def semver_precedence_key(semver: str) -> tuple:
+    """SemVer 2.0.0 precedence key for a rendered version string.
+
+    Build metadata (``+...``) is ignored per the semver specification. The
+    returned tuples compare with the ordinary ``<`` operator: a release sorts
+    above any of its prereleases, numeric prerelease identifiers compare
+    numerically and below alphanumeric ones, and a longer identifier list
+    outranks a shorter prefix.
+    """
+    core, _, pre = semver.partition("+")[0].partition("-")
+    parts = core.split(".")
+    if len(parts) != 3 or not all(part.isdigit() for part in parts):
+        raise ValueError(f"Invalid semver core: {semver!r}")
+    key: list[object] = [int(part) for part in parts]
+    if not pre:
+        key.append((1,))
+        return tuple(key)
+    identifiers: list[tuple[int, object]] = []
+    for ident in pre.split("."):
+        if ident.isdigit():
+            identifiers.append((0, int(ident)))
+        else:
+            identifiers.append((1, ident))
+    key.append((0, *identifiers))
+    return tuple(key)
+
+
+class ReleaseVersion:
+    """A fully rendered, track-bound release version.
+
+    Every consumer of a version string (manifest sync, CI builds, artifact
+    naming, announcements) works with this resolved form so the rendered
+    track is always explicit.
+    """
+
+    __slots__ = ("build", "full", "semver", "tag", "track", "triplet")
+
+    def __init__(
+        self,
+        *,
+        track: Channel,
+        semver: str,
+        full: str,
+        triplet: str,
+        tag: str,
+        build: int,
+    ) -> None:
+        self.track = track
+        self.semver = semver
+        self.full = full
+        self.triplet = triplet
+        self.tag = tag
+        self.build = build
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ReleaseVersion):
+            return NotImplemented
+        return (
+            self.track == other.track
+            and self.semver == other.semver
+            and self.full == other.full
+            and self.triplet == other.triplet
+            and self.tag == other.tag
+            and self.build == other.build
+        )
+
+    def __repr__(self) -> str:
+        return f"ReleaseVersion(track={self.track!r}, semver={self.semver!r}, build={self.build})"
+
+    @property
+    def is_prerelease(self) -> bool:
+        return self.track == Channel.TESTING
+
+    @property
+    def default_channels(self) -> list[str]:
+        """Announcement channels implied by the release track."""
+        return [self.track.value]
+
+    @staticmethod
+    def parse(value: str, *, build: int = 0) -> ReleaseVersion:
+        """Parse a rendered version string (e.g. ``1.0.0-beta.7``) into a ReleaseVersion.
+
+        The track is derived from the prerelease label: ``beta`` implies the
+        testing track, its absence the stable track. A bare ``-beta`` label
+        defaults to ``num = 1``. An explicit ``+N`` build suffix overrides the
+        ``build`` argument.
+        """
+        original = value
+        core_build, _, build_str = value.partition("+")
+        if build_str:
+            if not build_str.isdigit():
+                raise ValueError(f"Invalid build metadata in version: {original!r}")
+            build = int(build_str)
+        core, _, pre = core_build.partition("-")
+        parts = core.split(".")
+        if len(parts) != 3 or not all(part.isdigit() for part in parts):
+            raise ValueError(f"Invalid version: {original!r}")
+        major, minor, patch = (int(part) for part in parts)
+        if pre:
+            label, _, num_str = pre.partition(".")
+            if label != "beta":
+                raise ValueError(
+                    f"Invalid prerelease label in version: {original!r} (only 'beta' is allowed)"
+                )
+            if not num_str:
+                num = 1
+            elif num_str.isdigit():
+                num = int(num_str)
+            else:
+                raise ValueError(f"Invalid prerelease counter in version: {original!r}")
+            version = ProjectVersion(
+                build=build,
+                testing=TestingTrackVersion(major=major, minor=minor, patch=patch, num=num),
+                stable=StableTrackVersion(major=0, minor=0, patch=0),
+            )
+            return version.release(Channel.TESTING)
+        version = ProjectVersion(
+            build=build,
+            testing=TestingTrackVersion(major=major, minor=minor, patch=patch, num=1),
+            stable=StableTrackVersion(major=major, minor=minor, patch=patch),
+        )
+        return version.release(Channel.STABLE)
+
+
+class ProjectVersion(BaseModel):
+    """Dual-track application version model (see docs/temp/stable/bin.md).
+
+    ``build`` is shared and monotonic across both tracks (Android
+    ``versionCode``); ``testing`` carries the beta prerelease counter;
+    ``stable`` is a plain triplet. Rendering is track-parameterized: the same
+    configuration renders differently per track.
+    """
+
     build: int = 0
     data_schema: int = Field(default=2)
+    testing: TestingTrackVersion
+    stable: StableTrackVersion
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy(cls, data: object) -> object:
+        """Convert the retired single-group schema into the dual-track model.
+
+        Transitional compatibility for reading pre-migration configurations
+        (e.g. via ``git show <base-ref>:efa.config.toml``): the legacy triplet
+        maps onto the testing group and the stable group becomes the ``0.0.0``
+        sentinel. Legacy non-beta prerelease labels are normalized to ``beta``;
+        only ordering against the pre-migration base is required, never
+        rendering.
+        """
+        if not isinstance(data, dict) or "major" not in data:
+            return data
+        migrated = dict(data)
+        major = migrated.pop("major")
+        minor = migrated.pop("minor")
+        patch = migrated.pop("patch")
+        pre_num = migrated.pop("pre_num", 0)
+        migrated.pop("pre_label", None)
+        migrated.setdefault(
+            "testing",
+            {"major": major, "minor": minor, "patch": patch, "num": pre_num},
+        )
+        migrated.setdefault("stable", {"major": 0, "minor": 0, "patch": 0})
+        return migrated
 
     @model_validator(mode="after")
     def _validate_version(self) -> ProjectVersion:
-        if self.major < 0:
-            raise ValueError(f"major must be >= 0, got {self.major}")
-        if self.minor < 0:
-            raise ValueError(f"minor must be >= 0, got {self.minor}")
-        if self.patch < 0:
-            raise ValueError(f"patch must be >= 0, got {self.patch}")
         if self.build < 0:
             raise ValueError(f"build must be >= 0, got {self.build}")
-        if self.pre_label and self.pre_num < 1:
-            raise ValueError(
-                f"pre_num must be >= 1 when pre_label is set, "
-                f"got pre_label={self.pre_label!r} pre_num={self.pre_num}"
-            )
-        if not self.pre_label and self.pre_num > 0:
-            raise ValueError(
-                f"pre_label must be set when pre_num > 0, "
-                f"got pre_label={self.pre_label!r} pre_num={self.pre_num}"
-            )
         return self
 
-    def is_prerelease(self) -> bool:
-        return bool(self.pre_label)
+    def track_version(self, track: Channel) -> StableTrackVersion:
+        return self.testing if track == Channel.TESTING else self.stable
 
-    def render_full(self) -> str:
-        base = f"{self.major}.{self.minor}.{self.patch}"
-        if self.is_prerelease():
-            base = f"{base}-{self.pre_label}.{self.pre_num}"
+    def is_prerelease(self, track: Channel) -> bool:
+        return track == Channel.TESTING
+
+    def render_triplet(self, track: Channel) -> str:
+        tv = self.track_version(track)
+        return f"{tv.major}.{tv.minor}.{tv.patch}"
+
+    def render_semver(self, track: Channel) -> str:
+        return self.track_version(track).render_semver()
+
+    def render_full(self, track: Channel) -> str:
+        base = self.render_semver(track)
         if self.build:
             base = f"{base}+{self.build}"
         return base
 
-    def render_semver(self) -> str:
-        base = f"{self.major}.{self.minor}.{self.patch}"
-        if self.is_prerelease():
-            base = f"{base}-{self.pre_label}.{self.pre_num}"
-        return base
+    def render_tag(self, track: Channel) -> str:
+        return f"releases/v{self.render_semver(track)}"
 
-    def render_tag(self) -> str:
-        return f"releases/v{self.render_semver()}"
+    def release(self, track: Channel) -> ReleaseVersion:
+        return ReleaseVersion(
+            track=track,
+            semver=self.render_semver(track),
+            full=self.render_full(track),
+            triplet=self.render_triplet(track),
+            tag=self.render_tag(track),
+            build=self.build,
+        )
+
+    def track_order_holds(self) -> bool:
+        """Invariant I1: testing renders strictly above stable by semver precedence."""
+        return semver_precedence_key(self.render_semver(Channel.TESTING)) > semver_precedence_key(
+            self.render_semver(Channel.STABLE)
+        )
 
 
 class SchemaConfig(BaseModel):

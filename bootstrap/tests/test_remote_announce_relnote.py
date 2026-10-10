@@ -12,17 +12,32 @@ from click.testing import CliRunner
 from bootstrap.cli.remote.announce import _compose_release_body
 from bootstrap.cli.remote.announce import _load_spec_or_defaults
 from bootstrap.config import ProjectVersion
+from bootstrap.config import StableTrackVersion
+from bootstrap.config import TestingTrackVersion
 from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 from bootstrap.docs.document_parser import parse_locale_document
-from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import parse_release_version
 from bootstrap.release.relnote import split_csv
+from bootstrap.remote.channel import Channel
 from bootstrap.utils import normalize_version_dir
 from bootstrap.utils import version_dir_to_entry_id
 
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _make_version(
+    testing: tuple[int, int, int, int],
+    stable: tuple[int, int, int] = (0, 0, 0),
+) -> ProjectVersion:
+    return ProjectVersion(
+        testing=TestingTrackVersion(
+            major=testing[0], minor=testing[1], patch=testing[2], num=testing[3]
+        ),
+        stable=StableTrackVersion(major=stable[0], minor=stable[1], patch=stable[2]),
+    )
 
 
 def _make_release_note_dir(
@@ -96,23 +111,36 @@ class TestHelpers:
         assert version_dir_to_entry_id("1.0.0") == "version-1-0-0"
 
     def test_parse_version(self) -> None:
-        parsed = parse_version_override("0.1.0-beta.7")
-        assert parsed == {
-            "major": 0,
-            "minor": 1,
-            "patch": 0,
-            "pre_label": "beta",
-            "pre_num": 7,
-        }
+        parsed = parse_release_version("0.1.0-beta.7")
+        assert parsed.track == Channel.TESTING
+        assert parsed.semver == "0.1.0-beta.7"
+        assert parsed.triplet == "0.1.0"
+        assert parsed.tag == "releases/v0.1.0-beta.7"
+        assert parsed.is_prerelease
+        assert parsed.default_channels == ["testing"]
 
     def test_parse_version_without_pre_num(self) -> None:
-        parsed = parse_version_override("0.1.0-beta")
-        assert parsed["pre_label"] == "beta"
-        assert parsed["pre_num"] == 1
+        parsed = parse_release_version("0.1.0-beta")
+        assert parsed.track == Channel.TESTING
+        assert parsed.semver == "0.1.0-beta.1"
+
+    def test_parse_version_stable(self) -> None:
+        parsed = parse_release_version("1.0.0")
+        assert parsed.track == Channel.STABLE
+        assert parsed.semver == "1.0.0"
+        assert parsed.tag == "releases/v1.0.0"
+        assert not parsed.is_prerelease
+        assert parsed.default_channels == ["stable"]
+
+    def test_parse_version_with_build_metadata(self) -> None:
+        parsed = parse_release_version("1.0.0+42")
+        assert parsed.track == Channel.STABLE
+        assert parsed.build == 42
+        assert parsed.full == "1.0.0+42"
 
     def test_parse_version_invalid(self) -> None:
         with pytest.raises(click.ClickException):
-            parse_version_override("not-a-version")
+            parse_release_version("not-a-version")
 
     def test_split_csv(self) -> None:
         assert split_csv("a, b, c") == ["a", "b", "c"]
@@ -202,7 +230,7 @@ class TestAddReleaseNote:
             en_body="# v0.1.0-beta.7 Release Notes\n\nThis release includes the changes below.\n\n- Feature A\n",
             changelog="## [v0.1.0-beta.7] - 2026-07-04\n\n### Added\n\n- Feature A\n",
         )
-        version = ProjectVersion(major=0, minor=1, patch=0, pre_label="beta", pre_num=7)
+        version = _make_version((0, 1, 0, 7))
 
         result = invoke_add_release_note(directory, version)
         assert result.exit_code == 0
@@ -224,6 +252,55 @@ class TestAddReleaseNote:
         assert "Feature A" in announce_workspace.get_document(en.body_hash)
         assert "---" in announce_workspace.get_document(en.body_hash)
 
+    def test_version_override_ignores_configured_version(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
+        directory = _make_release_note_dir(
+            tmp_path,
+            "0-1-0-beta-7",
+            app_version="0.1.0-beta.7",
+            zh_body="# 标题\n\n摘要。\n",
+            en_body="# Title\n\nSummary.\n",
+            changelog="- Fix\n",
+        )
+        version = _make_version((9, 9, 9, 1), (9, 9, 8))
+
+        result = invoke_add_release_note(directory, version, args=["--version=0.1.0-beta.7"])
+        assert result.exit_code == 0
+
+        overlay = announce_workspace.read_overlay()
+        entry = overlay.pages[ACTIVE_KEY]["version-0-1-0-beta-7"]
+        assert entry is not None
+        assert entry.app_version == "0.1.0-beta.7"
+        assert entry.channels == ["testing"]
+
+    def test_stable_track_default_channels(
+        self,
+        tmp_path: Path,
+        announce_workspace: AnnouncementWorkspace,
+        invoke_add_release_note,
+    ) -> None:
+        directory = _make_release_note_dir(
+            tmp_path,
+            "1-0-0",
+            app_version="1.0.0",
+            zh_body="# 标题\n\n摘要。\n",
+            en_body="# Title\n\nSummary.\n",
+            changelog="- Fix\n",
+        )
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
+
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
+        assert result.exit_code == 0
+
+        overlay = announce_workspace.read_overlay()
+        entry = overlay.pages[ACTIVE_KEY]["version-1-0-0"]
+        assert entry.app_version == "1.0.0"
+        assert entry.channels == ["stable"]
+
     def test_uses_spec_channels_and_platforms(
         self,
         tmp_path: Path,
@@ -239,9 +316,9 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="channels:\n- stable\nplatforms:\n- ios\n",
         )
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code == 0
 
         overlay = announce_workspace.read_overlay()
@@ -264,9 +341,9 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="tags:\n- custom-tag\n",
         )
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code == 0
 
         overlay = announce_workspace.read_overlay()
@@ -288,12 +365,13 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="channels:\n- stable\n",
         )
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
         result = invoke_add_release_note(
             directory,
             version,
             args=[
+                "--track=stable",
                 "--channels=testing,stable",
                 "--platforms=ios",
                 "--published-at=2026-01-01T00:00:00Z",
@@ -324,9 +402,9 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
         )
         (directory / "changelog.md").unlink()
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code != 0
         assert "release relnote" in result.output
 
@@ -345,9 +423,9 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
         )
         (directory / "content.zh.md").unlink()
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code != 0
         assert "Missing required locale file" in result.output
 
@@ -365,12 +443,12 @@ class TestAddReleaseNote:
             en_body="# Title\n\nSummary.\n",
             changelog="- Fix\n",
         )
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code == 0
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code != 0
         assert "already exists" in result.output
 
@@ -389,9 +467,9 @@ class TestAddReleaseNote:
             changelog="- Fix\n",
             extra_spec="id: version-wrong\n",
         )
-        version = ProjectVersion(major=1, minor=0, patch=0)
+        version = _make_version((1, 1, 0, 1), (1, 0, 0))
 
-        result = invoke_add_release_note(directory, version)
+        result = invoke_add_release_note(directory, version, args=["--track=stable"])
         assert result.exit_code != 0
         assert "does not match expected id" in result.output
 

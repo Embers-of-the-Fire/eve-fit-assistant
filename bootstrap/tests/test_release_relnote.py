@@ -9,7 +9,7 @@ import click
 import pytest
 import yaml
 
-from bootstrap.config import ProjectVersion
+from bootstrap.config import ReleaseVersion
 from bootstrap.release import relnote
 
 
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def version() -> ProjectVersion:
-    return ProjectVersion(major=0, minor=2, patch=0, pre_label="beta", pre_num=1)
+def version() -> ReleaseVersion:
+    return ReleaseVersion.parse("0.2.0-beta.1")
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def _write_cliff_stub(tmp_path: Path) -> Path:
 
 def test_create_raw_release_note_writes_spec_and_changelog(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     stub = _write_cliff_stub(tmp_path)
@@ -84,7 +84,7 @@ def test_create_raw_release_note_writes_spec_and_changelog(
 
 def test_create_raw_release_note_custom_channels_and_platforms(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     stub = _write_cliff_stub(tmp_path)
@@ -106,7 +106,7 @@ def test_create_raw_release_note_custom_channels_and_platforms(
 
 def test_create_raw_release_note_rejects_invalid_platforms(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     stub = _write_cliff_stub(tmp_path)
@@ -123,7 +123,7 @@ def test_create_raw_release_note_rejects_invalid_platforms(
 
 def test_create_raw_release_note_refuses_overwrite(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"
@@ -139,7 +139,7 @@ def test_create_raw_release_note_refuses_overwrite(
 
 def test_create_raw_release_note_force_overwrites(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"
@@ -159,7 +159,7 @@ def test_create_raw_release_note_force_overwrites(
 
 def test_create_raw_release_note_dry_run_does_not_write(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     stub = _write_cliff_stub(tmp_path)
@@ -176,7 +176,7 @@ def test_create_raw_release_note_dry_run_does_not_write(
 
 
 def test_create_raw_release_note_dry_run_force_preserves_existing(
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"
@@ -225,7 +225,7 @@ def test_run_cliff_passes_from_ref_as_range() -> None:
 
 def test_create_raw_release_note_with_from_ref(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     stub = _write_cliff_stub(tmp_path)
@@ -249,7 +249,7 @@ def test_create_raw_release_note_with_from_ref(
 
 def test_create_raw_release_note_force_invalid_platform_preserves_existing(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"
@@ -272,7 +272,7 @@ def test_create_raw_release_note_force_invalid_platform_preserves_existing(
 
 def test_create_raw_release_note_force_cliff_failure_preserves_existing(
     tmp_path: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"
@@ -296,7 +296,7 @@ def test_create_raw_release_note_force_cliff_failure_preserves_existing(
 
 
 def test_create_raw_release_note_with_from_ref_dry_run(
-    version: ProjectVersion,
+    version: ReleaseVersion,
     isolated_changelog_root: Path,
 ) -> None:
     directory = isolated_changelog_root / "0-2-0-beta-1"

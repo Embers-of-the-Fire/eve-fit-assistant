@@ -2315,6 +2315,14 @@
       }
     }
   },
+  "versionPageCheckUpdateDowngradeGuarded": "最新发布版本（v{version}）构建号低于当前版本，无法安装",
+  "@versionPageCheckUpdateDowngradeGuarded": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "versionPageCheckUpdateFailed": "检查更新失败",
   "versionPageCheckUpdateUnavailable": "无法检查更新",
   "versionPageCheckUpdateActionCheck": "检查",

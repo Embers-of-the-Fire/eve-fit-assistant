@@ -20,13 +20,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from bootstrap.config import ProjectVersion
+    from bootstrap.remote.channel import Channel
 
 
 @dataclass(frozen=True)
 class VersionTarget:
     path: Path
     description: str
-    render: Callable[[ProjectVersion], str]
+    render: Callable[[ProjectVersion, Channel], str]
     pattern: re.Pattern[str]
     replacement: Callable[[re.Match[str], str], str]
 
@@ -39,12 +40,12 @@ class VersionTargetMissingError(click.ClickException):
         super().__init__(f"{target.description}: no version line found in {target.path}")
 
 
-def _render_pubspec(version: ProjectVersion) -> str:
-    return version.render_full()
+def _render_pubspec(version: ProjectVersion, track: Channel) -> str:
+    return version.render_full(track)
 
 
-def _render_semver(version: ProjectVersion) -> str:
-    return version.render_semver()
+def _render_triplet(version: ProjectVersion, track: Channel) -> str:
+    return version.render_triplet(track)
 
 
 def _pubspec_replacement(match: re.Match[str], new_value: str) -> str:
@@ -66,14 +67,14 @@ TARGETS = [
     VersionTarget(
         path=EFA_APP_ROOT / "rust" / "Cargo.toml",
         description="apps/eve-fit-assistant/rust/Cargo.toml",
-        render=_render_semver,
+        render=_render_triplet,
         pattern=re.compile(r'^(version\s*=\s*")[^"]+(")', re.MULTILINE),
         replacement=_toml_replacement,
     ),
     VersionTarget(
         path=PROJECT_ROOT / "pyproject.toml",
         description="pyproject.toml",
-        render=_render_semver,
+        render=_render_triplet,
         pattern=re.compile(r'^(version\s*=\s*")[^"]+(")', re.MULTILINE),
         replacement=_toml_replacement,
     ),
@@ -86,13 +87,15 @@ def _validate_target(target: VersionTarget) -> None:
         raise VersionTargetMissingError(target)
 
 
-def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) -> bool:
+def _sync_target(
+    target: VersionTarget, version: ProjectVersion, track: Channel, dry_run: bool
+) -> bool:
     content = target.path.read_text(encoding="utf-8")
     match = target.pattern.search(content)
     if not match:
         raise VersionTargetMissingError(target)
 
-    new_value = target.render(version)
+    new_value = target.render(version, track)
     new_content = target.pattern.sub(lambda m: target.replacement(m, new_value), content, count=1)
 
     if new_content == content:
@@ -114,19 +117,21 @@ def _sync_target(target: VersionTarget, version: ProjectVersion, dry_run: bool) 
     return True
 
 
-def sync_versions(version: ProjectVersion, *, dry_run: bool = False) -> int:
+def sync_versions(version: ProjectVersion, track: Channel, *, dry_run: bool = False) -> int:
     for target in TARGETS:
         _validate_target(target)
 
     changed = 0
     for target in TARGETS:
-        if _sync_target(target, version, dry_run):
+        if _sync_target(target, version, track, dry_run):
             changed += 1
     return changed
 
 
-def sync_target(path: Path, version: ProjectVersion, *, dry_run: bool = False) -> bool:
+def sync_target(
+    path: Path, version: ProjectVersion, track: Channel, *, dry_run: bool = False
+) -> bool:
     for target in TARGETS:
         if target.path == path:
-            return _sync_target(target, version, dry_run)
+            return _sync_target(target, version, track, dry_run)
     raise ValueError(f"No version sync target registered for {path}")

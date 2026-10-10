@@ -102,8 +102,9 @@ not the primary target.
 ## Project Status
 
 This repository's `dev` branch is under active development and all releases
-ship from it; the `main` branch is deprecated. The current release channel is
-`testing` — expect rough edges, and please report what you find.
+ship from it; the `main` branch is deprecated. Releases ship on two tracks:
+`stable` for normal users and `testing` (beta) for early testers — expect rough
+edges on `testing`, and please report what you find.
 
 ## For Developers
 
