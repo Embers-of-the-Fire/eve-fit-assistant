@@ -155,8 +155,8 @@ input (`testing` or `stable`, default `testing`):
    action.
 3. `publish` — needs `verify`, `android`, `linux`, and `windows`; downloads all platform
    artifacts (binaries plus release-fragment JSONs), merges fragments into one release
-   registry through `x build release --fragments ...`, then runs the session → commit →
-   publish → sync/verify cycle against the remote channel.
+   registry through `x build release --track <track> --fragments ...`, then runs the session →
+   commit → publish → sync/verify cycle against the remote channel.
 4. `tag` — creates the GitHub Release with all platforms' assets.
 5. `notify-qqbot` — posts a `release-created` event with the Chinese release note to the
    bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-app`; real releases

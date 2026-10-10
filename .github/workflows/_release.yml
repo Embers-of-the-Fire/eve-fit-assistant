@@ -349,6 +349,7 @@ jobs:
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             "uv run x.py build release \
+              --track "${TRACK}" \
               --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json \
               --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json \
               --fragments cache/releases/windows/${VERSION}/${VERSION}-windows.json"
