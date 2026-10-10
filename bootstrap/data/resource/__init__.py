@@ -65,7 +65,10 @@ class ResourceManager:
                 return self.__session
 
             self.__session = aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(limit=CONNECTION_LIMIT)
+                # trust_env: honor HTTP(S)_PROXY/NO_PROXY like curl/node do;
+                # no-op where no proxy variables are set (e.g. CI runners).
+                connector=aiohttp.TCPConnector(limit=CONNECTION_LIMIT),
+                trust_env=True,
             )
             return self.__session
 

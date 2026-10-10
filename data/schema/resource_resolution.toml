@@ -14,7 +14,8 @@
 # The RRS version shipped with the app, generated as
 # kResourceResolutionSchemaVersion. Bump when the rule list changes in a
 # behaviorally meaningful way.
-version = 1
+# v2: static/models/ resolves lazy (baked ship GLB models).
+version = 2
 
 # Client-side state available to rule evaluation. Each entry is generated
 # into the Dart ResourceResolutionContext class; `import` is required only
@@ -32,6 +33,7 @@ scheme = "resource://"
 legacy_localization_db = "localization/localization.db"
 localization_locales_prefix = "localization/locales/"
 static_images_prefix = "static/images/"
+static_models_prefix = "static/models/"
 locale_placeholder = "locale"
 
 # Ordered rules; first match wins. Each rule has exactly one matcher
@@ -60,4 +62,9 @@ on_context_mismatch = "lazy"
 # Static images are fetched on demand.
 [[rules]]
 prefix = "static/images/"
+resolution = "lazy"
+
+# Baked static 3D models are fetched on demand.
+[[rules]]
+prefix = "static/models/"
 resolution = "lazy"

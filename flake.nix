@@ -319,8 +319,10 @@
           linux = linuxShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
+          # (jsPackages: the data pipeline shells out to Node for the
+          # tools/carbon-gr2-to-glb model converter)
           python = pkgs.mkShell {
-            packages = pythonPackages ++ [ pkgs.rustfs ];
+            packages = pythonPackages ++ jsPackages ++ [ pkgs.rustfs ];
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";
