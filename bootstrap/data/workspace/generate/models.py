@@ -91,8 +91,12 @@ async def __stage_resource(data: GeneratorDatasource, res_path: str, semaphore: 
     if node is None:
         warning(f"Resource {res_path} not found in the resource index.")
         return None
-    async with semaphore:
-        await node.download()
+    try:
+        async with semaphore:
+            await node.download()
+    except Exception as exc:  # noqa: BLE001 - any download failure degrades to a missing asset
+        warning(f"Resource {res_path} could not be downloaded: {exc}")
+        return None
     return node.local_path
 
 
