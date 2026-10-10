@@ -11,6 +11,7 @@ from bootstrap.log import info
 from . import agent
 from . import images
 from . import localizations
+from . import models
 from . import native
 from . import schema as schema_generator
 from . import static
@@ -52,6 +53,9 @@ async def run_generator(
                     collection_cache.ParseFromString(content)
 
             await images.generate(datasource, collection_cache)
+
+        if "models" not in skip:
+            await models.generate(datasource)
 
         snapshot_hash = schema_generator.generate_schema_checkout(
             config,

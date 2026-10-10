@@ -315,8 +315,10 @@
           linux = linuxShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
+          # (jsPackages: the data pipeline shells out to Node for the
+          # tools/carbon-gr2-to-glb model converter)
           python = pkgs.mkShell {
-            packages = pythonPackages ++ [
+            packages = pythonPackages ++ jsPackages ++ [
               pkgs.minio
               pkgs.minio-client
             ];
