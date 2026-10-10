@@ -28,6 +28,7 @@ jobs:
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
       version: ${{ steps.verify.outputs.version }}
+      publishable: ${{ steps.verify.outputs.publishable }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,11 +48,18 @@ jobs:
 
       - name: Verify release version
         id: verify
+        env:
+          # Test mode never publishes, so the publish-only I3 gate (testing
+          # num = 0) and changelog-notes checks are waived for the ceremonial
+          # post-ship state; real releases keep them enforced.
+          ALLOW_UNPUBLISHABLE: ${{ inputs.test_mode && '--allow-unpublishable' || '' }}
         run: |
+          # shellcheck disable=SC2016,SC2086
           nix develop .#python --command bash -c \
-            'uv run x.py ci release verify --track "${TRACK}" --check-notes' | tee /tmp/verify.log
+            'uv run x.py ci release verify --track "${TRACK}" --check-notes ${ALLOW_UNPUBLISHABLE}' | tee /tmp/verify.log
           echo "version=$(grep '^Canonical version:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
           echo "tag=$(grep '^Expected tag:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
+          echo "publishable=$(grep '^Publishable:' /tmp/verify.log | tr -d ' ' | cut -d':' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Upload diagnostics
         if: failure()
@@ -372,13 +380,13 @@ jobs:
               --schema-root cache/remote'
 
       - name: Initialize remote announcement workspace (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce init --target minio --force'
 
       - name: Sync remote announcements
-        if: inputs.test_mode == false
+        if: inputs.test_mode == false && needs.verify.outputs.publishable == 'true'
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
@@ -396,12 +404,15 @@ jobs:
               --target s3'
 
       - name: Sync remote announcements (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce sync --target minio'
 
+      # Skipped for an unpublishable version (testing num = 0 in test mode):
+      # the ceremonial post-ship state has no release notes to stage.
       - name: Stage release note as announcement
+        if: needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce add-release-note --track "${TRACK}"'
@@ -452,7 +463,7 @@ jobs:
               --schema-root cache/remote'
 
       - name: Publish announcements
-        if: inputs.test_mode == false
+        if: inputs.test_mode == false && needs.verify.outputs.publishable == 'true'
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
@@ -478,7 +489,7 @@ jobs:
               --schema-root cache/remote'
 
       - name: Publish announcements (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce publish --target minio'
