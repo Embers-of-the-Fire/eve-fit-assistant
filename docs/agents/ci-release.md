@@ -143,7 +143,12 @@ input (`testing` or `stable`, default `testing`):
 
 1. `verify` — re-syncs the manifests for the input track (`release version sync
    --track`, because committed manifests carry the testing rendering) and runs the
-   track-parameterized version check; exports `tag` and `version`.
+   track-parameterized version check; exports `tag`, `version`, and `publishable`.
+   Test mode passes `--allow-unpublishable`, waiving the publish-only I3 gate
+   (testing `num = 0`) and the changelog-notes checks, and the `publish` job then
+   skips staging/publishing the release-note announcement when `publishable` is
+   false (the ceremonial post-ship state has no notes). Real releases never pass
+   the flag, so I3 and the notes gates stay enforced there.
 2. Platform build jobs — `android` and `linux` both need `verify`, are blocking, and share
    `.github/actions/setup-build-env` parameterized by dev shell. `windows` runs on
    `windows-latest` with the non-Nix `.github/actions/setup-build-env-windows` composite

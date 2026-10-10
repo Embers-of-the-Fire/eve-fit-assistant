@@ -48,7 +48,8 @@ patch = 0
   auto-migrates legacy configs when reading old refs (e.g. `--base-ref`).
 - `num = 0` on `[version.testing]` is the ceremonial "rebased, not yet cut" state
   after a ship commit; a version rendered with `num = 0` must never be published
-  (enforced by `./x ci release verify`).
+  (enforced by `./x ci release verify`; test-mode pipeline runs waive this and the
+  changelog-notes gates via `--allow-unpublishable`, since they never publish).
 - Stable `major.minor` changes only via ship commits; stable `patch` changes only
   via backports. The rendered testing version must always be semver-ahead of the
   rendered stable version on the mainline.
@@ -138,7 +139,8 @@ This verifies, all track-parameterized:
 
 - Release intent and track match the `efa.config.toml` diff (`--base-ref`).
 - Track invariants: testing renders semver-ahead of stable, `build` bumped on
-  release intent, no `num = 0` version is published.
+  release intent, no `num = 0` version is published (I3; waived together with
+  the changelog-notes gates under `--allow-unpublishable` for test-mode runs).
 - Version targets match `efa.config.toml`.
 - The expected release tag does not already exist.
 - Release notes exist and are valid.
@@ -451,7 +453,10 @@ wired into releases as follows:
 - The `release-preflight.yml` fast checks use `--base-ref origin/dev` to ensure
   the classified intent is valid against the base branch: the rendered testing
   version must stay semver-ahead of stable, `build` must increase on release
-  intent, and a `num = 0` version must never be published.
+  intent, and a `num = 0` version must never be published. Test-mode runs
+  (`_release.yml` with `test_mode: true`) pass `--allow-unpublishable` instead,
+  since they never publish; the publish job then also skips staging and
+  publishing the release-note announcement for the ceremonial `num = 0` state.
 - Committed manifests (`pubspec.yaml`, `rust/Cargo.toml`, `pyproject.toml`)
   always carry the **testing** rendering; CI re-syncs with the classified track
   before building.
