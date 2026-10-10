@@ -541,6 +541,13 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         default=False,
         help="Enable all optional preflight checks.",
     )
+    @click.option(
+        "--allow-unpublishable",
+        is_flag=True,
+        default=False,
+        help="Waive the publish-only gates (I3, changelog notes) for an unpublishable "
+        "testing version (num = 0); for test-mode pipeline runs that never publish.",
+    )
     def release_verify(
         base_ref: str | None,
         track: str,
@@ -552,6 +559,7 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         check_build: bool,
         check_tests: bool,
         check_all: bool,
+        allow_unpublishable: bool,
     ):
         """Verify that the current version is consistent and valid."""
         if check_all:
@@ -579,10 +587,17 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
                 f"stable version {version.render_semver(Channel.STABLE)}."
             )
 
-        if channel == Channel.TESTING and version.testing.num == 0:
+        unpublishable = channel == Channel.TESTING and version.testing.num == 0
+        if unpublishable and not allow_unpublishable:
             raise click.ClickException(
                 f"I3 violated: testing version {version.render_semver(Channel.TESTING)} "
                 "has num = 0; a version rendered with num = 0 must not be published."
+            )
+        if unpublishable:
+            click.echo(
+                "  I3 waived (--allow-unpublishable): testing version "
+                f"{version.render_semver(Channel.TESTING)} has num = 0 and must not be "
+                "published; continuing because this run never publishes."
             )
 
         full = version.render_full(channel)
@@ -592,6 +607,7 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
 
         click.echo(f"Canonical version: {full}")
         click.echo(f"Semver version:    {semver}")
+        click.echo(f"Publishable:       {str(not unpublishable).lower()}")
 
         derived = [
             (EFA_APP_ROOT / "pubspec.yaml", full, "full"),
@@ -640,12 +656,18 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
             click.echo(f"  Tag check OK: {tag} does not exist")
 
         if check_notes:
-            _check_notes(version, channel)
-            click.echo("  Changelog notes OK")
+            if unpublishable:
+                click.echo("  Changelog notes skipped (unpublishable version)")
+            else:
+                _check_notes(version, channel)
+                click.echo("  Changelog notes OK")
 
         if check_note_content:
-            _check_note_content(version, channel)
-            click.echo("  Release note content OK")
+            if unpublishable:
+                click.echo("  Release note content skipped (unpublishable version)")
+            else:
+                _check_note_content(version, channel)
+                click.echo("  Release note content OK")
 
         if check_submodules:
             _check_submodules()

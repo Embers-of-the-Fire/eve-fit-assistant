@@ -383,6 +383,7 @@ class TestReleaseVerifyIntegration:
         assert result.exit_code == 0, result.output
         assert "Canonical version: 0.1.0-beta.2" in result.output
         assert "Semver version:    0.1.0-beta.2" in result.output
+        assert "Publishable:       true" in result.output
         assert "Expected tag: releases/v0.1.0-beta.2" in result.output
 
     def test_success_stable_track(self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -437,6 +438,77 @@ class TestReleaseVerifyIntegration:
         result = runner.invoke(cli, ["ci", "release", "verify", "--track", "testing"])
         assert result.exit_code != 0
         assert "I3 violated" in result.output
+
+    def test_num_zero_allow_unpublishable_succeeds(
+        self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _write_config(
+            tmp_project,
+            {
+                "testing": {"major": 1, "minor": 1, "patch": 0, "num": 0},
+                "stable": {"major": 1, "minor": 0, "patch": 0},
+            },
+        )
+        ver = _make_version(testing=(1, 1, 0, 0), stable=(1, 0, 0))
+        _write_manifests(tmp_project, ver, Channel.TESTING)
+
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
+
+        @click.group()
+        def cli():
+            pass
+
+        register_all_commands(cli)
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            cli, ["ci", "release", "verify", "--track", "testing", "--allow-unpublishable"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "I3 waived" in result.output
+        assert "Publishable:       false" in result.output
+        assert "Expected tag: releases/v1.1.0-beta.0" in result.output
+
+    def test_num_zero_allow_unpublishable_skips_notes_checks(
+        self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # No changelog directory is created: a ceremonial num = 0 version has no
+        # release notes, so the notes gates must be waived with I3.
+        _write_config(
+            tmp_project,
+            {
+                "testing": {"major": 1, "minor": 1, "patch": 0, "num": 0},
+                "stable": {"major": 1, "minor": 0, "patch": 0},
+            },
+        )
+        ver = _make_version(testing=(1, 1, 0, 0), stable=(1, 0, 0))
+        _write_manifests(tmp_project, ver, Channel.TESTING)
+
+        monkeypatch.setattr("bootstrap.ci.release.PROJECT_ROOT", tmp_project)
+        monkeypatch.setattr("bootstrap.ci.release.EFA_APP_ROOT", tmp_project / APP_DIR)
+
+        @click.group()
+        def cli():
+            pass
+
+        register_all_commands(cli)
+        runner = click.testing.CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "ci",
+                "release",
+                "verify",
+                "--track",
+                "testing",
+                "--check-notes",
+                "--check-note-content",
+                "--allow-unpublishable",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Changelog notes skipped (unpublishable version)" in result.output
+        assert "Release note content skipped (unpublishable version)" in result.output
 
     def test_i1_track_order_violation_fails(
         self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
