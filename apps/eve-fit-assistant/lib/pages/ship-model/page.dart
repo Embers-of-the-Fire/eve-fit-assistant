@@ -12,13 +12,21 @@ Future<void> showShipModelPage(BuildContext context, {required int typeId}) => N
   context,
 ).push(MaterialPageRoute<void>(builder: (context) => ShipModelPage(typeId: typeId)));
 
-class ShipModelPage extends ConsumerWidget {
+class ShipModelPage extends ConsumerStatefulWidget {
   const ShipModelPage({required this.typeId, super.key});
 
   final int typeId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShipModelPage> createState() => _ShipModelPageState();
+}
+
+class _ShipModelPageState extends ConsumerState<ShipModelPage> {
+  final GlobalKey<ShipModelViewerState> _viewerKey = GlobalKey<ShipModelViewerState>();
+
+  @override
+  Widget build(BuildContext context) {
+    final typeId = widget.typeId;
     final type = ref.watch(repoCollectionProvider.select((c) => c?.getType(typeId)));
     final locale = ref.watch(localeProvider).name;
     final name = type == null
@@ -26,20 +34,19 @@ class ShipModelPage extends ConsumerWidget {
         : (watchLocalizedName(ref, id: type.typeName.id, locale: locale) ??
               context.l10n.fallbackTypeName(typeId: typeId));
 
-    final viewerKey = GlobalKey<ShipModelViewerState>();
     return Layout(
       title: name,
       actions: [
         IconButton(
           tooltip: context.l10n.shipModelViewerResetView,
           icon: const Icon(Icons.restart_alt),
-          onPressed: () => viewerKey.currentState?.resetView(),
+          onPressed: () => _viewerKey.currentState?.resetView(),
         ),
       ],
       child: ColoredBox(
         color: Colors.black,
         child: ShipModelViewer(
-          key: viewerKey,
+          key: _viewerKey,
           typeId: typeId,
           fallback: Center(child: Text(context.l10n.shipModelPageUnavailable)),
         ),
