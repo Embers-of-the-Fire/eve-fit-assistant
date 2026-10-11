@@ -17,9 +17,12 @@ import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
+import "package:eve_fit_assistant/pages/ship-model/page.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/model_asset.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart" show modelAssetServiceProvider;
 import "package:eve_fit_assistant/storage/setting/setting.dart"
     show attributeDebugViewProvider, localeProvider;
 import "package:eve_fit_assistant/utils/context.dart";
@@ -340,6 +343,8 @@ class _ItemTabContent extends ConsumerWidget {
     padding: const EdgeInsets.all(16),
     children: [
       _HeaderCard(type: type, fitReference: fitReference),
+      const SizedBox(height: 12),
+      _ModelEntryBar(typeId: typeId),
       const SizedBox(height: 12),
       _ClassificationCard(type: type),
       if (description?.trim().isNotEmpty ?? false) ...[
@@ -1169,6 +1174,29 @@ class _HeaderCard extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ModelEntryBar extends ConsumerWidget {
+  const _ModelEntryBar({required this.typeId});
+
+  final int typeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final service = ref.watch(modelAssetServiceProvider).value;
+    if (service == null) return const SizedBox.shrink();
+    final hasModel = ShipModelVariant.values.any((v) => service.hasShipModel(typeId, v));
+    if (!hasModel) return const SizedBox.shrink();
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(Icons.threed_rotation),
+        title: Text(context.l10n.shipModelEntryTitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => showShipModelPage(context, typeId: typeId),
       ),
     );
   }

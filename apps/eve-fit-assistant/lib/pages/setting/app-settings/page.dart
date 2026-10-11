@@ -18,6 +18,7 @@ import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/channel_switch_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
+import "package:eve_fit_assistant/storage/repo/model_asset.dart" show ShipModelVariant;
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:file_picker/file_picker.dart";
@@ -34,6 +35,7 @@ part "impact_warning.dart";
 part "locale.dart";
 part "market_price.dart";
 part "select_list.dart";
+part "ship_model.dart";
 part "storage_root.dart";
 part "update_strategy.dart";
 
@@ -59,6 +61,7 @@ class AppSettingsPage extends ConsumerWidget {
         ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
         const ConfigListTile.custom(ShipCreateListTile()),
         const ConfigListTile.custom(ListReturnBehaviorTile()),
+        const ConfigListTile.custom(ShipModelVariantTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionDataUpdates),
