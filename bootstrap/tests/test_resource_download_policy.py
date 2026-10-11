@@ -140,7 +140,7 @@ class TestMakeResourceIndex:
         ("resource://static/collection.pb2", "aa" * 32, 10),
         ("resource://static/images/icons/1.png", "bb" * 32, 20),
         ("resource://static/images/graphics/2.png", "cc" * 32, 30),
-        ("resource://static/models/ships/587.glb", "ab" * 32, 35),
+        ("resource://static/models/ships/587.full.glb", "ab" * 32, 35),
         ("resource://localization/localization.db", "dd" * 32, 40),
         ("resource://localization/locales/en.db", "ff" * 32, 60),
         ("resource://agent/agent_resource.db", "ee" * 32, 50),
@@ -166,7 +166,7 @@ class TestMakeResourceIndex:
         assert policy["resource://agent/agent_resource.db"] == force
         assert policy["resource://static/images/icons/1.png"] == non_force
         assert policy["resource://static/images/graphics/2.png"] == non_force
-        assert policy["resource://static/models/ships/587.glb"] == non_force
+        assert policy["resource://static/models/ships/587.full.glb"] == non_force
         assert policy["resource://localization/locales/en.db"] == non_force
 
     def test_custom_prefixes(self) -> None:

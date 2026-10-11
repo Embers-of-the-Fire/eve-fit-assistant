@@ -19,6 +19,21 @@ class GraphicVariantType(StrEnum):
     BPC = "bpc"
 
 
+@unique
+class ShipModelVariant(StrEnum):
+    """Baked ship-model representations, encoded as the filename token in
+    ``static/models/ships/<typeID>.<variant>.glb``.
+
+    The app mirrors these tokens when it builds the resource id for a ship
+    model (see ``ModelAssetService``); rename only together with the app.
+    """
+
+    #: Full PBR texture set.
+    FULL = "full"
+    #: Geometry with factor-only materials (no textures).
+    BASE = "base"
+
+
 class PathManager:
     __base_generate_out_path: Path
     __base_output_path: Path
@@ -152,6 +167,8 @@ class PathManager:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def get_ship_model_path(self, type_id: int) -> Path:
-        path = self.models_root_path / "ships" / f"{type_id}.glb"
+    def get_ship_model_path(
+        self, type_id: int, variant: ShipModelVariant = ShipModelVariant.FULL
+    ) -> Path:
+        path = self.models_root_path / "ships" / f"{type_id}.{variant}.glb"
         return path
