@@ -233,19 +233,19 @@ async def generate(data: GeneratorDatasource):
         info(f"Converting {len(convert_jobs)} ship models ({variant}, phase 2: batch)...")
         _run_converter(["--batch", str(convert_manifest)], f"MODEL CONVERT ({variant})")
 
-        failures = [
-            job["id"]
+        failures = {
+            int(job["id"])
             for job in convert_jobs
             if not data.paths.get_ship_model_path(int(job["id"]), variant).is_file()
-        ]
+        }
         if failures:
-            error(
+            warning(
                 f"Model conversion ({variant}) failed for "
-                f"{len(failures)} type(s): {', '.join(failures)}"
+                f"{len(failures)} type(s): {', '.join(str(t) for t in sorted(failures))}"
             )
-            raise RuntimeError(
-                f"ship model conversion ({variant}) failed for {len(failures)} type(s)"
-            )
+            convert_jobs = [job for job in convert_jobs if int(job["id"]) not in failures]
+            for dna, aliases in dna_aliases.items():
+                dna_aliases[dna] = [alias for alias in aliases if alias not in failures]
 
     for job in convert_jobs:
         aliases = dna_aliases[job["dna"]]
