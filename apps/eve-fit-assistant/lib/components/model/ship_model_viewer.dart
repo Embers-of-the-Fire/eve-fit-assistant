@@ -81,6 +81,17 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     _viewVariant = null;
   });
 
+  /// Retries a failed load for the current type and variant. Clears the
+  /// recorded load key so the next build starts exactly one new fetch; the
+  /// failure paths keep [_loadingKey] set, so rebuilds alone never re-fetch.
+  void retryLoad() {
+    if (_status != _ShipModelStatus.error && _status != _ShipModelStatus.unavailable) return;
+    setState(() {
+      _loadingKey = null;
+      _status = _ShipModelStatus.loading;
+    });
+  }
+
   double _framingDistance = 10;
 
   void _ensureLoading(ModelAssetService service, ShipModelVariant variant) {
@@ -186,12 +197,29 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
         final scene = _scene;
         return switch (_status) {
           _ShipModelStatus.ready when scene != null => _buildViewer(context, scene, variant),
-          _ShipModelStatus.unavailable || _ShipModelStatus.error => fallback,
+          _ShipModelStatus.unavailable || _ShipModelStatus.error => _buildFailed(context, fallback),
           _ => const Center(child: CircularProgressIndicator()),
         };
       },
     );
   }
+
+  Widget _buildFailed(BuildContext context, Widget fallback) => Stack(
+    fit: StackFit.expand,
+    children: [
+      fallback,
+      Positioned(
+        top: 4,
+        right: 4,
+        child: IconButton.filledTonal(
+          visualDensity: VisualDensity.compact,
+          tooltip: context.l10n.shipModelViewerRetry,
+          icon: const Icon(Icons.refresh),
+          onPressed: retryLoad,
+        ),
+      ),
+    ],
+  );
 
   Widget _buildViewer(BuildContext context, Scene scene, ShipModelVariant variant) {
     final l10n = context.l10n;

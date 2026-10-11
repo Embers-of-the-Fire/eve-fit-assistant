@@ -643,6 +643,7 @@
   "shipModelViewerShowTextures": "Show textures",
   "shipModelViewerHideTextures": "Hide textures",
   "shipModelViewerResetView": "Reset view",
+  "shipModelViewerRetry": "Retry loading the model",
   "shipModelPageUnavailable": "No 3D model is available for this ship.",
   "shipModelEntryTitle": "3D Model",
   "appSettingsPageShipSelectTypeDescription": "The list format used when selecting ships.\nCategory grouping organizes ships based on in-game item categories.\nMarket group grouping organizes ships based on market groups.",
