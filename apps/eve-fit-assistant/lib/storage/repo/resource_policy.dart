@@ -15,7 +15,11 @@ const int kPolicyAwareResourceIndexFormatVersion = 2;
 /// set above the current server format, so nothing changes today; any future
 /// incompatible data change bumps the server format and gated clients refuse
 /// the update in favor of an app update.
-const int kMaxSupportedResourceIndexFormatVersion = 2;
+///
+/// Format 3 snapshots carry lazy `static/models/` entries; this client
+/// resolves them via the RRS (see resource_resolution.dart), so the gate is
+/// lifted to 3.
+const int kMaxSupportedResourceIndexFormatVersion = 3;
 
 /// Parses a [ResourceIndex] from wire bytes and validates it for the current
 /// platform (see [validateResourceIndexForPlatform]).

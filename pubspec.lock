@@ -361,6 +361,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.9"
+  data_assets:
+    dependency: transitive
+    description:
+      name: data_assets
+      sha256: "8bfdbf25ec8a0f4b5a3c993042c4ab9996ba354f0b03d40f4e360f3730d71cae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.0"
   date_format:
     dependency: transitive
     description:
@@ -421,10 +429,10 @@ packages:
     dependency: transitive
     description:
       name: fast_immutable_collections
-      sha256: "58cec99fc068427c71901e82d4b31b232240ebe6e61200993c2cb91bcada0ff6"
+      sha256: "293012edcb75c742f39a5cfe184baab8d6382cd478dabca8f2cf264f668494da"
       url: "https://pub.dev"
     source: hosted
-    version: "11.2.0"
+    version: "12.0.0"
   ffi:
     dependency: transitive
     description:
@@ -497,6 +505,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  flat_buffers:
+    dependency: transitive
+    description:
+      name: flat_buffers
+      sha256: "7c1de2d6eb5f3e61e5c50040841109f509deaaf2b12ec0d57b92456d9ea50345"
+      url: "https://pub.dev"
+    source: hosted
+    version: "25.9.23"
   flutter:
     dependency: transitive
     description: flutter
@@ -518,6 +534,19 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.2"
+  flutter_gpu:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
+  flutter_gpu_shaders:
+    dependency: transitive
+    description:
+      name: flutter_gpu_shaders
+      sha256: "1e8c5438c24e79629f5688c7b5dfd2b7cf09b36b443a806bc8c083cd8c04644a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2"
   flutter_launcher_icons:
     dependency: transitive
     description:
@@ -611,6 +640,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.0"
+  flutter_scene:
+    dependency: transitive
+    description:
+      name: flutter_scene
+      sha256: "6d2a4acb76307b2cf45a6e458fdf61c6bcf02693514656433e5ae67eda9d4056"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.24.3"
   flutter_secure_storage:
     dependency: transitive
     description:
@@ -1316,6 +1353,14 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  scene:
+    dependency: transitive
+    description:
+      name: scene
+      sha256: "2e80649db2f492eed634a656efb924b43ec8b02a985f92a21d86ab2591583f30"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.1"
   scroll_to_index:
     dependency: transitive
     description:
@@ -1803,4 +1848,4 @@ packages:
     version: "2.2.4"
 sdks:
   dart: ">=3.12.0 <4.0.0"
-  flutter: ">=3.44.0"
+  flutter: ">=3.47.0"

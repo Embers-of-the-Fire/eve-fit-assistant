@@ -15,6 +15,7 @@ import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
+import "package:eve_fit_assistant/storage/repo/model_asset.dart" show ShipModelVariant;
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:file_picker/file_picker.dart";
@@ -30,6 +31,7 @@ part "impact_warning.dart";
 part "locale.dart";
 part "market_price.dart";
 part "select_list.dart";
+part "ship_model.dart";
 part "storage_root.dart";
 part "update_strategy.dart";
 
@@ -55,6 +57,7 @@ class AppSettingsPage extends ConsumerWidget {
         ConfigListTile.title(context.l10n.appSettingsPageSectionSelectList),
         const ConfigListTile.custom(ShipCreateListTile()),
         const ConfigListTile.custom(ListReturnBehaviorTile()),
+        const ConfigListTile.custom(ShipModelVariantTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
         // Market price is disabled at the provider root on web, so its

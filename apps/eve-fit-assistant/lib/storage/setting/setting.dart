@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/user_store.dart";
+import "package:eve_fit_assistant/storage/repo/model_asset.dart" show ShipModelVariant;
 import "package:eve_fit_assistant/utils/riverpod.dart";
 import "package:eve_fit_assistant/utils/type_check.dart";
 import "package:freezed_annotation/freezed_annotation.dart";
@@ -220,6 +221,9 @@ abstract class AppSetting with _$AppSetting {
     )
     @Default(ListTileAntiScrollLevel.closed)
     ListTileAntiScrollLevel listTileAntiScrollLevel,
+    @JsonKey(unknownEnumValue: ShipModelVariant.textured, defaultValue: ShipModelVariant.textured)
+    @Default(ShipModelVariant.textured)
+    ShipModelVariant shipModelVariant,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);
@@ -236,6 +240,12 @@ bool developerMode(Ref ref) => ref.watch(appSettingServiceProvider).developerMod
 
 @riverpodSingleton
 bool attributeDebugView(Ref ref) => ref.watch(appSettingServiceProvider).attributeDebugView;
+
+/// The default [ShipModelVariant] the ship-model viewer loads; detail views
+/// may switch variants per view without writing this setting.
+@riverpodSingleton
+ShipModelVariant shipModelVariant(Ref ref) =>
+    ref.watch(appSettingServiceProvider.select((s) => s.shipModelVariant));
 
 /// Whether the AI assistant feature is enabled. Gated behind a one-time
 /// disclaimer acknowledgement ([AppSetting.aiAssistantDisclaimerAcked]) and,

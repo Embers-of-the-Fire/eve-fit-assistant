@@ -9,29 +9,33 @@ import "package:flutter_test/flutter_test.dart";
 
 void main() {
   group("decodeResourceIndex on native", () {
-    test("accepts both pre-policy and policy-aware indexes", () {
+    test("accepts pre-policy, policy-aware, and model-bearing indexes", () {
       final v1 = ResourceIndex()..schemaVersion = 1;
       final v2 = ResourceIndex()
         ..schemaVersion = 1
         ..formatVersion = kPolicyAwareResourceIndexFormatVersion;
+      final v3 = ResourceIndex()
+        ..schemaVersion = 1
+        ..formatVersion = 3;
 
       expect(decodeResourceIndex(Uint8List.fromList(v1.writeToBuffer())).formatVersion, 1);
       expect(
         decodeResourceIndex(Uint8List.fromList(v2.writeToBuffer())).formatVersion,
         kPolicyAwareResourceIndexFormatVersion,
       );
+      expect(decodeResourceIndex(Uint8List.fromList(v3.writeToBuffer())).formatVersion, 3);
     });
 
     test("rejects indexes beyond the maximum supported format", () {
-      final v3 = ResourceIndex()
+      final v4 = ResourceIndex()
         ..schemaVersion = 1
         ..formatVersion = kMaxSupportedResourceIndexFormatVersion + 1;
 
       expect(
-        () => decodeResourceIndex(Uint8List.fromList(v3.writeToBuffer())),
+        () => decodeResourceIndex(Uint8List.fromList(v4.writeToBuffer())),
         throwsA(
           isA<UnsupportedResourceIndexError>()
-              .having((e) => e.formatVersion, "formatVersion", 3)
+              .having((e) => e.formatVersion, "formatVersion", 4)
               .having((e) => e.toString(), "message", contains("update the app")),
         ),
       );
