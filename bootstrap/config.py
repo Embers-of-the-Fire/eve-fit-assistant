@@ -395,10 +395,14 @@ class ResolutionVocabulary(BaseModel):
     localization_locales_prefix: str = Field(default="localization/locales/")
     #: Path prefix (relative to ``resource://``) of the static image resources.
     static_images_prefix: str = Field(default="static/images/")
+    #: Path prefix (relative to ``resource://``) of the static 3D model resources.
+    static_models_prefix: str = Field(default="static/models/")
     #: Resolution-context placeholder embedded in resource-id patterns.
     locale_placeholder: str = Field(default="locale")
 
-    @field_validator("legacy_localization_db", "localization_locales_prefix")
+    @field_validator(
+        "legacy_localization_db", "localization_locales_prefix", "static_models_prefix"
+    )
     @classmethod
     def _validate_relative_posix_path(cls, value: str) -> str:
         """Reject paths that could escape the generation output directory.
@@ -441,6 +445,7 @@ DEFAULT_RESOLUTION_VOCABULARY: ResolutionVocabulary = ResolutionVocabulary()
 DEFAULT_LAZY_PREFIXES: list[str] = [
     DEFAULT_RESOLUTION_VOCABULARY.static_images_prefix,
     DEFAULT_RESOLUTION_VOCABULARY.localization_locales_prefix,
+    DEFAULT_RESOLUTION_VOCABULARY.static_models_prefix,
 ]
 
 
@@ -474,6 +479,7 @@ class ProjectConfiguration(BaseModel):
             self.download.lazy_prefixes = [
                 self.resolution.static_images_prefix,
                 self.resolution.localization_locales_prefix,
+                self.resolution.static_models_prefix,
             ]
         return self
 

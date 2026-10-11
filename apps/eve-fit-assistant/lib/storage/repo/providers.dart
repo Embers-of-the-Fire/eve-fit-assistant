@@ -19,6 +19,7 @@ import "package:eve_fit_assistant/storage/repo/data_update_status.dart";
 import "package:eve_fit_assistant/storage/repo/diff.dart";
 import "package:eve_fit_assistant/storage/repo/generation_nav.dart";
 import "package:eve_fit_assistant/storage/repo/image_asset.dart";
+import "package:eve_fit_assistant/storage/repo/model_asset.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
 import "package:eve_fit_assistant/storage/repo/models/remote_app_release.dart";
 import "package:eve_fit_assistant/storage/repo/on_demand_blob.dart";
@@ -101,6 +102,14 @@ Future<ImageAssetService?> imageAssetService(Ref ref) async {
     ref.watch(assetStoreProvider),
     ref.watch(onDemandBlobFetcherProvider),
   );
+}
+
+/// Resolves baked ship 3D model GLBs from the active checkout's blob store.
+@riverpodSingleton
+Future<ModelAssetService?> modelAssetService(Ref ref) async {
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
+  if (proxy == null) return null;
+  return ModelAssetService(proxy);
 }
 
 @riverpodSingleton

@@ -209,6 +209,11 @@ def __getattr__(name: str):
 
 #: Per-snapshot resource list format version emitted by this generator.
 #:
+#: Format 3 snapshots may carry ``static/models/`` entries (baked GLB ship
+#: models). Format 2 clients classify unknown prefixes as eager and would
+#: download the entire model set during provisioning, so they must reject
+#: these snapshots via the format-version gate.
+#:
 #: Format 2 entries carry a download policy (NON_FORCE = fetched lazily on
 #: first access, FORCE = downloaded eagerly during provisioning). Format 1
 #: (the default encoded in older snapshots) has no policy; clients treat
@@ -216,7 +221,7 @@ def __getattr__(name: str):
 #: `localization.db`; no per-language `localization_*.pb2` blobs are
 #: emitted. The message-level `schema_version` is reserved for the remote
 #: storage protocol and is intentionally left untouched.
-RESOURCE_INDEX_FORMAT_VERSION = 2
+RESOURCE_INDEX_FORMAT_VERSION = 3
 
 
 def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:

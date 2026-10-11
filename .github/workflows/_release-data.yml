@@ -55,6 +55,11 @@ jobs:
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
+      - name: Install model converter dependencies
+        run: |
+          nix develop .#python --command bash -c \
+            'pnpm --dir tools/carbon-gr2-to-glb install --frozen-lockfile'
+
       - name: Download raw artifacts and build snapshots
         env:
           SERVERS_JSON: ${{ inputs.servers }}

@@ -30,6 +30,17 @@ patch = 0
 [data_schema]
 resource_root = "efa/v2"
 
+[download]
+# Lazy-download classification for generated snapshots; bound to the
+# generator, not to individual resource descriptors. Omitted `lazy_prefixes`
+# derives from the effective `[resolution]` vocabulary (see
+# efa.config.example.toml). Do not set it explicitly.
+
+[resolution]
+# Shared resource-resolution vocabulary between the app and the data
+# pipeline. All keys have built-in defaults (see efa.config.example.toml);
+# override only together with the corresponding app/pipeline changes.
+
 [paths]
 log = "data/log"
 

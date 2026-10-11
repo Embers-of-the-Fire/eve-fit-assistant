@@ -104,6 +104,40 @@
         jdk17
         ;
 
+      # A view of the Flutter SDK that lets build hooks find impellerc.
+      # package:hooks_runner executes build hooks (e.g. flutter_scene's
+      # shader-bundle hook) with `$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart`
+      # and scrubs the hook process environment down to a whitelist, so the
+      # hook cannot locate the engine artifacts: the nixpkgs wrapper symlinks
+      # `bin/cache/dart-sdk` to the standalone Dart package, whose path lacks
+      # the `dart-sdk` segment the path-based lookup needs, and an IMPELLERC
+      # override cannot pass the environment filter. This view replaces that
+      # single entry with a shim that execs the very same Dart binary the
+      # wrapper uses (no second Dart instance, no extra download) with
+      # IMPELLERC injected; everything else links through unchanged.
+      flutterSdk = pkgs.runCommand "flutter-sdk" { } ''
+        mkdir -p $out
+        cp -rs --no-preserve=mode ${flutter}/. $out/
+        rm $out/bin/cache/dart-sdk
+        mkdir -p $out/bin/cache/dart-sdk/bin
+        dartSdk=$(readlink -f ${flutter}/bin/cache/dart-sdk)
+        for entry in $(ls -A "$dartSdk"); do
+          [ "$entry" = bin ] && continue
+          ln -s "$dartSdk/$entry" "$out/bin/cache/dart-sdk/$entry"
+        done
+        for entry in $(ls -A "$dartSdk/bin"); do
+          [ "$entry" = dart ] && continue
+          ln -s "$dartSdk/bin/$entry" "$out/bin/cache/dart-sdk/bin/$entry"
+        done
+        dartBin=$(readlink -f ${flutter}/bin/dart)
+        cat > $out/bin/cache/dart-sdk/bin/dart <<SHIM
+#!${pkgs.runtimeShell}
+export IMPELLERC=${flutter}/bin/cache/artifacts/engine/linux-x64/impellerc
+exec $dartBin "\$@"
+SHIM
+        chmod +x $out/bin/cache/dart-sdk/bin/dart
+      '';
+
       # --- Named package sets ---
       # Python itself is NOT provided here: uv downloads and manages the
       # interpreter pinned by .python-version (single source of truth,
@@ -228,7 +262,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
-            FLUTTER_ROOT = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${flutterSdk}";
             NIX_ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_SDK_ROOT = developmentAndroidSdkRoot;
             ANDROID_HOME = developmentAndroidSdkRoot;
@@ -242,6 +276,7 @@
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
+              export SSL_CERT_FILE="''${SSL_CERT_FILE:-${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt}"
               . scripts/setup-ld-library-path.sh
               . scripts/setup-rust-toolchain.sh
               . scripts/setup-android-sdk.sh
@@ -260,7 +295,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
-            FLUTTER_ROOT = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${flutterSdk}";
             NIX_ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_SDK_ROOT = androidSdkRoot;
             ANDROID_HOME = androidSdkRoot;
@@ -295,7 +330,7 @@
             LC_ALL = "C.UTF-8";
             JAVA_HOME = jdk17.home;
             flutter = "${pkgs.flutter}";
-            FLUTTER_ROOT = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${flutterSdk}";
             UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
@@ -315,17 +350,23 @@
           linux = linuxShell;
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
+          # (jsPackages: the data pipeline shells out to Node for the
+          # tools/carbon-gr2-to-glb model converter)
           python = pkgs.mkShell {
-            packages = pythonPackages ++ [
-              pkgs.minio
-              pkgs.minio-client
-            ];
+            packages =
+              pythonPackages
+              ++ jsPackages
+              ++ [
+                pkgs.minio
+                pkgs.minio-client
+              ];
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              export SSL_CERT_FILE="''${SSL_CERT_FILE:-${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt}"
               . scripts/setup-ld-library-path.sh
             '';
           };
@@ -337,7 +378,7 @@
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";
             JAVA_HOME = jdk17.home;
-            FLUTTER_ROOT = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${flutterSdk}";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
@@ -402,7 +443,7 @@
 
             inherit (localeEnv) LANG LC_ALL;
             JAVA_HOME = jdk17.home;
-            FLUTTER_ROOT = "${pkgs.flutter}";
+            FLUTTER_ROOT = "${flutterSdk}";
             UV_PYTHON_PREFERENCE = "only-managed";
             LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 

@@ -20,6 +20,8 @@ PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "packages" / "efa_proto" / "lib"
 
 NATIVE_LIB_ROOT = PROJECT_ROOT / "packages" / "eve-fit-os"
 
+GR2_TO_GLB_ROOT = PROJECT_ROOT / "tools" / "carbon-gr2-to-glb"
+
 I18N_ROOT = EFA_APP_ROOT / "l10n"
 
 DART_ROOT = EFA_APP_ROOT / "lib"

@@ -19,6 +19,21 @@ class GraphicVariantType(StrEnum):
     BPC = "bpc"
 
 
+@unique
+class ShipModelVariant(StrEnum):
+    """Baked ship-model representations, encoded as the filename token in
+    ``static/models/ships/<typeID>.<variant>.glb``.
+
+    The app mirrors these tokens when it builds the resource id for a ship
+    model (see ``ModelAssetService``); rename only together with the app.
+    """
+
+    #: Full PBR texture set.
+    FULL = "full"
+    #: Geometry with factor-only materials (no textures).
+    BASE = "base"
+
+
 class PathManager:
     __base_generate_out_path: Path
     __base_output_path: Path
@@ -33,6 +48,7 @@ class PathManager:
         vocab = bootstrap.config.CONFIGURATION.resolution
         self.__legacy_localization_db_rel = PurePosixPath(vocab.legacy_localization_db)
         self.__localization_locales_rel = PurePosixPath(vocab.localization_locales_prefix)
+        self.__static_models_rel = PurePosixPath(vocab.static_models_prefix)
 
         self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
@@ -41,6 +57,7 @@ class PathManager:
         self.images_root_path.mkdir(parents=True, exist_ok=True)
         self.icons_root_path.mkdir(parents=True, exist_ok=True)
         self.graphics_root_path.mkdir(parents=True, exist_ok=True)
+        self.models_root_path.mkdir(parents=True, exist_ok=True)
 
     @property
     def full_generate_out_path(self) -> Path:
@@ -141,4 +158,17 @@ class PathManager:
             path = self.graphics_root_path / f"{graphic_id}_{variant}.png"
         else:
             path = self.graphics_root_path / f"{graphic_id}.png"
+        return path
+
+    @property
+    def models_root_path(self) -> Path:
+        """Directory of the baked static 3D model (GLB) resources."""
+        path = self.full_generate_out_path / self.__static_models_rel
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_ship_model_path(
+        self, type_id: int, variant: ShipModelVariant = ShipModelVariant.FULL
+    ) -> Path:
+        path = self.models_root_path / "ships" / f"{type_id}.{variant}.glb"
         return path

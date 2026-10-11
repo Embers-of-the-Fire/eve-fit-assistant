@@ -9,7 +9,10 @@ import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
 /// property of the app release (like the per-DB schema versions); it is
 /// surfaced on the version settings page but is not persisted into the
 /// repository and triggers no migration.
-const int kResourceResolutionSchemaVersion = 1;
+///
+/// v2 adds the lazy rule for static 3D models (R5), which v1 would have
+/// fail-closed to eager.
+const int kResourceResolutionSchemaVersion = 2;
 
 /// The download decision for a single `ResourceIndex.Entry`, made by the
 /// client through the Resource Resolution Schema.
@@ -46,7 +49,7 @@ final class ResourceResolutionContext {
   final String locale;
 }
 
-/// Evaluates the Resource Resolution Schema (RRS v1) for [entry] against
+/// Evaluates the Resource Resolution Schema (RRS v2) for [entry] against
 /// [index] and [context], returning the first matching rule's resolution.
 ///
 /// Rules, in order (first match wins):
@@ -56,7 +59,8 @@ final class ResourceResolutionContext {
 /// - **R2** the active locale's per-locale db is `eager`.
 /// - **R3** other per-locale dbs are `lazy`.
 /// - **R4** static images are `lazy`.
-/// - **R5** everything else is `eager` — fail closed toward availability.
+/// - **R5** static 3D models (all variants) are `lazy`.
+/// - **R6** everything else is `eager` — fail closed toward availability.
 ResourceResolution resolveResource(
   ResourceIndex index,
   ResourceIndex_Entry entry,
@@ -85,7 +89,10 @@ ResourceResolution resolveResource(
   // R4: static images.
   if (id.startsWith(kStaticImagesResourcePrefix)) return ResourceResolution.lazy;
 
-  // R5: default — fail closed toward availability.
+  // R5: static 3D models.
+  if (id.startsWith(kStaticModelsResourcePrefix)) return ResourceResolution.lazy;
+
+  // R6: default — fail closed toward availability.
   return ResourceResolution.eager;
 }
 

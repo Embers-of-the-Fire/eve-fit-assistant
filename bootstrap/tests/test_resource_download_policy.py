@@ -32,15 +32,21 @@ def _config_dict(**overrides: object) -> dict:
 
 
 class TestDownloadConfig:
+    _EXPECTED_DEFAULT_PREFIXES: ClassVar[list[str]] = [
+        "static/images/",
+        "localization/locales/",
+        "static/models/",
+    ]
+
     def test_default_lazy_prefixes_cover_images_and_per_locale_dbs(self) -> None:
-        assert DEFAULT_LAZY_PREFIXES == ["static/images/", "localization/locales/"]
+        assert DEFAULT_LAZY_PREFIXES == self._EXPECTED_DEFAULT_PREFIXES
 
     def test_model_default(self) -> None:
-        assert DownloadConfig().lazy_prefixes == ["static/images/", "localization/locales/"]
+        assert DownloadConfig().lazy_prefixes == self._EXPECTED_DEFAULT_PREFIXES
 
     def test_project_configuration_defaults_without_table(self) -> None:
         cfg = ProjectConfiguration.model_validate(_config_dict())
-        assert cfg.download.lazy_prefixes == ["static/images/", "localization/locales/"]
+        assert cfg.download.lazy_prefixes == self._EXPECTED_DEFAULT_PREFIXES
 
     def test_project_configuration_override(self) -> None:
         cfg = ProjectConfiguration.model_validate(
@@ -58,10 +64,11 @@ class TestDownloadConfig:
                 resolution={
                     "static_images_prefix": "assets/images/",
                     "localization_locales_prefix": "i18n/locales/",
+                    "static_models_prefix": "assets/models/",
                 }
             )
         )
-        assert cfg.download.lazy_prefixes == ["assets/images/", "i18n/locales/"]
+        assert cfg.download.lazy_prefixes == ["assets/images/", "i18n/locales/", "assets/models/"]
 
     def test_explicit_download_override_wins_over_custom_resolution(self) -> None:
         cfg = ProjectConfiguration.model_validate(
@@ -133,6 +140,7 @@ class TestMakeResourceIndex:
         ("resource://static/collection.pb2", "aa" * 32, 10),
         ("resource://static/images/icons/1.png", "bb" * 32, 20),
         ("resource://static/images/graphics/2.png", "cc" * 32, 30),
+        ("resource://static/models/ships/587.full.glb", "ab" * 32, 35),
         ("resource://localization/localization.db", "dd" * 32, 40),
         ("resource://localization/locales/en.db", "ff" * 32, 60),
         ("resource://agent/agent_resource.db", "ee" * 32, 50),
@@ -142,7 +150,9 @@ class TestMakeResourceIndex:
         index = make_resource_index(self._entries)
         # schema_version is reserved for the remote storage protocol.
         assert index.schema_version == 1
-        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 2
+        # Format 3: snapshots may carry static/models/ entries, which
+        # format-2 clients would misclassify as eager.
+        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 3
 
     def test_default_classification_marks_images_and_per_locale_dbs_lazy(self) -> None:
         index = make_resource_index(self._entries)
@@ -156,6 +166,7 @@ class TestMakeResourceIndex:
         assert policy["resource://agent/agent_resource.db"] == force
         assert policy["resource://static/images/icons/1.png"] == non_force
         assert policy["resource://static/images/graphics/2.png"] == non_force
+        assert policy["resource://static/models/ships/587.full.glb"] == non_force
         assert policy["resource://localization/locales/en.db"] == non_force
 
     def test_custom_prefixes(self) -> None:

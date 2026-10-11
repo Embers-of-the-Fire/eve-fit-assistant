@@ -78,7 +78,14 @@ void main() {
     });
   });
 
-  group("R5: default", () {
+  group("R5: static 3D models", () {
+    test("lazy for every ship-model variant", () {
+      expect(_resolve("resource://static/models/ships/587.full.glb"), ResourceResolution.lazy);
+      expect(_resolve("resource://static/models/ships/587.base.glb"), ResourceResolution.lazy);
+    });
+  });
+
+  group("R6: default", () {
     test("unknown ids fail closed to eager", () {
       expect(_resolve("resource://static/collection.pb2"), ResourceResolution.eager);
       expect(_resolve("resource://agent/agent_resource.db"), ResourceResolution.eager);
@@ -116,7 +123,7 @@ void main() {
     });
   });
 
-  test("RRS version is 1", () {
-    expect(kResourceResolutionSchemaVersion, 1);
+  test("RRS version is 2", () {
+    expect(kResourceResolutionSchemaVersion, 2);
   });
 }
