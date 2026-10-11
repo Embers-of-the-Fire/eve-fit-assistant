@@ -4,26 +4,69 @@ This document describes the app release procedure for EVE Fit Assistant. App rel
 
 ## Overview
 
-- App releases target the `dev` branch only.
-- A release is driven by a pull request with three labels: `V-Release`, `V-Test`, and `V-Tested Release`.
+- App releases target the `dev` branch only (stable patch backports use short-lived
+  `backport/*` branches; see "Backport a stable patch").
+- A release is driven by a pull request with three labels: `V-Release`, `V-Test`, and
+  `V-Tested Release`. The labels gate the release; the parsed diff of
+  `efa.config.toml` classifies which track releases.
 - The merge commit is the release point; no manual tag creation is required.
-- The canonical version lives in `efa.config.toml` under `[version]`. `pubspec.yaml`, `rust/Cargo.toml`, and `pyproject.toml` are derived from it.
+- The canonical version lives in `efa.config.toml` under `[version]` and its two
+  per-track groups. `pubspec.yaml`, `rust/Cargo.toml`, and `pyproject.toml` are
+  derived from it.
+
+## Version model
+
+The app releases on two tracks:
+
+| Track | Audience | Rendered version |
+|-------|----------|------------------|
+| `testing` | Developers and early testers | `major.minor.patch-beta.num+build` |
+| `stable` | Normal users | `major.minor.patch+build` |
+
+`efa.config.toml` carries the single source of truth:
+
+```toml
+[version]
+build = 36          # shared, monotonic across both tracks (Android versionCode)
+data_schema = 2
+
+[version.testing]
+major = 1
+minor = 0
+patch = 0
+num = 1             # prerelease counter; beta is the only label, implied by the track
+
+[version.stable]
+major = 0
+minor = 21
+patch = 0
+```
+
+- `[version]` holds only shared fields: `build` (strictly increasing across every
+  release-triggering merge, on both tracks) and `data_schema`. The old flat
+  `major`/`minor`/`patch`/`pre_label`/`pre_num` fields are retired; the tooling
+  auto-migrates legacy configs when reading old refs (e.g. `--base-ref`).
+- `num = 0` on `[version.testing]` is the ceremonial "rebased, not yet cut" state
+  after a ship commit; a version rendered with `num = 0` must never be published
+  (enforced by `./x ci release verify`; test-mode pipeline runs waive this and the
+  changelog-notes gates via `--allow-unpublishable`, since they never publish).
+- Stable `major.minor` changes only via ship commits; stable `patch` changes only
+  via backports. The rendered testing version must always be semver-ahead of the
+  rendered stable version on the mainline.
+- Rendering is track-parameterized: `./x release version sync --track testing|stable`
+  (default `testing`) syncs `pubspec.yaml` with the full version and
+  `rust/Cargo.toml` + `pyproject.toml` with the triplet. Committed manifests carry
+  the **testing** rendering; CI re-syncs for stable runs. `./x build apk|linux|
+  windows|release` likewise accept `--track` (default `testing`).
 
 ## 1. Prepare the release locally
 
 ### 1.1. Bump the version
 
-Edit `efa.config.toml` under `[version]`. Example:
-
-```toml
-[version]
-major = 0
-minor = 1
-patch = 0
-pre_label = "beta"
-pre_num = 7
-build = 7
-```
+For a normal testing release, edit `efa.config.toml`: bump `[version.testing]`
+(`num`, or the triplet when starting a new cycle) and bump the shared
+`[version].build`. Do not touch `[version.stable]`; stable versions change only
+through the ship and backport procedures below.
 
 > The fitting-engine submodule at `packages/eve-fit-os` has independent versioning and is **not** part of the sync targets.
 
@@ -74,25 +117,30 @@ Use `--force` to overwrite an existing version image.
 ### 1.3. Sync the version to package manifests
 
 ```bash
-./x release version sync
+./x release version sync --track testing
 ```
 
-This updates:
+This updates (default track is `testing`; committed manifests always carry the
+testing rendering — CI re-syncs with `--track stable` for stable runs):
 
 - `pubspec.yaml` — Flutter app version (`version: <full>`).
-- `rust/Cargo.toml` — bridge crate version (`version = "<semver>"`).
-- `pyproject.toml` — Python package version (`version = "<semver>"`).
+- `rust/Cargo.toml` — bridge crate version (`version = "<semver>"`, triplet).
+- `pyproject.toml` — Python package version (`version = "<semver>"`, triplet).
 
 Use `--dry-run` to preview changes without writing files.
 
 ### 1.4. Run local preflight checks
 
 ```bash
-./x ci release verify --check-all
+./x ci release verify --track testing --check-all
 ```
 
-This verifies:
+This verifies, all track-parameterized:
 
+- Release intent and track match the `efa.config.toml` diff (`--base-ref`).
+- Track invariants: testing renders semver-ahead of stable, `build` bumped on
+  release intent, no `num = 0` version is published (I3; waived together with
+  the changelog-notes gates under `--allow-unpublishable` for test-mode runs).
 - Version targets match `efa.config.toml`.
 - The expected release tag does not already exist.
 - Release notes exist and are valid.
@@ -104,8 +152,17 @@ This verifies:
 For a faster check that matches CI:
 
 ```bash
-./x ci release verify --base-ref origin/dev --check-notes --check-tag --check-note-content
+./x ci release verify --track testing --base-ref origin/dev --check-notes --check-tag --check-note-content
 ```
+
+To inspect how a diff classifies without running the full checks:
+
+```bash
+./x ci release intent --base-ref origin/dev
+```
+
+The final JSON line is either `{"action","track","semver","full","tag","build"}`
+for a release or `{"action":"none","reason":...}`.
 
 ### 1.5. Lint and commit
 
@@ -126,10 +183,13 @@ Stage and commit all release changes, including:
 
 Open a pull request targeting `dev` and add the `V-Release` label.
 
-This triggers `release-preflight.yml`, which runs fast checks:
+This triggers `release-preflight.yml`, which classifies the PR's version diff
+(`./x ci release intent --base-ref origin/dev`) and fails the PR when a
+`V-Release` PR carries no release intent, then runs the fast checks for the
+classified track:
 
 ```bash
-./x ci release verify --base-ref origin/dev --check-notes --check-tag --check-note-content
+./x ci release verify --track <track> --base-ref origin/dev --check-notes --check-tag --check-note-content
 ```
 
 A force-push or new commit removes `V-Test` and `V-Tested Release` labels so the release must be re-tested.
@@ -138,9 +198,11 @@ A force-push or new commit removes `V-Test` and `V-Tested Release` labels so the
 
 When the PR is ready, add the `V-Test` label.
 
-This triggers `release-test.yml`, which runs:
+This triggers `release-test.yml`, which first classifies the PR's version diff
+into a track (runs without a version diff fall back to `testing`), then runs:
 
-- `App release test` — builds the app (APK, Linux, and Windows variants) in test mode using `_release.yml`. It also builds the web bundle and deploys it to the `efa-app-nightly` Cloudflare Pages project, pinning a comment with the test deployment URL on the release PR.
+- `App release test` — builds the app (APK, Linux, and Windows variants) for the
+  classified track in test mode using `_release.yml`. It also builds the web bundle and deploys it to the `efa-app-nightly` Cloudflare Pages project, pinning a comment with the test deployment URL on the release PR.
 - `Data release test` — builds data snapshots in test mode using `_release-data.yml`.
 - `Mark as tested release` — adds `V-Tested Release` and removes `V-Test` after both jobs succeed.
 
@@ -153,19 +215,95 @@ Once both `V-Release` and `V-Tested Release` are present, merge the PR into `dev
 The `release.yml` workflow on the merge commit then:
 
 1. Identifies the merged PR and confirms it has `V-Tested Release`.
-2. Reuses `_release.yml` to build and publish the app (APK, Linux, and Windows variants).
-3. Builds the web bundle and deploys it to the `efa-app` Cloudflare Pages project
+2. Classifies the parsed `efa.config.toml` diff against the pre-push ref
+   (`./x ci release intent --base-ref <before>`) into the release intent:
+   - `[version.testing]` changed with `num > 0` → testing release.
+   - `[version.stable]` set to the old testing triplet with testing rebased to
+     `num = 0` (a ship commit) → stable release only.
+   - A bare rebase (`num = 0`, stable untouched) or no version change → no
+     release; a `V-Release` merge with no intent fails the workflow. A
+     stable-only change on the mainline, or both groups changed with `num > 0`,
+     is rejected by preflight.
+3. Reuses `_release.yml` with the classified track to build and publish the app
+   (APK, Linux, and Windows variants).
+4. Builds the web bundle and deploys it to the `efa-app` Cloudflare Pages project
    (production URL).
-4. Merges the release registry fragment.
-5. Publishes the release to the remote `testing` channel.
-6. Publishes the release note as a remote announcement entry so users are notified
-   of the new version.
+5. Merges the release registry fragment.
+6. Publishes the release to the remote channel of the classified track
+   (`testing` or `stable`), announcing the release note on that channel. Before
+   publishing, an idempotency guard skips the release as a no-op when the
+   rendered version already heads the target channel (absorbing reruns and
+   backport merge-backs).
 7. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
 8. Posts a `release-created` event (version, tag, and the Chinese release note) to the
    bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`), which broadcasts the
    announcement to the configured QQ groups.
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
+
+## Ship a new stable line
+
+A ship commit promotes the tested development line to stable and starts a new
+testing cycle:
+
+1. During stabilization, bump `[version.testing]` `num` per testing release as
+   usual (each with a `build` bump).
+2. In one commit: set `[version.stable]` to the current `[version.testing]`
+   triplet; set `[version.testing]` to the next development triplet with
+   `num = 0` (the rebase); bump `build`. A ship always promotes the tested
+   triplet, never an untested one.
+3. Merge with the normal release labels (`V-Release` + `V-Test` →
+   `V-Tested Release`). The intent classifier recognizes the ship pattern and
+   releases **stable only**; the accompanying testing rebase does not trigger a
+   testing release.
+4. The first testing build of the new cycle bumps `num` to 1 (plus `build`) and
+   releases as normal.
+
+## Backport a stable patch
+
+When a critical defect must reach a shipped stable line without shipping the
+development line:
+
+1. Land the fix on `dev` first and ship it in a testing release — a fix must
+   never exist on stable while absent from the development line.
+2. Branch `backport/v<M.m.p>` from the **newest stable tag** of the current
+   stable line (`releases/v<major.minor.patch>` — the latest patch, not the
+   line's origin). Cherry-pick the fix; bump `[version.stable].patch` and
+   `build`; leave `[version.testing]` untouched; add the changelog entry
+   (`./x release relnote --version <M.m.p>` → `docs/changelog/<M-m-p>/`).
+3. Push the branch. `release-backport.yml` classifies the diff against the base
+   tag with the backport carve-out (a stable-only patch change, which preflight
+   rejects on the mainline), then builds and publishes to the `stable` channel
+   under the reviewer-gated `production-app` environment, tags
+   `releases/v<new>`, and creates the GitHub release.
+4. Merge the branch back to `dev` immediately as an ordinary PR (**no** release
+   labels): the idempotency guard suppresses a duplicate stable release and the
+   mainline's `[version.stable]` is reconciled.
+
+## Operational prerequisites
+
+- Before the **first** stable publish, the `stable` channel must exist in the
+  remote channel registry (`channels/heads/channels.json`); initialize it like
+  the testing channel (`./x remote session init stable ...` and the normal
+  publish flow).
+- The dual-track migration commit itself classifies as a ship of `0.21.0`
+  (legacy base configs auto-migrate when read). It must be merged **without**
+  release labels so no release triggers — the `releases/v0.21.0` tag already
+  exists.
+- The initial migrated state is testing `1.0.0-beta.0` (ceremonial `num = 0`),
+  stable `0.21.0`, `build` continuing at 35. The next testing release bumps
+  `num` to 1 and `build` to 36; the first ship promotes `1.0.0` to stable.
+
+## App update semantics
+
+The release index entries carry an optional `build` field (absent in legacy
+indexes, which fall back to version-only comparison). The updater detects a
+versionCode decrease across a track switch — e.g. switching from testing to
+stable after newer testing builds — and treats such a release as inapplicable
+(informational only) instead of attempting an install Android would refuse. The
+app's release track follows the data-channel setting (`testing`/`stable`);
+fresh installs default to the channel matching their build flavor (debug →
+testing, release → stable).
 
 ## Secrets and environments
 
@@ -284,17 +422,20 @@ wired into releases as follows:
 
 | Step | Command / Action |
 |------|------------------|
-| Bump version | Edit `efa.config.toml` `[version]` |
+| Bump version (testing release) | Edit `efa.config.toml` `[version.testing]` + shared `build` |
+| Classify release intent | `./x ci release intent --base-ref origin/dev` |
 | Generate release note | `./x release relnote` |
 | Generate version banner image | `./x release version-image` |
 | Author localized content | `docs/changelog/<version-dir>/content.{zh,en}.md` |
-| Sync version targets | `./x release version sync` |
-| Full local preflight | `./x ci release verify --check-all` |
-| Fast local preflight | `./x ci release verify --base-ref origin/dev --check-notes --check-tag --check-note-content` |
+| Sync version targets | `./x release version sync --track testing` |
+| Full local preflight | `./x ci release verify --track testing --check-all` |
+| Fast local preflight | `./x ci release verify --track testing --base-ref origin/dev --check-notes --check-tag --check-note-content` |
 | Format and lint | `./x lint` |
 | Open release PR | Target `dev` + label `V-Release` |
 | Trigger full tests | Add label `V-Test` |
 | Merge | Requires `V-Release` and `V-Tested Release` |
+| Ship a stable line | One commit: stable := testing triplet, testing rebased `num = 0`, bump `build` |
+| Backport a stable patch | Branch `backport/v<M.m.p>` from newest stable tag; merge back without labels |
 
 ## Release labels
 
@@ -306,6 +447,16 @@ wired into releases as follows:
 
 ## Notes
 
-- Do not create the release tag manually. The tag is created by `release.yml` after the merge.
+- Do not create the release tag manually. The tag is created by `release.yml` (or
+  `release-backport.yml` for stable patches) after the merge/push.
 - A force-push or new commit on the PR drops `V-Test` and `V-Tested Release`; re-add `V-Test` to re-test.
-- The `release-preflight.yml` fast checks use `--base-ref origin/dev` to ensure the version is greater than the one on the base branch.
+- The `release-preflight.yml` fast checks use `--base-ref origin/dev` to ensure
+  the classified intent is valid against the base branch: the rendered testing
+  version must stay semver-ahead of stable, `build` must increase on release
+  intent, and a `num = 0` version must never be published. Test-mode runs
+  (`_release.yml` with `test_mode: true`) pass `--allow-unpublishable` instead,
+  since they never publish; the publish job then also skips staging and
+  publishing the release-note announcement for the ceremonial `num = 0` state.
+- Committed manifests (`pubspec.yaml`, `rust/Cargo.toml`, `pyproject.toml`)
+  always carry the **testing** rendering; CI re-syncs with the classified track
+  before building.

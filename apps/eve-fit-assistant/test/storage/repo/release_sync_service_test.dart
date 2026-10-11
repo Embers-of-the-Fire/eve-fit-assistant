@@ -50,8 +50,11 @@ GenerationPointer _makePointer(String snapshotHash) =>
 
 Uint8List _encodePointer(GenerationPointer pointer) => Uint8List.fromList(pointer.writeToBuffer());
 
-ReleaseIndex _makeReleaseIndex({required String id, required String version}) =>
-    ReleaseIndex(schemaVersion: 1, id: id, version: version);
+ReleaseIndex _makeReleaseIndex({required String id, required String version, int? build}) {
+  final index = ReleaseIndex(schemaVersion: 1, id: id, version: version);
+  if (build != null) index.build = build;
+  return index;
+}
 
 Uint8List _encodeReleaseIndex(ReleaseIndex index) => Uint8List.fromList(index.writeToBuffer());
 
@@ -226,6 +229,19 @@ void main() {
 
         expect(result, const Right(None()));
       });
+
+      test("returns None when remote build is lower than installed build", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "2.0.0", build: 50)),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "1.0.0+60");
+
+        final result = await service.checkFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result, const Right(None()));
+      });
     });
 
     group("checkStatusFromSnapshotHash", () {
@@ -273,6 +289,78 @@ void main() {
         final status = result.getRight().toNullable()!;
         expect(status, isA<ReleaseCheckAheadOfRemote>());
         expect((status as ReleaseCheckAheadOfRemote).remoteVersion, "0.9.0");
+      });
+
+      test("returns downgradeGuarded when remote build is lower than installed build", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "0.22.0", build: 50)),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "0.22.0-beta.3+60");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        final status = result.getRight().toNullable()!;
+        expect(status, isA<ReleaseCheckDowngradeGuarded>());
+        expect((status as ReleaseCheckDowngradeGuarded).release.version, "0.22.0");
+      });
+
+      test("returns updateAvailable when remote build field is absent (legacy index)", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "0.22.0")),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "0.22.0-beta.3+60");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        expect(result.getRight().toNullable(), isA<ReleaseCheckUpdateAvailable>());
+      });
+
+      test("returns updateAvailable when remote build equals installed build", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "0.22.0", build: 60)),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "0.22.0-beta.3+60");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        expect(result.getRight().toNullable(), isA<ReleaseCheckUpdateAvailable>());
+      });
+
+      test("returns updateAvailable when remote build is higher than installed build", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "0.22.0", build: 61)),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "0.22.0-beta.3+60");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        expect(result.getRight().toNullable(), isA<ReleaseCheckUpdateAvailable>());
+      });
+
+      test("returns updateAvailable when installed version has no build suffix", () async {
+        final remote = _FakeRemoteCatalogService(
+          releaseIndexResult: Right(
+            _encodeReleaseIndex(_makeReleaseIndex(id: "rel-2", version: "2.0.0", build: 50)),
+          ),
+        );
+        final service = _makeService(remote: remote, currentVersion: "1.0.0");
+
+        final result = await service.checkStatusFromSnapshotHash(snapshotHash: snapshotHash);
+
+        expect(result.isRight(), isTrue);
+        expect(result.getRight().toNullable(), isA<ReleaseCheckUpdateAvailable>());
       });
 
       test("propagates network errors", () async {

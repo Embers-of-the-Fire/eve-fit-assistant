@@ -266,7 +266,7 @@ def _add_snapshot_by_file(
             blob_store = BlobStore(root)
 
             for platform_key, platform_data in list(release.items()):
-                if platform_key in ("id", "version"):
+                if platform_key in ("id", "version", "build"):
                     continue
                 if not isinstance(platform_data, dict):
                     continue
@@ -316,6 +316,7 @@ def _add_snapshot_by_file(
                 android=android_dict,
                 linux=linux_dict,
                 windows=windows_dict,
+                build=release.get("build"),
             )
         except KeyError as e:
             raise click.ClickException(
@@ -1247,6 +1248,51 @@ def register_remote_session(remote: click.Group) -> None:
         )
 
         parent_gen = mgr.gen_store.load(parent) if parent else None
+
+        if session.staged.releases:
+            _, staged_release_index = snap_store.load_release_snapshot(session.staged.releases[-1])
+            head_release_version = mgr.channel_release_version(resolved_channel.value)
+            if (
+                head_release_version is not None
+                and staged_release_index.version == head_release_version
+            ):
+                if not session.staged.resources:
+                    if as_json:
+                        click.echo(
+                            json.dumps(
+                                {
+                                    "skipped": True,
+                                    "reason": "release already on channel",
+                                    "release_version": head_release_version,
+                                    "channel": resolved_channel.value,
+                                }
+                            )
+                        )
+                        return
+                    click.echo(
+                        styled(
+                            [Style.BRIGHT, Fore.YELLOW],
+                            f"Release {head_release_version} is already the current release "
+                            f"on channel {resolved_channel.value}; skipping as a no-op.",
+                        )
+                    )
+                    click.echo(
+                        styled(
+                            Style.DIM,
+                            "  Idempotency guard (spec §5.1): the rendered version already "
+                            "exists on the target channel. Discard the session with "
+                            "'./x remote session discard'.",
+                        )
+                    )
+                    return
+                click.echo(
+                    styled(
+                        Style.DIM,
+                        f"  Note: staged release version {head_release_version} matches the "
+                        f"channel head on {resolved_channel.value}; "
+                        "only the staged resources advance the head.",
+                    )
+                )
 
         if parent_gen is None and not session.staged.releases and not allow_empty_release_pointer:
             raise click.ClickException(

@@ -133,6 +133,32 @@ class SessionManager:
     def get_head(self, channel: str):
         return self.head_store.get_head(channel)
 
+    def channel_release_version(self, channel: str) -> str | None:
+        """Release version at the channel head, or None when the channel has none.
+
+        Follows head -> generation -> release pointer -> ReleaseIndex.version.
+        Returns None for an uninitialized channel, an empty release pointer, or
+        any unreadable link in the chain (first-publish flow).
+        """
+        try:
+            head = self.head_store.get_head(channel)
+        except FileNotFoundError:
+            return None
+        if not head.generation_hash:
+            return None
+        try:
+            gen = self.gen_store.load(head.generation_hash)
+        except FileNotFoundError:
+            return None
+        snap_hash = gen.release_pointer.snapshot_hash
+        if not snap_hash:
+            return None
+        try:
+            _, index = self.snap_store.load_release_snapshot(snap_hash)
+        except FileNotFoundError:
+            return None
+        return index.version or None
+
     def get_reflog(self, channel: str):
         return self.head_store.get_reflog(channel)
 

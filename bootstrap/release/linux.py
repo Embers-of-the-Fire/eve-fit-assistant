@@ -38,7 +38,7 @@ from bootstrap.utils import execute_command
 
 
 if TYPE_CHECKING:
-    from bootstrap.config import ProjectVersion
+    from bootstrap.config import ReleaseVersion
 
 
 APP_NAME = "EFA"
@@ -209,15 +209,15 @@ def pack_appimage(
     *,
     appdir: Path,
     output_dir: Path,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     appimagetool: str,
     dry_run: bool,
 ) -> Path:
     """Pack an assembled AppDir into an AppImage with appimagetool."""
-    ver = version.render_full()
+    ver = version.full
     dst = output_dir / f"{ver}-linux.AppImage"
     pack_env = dict(os.environ)
-    pack_env["VERSION"] = version.render_semver()
+    pack_env["VERSION"] = version.semver
     pack_env["ARCH"] = "x86_64"
     execute_command(
         [
@@ -263,13 +263,13 @@ def _zip_tree(src_dir: Path, root_name: str, dst: Path) -> None:
 
 
 def pack_native_zip(
-    *, bundle_dir: Path, output_dir: Path, version: ProjectVersion, dry_run: bool
+    *, bundle_dir: Path, output_dir: Path, version: ReleaseVersion, dry_run: bool
 ) -> Path:
     """Pack the raw Flutter Linux release bundle into a zip archive as-is."""
     exe = bundle_dir / BINARY_NAME
     if not exe.exists():
         raise click.ClickException(f"Flutter Linux bundle binary not found: {exe}")
-    ver = version.render_full()
+    ver = version.full
     dst = output_dir / f"{ver}-linux-native.zip"
     if dry_run:
         info(f"[DRY-RUN] Would pack native zip archive: {dst}")

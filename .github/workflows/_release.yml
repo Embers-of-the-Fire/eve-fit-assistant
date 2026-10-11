@@ -11,6 +11,10 @@ on:
         description: "Deploy the web bundle to Cloudflare Pages"
         type: boolean
         default: true
+      track:
+        description: "Release track to build and publish (testing or stable)"
+        type: string
+        default: "testing"
 
 permissions:
   contents: read
@@ -19,9 +23,12 @@ jobs:
   verify:
     name: Verify release version
     runs-on: ubuntu-latest
+    env:
+      TRACK: ${{ inputs.track }}
     outputs:
       tag: ${{ steps.verify.outputs.tag }}
       version: ${{ steps.verify.outputs.version }}
+      publishable: ${{ steps.verify.outputs.publishable }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,13 +39,27 @@ jobs:
       - name: Setup Python env
         uses: $/.github/actions/setup-python-env
 
-      - name: Verify release version
-        id: verify
+      # The committed manifests carry the testing rendering; stable runs
+      # re-render them for their track before verification (and builds).
+      - name: Sync version manifests
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py ci release verify --check-notes' | tee /tmp/verify.log
+            'uv run x.py release version sync --track "${TRACK}"'
+
+      - name: Verify release version
+        id: verify
+        env:
+          # Test mode never publishes, so the publish-only I3 gate (testing
+          # num = 0) and changelog-notes checks are waived for the ceremonial
+          # post-ship state; real releases keep them enforced.
+          ALLOW_UNPUBLISHABLE: ${{ inputs.test_mode && '--allow-unpublishable' || '' }}
+        run: |
+          # shellcheck disable=SC2016,SC2086
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release verify --track "${TRACK}" --check-notes ${ALLOW_UNPUBLISHABLE}' | tee /tmp/verify.log
           echo "version=$(grep '^Canonical version:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
           echo "tag=$(grep '^Expected tag:' /tmp/verify.log | cut -d' ' -f3)" >> "$GITHUB_OUTPUT"
+          echo "publishable=$(grep '^Publishable:' /tmp/verify.log | tr -d ' ' | cut -d':' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Upload diagnostics
         if: failure()
@@ -51,6 +72,8 @@ jobs:
     needs: [verify]
     runs-on: ubuntu-latest
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
+    env:
+      TRACK: ${{ inputs.track }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,6 +85,11 @@ jobs:
         uses: $/.github/actions/setup-build-env
         with:
           shell: android
+
+      - name: Sync version manifests
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py release version sync --track "${TRACK}"'
 
       - name: Prepare release signing
         if: inputs.test_mode == false
@@ -81,7 +109,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Build APK
-        run: nix develop .#android --command bash -c 'uv run x.py build apk'
+        run: nix develop .#android --command bash -c 'uv run x.py build apk --track "${TRACK}"'
 
       - name: Verify APK signature
         if: inputs.test_mode == false
@@ -120,6 +148,8 @@ jobs:
     name: Build Linux Variants
     needs: [verify]
     runs-on: ubuntu-latest
+    env:
+      TRACK: ${{ inputs.track }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -132,8 +162,13 @@ jobs:
         with:
           shell: linux
 
+      - name: Sync version manifests
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py release version sync --track "${TRACK}"'
+
       - name: Build Linux variants
-        run: nix develop .#linux --command bash -c 'uv run x.py build linux'
+        run: nix develop .#linux --command bash -c 'uv run x.py build linux --track "${TRACK}"'
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -156,6 +191,8 @@ jobs:
     name: Build Windows Variants
     needs: [verify]
     runs-on: windows-latest
+    env:
+      TRACK: ${{ inputs.track }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -166,9 +203,13 @@ jobs:
       - name: Setup build env
         uses: $/.github/actions/setup-build-env-windows
 
+      - name: Sync version manifests
+        shell: pwsh
+        run: uv run x.py release version sync --track "$env:TRACK"
+
       - name: Build Windows variants
         shell: pwsh
-        run: uv run x.py build windows
+        run: uv run x.py build windows --track "$env:TRACK"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -267,6 +308,7 @@ jobs:
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-app' }}
     env:
       VERSION: ${{ needs.verify.outputs.version }}
+      TRACK: ${{ inputs.track }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -307,6 +349,7 @@ jobs:
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             "uv run x.py build release \
+              --track "${TRACK}" \
               --fragments cache/releases/apk/${VERSION}/${VERSION}-android.json \
               --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json \
               --fragments cache/releases/windows/${VERSION}/${VERSION}-windows.json"
@@ -334,17 +377,17 @@ jobs:
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
               remote sync \
               --target s3 \
-              --channel testing \
+              --channel "${TRACK}" \
               --schema-root cache/remote'
 
       - name: Initialize remote announcement workspace (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce init --target minio --force'
 
       - name: Sync remote announcements
-        if: inputs.test_mode == false
+        if: inputs.test_mode == false && needs.verify.outputs.publishable == 'true'
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
@@ -362,21 +405,24 @@ jobs:
               --target s3'
 
       - name: Sync remote announcements (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce sync --target minio'
 
+      # Skipped for an unpublishable version (testing num = 0 in test mode):
+      # the ceremonial post-ship state has no release notes to stage.
       - name: Stage release note as announcement
+        if: needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py remote announce add-release-note'
+            'uv run x.py remote announce add-release-note --track "${TRACK}"'
 
       - name: Stage release snapshot
         run: |
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
-            "uv run x.py remote session init testing --schema-root cache/remote"
+            "uv run x.py remote session init "${TRACK}" --schema-root cache/remote"
           nix develop .#python --command bash -c \
             "uv run x.py remote session add --release --file cache/releases/merge/${VERSION}.json --schema-root cache/remote"
 
@@ -385,11 +431,20 @@ jobs:
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote session verify --schema-root cache/remote'
-          committed_hash=$(nix develop .#python --command bash -c \
-            'uv run x.py remote session commit --json --schema-root cache/remote' | jq -r '.generation_hash')
+          commit_json=$(nix develop .#python --command bash -c \
+            'uv run x.py remote session commit --json --schema-root cache/remote')
+          committed_hash=$(echo "$commit_json" | jq -r '.generation_hash // empty')
+          if [ -z "$committed_hash" ]; then
+            # Idempotency guard: the rendered version already heads the channel
+            # (rerun, duplicate merge, or backport merge-back) — the commit was
+            # skipped as a no-op; verify against the existing head instead.
+            echo "Commit skipped: $commit_json"
+            committed_hash=$(nix develop .#python --command bash -c \
+              'uv run python -c "from pathlib import Path; import os; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(os.environ[\"TRACK\"]).generation_hash)"')
+          fi
           echo "committed_hash=$committed_hash" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to testing channel
+      - name: Publish to ${{ inputs.track }} channel
         if: inputs.test_mode == false
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
@@ -404,12 +459,12 @@ jobs:
               --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
               --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
-              remote publish testing \
+              remote publish "${TRACK}" \
               --target s3 \
               --schema-root cache/remote'
 
       - name: Publish announcements
-        if: inputs.test_mode == false
+        if: inputs.test_mode == false && needs.verify.outputs.publishable == 'true'
         env:
           REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
           REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
@@ -426,16 +481,16 @@ jobs:
               remote announce publish \
               --target s3'
 
-      - name: Publish to testing channel (MinIO mock)
+      - name: Publish to ${{ inputs.track }} channel (MinIO mock)
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py remote publish testing \
+            'uv run x.py remote publish "${TRACK}" \
               --target minio \
               --schema-root cache/remote'
 
       - name: Publish announcements (MinIO mock)
-        if: inputs.test_mode
+        if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote announce publish --target minio'
@@ -458,10 +513,10 @@ jobs:
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
               remote sync \
               --target s3 \
-              --channel testing \
+              --channel "${TRACK}" \
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \
-            'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
+            'uv run python -c "from pathlib import Path; import os; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(os.environ[\"TRACK\"]).generation_hash)"')
           if [ "$synced_hash" != "$COMMITTED" ]; then
             echo "Remote head verification failed: committed=$COMMITTED synced=$synced_hash"
             exit 1
@@ -476,10 +531,10 @@ jobs:
           nix develop .#python --command bash -c \
             'uv run x.py remote sync \
               --target minio \
-              --channel testing \
+              --channel "${TRACK}" \
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \
-            'uv run python -c "from pathlib import Path; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(\"testing\").generation_hash)"')
+            'uv run python -c "from pathlib import Path; import os; from bootstrap.remote import SessionManager; m = SessionManager(Path(\"cache/remote\")); print(m.get_head(os.environ[\"TRACK\"]).generation_hash)"')
           if [ "$synced_hash" != "$COMMITTED" ]; then
             echo "Remote head verification failed: committed=$COMMITTED synced=$synced_hash"
             exit 1

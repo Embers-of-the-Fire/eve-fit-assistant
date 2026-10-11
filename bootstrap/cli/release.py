@@ -11,14 +11,14 @@ import bootstrap.config
 
 from bootstrap.cli import runtime
 from bootstrap.color import styled
-from bootstrap.config import ProjectVersion
 from bootstrap.release.relnote import create_raw_release_note
-from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import parse_release_version
 from bootstrap.release.relnote import split_csv
 from bootstrap.release.version_image import DEFAULT_BASE_IMAGE
 from bootstrap.release.version_image import DEFAULT_FONT
 from bootstrap.release.version_image import create_version_image
 from bootstrap.release.version_sync import sync_versions
+from bootstrap.remote.channel import Channel
 
 
 def register_release_commands(cli_group: click.Group) -> None:
@@ -32,6 +32,12 @@ def register_release_commands(cli_group: click.Group) -> None:
         "version_override",
         default=None,
         help="Override the app version (semver, e.g. 0.1.0-beta.7).",
+    )
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the configured version for (ignored when --version is given).",
     )
     @click.option(
         "--published-at",
@@ -68,6 +74,7 @@ def register_release_commands(cli_group: click.Group) -> None:
     )
     def release_relnote(
         version_override: str | None,
+        track: str,
         published_at: str | None,
         channels: str | None,
         platforms: str | None,
@@ -81,10 +88,10 @@ def register_release_commands(cli_group: click.Group) -> None:
         The changelog body is generated with git-cliff using cliff.toml.
         """
         if version_override is not None:
-            version = ProjectVersion.model_validate(parse_version_override(version_override))
+            version = parse_release_version(version_override)
         else:
             bootstrap.config.ProjectConfiguration.ensure_loaded()
-            version = bootstrap.config.CONFIGURATION.version
+            version = bootstrap.config.CONFIGURATION.version.release(Channel(track))
 
         channels_list = split_csv(channels)
         platforms_list = split_csv(platforms)
@@ -102,7 +109,7 @@ def register_release_commands(cli_group: click.Group) -> None:
         if dry_run:
             click.echo(
                 styled([Style.BRIGHT, Fore.CYAN], "[DRY-RUN] ")
-                + f"Would create release note for {version.render_semver()}"
+                + f"Would create release note for {version.semver}"
             )
             click.echo(f"  directory: {directory}")
             click.echo(f"  entry id:  {entry_id}")
@@ -120,6 +127,12 @@ def register_release_commands(cli_group: click.Group) -> None:
         "version_override",
         default=None,
         help="Override the app version (semver, e.g. 0.1.0-beta.7).",
+    )
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the configured version for (ignored when --version is given).",
     )
     @click.option(
         "--base",
@@ -151,6 +164,7 @@ def register_release_commands(cli_group: click.Group) -> None:
     )
     def release_version_image(
         version_override: str | None,
+        track: str,
         base_image: Path,
         font_path: Path,
         force: bool,
@@ -161,12 +175,12 @@ def register_release_commands(cli_group: click.Group) -> None:
         Writes docs/changelog/<version-dir>/image.png.
         """
         if version_override is not None:
-            version = ProjectVersion.model_validate(parse_version_override(version_override))
+            version = parse_release_version(version_override)
         else:
             bootstrap.config.ProjectConfiguration.ensure_loaded()
-            version = bootstrap.config.CONFIGURATION.version
+            version = bootstrap.config.CONFIGURATION.version.release(Channel(track))
 
-        semver = version.render_semver()
+        semver = version.semver
 
         if dry_run:
             output_path = create_version_image(
@@ -197,12 +211,18 @@ def register_release_commands(cli_group: click.Group) -> None:
 
     @release_version.command("sync")
     @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the version for.",
+    )
+    @click.option(
         "--dry-run",
         is_flag=True,
         default=False,
         help="Show the changes without writing files.",
     )
-    def release_version_sync(dry_run: bool):
+    def release_version_sync(track: str, dry_run: bool):
         """Sync the canonical version from efa.config.toml to package manifests."""
         dry_run = dry_run or runtime.is_dry_run()
         bootstrap.config.ProjectConfiguration.ensure_loaded()
@@ -216,7 +236,7 @@ def register_release_commands(cli_group: click.Group) -> None:
         else:
             click.echo("Syncing version to package manifests...")
 
-        changed = sync_versions(version, dry_run=dry_run)
+        changed = sync_versions(version, Channel(track), dry_run=dry_run)
 
         if dry_run:
             click.echo(

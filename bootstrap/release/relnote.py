@@ -21,53 +21,22 @@ from bootstrap.utils import version_dir_to_entry_id
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from bootstrap.config import ProjectVersion
+    from bootstrap.config import ReleaseVersion
 
 
 CHANGELOG_ROOT = PROJECT_ROOT / "docs" / "changelog"
 CLIFF_CONFIG = PROJECT_ROOT / "cliff.toml"
 
-_DEFAULT_CHANNELS = ["testing"]
 _DEFAULT_TAGS = ["release-note"]
 
 
-def parse_version_override(value: str) -> dict[str, object]:
-    if "-" in value:
-        core, pre = value.split("-", 1)
-    else:
-        core = value
-        pre = ""
+def parse_release_version(value: str) -> ReleaseVersion:
+    from bootstrap.config import ReleaseVersion
 
-    parts = core.split(".")
-    if len(parts) != 3:
-        raise click.ClickException(f"Invalid version override: {value!r}")
     try:
-        major = int(parts[0])
-        minor = int(parts[1])
-        patch = int(parts[2])
+        return ReleaseVersion.parse(value)
     except ValueError as e:
         raise click.ClickException(f"Invalid version override: {value!r}") from e
-
-    pre_label = ""
-    pre_num = 0
-    if pre:
-        if "." in pre:
-            pre_label, pre_num_str = pre.split(".", 1)
-            try:
-                pre_num = int(pre_num_str)
-            except ValueError as e:
-                raise click.ClickException(f"Invalid version override: {value!r}") from e
-        else:
-            pre_label = pre
-            pre_num = 1
-
-    return {
-        "major": major,
-        "minor": minor,
-        "patch": patch,
-        "pre_label": pre_label,
-        "pre_num": pre_num,
-    }
 
 
 def split_csv(value: str | None) -> list[str] | None:
@@ -91,7 +60,7 @@ def _run_cliff(tag: str, from_ref: str | None = None) -> str:
     else:
         cmd.append("--unreleased")
     # CWE-78 / S603 are false positives here: cmd is a list passed without
-    # shell=True, and tag originates from a Pydantic-validated ProjectVersion,
+    # shell=True, and tag originates from a validated ReleaseVersion,
     # so there is no shell-interpretation vector.
     try:
         result = subprocess.run(
@@ -125,20 +94,20 @@ def _normalize_platforms(platforms: list[str]) -> list[str]:
 
 def _build_spec(
     *,
-    version: ProjectVersion,
+    version: ReleaseVersion,
     published_at: str | None,
     channels: list[str] | None,
     platforms: list[str] | None,
     from_ref: str | None = None,
 ) -> dict[str, object]:
-    app_version = version.render_semver()
+    app_version = version.semver
     entry_id = version_dir_to_entry_id(app_version)
     when = published_at or dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     spec: dict[str, object] = {
         "id": entry_id,
         "publishedAt": when,
         "tags": _DEFAULT_TAGS,
-        "channels": channels if channels is not None else _DEFAULT_CHANNELS,
+        "channels": channels if channels is not None else version.default_channels,
         "appVersion": app_version,
         "platforms": _normalize_platforms(platforms) if platforms is not None else [],
     }
@@ -148,7 +117,7 @@ def _build_spec(
 
 
 def create_raw_release_note(
-    version: ProjectVersion,
+    version: ReleaseVersion,
     *,
     dry_run: bool = False,
     force: bool = False,
@@ -161,7 +130,7 @@ def create_raw_release_note(
 
     Emits only spec.yaml and changelog.md; no localized content.*.md files.
     """
-    app_version = version.render_semver()
+    app_version = version.semver
     dir_name = normalize_version_dir(app_version)
     entry_id = version_dir_to_entry_id(app_version)
     directory = CHANGELOG_ROOT / dir_name
@@ -184,7 +153,7 @@ def create_raw_release_note(
         platforms=platforms,
         from_ref=from_ref,
     )
-    tag = version.render_tag()
+    tag = version.tag
     changelog_body = _run_cliff(tag, from_ref=from_ref)
 
     if directory.exists():

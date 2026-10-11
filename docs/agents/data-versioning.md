@@ -19,20 +19,24 @@ Generated data depends on external EVE FSD/resource files described by
 
 ## Canonical Version
 
-The canonical application version lives in `efa.config.toml` under `[version]`. Derived
-manifests include:
+The canonical application version lives in `efa.config.toml`: shared fields under
+`[version]` (`build`, `data_schema`) plus the per-track groups `[version.testing]`
+(`major.minor.patch-beta.num+build`) and `[version.stable]` (`major.minor.patch+build`).
+Derived manifests include:
 
 - `apps/eve-fit-assistant/pubspec.yaml`;
 - `apps/eve-fit-assistant/rust/Cargo.toml`;
 - `pyproject.toml`.
 
-Sync derived manifests with:
+Sync derived manifests with (default track `testing`; committed manifests carry the
+testing rendering):
 
 ```sh
-./x release version sync
+./x release version sync --track testing
 ```
 
-The fitting-engine submodule `packages/eve-fit-os` has independent versioning.
+The fitting-engine submodule `packages/eve-fit-os` has independent versioning. See
+`RELEASING.md` for the full dual-track version model and release flow.
 
 ## Release Notes
 

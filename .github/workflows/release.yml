@@ -46,9 +46,45 @@ jobs:
             core.info(`Found V-Release PR #${releasePr.number} with V-Tested Release`);
             core.setOutput("skip", "false");
 
+  intent:
+    name: Classify release intent
+    needs: identify
+    if: needs.identify.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    outputs:
+      track: ${{ steps.intent.outputs.track }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Python env
+        uses: $/.github/actions/setup-python-env
+
+      # The parsed config diff against the pre-push ref decides the release
+      # track (spec §5.1): the labels gate the run, the diff is the intent.
+      - name: Classify the merged version diff
+        id: intent
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # shellcheck disable=SC2016
+          intent_json=$(nix develop .#python --command bash -c \
+            'uv run x.py ci release intent --base-ref "$BEFORE"' | tail -n 1)
+          echo "Intent: $intent_json"
+          action=$(echo "$intent_json" | jq -r '.action')
+          if [ "$action" = "none" ]; then
+            reason=$(echo "$intent_json" | jq -r '.reason')
+            echo "::error::V-Release merge carries no release intent: $reason"
+            exit 1
+          fi
+          echo "track=$(echo "$intent_json" | jq -r '.track')" >> "$GITHUB_OUTPUT"
+
   release:
     name: Build and publish
-    needs: identify
+    needs: [identify, intent]
     if: needs.identify.outputs.skip == 'false'
     permissions:
       contents: write
@@ -63,3 +99,4 @@ jobs:
     uses: $/.github/workflows/_release.yml
     with:
       test_mode: false
+      track: ${{ needs.intent.outputs.track }}

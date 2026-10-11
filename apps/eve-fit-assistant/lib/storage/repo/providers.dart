@@ -585,8 +585,9 @@ IList<String> installedCheckoutIds(Ref ref) {
 // ── App release update provider ───────────────────────────────────────────────
 
 /// Compares the installed app version against the remote release index for
-/// the configured channel, reporting the full tri-state outcome (update
-/// available, up to date, or ahead of the remote release).
+/// the configured channel, reporting the full status outcome (update
+/// available, up to date, ahead of the remote release, or a track-switch
+/// downgrade that must not be installed).
 ///
 /// Returns [ReleaseCheckUnavailable] when the check cannot run locally
 /// (remote content disabled, no configured channel, or no cached release

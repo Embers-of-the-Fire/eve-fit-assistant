@@ -32,10 +32,41 @@ jobs:
           repository: ${{ github.repository }}
           head-repo-fork: ${{ github.event.pull_request.head.repo.fork }}
 
+  intent:
+    name: Classify release intent
+    needs: gate
+    if: needs.gate.outputs.app == 'true' || needs.gate.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      track: ${{ steps.intent.outputs.track }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Python env
+        uses: $/.github/actions/setup-python-env
+
+      # Resolve the track the PR's version diff implies; D-* runs without a
+      # version diff fall back to the testing track.
+      - name: Classify the version diff
+        id: intent
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # shellcheck disable=SC2016
+          intent_json=$(nix develop .#python --command bash -c \
+            'uv run x.py ci release intent --base-ref "origin/${BASE_REF}"' | tail -n 1)
+          echo "Intent: $intent_json"
+          track=$(echo "$intent_json" | jq -r 'if .action == "none" then "testing" else .track end')
+          echo "track=$track" >> "$GITHUB_OUTPUT"
+
   # Developer-triggered CI run (D-Full CI / D-CI-App Release); no web deploy.
   app-ci-test:
     name: App release CI test
-    needs: gate
+    needs: [gate, intent]
     if: needs.gate.outputs.app == 'true'
     permissions:
       contents: write
@@ -46,12 +77,13 @@ jobs:
     with:
       test_mode: true
       deploy_web: false
+      track: ${{ needs.intent.outputs.track }}
 
   # Release validation run (V-Release + V-Test); deploys the web bundle in
   # test mode and pairs with data-release-test for mark-tested.
   app-release-test:
     name: App release test
-    needs: gate
+    needs: [gate, intent]
     if: needs.gate.outputs.full == 'true'
     permissions:
       contents: write
@@ -63,6 +95,7 @@ jobs:
     secrets: inherit # zizmor: ignore[secrets-inherit]
     with:
       test_mode: true
+      track: ${{ needs.intent.outputs.track }}
 
   data-release-test:
     name: Data release test

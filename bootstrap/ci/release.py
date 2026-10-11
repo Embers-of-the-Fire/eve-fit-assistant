@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
 import tomllib
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import click
 
 from bootstrap.cli import runtime
 from bootstrap.config import ProjectVersion
+from bootstrap.config import ReleaseVersion
+from bootstrap.config import semver_precedence_key
 from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
+from bootstrap.remote.channel import Channel
 from bootstrap.utils import get_command
 
 
@@ -20,14 +25,110 @@ _VERSION_RE = re.compile(r"^version\s*:\s*(.+?)\s*$", re.MULTILINE)
 _APKSIGNER_DIGEST_RE = re.compile(r"certificate SHA-256 digest:\s*([0-9a-fA-F:]+)")
 
 
-def _version_key(version: ProjectVersion) -> tuple[object, ...]:
-    core = (version.major, version.minor, version.patch)
-    pre = (0, version.pre_label, version.pre_num) if version.is_prerelease() else (1, "", 0)
-    return (*core, *pre)
+@dataclass(frozen=True)
+class ReleaseIntent:
+    """Parsed release intent of a ``[version]`` configuration diff (spec §5.1)."""
+
+    action: str
+    track: Channel | None
+    version: ReleaseVersion | None
+    reason: str
 
 
-def _version_greater_than(a: ProjectVersion, b: ProjectVersion) -> bool:
-    return _version_key(a) > _version_key(b)
+def _triplet_of(group) -> tuple[int, int, int]:
+    return (group.major, group.minor, group.patch)
+
+
+def classify_release_intent(
+    base: ProjectVersion,
+    head: ProjectVersion,
+    *,
+    backport_branch: bool = False,
+) -> ReleaseIntent:
+    """Classify the release intent of a parsed ``[version]`` diff (spec §5.1, R1-R6).
+
+    ``base`` is the version configuration at the merge base (or the backport
+    branch's base tag), ``head`` the configuration being merged. At most one
+    release intent is permitted per merge; non-compliant diffs raise
+    ``click.ClickException``.
+    """
+    testing_changed = base.testing != head.testing
+    stable_changed = base.stable != head.stable
+
+    if not testing_changed and not stable_changed:
+        return ReleaseIntent("none", None, None, "R6: version groups unchanged")
+
+    if backport_branch and testing_changed:
+        raise click.ClickException(
+            "R4 (backport, §6.4): a backport branch diff must not touch "
+            "[version.testing]; only a [version.stable] patch increment is permitted."
+        )
+
+    if testing_changed and stable_changed:
+        if head.testing.num > 0:
+            raise click.ClickException(
+                "R5: both [version.testing] and [version.stable] changed with testing "
+                f"num = {head.testing.num} > 0; one release intent per merge."
+            )
+        if _triplet_of(head.stable) != _triplet_of(base.testing):
+            raise click.ClickException(
+                "R4 (I5): [version.stable] changed to "
+                f"{head.stable.render_semver()}, which does not match the replaced "
+                f"[version.testing] triplet {base.testing.major}.{base.testing.minor}."
+                f"{base.testing.patch}; a ship commit must promote the tested line exactly."
+            )
+        return ReleaseIntent(
+            "stable",
+            Channel.STABLE,
+            head.release(Channel.STABLE),
+            "R3: ship commit (stable := testing triplet, testing rebased with num = 0)",
+        )
+
+    if testing_changed:
+        if head.testing.num == 0:
+            return ReleaseIntent(
+                "none",
+                None,
+                None,
+                "R2: testing group rebased with num = 0 (bare rebase, no release)",
+            )
+        head_semver = head.render_semver(Channel.TESTING)
+        base_semver = base.render_semver(Channel.TESTING)
+        if semver_precedence_key(head_semver) <= semver_precedence_key(base_semver):
+            raise click.ClickException(
+                f"Testing version did not increase: {head_semver} is not semver-greater "
+                f"than base {base_semver}."
+            )
+        return ReleaseIntent(
+            "testing",
+            Channel.TESTING,
+            head.release(Channel.TESTING),
+            "R1: testing group changed, num > 0",
+        )
+
+    if not backport_branch:
+        raise click.ClickException(
+            "R4: [version.stable] changed on the mainline without a compliant ship "
+            "rebase ([version.testing] must be rebased with num = 0 in the same commit); "
+            "stable major.minor changes only via ship commits, stable patch changes "
+            "only via backport branches."
+        )
+    if (head.stable.major, head.stable.minor) != (base.stable.major, base.stable.minor):
+        raise click.ClickException(
+            "R4 (backport, §6.4): stable major/minor must not change on a backport "
+            "branch; only a patch increment of the current stable line is permitted."
+        )
+    if head.stable.patch <= base.stable.patch:
+        raise click.ClickException(
+            f"R4 (backport): stable patch must increase (base {base.stable.render_semver()}, "
+            f"head {head.stable.render_semver()})."
+        )
+    return ReleaseIntent(
+        "stable",
+        Channel.STABLE,
+        head.release(Channel.STABLE),
+        "R4 (backport): stable patch increment with testing untouched",
+    )
 
 
 def _load_version_from_config(path: Path) -> ProjectVersion:
@@ -112,12 +213,12 @@ def _read_toml_version(path: Path) -> str:
     raise click.ClickException(f"Missing 'version' key in {path}")
 
 
-def _normalize_version_for_notes(version: ProjectVersion) -> str:
-    return version.render_semver().replace(".", "-")
+def _normalize_version_for_notes(version: ProjectVersion, track: Channel) -> str:
+    return version.render_semver(track).replace(".", "-")
 
 
-def _check_notes(version: ProjectVersion) -> None:
-    normalized = _normalize_version_for_notes(version)
+def _check_notes(version: ProjectVersion, track: Channel) -> None:
+    normalized = _normalize_version_for_notes(version, track)
     notes_dir = PROJECT_ROOT / "docs" / "changelog" / normalized
     if not notes_dir.is_dir():
         raise click.ClickException(
@@ -133,9 +234,9 @@ def _check_notes(version: ProjectVersion) -> None:
         )
 
 
-def _check_tag_does_not_exist(version: ProjectVersion) -> None:
+def _check_tag_does_not_exist(version: ProjectVersion, track: Channel) -> None:
     """Fail if the expected release tag already exists in the repository."""
-    tag = version.render_tag()
+    tag = version.render_tag(track)
     try:
         result = subprocess.run(
             ["git", "rev-parse", "-q", "--verify", f"refs/tags/{tag}"],
@@ -150,12 +251,12 @@ def _check_tag_does_not_exist(version: ProjectVersion) -> None:
         raise click.ClickException(f"Tag {tag} already exists")
 
 
-def _check_note_content(version: ProjectVersion) -> None:
+def _check_note_content(version: ProjectVersion, track: Channel) -> None:
     """Validate the full content of the release note directory."""
     from bootstrap.docs.bundled_docs import _load_release_note
     from bootstrap.utils import normalize_version_dir
 
-    dir_name = normalize_version_dir(version.render_semver())
+    dir_name = normalize_version_dir(version.render_semver(track))
     notes_dir = PROJECT_ROOT / "docs" / "changelog" / dir_name
     if not notes_dir.is_dir():
         raise click.ClickException(
@@ -338,11 +439,59 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
     def release_group():
         """Release CI/CD helper commands."""
 
+    @release_group.command("intent")
+    @click.option(
+        "--base-ref",
+        required=True,
+        help="Git ref of the merge base to diff the [version] configuration against.",
+    )
+    @click.option(
+        "--backport-branch",
+        is_flag=True,
+        default=False,
+        help="Classify under backport-branch rules (§6.4) instead of mainline rules.",
+    )
+    def release_intent(base_ref: str, backport_branch: bool):
+        """Classify the release intent of the merged [version] diff (spec §5.1)."""
+        head = _load_version_from_config(PROJECT_ROOT / "efa.config.toml")
+        base = _load_version_from_git_ref(base_ref)
+        intent = classify_release_intent(base, head, backport_branch=backport_branch)
+
+        if intent.action == "none":
+            click.echo(f"Release intent: none ({intent.reason})")
+            click.echo(json.dumps({"action": "none", "reason": intent.reason}))
+            return
+
+        assert intent.track is not None and intent.version is not None
+        version = intent.version
+        click.echo(f"Release intent: {intent.action} ({intent.reason})")
+        click.echo(f"Canonical version: {version.full}")
+        click.echo(f"Expected tag: {version.tag}")
+        click.echo(
+            json.dumps(
+                {
+                    "action": intent.action,
+                    "track": intent.track.value,
+                    "semver": version.semver,
+                    "full": version.full,
+                    "tag": version.tag,
+                    "build": version.build,
+                }
+            )
+        )
+
     @release_group.command("verify")
     @click.option(
         "--base-ref",
         default=None,
         help="Git ref to compare the current version against.",
+    )
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        show_default=True,
+        help="Release track this run targets.",
     )
     @click.option(
         "--check-notes",
@@ -392,8 +541,16 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         default=False,
         help="Enable all optional preflight checks.",
     )
+    @click.option(
+        "--allow-unpublishable",
+        is_flag=True,
+        default=False,
+        help="Waive the publish-only gates (I3, changelog notes) for an unpublishable "
+        "testing version (num = 0); for test-mode pipeline runs that never publish.",
+    )
     def release_verify(
         base_ref: str | None,
+        track: str,
         check_notes: bool,
         check_tag: bool,
         check_note_content: bool,
@@ -402,6 +559,7 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         check_build: bool,
         check_tests: bool,
         check_all: bool,
+        allow_unpublishable: bool,
     ):
         """Verify that the current version is consistent and valid."""
         if check_all:
@@ -418,19 +576,43 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
 
             flutter = get_command("flutter")
             runtime.execute([flutter, "pub", "get"], "FLUTTER PUB GET")
+        channel = Channel(track)
         config_path = PROJECT_ROOT / "efa.config.toml"
         version = _load_version_from_config(config_path)
-        full = version.render_full()
-        semver = version.render_semver()
-        tag = version.render_tag()
+
+        if not version.track_order_holds():
+            raise click.ClickException(
+                "I1 violated: testing version "
+                f"{version.render_semver(Channel.TESTING)} must render strictly above "
+                f"stable version {version.render_semver(Channel.STABLE)}."
+            )
+
+        unpublishable = channel == Channel.TESTING and version.testing.num == 0
+        if unpublishable and not allow_unpublishable:
+            raise click.ClickException(
+                f"I3 violated: testing version {version.render_semver(Channel.TESTING)} "
+                "has num = 0; a version rendered with num = 0 must not be published."
+            )
+        if unpublishable:
+            click.echo(
+                "  I3 waived (--allow-unpublishable): testing version "
+                f"{version.render_semver(Channel.TESTING)} has num = 0 and must not be "
+                "published; continuing because this run never publishes."
+            )
+
+        full = version.render_full(channel)
+        semver = version.render_semver(channel)
+        triplet = version.render_triplet(channel)
+        tag = version.render_tag(channel)
 
         click.echo(f"Canonical version: {full}")
         click.echo(f"Semver version:    {semver}")
+        click.echo(f"Publishable:       {str(not unpublishable).lower()}")
 
         derived = [
             (EFA_APP_ROOT / "pubspec.yaml", full, "full"),
-            (EFA_APP_ROOT / "rust" / "Cargo.toml", semver, "semver"),
-            (PROJECT_ROOT / "pyproject.toml", semver, "semver"),
+            (EFA_APP_ROOT / "rust" / "Cargo.toml", triplet, "triplet"),
+            (PROJECT_ROOT / "pyproject.toml", triplet, "triplet"),
         ]
 
         for path, expected, kind in derived:
@@ -449,24 +631,43 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
 
         if base_ref is not None:
             base_version = _load_version_from_git_ref(base_ref)
-            if not _version_greater_than(version, base_version):
-                raise click.ClickException(
-                    f"Current version {semver} is not greater than base version "
-                    f"{base_version.render_semver()} from {base_ref}."
+            intent = classify_release_intent(base_version, version)
+            click.echo(f"  Release intent: {intent.action} ({intent.reason})")
+            if intent.action != "none":
+                if version.build <= base_version.build:
+                    raise click.ClickException(
+                        "I2 violated: build must strictly increase between "
+                        "release-triggering merges "
+                        f"(base {base_version.build}, head {version.build})."
+                    )
+                if intent.track != channel:
+                    raise click.ClickException(
+                        f"Track mismatch: the [version] diff against {base_ref} implies "
+                        f"a {intent.action} release, but this run targets the "
+                        f"{channel.value} track (--track)."
+                    )
+                click.echo(
+                    f"  Version check OK: {semver} "
+                    f"(base {base_version.render_semver(channel)} from {base_ref})"
                 )
-            click.echo(f"  Version check OK: {semver} > {base_version.render_semver()}")
 
         if check_tag:
-            _check_tag_does_not_exist(version)
+            _check_tag_does_not_exist(version, channel)
             click.echo(f"  Tag check OK: {tag} does not exist")
 
         if check_notes:
-            _check_notes(version)
-            click.echo("  Changelog notes OK")
+            if unpublishable:
+                click.echo("  Changelog notes skipped (unpublishable version)")
+            else:
+                _check_notes(version, channel)
+                click.echo("  Changelog notes OK")
 
         if check_note_content:
-            _check_note_content(version)
-            click.echo("  Release note content OK")
+            if unpublishable:
+                click.echo("  Release note content skipped (unpublishable version)")
+            else:
+                _check_note_content(version, channel)
+                click.echo("  Release note content OK")
 
         if check_submodules:
             _check_submodules()

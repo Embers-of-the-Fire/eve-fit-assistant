@@ -404,6 +404,7 @@ def make_release_index(
     android: dict[str, dict[str, object]] | None = None,
     linux: dict[str, dict[str, object]] | None = None,
     windows: dict[str, dict[str, object]] | None = None,
+    build: int | None = None,
 ) -> ReleaseIndex:
     """Build a ReleaseIndex with optional AndroidArtifacts and LinuxArtifacts.
 
@@ -414,11 +415,15 @@ def make_release_index(
     identifier is the literal release URI (e.g. "release://1.0.0/android/general").
     content_hash is the SHA-256 of the artifact file bytes.
     size is the artifact file size in bytes.
+    build is the shared build number (Android versionCode); when None the proto
+    field is left unset, matching legacy indexes.
     """
     msg = _load_pb2_type("ReleaseIndex")()
     msg.schema_version = 1
     msg.id = release_id
     msg.version = version
+    if build is not None:
+        msg.build = build
     if android:
         aa = _load_pb2_type("AndroidArtifacts")()
         aa.general.CopyFrom(_make_artifact_variant("AndroidArtifactVariant", android["general"]))

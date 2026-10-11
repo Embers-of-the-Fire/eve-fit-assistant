@@ -1,0 +1,75 @@
+name: Release Backport
+
+permissions:
+  contents: read
+
+# Backport releases (spec docs/temp/stable/bin.md §6): a short-lived
+# backport/* branch off the newest stable tag carries a cherry-picked fix, a
+# [version.stable] patch bump, and a build bump. The parsed diff against the
+# base tag is the release trigger; the production-app environment's reviewer
+# gate is the human trust boundary. Merge the branch back to dev immediately
+# after the release — the idempotency guard suppresses a duplicate release.
+on:
+  push:
+    branches: ["backport/*"]
+
+concurrency:
+  group: release-backport-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  intent:
+    name: Classify backport intent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Python env
+        uses: $/.github/actions/setup-python-env
+
+      # The diff base is the newest stable tag reachable from this branch —
+      # the tag the branch was cut from (or the previous patch of the line).
+      - name: Classify the backport diff
+        run: |
+          base_tag=$(git tag --merged HEAD --list 'releases/v*' \
+            | grep -E '^releases/v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          if [ -z "$base_tag" ]; then
+            echo "::error::No stable base tag reachable from ${GITHUB_REF_NAME}; branch from the newest stable tag."
+            exit 1
+          fi
+          echo "Base tag: $base_tag"
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            "uv run x.py ci release intent --base-ref \"${base_tag}\" --backport-branch" | tee /tmp/intent.log
+          intent_json=$(tail -n 1 /tmp/intent.log)
+          action=$(echo "$intent_json" | jq -r '.action')
+          track=$(echo "$intent_json" | jq -r '.track // empty')
+          if [ "$action" != "stable" ] || [ "$track" != "stable" ]; then
+            echo "::error::Backport branch diff does not classify as a stable patch release."
+            exit 1
+          fi
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: $/.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-backport-intent
+
+  release:
+    name: Build and publish stable patch
+    needs: intent
+    permissions:
+      contents: write
+      # _release.yml's site-deploy job declares pull-requests: write; caller
+      # grants must cover it even though deploy_web: false skips that job.
+      pull-requests: write
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+    uses: $/.github/workflows/_release.yml
+    with:
+      test_mode: false
+      deploy_web: false
+      track: stable

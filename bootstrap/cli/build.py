@@ -21,6 +21,7 @@ from bootstrap.color import styled
 from bootstrap.config import ProjectConfiguration
 from bootstrap.constant import EFA_APP_ROOT
 from bootstrap.constant import PROJECT_ROOT
+from bootstrap.remote.channel import Channel
 from bootstrap.utils import get_bin_size
 from bootstrap.utils import get_file_sha1
 
@@ -100,6 +101,7 @@ def _build_release_platform(
     platform: str,
     ver: str,
     ver_semver: str,
+    build: int,
     output: Path | None,
     release_id: str | None,
     version_min: str | None,
@@ -151,6 +153,7 @@ def _build_release_platform(
         "release": {
             "id": rel_id,
             "version": ver,
+            "build": build,
             platform: artifacts,
         },
     }
@@ -187,7 +190,7 @@ def _build_release_merge(fragments: list[Path], ver: str, output: Path | None, r
                 merged_metadata[key] = value
 
         for pkey, pdict in rel.items():
-            if pkey in ("id", "version"):
+            if pkey in ("id", "version", "build"):
                 merged_release.setdefault(pkey, pdict)
             elif isinstance(pdict, dict):
                 if pkey in merged_release:
@@ -519,6 +522,12 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     @click.option("--version-min", default=None, help="Override minimum version string.")
     @click.option("--version-max", default=None, help="Override maximum version string.")
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the version for.",
+    )
     def build_apk_cmd(
         clean: bool,
         flavor: str | None,
@@ -527,11 +536,13 @@ def register_build_commands(cli_group: click.Group) -> None:
         release_id: str | None,
         version_min: str | None,
         version_max: str | None,
+        track: str,
     ):
         """Build Android APKs with versioned filenames and emit a release fragment."""
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
-        ver = version.render_full()
+        rel = version.release(Channel(track))
+        ver = rel.full
         output_dir = root / "apk" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
         apk_source = EFA_APP_ROOT / "build" / "app" / "outputs" / "flutter-apk"
@@ -581,7 +592,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         _build_release_platform(
             platform="android",
             ver=ver,
-            ver_semver=version.render_semver(),
+            ver_semver=rel.semver,
+            build=rel.build,
             output=output,
             release_id=release_id,
             version_min=version_min,
@@ -625,6 +637,12 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     @click.option("--version-min", default=None, help="Override minimum version string.")
     @click.option("--version-max", default=None, help="Override maximum version string.")
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the version for.",
+    )
     def build_linux_cmd(
         clean: bool,
         skip_flutter: bool,
@@ -634,6 +652,7 @@ def register_build_commands(cli_group: click.Group) -> None:
         release_id: str | None,
         version_min: str | None,
         version_max: str | None,
+        track: str,
     ):
         """Build the Linux release variants (AppImage and/or native zip)."""
         if clean and skip_flutter:
@@ -644,7 +663,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         selected = set(variants) if variants else {"appimage", "native"}
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
-        ver = version.render_full()
+        rel = version.release(Channel(track))
+        ver = rel.full
         output_dir = root / "linux" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -691,7 +711,7 @@ def register_build_commands(cli_group: click.Group) -> None:
             pack_appimage(
                 appdir=appdir,
                 output_dir=output_dir,
-                version=version,
+                version=rel,
                 appimagetool=get_command("appimagetool"),
                 dry_run=runtime.is_dry_run(),
             )
@@ -699,7 +719,7 @@ def register_build_commands(cli_group: click.Group) -> None:
             pack_native_zip(
                 bundle_dir=bundle_dir,
                 output_dir=output_dir,
-                version=version,
+                version=rel,
                 dry_run=runtime.is_dry_run(),
             )
 
@@ -713,7 +733,8 @@ def register_build_commands(cli_group: click.Group) -> None:
             _build_release_platform(
                 platform="linux",
                 ver=ver,
-                ver_semver=version.render_semver(),
+                ver_semver=rel.semver,
+                build=rel.build,
                 output=output,
                 release_id=release_id,
                 version_min=version_min,
@@ -757,6 +778,12 @@ def register_build_commands(cli_group: click.Group) -> None:
     )
     @click.option("--version-min", default=None, help="Override minimum version string.")
     @click.option("--version-max", default=None, help="Override maximum version string.")
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the version for.",
+    )
     def build_windows_cmd(
         clean: bool,
         skip_flutter: bool,
@@ -766,6 +793,7 @@ def register_build_commands(cli_group: click.Group) -> None:
         release_id: str | None,
         version_min: str | None,
         version_max: str | None,
+        track: str,
     ):
         """Build the Windows release variants (native zip and/or MSI installer)."""
         if sys.platform != "win32":
@@ -778,7 +806,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         selected = set(variants) if variants else {"native", "installer"}
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
-        ver = version.render_full()
+        rel = version.release(Channel(track))
+        ver = rel.full
         output_dir = root / "windows" / ver
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -818,14 +847,14 @@ def register_build_commands(cli_group: click.Group) -> None:
             pack_native_zip(
                 bundle_dir=bundle_dir,
                 output_dir=output_dir,
-                version=version,
+                version=rel,
                 dry_run=runtime.is_dry_run(),
             )
         if "installer" in selected:
             pack_msi(
                 bundle_dir=bundle_dir,
                 output_dir=output_dir,
-                version=version,
+                version=rel,
                 wix=get_command("wix"),
                 dry_run=runtime.is_dry_run(),
             )
@@ -840,7 +869,8 @@ def register_build_commands(cli_group: click.Group) -> None:
             _build_release_platform(
                 platform="windows",
                 ver=ver,
-                ver_semver=version.render_semver(),
+                ver_semver=rel.semver,
+                build=rel.build,
                 output=output,
                 release_id=release_id,
                 version_min=version_min,
@@ -870,15 +900,22 @@ def register_build_commands(cli_group: click.Group) -> None:
         default=None,
         help="Output file path (default: <root>/merge/<ver>.json, or stdout for '-').",
     )
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the version for.",
+    )
     def build_release_cmd(
         root: Path,
         fragments: list[Path],
         output: Path | None,
+        track: str,
     ):
         """Merge release registry fragments into a single release JSON."""
         ProjectConfiguration.ensure_loaded()
         version = bootstrap.config.CONFIGURATION.version
-        ver = version.render_full()
+        ver = version.release(Channel(track)).full
 
         _build_release_merge(list(fragments), ver, output, root)
 

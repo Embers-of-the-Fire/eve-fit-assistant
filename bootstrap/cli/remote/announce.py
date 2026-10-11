@@ -16,7 +16,6 @@ import bootstrap.config
 from bootstrap.cli.remote.helpers import get_announce_workspace
 from bootstrap.cli.remote.helpers import resolve_announce_remote_target
 from bootstrap.color import styled
-from bootstrap.config import ProjectVersion
 from bootstrap.docs.announcements_remote import ACTIVE_KEY
 from bootstrap.docs.announcements_remote import DOCUMENT_ID_PATTERN
 from bootstrap.docs.announcements_remote import AnnouncementEntry
@@ -28,9 +27,10 @@ from bootstrap.docs.announcements_remote import run_preflight_validation
 from bootstrap.docs.document_parser import parse_locale_document
 from bootstrap.release.relnote import CHANGELOG_ROOT
 from bootstrap.release.relnote import normalize_version_dir
-from bootstrap.release.relnote import parse_version_override
+from bootstrap.release.relnote import parse_release_version
 from bootstrap.release.relnote import split_csv
 from bootstrap.release.relnote import version_dir_to_entry_id
+from bootstrap.remote.channel import Channel
 
 
 def _load_spec_or_defaults(directory: Path) -> dict[str, object]:
@@ -785,6 +785,12 @@ def register_remote_announce(remote: click.Group) -> None:
         help="Override the app version (semver, e.g. 0.1.0-beta.7).",
     )
     @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the configured version for (ignored when --version is given).",
+    )
+    @click.option(
         "--directory",
         type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True, path_type=Path),
         default=None,
@@ -812,6 +818,7 @@ def register_remote_announce(remote: click.Group) -> None:
     )
     def remote_announce_add_release_note(
         version_override: str | None,
+        track: str,
         directory: Path | None,
         channels: str | None,
         platforms: str | None,
@@ -826,12 +833,12 @@ def register_remote_announce(remote: click.Group) -> None:
         ``remote announce publish``.
         """
         if version_override is not None:
-            version = ProjectVersion.model_validate(parse_version_override(version_override))
+            version = parse_release_version(version_override)
         else:
             bootstrap.config.ProjectConfiguration.ensure_loaded()
-            version = bootstrap.config.CONFIGURATION.version
+            version = bootstrap.config.CONFIGURATION.version.release(Channel(track))
 
-        app_version = version.render_semver()
+        app_version = version.semver
         dir_name = normalize_version_dir(app_version)
         entry_id = version_dir_to_entry_id(app_version)
 
@@ -879,7 +886,7 @@ def register_remote_announce(remote: click.Group) -> None:
             or spec_published_at
             or _datetime.now(UTC).isoformat().replace("+00:00", "Z")
         )
-        effective_channels = split_csv(channels) or spec.get("channels") or ["testing"]
+        effective_channels = split_csv(channels) or spec.get("channels") or version.default_channels
         platforms_parsed = split_csv(platforms)
         effective_platforms = (
             platforms_parsed if platforms_parsed is not None else spec.get("platforms") or []
