@@ -1,9 +1,18 @@
 """Baked ship model (GLB) generator.
 
-Converts every ship type's SOF appearance into a self-contained GLB via the
+Converts every ship type's SOF appearance into self-contained GLBs via the
 ``tools/carbon-gr2-to-glb`` converter (Node.js). All asset acquisition goes
 through the workspace ``ResourceManager`` (resfileindex-backed, per-server CDN
 URLs from the descriptor); the converter itself never touches the network.
+
+Two variants are emitted per ship under
+``static/models/ships/<typeID>.<variant>.glb`` (see
+:class:`~bootstrap.data.workspace.generate.paths.ShipModelVariant`):
+
+- ``full`` — the textured model: WebP PBR texture set + meshopt geometry.
+- ``base`` — the geometry-only model: same mesh, factor-only materials, no
+  textures. Mobile clients use it as the cheap default; both are lazy
+  (NON_FORCE) blobs fetched on first access.
 
 The conversion is a two-phase batch protocol (see ``src/batch.js`` in the
 converter):
@@ -11,7 +20,7 @@ converter):
 1. ``--batch-resolve`` maps each ship DNA to its authoritative ``res:/``
    geometry/texture paths against ``data.black`` (loaded once per run).
 2. The reported files are downloaded/staged through the ``ResourceManager``
-   cache, then ``--batch`` converts everything offline.
+   cache, then ``--batch`` converts everything offline (once per variant).
 
 Skins (material sets) are intentionally not baked yet; the manifest schema
 carries per-job DNA strings, so skin jobs can be added without converter
@@ -27,6 +36,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from bootstrap.constant import GR2_TO_GLB_ROOT
+from bootstrap.data.workspace.generate.paths import ShipModelVariant
 from bootstrap.log import error
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -195,38 +205,53 @@ async def generate(data: GeneratorDatasource):
                 "dna": job["dna"],
                 "gr2": str(staged[geometry]),
                 "textures": textures,
-                "out": str(data.paths.get_ship_model_path(type_id)),
             }
         )
 
-    convert_manifest = work_dir / "manifest_convert.json"
-    convert_manifest.write_text(
-        json.dumps(
-            {
-                "dataBlack": str(data_black.local_path),
-                "texture": {"format": "webp"},
-                "geometry": "meshopt",
-                "jobs": convert_jobs,
-            }
-        ),
-        encoding="utf-8",
-    )
-    info(f"Converting {len(convert_jobs)} ship models (phase 2: batch)...")
-    _run_converter(["--batch", str(convert_manifest)], "MODEL CONVERT")
+    for variant, texture in (
+        (ShipModelVariant.FULL, {"format": "webp"}),
+        (ShipModelVariant.BASE, {"format": "none"}),
+    ):
+        convert_manifest = work_dir / f"manifest_convert_{variant}.json"
+        convert_manifest.write_text(
+            json.dumps(
+                {
+                    "dataBlack": str(data_black.local_path),
+                    "texture": texture,
+                    "geometry": "meshopt",
+                    "jobs": [
+                        {
+                            **job,
+                            "out": str(data.paths.get_ship_model_path(int(job["id"]), variant)),
+                        }
+                        for job in convert_jobs
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        info(f"Converting {len(convert_jobs)} ship models ({variant}, phase 2: batch)...")
+        _run_converter(["--batch", str(convert_manifest)], f"MODEL CONVERT ({variant})")
 
-    failures = [
-        job["id"]
-        for job in convert_jobs
-        if not data.paths.get_ship_model_path(int(job["id"])).is_file()
-    ]
-    if failures:
-        error(f"Model conversion failed for {len(failures)} type(s): {', '.join(failures)}")
-        raise RuntimeError(f"ship model conversion failed for {len(failures)} type(s)")
+        failures = [
+            job["id"]
+            for job in convert_jobs
+            if not data.paths.get_ship_model_path(int(job["id"]), variant).is_file()
+        ]
+        if failures:
+            error(
+                f"Model conversion ({variant}) failed for "
+                f"{len(failures)} type(s): {', '.join(failures)}"
+            )
+            raise RuntimeError(
+                f"ship model conversion ({variant}) failed for {len(failures)} type(s)"
+            )
 
     for job in convert_jobs:
         aliases = dna_aliases[job["dna"]]
-        source = data.paths.get_ship_model_path(aliases[0])
-        for alias_id in aliases[1:]:
-            shutil.copy2(source, data.paths.get_ship_model_path(alias_id))
+        for variant in ShipModelVariant:
+            source = data.paths.get_ship_model_path(aliases[0], variant)
+            for alias_id in aliases[1:]:
+                shutil.copy2(source, data.paths.get_ship_model_path(alias_id, variant))
 
-    info(f"Generated {len(jobs)} ship models ({len(convert_jobs)} unique DNAs).")
+    info(f"Generated {len(jobs)} ship models x2 variants ({len(convert_jobs)} unique DNAs).")
