@@ -221,13 +221,27 @@ async fn resolve_icon_urls_inner(
     let registry: ChannelRegistry = fetch_json(&registry_url, HEAD_CACHE_TTL_S)
         .await
         .ok_or_else(|| format!("channel registry {registry_url}: fetch/parse failed"))?;
-    let head_url = catalog_url(
-        &origin,
-        &format!("channels/heads/{}/metadata.json", select_channel(&registry)),
-    );
-    let head: HeadMeta = fetch_json(&head_url, HEAD_CACHE_TTL_S)
-        .await
-        .ok_or_else(|| format!("head metadata {head_url}: fetch/parse failed"))?;
+    // Retry `testing` when the selected head is unavailable: a legacy
+    // registry with an empty `defaultChannel` selects `stable`, which may not
+    // exist yet while the `testing` head does.
+    let selected = select_channel(&registry);
+    let mut candidates = vec![selected];
+    if selected != "testing" {
+        candidates.push("testing");
+    }
+    let mut head: Option<HeadMeta> = None;
+    let mut head_err = String::new();
+    for channel in candidates {
+        let head_url = catalog_url(&origin, &format!("channels/heads/{channel}/metadata.json"));
+        match fetch_json(&head_url, HEAD_CACHE_TTL_S).await {
+            Some(meta) => {
+                head = Some(meta);
+                break;
+            }
+            None => head_err = format!("head metadata {head_url}: fetch/parse failed"),
+        }
+    }
+    let head = head.ok_or(head_err)?;
     let gen_url = catalog_url(
         &origin,
         &format!("channels/refs/{}/resources.pb2", head.generation_hash),
