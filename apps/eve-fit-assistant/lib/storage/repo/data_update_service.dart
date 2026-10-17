@@ -237,6 +237,12 @@ class DataUpdateService {
   /// lag, not a rewind — never offer a silent downgrade. An active hash that
   /// is absent from the history, or whose age is unknown, re-binds to the
   /// resolved target.
+  ///
+  /// When the active hash is listed in the history, that entry's timestamp is
+  /// the admission time for this channel; [CheckoutRegistryEntry.promotedAt]
+  /// is only a fallback for when the history is unavailable (it is null on
+  /// pre-cadence installs and may hold another channel's timestamp after a
+  /// re-bind).
   static bool _shouldOfferUpdate(
     CheckoutRegistryEntry checkout,
     _ResolvedTarget target,
@@ -244,14 +250,20 @@ class DataUpdateService {
   ) {
     if (target.snapshotHash == checkout.resourceSnapshotHash) return false;
 
+    String? activeTimestamp = checkout.promotedAt;
     if (historyEntries != null && historyEntries.isNotEmpty) {
-      final activeKnown = historyEntries.any(
-        (s) => s.snapshotHash == checkout.resourceSnapshotHash,
-      );
-      if (!activeKnown) return true;
+      ServerHistory_Snapshot? activeEntry;
+      for (final s in historyEntries) {
+        if (s.snapshotHash == checkout.resourceSnapshotHash) {
+          activeEntry = s;
+          break;
+        }
+      }
+      if (activeEntry == null) return true;
+      activeTimestamp = activeEntry.timestamp;
     }
 
-    final activeAt = DateTime.tryParse(checkout.promotedAt ?? "")?.toUtc();
+    final activeAt = DateTime.tryParse(activeTimestamp ?? "")?.toUtc();
     final targetAt = DateTime.tryParse(target.promotedAt ?? "")?.toUtc();
     if (activeAt == null || targetAt == null) return true;
     return targetAt.isAfter(activeAt);

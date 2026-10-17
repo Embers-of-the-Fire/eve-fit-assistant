@@ -892,6 +892,23 @@ void main() {
       expect(result, isA<DataUpdateCheckResultAvailable>());
     });
 
+    test("pre-cadence install on the head snapshot is up to date", () async {
+      final (oldTs, newTs) = boundaryTimestamps();
+      stubStableChannel(historyFor(oldTs, newTs));
+      stubRegistry({
+        "checkout-1": CheckoutRegistryEntry(
+          channel: "stable",
+          serverId: "tq",
+          resourceSnapshotHash: newHash,
+          name: IMap(const {"en": "Test"}),
+          createdAt: newTs,
+        ),
+      });
+
+      final result = await makeService(cadence: DataCadence.weekly).checkForCheckout("checkout-1");
+      expect(result, isA<DataUpdateCheckResultUpToDate>());
+    });
+
     test("cadence tier without promoted history fails retryably", () async {
       stubRegistry({"checkout-1": testEntry(channel: "stable")});
       when(
