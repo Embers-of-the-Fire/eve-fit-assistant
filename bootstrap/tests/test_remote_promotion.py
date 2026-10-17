@@ -211,7 +211,6 @@ class TestPromoteCore:
             {"alpha": fixture.snap_a2, "beta": snap_b2},
             fixture.gen_t2,
             "2026-06-03T00:00:00Z",
-            builds={"beta": "9.9.9"},
         )
         fixture.mgr.push("testing", gen_t3)
 
@@ -224,10 +223,10 @@ class TestPromoteCore:
             "alpha": fixture.snap_a2,
             "beta": snap_b2,
         }
-        # ServerIndex: admitted server entry copied from the source generation.
+        # ServerIndex: admitted server entry rebuilt from its snapshot metadata.
         index = {e.server_id: e.game_build for e in gen.server_index.servers}
-        assert index["beta"] == "9.9.9"
-        assert index["alpha"] == "1.0.0"
+        assert index["beta"] == "build-b2"
+        assert index["alpha"] == "build-a2"
         # History: alpha gained no entry; beta prepended the admitted snapshot.
         history = _history_map(_load_history(fixture.root, second.generation_hash))
         assert [h for h, _ in history["alpha"]] == [fixture.snap_a2]
@@ -242,6 +241,48 @@ class TestPromoteCore:
             allow_missing_head=True,
         )
         assert result.admitted == {"alpha": fixture.snap_a1}
+
+    def test_historical_checkout_index_matches_admitted_snapshot(self, fixture: _Fixture) -> None:
+        result = fixture.mgr.promote(
+            candidates={"alpha": fixture.snap_a1},
+            actor="tester",
+            allow_missing_head=True,
+        )
+
+        gen = fixture.mgr.load_generation(result.generation_hash)
+        index = {e.server_id: e for e in gen.server_index.servers}
+        assert index["alpha"].game_build == "build-a1"
+        assert index["alpha"].game_version == "va1"
+
+    def test_history_only_server_gets_index_entry(self, fixture: _Fixture) -> None:
+        snap_g1 = _make_resource_snapshot(fixture.snap_store, fixture.blob_store, "gamma", "g1")
+        gen_t3 = _create_generation(
+            fixture.gen_store,
+            {"alpha": fixture.snap_a2, "beta": fixture.snap_b1, "gamma": snap_g1},
+            fixture.gen_t2,
+            "2026-06-03T00:00:00Z",
+        )
+        fixture.mgr.push("testing", gen_t3)
+        # Advance testing head so gamma survives only in history.
+        gen_t4 = _create_generation(
+            fixture.gen_store,
+            {"alpha": fixture.snap_a2, "beta": fixture.snap_b1},
+            gen_t3,
+            "2026-06-04T00:00:00Z",
+        )
+        fixture.mgr.push("testing", gen_t4)
+
+        result = fixture.mgr.promote(
+            candidates={"gamma": snap_g1},
+            actor="tester",
+            allow_missing_head=True,
+        )
+
+        gen = fixture.mgr.load_generation(result.generation_hash)
+        assert {e.server_id: e.snapshot_hash for e in gen.resources.entries} == {"gamma": snap_g1}
+        index = {e.server_id: e for e in gen.server_index.servers}
+        assert index["gamma"].game_build == "build-g1"
+        assert index["gamma"].game_version == "vg1"
 
     def test_unknown_checkout_rejected(self, fixture: _Fixture) -> None:
         with pytest.raises(PromotionError, match="Unknown candidate"):

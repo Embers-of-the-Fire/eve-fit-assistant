@@ -173,7 +173,7 @@ def promote(
         return result
 
     # 5. Build the overlaid generation data.
-    server_index = _overlay_server_index(source_gen, parent_gen, admitted)
+    server_index = _overlay_server_index(mgr, parent_gen, admitted)
     resources = _overlay_resources(parent_gen, admitted)
     release_pointer = _inherited_release_pointer(parent_gen)
 
@@ -216,8 +216,14 @@ def _valid_source_checkouts(root: Path, source_gen) -> dict[str, set[str]]:
     return valid
 
 
-def _overlay_server_index(source_gen, parent_gen, admitted: dict[str, str]):
-    """Parent's ServerIndex with admitted servers' entries taken from source."""
+def _overlay_server_index(mgr: SessionManager, parent_gen, admitted: dict[str, str]):
+    """Parent's ServerIndex with admitted servers' entries rebuilt from snapshots.
+
+    Each admitted entry describes the admitted checkout, not the source head:
+    historical checkouts (admitted via the source history) carry their own
+    gameBuild/gameVersion, and servers absent from the source head still get
+    an entry.
+    """
     from bootstrap.remote.models import ServerIndex
 
     merged = ServerIndex()
@@ -226,14 +232,30 @@ def _overlay_server_index(source_gen, parent_gen, admitted: dict[str, str]):
         merged.CopyFrom(parent_gen.server_index)
 
     existing = {entry.server_id: idx for idx, entry in enumerate(merged.servers)}
-    for entry in source_gen.server_index.servers:
-        if entry.server_id not in admitted:
-            continue
-        if entry.server_id in existing:
-            merged.servers[existing[entry.server_id]].CopyFrom(entry)
-        else:
-            merged.servers.add().CopyFrom(entry)
+    for server, checkout in admitted.items():
+        meta, _ = mgr.snap_store.load_resource_snapshot(checkout)
+        entry = merged.servers[existing[server]] if server in existing else merged.servers.add()
+        _apply_snapshot_metadata(entry, meta)
     return merged
+
+
+def _apply_snapshot_metadata(entry, meta) -> None:
+    """Rebuild a ServerIndex entry from a snapshot's ResourceSnapshotMetadata."""
+    entry.server_id = meta.server_id
+    entry.game_build = meta.game_build
+    entry.game_version = meta.game_version
+    entry.ClearField("region")
+    entry.ClearField("sync")
+    entry.ClearField("branch")
+    if meta.game_region:
+        entry.region = meta.game_region
+    if meta.game_sync:
+        entry.sync = meta.game_sync
+    if meta.game_branch:
+        entry.branch = meta.game_branch
+    entry.name.clear()
+    for locale, display in (meta.name or {"en": meta.server_id}).items():
+        entry.name[locale] = display
 
 
 def _overlay_resources(parent_gen, admitted: dict[str, str]):
