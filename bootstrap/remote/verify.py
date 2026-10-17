@@ -106,7 +106,7 @@ class Verifier:
                 # so the source channel's head and history are also valid referents.
                 known |= self._known_channel_checkouts(str(Channel.TESTING))
             for entry in suppressions.suppressions:
-                if entry.checkout not in known:
+                if (entry.server, entry.checkout) not in known:
                     issues.append(
                         Issue(
                             entity=f"{entry.server}:{entry.checkout[:12]}...",
@@ -122,11 +122,12 @@ class Verifier:
 
         return issues
 
-    def _known_channel_checkouts(self, channel_name: str) -> set[str]:
-        """Snapshot hashes referenced by the channel head generation or its history."""
+    def _known_channel_checkouts(self, channel_name: str) -> set[tuple[str, str]]:
+        """(server_id, snapshot_hash) pairs referenced by the channel head
+        generation or its history."""
         from bootstrap.remote.models import ServerHistory
 
-        known: set[str] = set()
+        known: set[tuple[str, str]] = set()
         try:
             head = self.head_store.get_head(channel_name)
         except (FileNotFoundError, json.JSONDecodeError, ValidationError):
@@ -137,7 +138,7 @@ class Verifier:
         try:
             gen = self.gen_store.load(head.generation_hash)
             for entry in gen.resources.entries:
-                known.add(entry.snapshot_hash)
+                known.add((entry.server_id, entry.snapshot_hash))
         except (FileNotFoundError, json.JSONDecodeError, ValidationError):
             pass
         history_path = gen_dir / "history.pb2"
@@ -146,7 +147,7 @@ class Verifier:
                 history = _models_read_pb2(history_path, ServerHistory)
                 for server in history.servers:
                     for snap in server.snapshots:
-                        known.add(snap.snapshot_hash)
+                        known.add((server.server_id, snap.snapshot_hash))
             except Exception:  # noqa: BLE001, S110
                 pass
         return known
