@@ -25,6 +25,7 @@ from bootstrap.remote.gc import GarbageCollector
 from bootstrap.remote.generation import GenerationStore
 from bootstrap.remote.hash import content_hash
 from bootstrap.remote.hash import ident_hash
+from bootstrap.remote.models import ChannelHeadMetadata
 from bootstrap.remote.models import GenerationMetadata
 from bootstrap.remote.models import GenerationPointer
 from bootstrap.remote.models import GenerationResources
@@ -35,8 +36,10 @@ from bootstrap.remote.models import SuppressionEntry
 from bootstrap.remote.models import SuppressionList
 from bootstrap.remote.models import make_resource_index
 from bootstrap.remote.models import read_pb2
+from bootstrap.remote.models import write_json_atomic
 from bootstrap.remote.paths import channel_head_dir
 from bootstrap.remote.paths import generation_dir
+from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import resource_snapshot_dir
 from bootstrap.remote.promote import PromotionError
@@ -465,6 +468,64 @@ class TestSuppressionStore:
         assert len(loaded.suppressions) == 1
         assert loaded.suppressions[0].server == "alpha"
         assert loaded.suppressions[0].checkout == "a" * 64
+
+
+class TestBootstrapChannelRegistration:
+    """Bootstrap promotion into an unregistered stable channel."""
+
+    def _testing_only_root(self, root: Path) -> tuple[SessionManager, dict[str, str]]:
+        mgr = SessionManager(root)
+        snap_store = SnapshotStore(root)
+        blob_store = BlobStore(root)
+        gen_store = GenerationStore(root)
+        mgr.ensure_channel("testing")
+
+        snap = _make_resource_snapshot(snap_store, blob_store, "alpha", "a1")
+        gen = _create_generation(gen_store, {"alpha": snap}, None, "2026-06-01T00:00:00Z")
+        mgr.push("testing", gen)
+        return mgr, {"alpha": snap}
+
+    def test_bootstrap_promotion_registers_stable_channel(self, tmp_root: Path) -> None:
+        mgr, candidates = self._testing_only_root(tmp_root)
+        assert "stable" not in mgr.get_channels().channels
+
+        result = mgr.promote(candidates=candidates, actor="tester", allow_missing_head=True)
+        assert not result.noop
+
+        registry = mgr.get_channels()
+        assert "stable" in registry.channels
+        assert registry.channels["stable"].label == {"en": "Stable", "zh": "稳定版"}
+
+        head = mgr.get_head("stable")
+        assert head.generation_hash == result.generation_hash
+        assert head.label == {"en": "Stable", "zh": "稳定版"}
+
+        mgr.set_default_channel("stable")
+        assert mgr.get_channels().default_channel == "stable"
+
+    def test_bootstrap_promotion_repairs_unlabeled_head(self, tmp_root: Path) -> None:
+        mgr, candidates = self._testing_only_root(tmp_root)
+        head_dir = channel_head_dir(tmp_root, "stable")
+        head_dir.mkdir(parents=True)
+        write_json_atomic(
+            head_metadata_path(tmp_root, "stable"),
+            ChannelHeadMetadata(generationHash="", label={}),
+        )
+
+        result = mgr.promote(candidates=candidates, actor="tester", allow_missing_head=True)
+        assert not result.noop
+
+        registry = mgr.get_channels()
+        assert registry.channels["stable"].label == {"en": "Stable", "zh": "稳定版"}
+        assert mgr.get_head("stable").label == {"en": "Stable", "zh": "稳定版"}
+
+    def test_cli_bootstrap_promotion_registers_stable_channel(self, tmp_root: Path) -> None:
+        mgr, _ = self._testing_only_root(tmp_root)
+        result = _invoke(
+            tmp_root, "remote", "promote", "--all", "--test-mode", "--allow-missing-head"
+        )
+        assert result.exit_code == 0, result.output
+        assert "stable" in mgr.get_channels().channels
 
 
 def _make_cli() -> click.Group:

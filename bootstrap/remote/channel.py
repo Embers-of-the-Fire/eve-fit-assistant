@@ -16,3 +16,10 @@ from enum import StrEnum
 class Channel(StrEnum):
     TESTING = "testing"
     STABLE = "stable"
+
+
+#: Canonical bilingual display labels for the known channels.
+CHANNEL_LABELS: dict[str, dict[str, str]] = {
+    Channel.TESTING.value: {"en": "Testing", "zh": "测试版"},
+    Channel.STABLE.value: {"en": "Stable", "zh": "稳定版"},
+}

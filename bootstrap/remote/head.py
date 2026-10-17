@@ -51,10 +51,17 @@ class ChannelHeadStore:
         write_json_atomic(channel_registry_path(self.root), registry)
 
     def ensure_channel(self, name: str, label: dict[str, str] | None = None) -> None:
-        """Ensure a channel exists in the registry and its head directory is created."""
+        """Ensure a channel exists in the registry and its head directory is created.
+
+        Heads left behind by an unregistered bootstrap promotion (empty label)
+        are repaired in place when a label is supplied.
+        """
         registry = self.get_registry()
         if name not in registry.channels:
             registry.channels[name] = ChannelInfo(label=label or {"en": name})
+            self._save_registry(registry)
+        elif label and not registry.channels[name].label:
+            registry.channels[name].label = label
             self._save_registry(registry)
 
         head_dir = channel_head_dir(self.root, name)
@@ -64,6 +71,11 @@ class ChannelHeadStore:
         if not meta_path.is_file():
             meta = ChannelHeadMetadata(generationHash="", label=label or {"en": name})
             write_json_atomic(meta_path, meta)
+        elif label:
+            existing = ChannelHeadMetadata.model_validate(read_json(meta_path))
+            if not existing.label:
+                existing.label = label
+                write_json_atomic(meta_path, existing)
 
         reflog_path = head_reflog_path(self.root, name)
         if not reflog_path.is_file():

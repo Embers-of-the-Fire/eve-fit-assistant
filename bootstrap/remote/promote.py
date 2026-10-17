@@ -192,6 +192,7 @@ def promote(
         resources_msg=resources,
         release_pointer=release_pointer,
     )
+    mgr.ensure_channel(str(target))
     mgr.head_store.push(str(target), gen_hash)
 
     result.generation_hash = gen_hash

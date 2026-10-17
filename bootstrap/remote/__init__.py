@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from bootstrap.remote.blob import BlobStore
+from bootstrap.remote.channel import CHANNEL_LABELS
 from bootstrap.remote.channel import Channel as Channel
 from bootstrap.remote.gc import GarbageCollector
 from bootstrap.remote.generation import GenerationStore
@@ -67,7 +68,7 @@ class SessionManager:
     # --- Channel registry ----------------------------------------------------
 
     def ensure_channel(self, name: str, label: dict[str, str] | None = None) -> None:
-        self.head_store.ensure_channel(name, label)
+        self.head_store.ensure_channel(name, label or CHANNEL_LABELS.get(name))
 
     def set_default_channel(self, name: str) -> None:
         self.head_store.set_default(name)
