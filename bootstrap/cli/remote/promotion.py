@@ -70,6 +70,58 @@ def _print_plan(result: PromoteResult) -> None:
         click.echo(f"  skip (suppressed)  {server}: {checkout[:16]}...")
 
 
+def _guard_stable_head_fresh(
+    mgr: SessionManager,
+    target: str,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+    alias_name: str | None,
+    workers: int,
+    op: str,
+) -> None:
+    """Sync the stable head from the remote; refuse to mutate a stale cache.
+
+    The hourly promote workflow advances the stable head independently of any
+    operator's local cache, and publishing uploads local head files. Refresh
+    the head first; if the local state had drifted from the remote, refuse so
+    the mutation is never built on — or published over — a stale head.
+    """
+    channel = str(Channel.STABLE)
+    resolved = _resolve_remote_target(
+        target, endpoint, bucket, access_key, secret_key, alias_name, op
+    )
+    endpoint_r, bucket_r, access_r, secret_r, alias_r = resolved
+    syncer = mgr.make_syncer(
+        endpoint=endpoint_r,
+        bucket=bucket_r,
+        access_key=access_r,
+        secret_key=secret_r,
+        alias_name=alias_r,
+        workers=workers,
+    )
+
+    try:
+        before_hash = mgr.get_head(channel).generation_hash
+    except FileNotFoundError:
+        before_hash = ""
+    before_suppressions = mgr.get_suppressions(channel)
+
+    result = syncer.sync_head(channel)
+    if not result.head_meta:
+        return
+
+    after_hash = mgr.get_head(channel).generation_hash
+    after_suppressions = mgr.get_suppressions(channel)
+    if before_hash != after_hash or before_suppressions != after_suppressions:
+        raise click.ClickException(
+            f"Local {channel} head was stale "
+            f"(local {before_hash[:16] or '<none>'}, remote {after_hash[:16]}). "
+            "Refreshed from remote; re-run the command against the updated state."
+        )
+
+
 def _publish_and_verify(
     mgr: SessionManager,
     channel: str,
@@ -81,8 +133,10 @@ def _publish_and_verify(
     secret_key: str | None,
     alias_name: str | None,
     workers: int,
+    *,
+    suppressions_only: bool = False,
 ) -> None:
-    """Publish the head (and generation when given), sync back, assert match."""
+    """Publish the head (or only its suppression list), sync back, assert match."""
     resolved = _resolve_remote_target(
         target, endpoint, bucket, access_key, secret_key, alias_name, "promote"
     )
@@ -96,9 +150,13 @@ def _publish_and_verify(
         alias_name=alias_r,
         workers=workers,
     )
-    if committed_hash:
-        pub.publish_generation(channel, committed_hash)
-    pub.publish_head(channel)
+    expected_suppressions = mgr.get_suppressions(channel) if suppressions_only else None
+    if suppressions_only:
+        pub.publish_suppressions(channel)
+    else:
+        if committed_hash:
+            pub.publish_generation(channel, committed_hash)
+        pub.publish_head(channel)
 
     syncer = mgr.make_syncer(
         endpoint=endpoint_r,
@@ -108,7 +166,10 @@ def _publish_and_verify(
         alias_name=alias_r,
         workers=workers,
     )
-    sync_result = syncer.sync_channel(channel, max_depth=1)
+    if suppressions_only:
+        sync_result = syncer.sync_head(channel)
+    else:
+        sync_result = syncer.sync_channel(channel, max_depth=1)
     if not sync_result.head_meta:
         raise click.ClickException(
             f"Channel head not found on remote for {channel!r} after publish."
@@ -120,6 +181,13 @@ def _publish_and_verify(
             f"Remote head verification failed: committed={committed_hash[:16]}..., "
             f"synced={synced_hash[:16]}..."
         )
+    if expected_suppressions is not None:
+        synced_suppressions = mgr.get_suppressions(channel)
+        if synced_suppressions != expected_suppressions:
+            raise click.ClickException(
+                f"Remote suppressions verification failed for {channel!r}: "
+                "synced list does not match the published list."
+            )
     click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Remote head verified: {synced_hash[:16]}..."))
 
 
@@ -249,6 +317,19 @@ def register_remote_promotion(remote: click.Group) -> None:
             click.echo("Dry run: nothing written.")
             return
 
+        if not test_mode:
+            _guard_stable_head_fresh(
+                mgr,
+                target,
+                endpoint,
+                bucket,
+                access_key,
+                secret_key,
+                alias_name,
+                workers,
+                "promote",
+            )
+
         try:
             result = mgr.promote(
                 source=source,
@@ -323,6 +404,19 @@ def register_remote_promotion(remote: click.Group) -> None:
         mgr = SessionManager(root)
         channel = str(Channel.STABLE)
 
+        if not test_mode:
+            _guard_stable_head_fresh(
+                mgr,
+                target,
+                endpoint,
+                bucket,
+                access_key,
+                secret_key,
+                alias_name,
+                workers,
+                "promote suppress",
+            )
+
         suppressions = mgr.get_suppressions(channel)
         if any(
             entry.server == server_id and entry.checkout == checkout_hash
@@ -359,6 +453,7 @@ def register_remote_promotion(remote: click.Group) -> None:
             secret_key,
             alias_name,
             workers,
+            suppressions_only=True,
         )
 
     @promote_group.command("unsuppress")
@@ -388,6 +483,19 @@ def register_remote_promotion(remote: click.Group) -> None:
         mgr = SessionManager(root)
         channel = str(Channel.STABLE)
 
+        if not test_mode:
+            _guard_stable_head_fresh(
+                mgr,
+                target,
+                endpoint,
+                bucket,
+                access_key,
+                secret_key,
+                alias_name,
+                workers,
+                "promote unsuppress",
+            )
+
         suppressions = mgr.get_suppressions(channel)
         kept = [
             entry
@@ -414,6 +522,7 @@ def register_remote_promotion(remote: click.Group) -> None:
             secret_key,
             alias_name,
             workers,
+            suppressions_only=True,
         )
 
     @promote_group.command("suppressions")

@@ -35,11 +35,14 @@ from bootstrap.remote.models import SuppressionEntry
 from bootstrap.remote.models import SuppressionList
 from bootstrap.remote.models import make_resource_index
 from bootstrap.remote.models import read_pb2
+from bootstrap.remote.paths import channel_head_dir
 from bootstrap.remote.paths import generation_dir
+from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import resource_snapshot_dir
 from bootstrap.remote.promote import PromotionError
 from bootstrap.remote.promote import compute_promotion_eligibility
 from bootstrap.remote.snapshot import SnapshotStore
+from bootstrap.remote.sync import SyncResult
 
 
 @pytest.fixture
@@ -646,3 +649,208 @@ class TestVerifySuppressions:
         assert len(issues) == 1
         assert issues[0].severity == "warning"
         assert "b" * 12 in issues[0].entity
+
+
+class _FakePublisher:
+    """Publisher stand-in: copies uploads into a remote-mirror directory."""
+
+    def __init__(self, local_root: Path, remote_root: Path) -> None:
+        self.local_root = local_root
+        self.remote_root = remote_root
+        self.calls: list[str] = []
+
+    def publish_generation(self, channel: str, gen_hash: str) -> None:
+        self.calls.append("generation")
+        shutil.copytree(
+            generation_dir(self.local_root, gen_hash),
+            generation_dir(self.remote_root, gen_hash),
+            dirs_exist_ok=True,
+        )
+
+    def publish_head(self, channel: str) -> None:
+        self.calls.append("head")
+        shutil.copytree(
+            channel_head_dir(self.local_root, channel),
+            channel_head_dir(self.remote_root, channel),
+            dirs_exist_ok=True,
+        )
+
+    def publish_suppressions(self, channel: str) -> None:
+        self.calls.append("suppressions")
+        src = head_suppressions_path(self.local_root, channel)
+        dst = head_suppressions_path(self.remote_root, channel)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+
+class _FakeSyncer:
+    """Syncer stand-in: downloads head files from a remote-mirror directory."""
+
+    def __init__(self, local_root: Path, remote_root: Path) -> None:
+        self.local_root = local_root
+        self.remote_root = remote_root
+
+    def sync_head(self, channel: str) -> SyncResult:
+        result = SyncResult(channel=channel)
+        src_dir = channel_head_dir(self.remote_root, channel)
+        if not (src_dir / "metadata.json").is_file():
+            return result
+        result.head_meta = True
+        dst_dir = channel_head_dir(self.local_root, channel)
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        for name in ("metadata.json", "reflog.pb2", "suppressions.json"):
+            src = src_dir / name
+            if src.is_file():
+                shutil.copy2(src, dst_dir / name)
+        return result
+
+    def sync_channel(self, channel: str, *, max_depth: int = -1) -> SyncResult:
+        result = self.sync_head(channel)
+        if result.head_meta:
+            gen_hash = SessionManager(self.local_root).get_head(channel).generation_hash
+            src = generation_dir(self.remote_root, gen_hash)
+            if src.is_dir():
+                shutil.copytree(src, generation_dir(self.local_root, gen_hash), dirs_exist_ok=True)
+        return result
+
+
+def _patch_fake_remote(monkeypatch: pytest.MonkeyPatch, remote_root: Path) -> list[_FakePublisher]:
+    monkeypatch.setattr(
+        "bootstrap.cli.remote.promotion._resolve_remote_target",
+        lambda *args: ("https://s3.invalid", "bucket", "key", "secret", "alias"),
+    )
+    monkeypatch.setattr(
+        SessionManager,
+        "make_syncer",
+        lambda self, **kwargs: _FakeSyncer(self.root, remote_root),
+    )
+    publishers: list[_FakePublisher] = []
+
+    def _make_publisher(self, **kwargs) -> _FakePublisher:
+        pub = _FakePublisher(self.root, remote_root)
+        publishers.append(pub)
+        return pub
+
+    monkeypatch.setattr(SessionManager, "make_publisher", _make_publisher)
+    return publishers
+
+
+class TestPromoteCliRemoteGuard:
+    """Manual promote/suppress must never overwrite a newer remote stable head."""
+
+    def test_promote_publishes_over_matching_head(
+        self, fixture: _Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        remote_root = tmp_path / "remote"
+        publishers = _patch_fake_remote(monkeypatch, remote_root)
+
+        result = _invoke(fixture.root, "remote", "promote", "--all", "--allow-missing-head")
+        assert result.exit_code == 0, result.output
+        assert "Remote head verified" in result.output
+        assert publishers[-1].calls == ["generation", "head"]
+        remote_mgr = SessionManager(remote_root)
+        assert (
+            remote_mgr.get_head("stable").generation_hash
+            == fixture.mgr.get_head("stable").generation_hash
+        )
+
+    def test_promote_refuses_when_remote_head_moved(
+        self, fixture: _Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        remote_root = tmp_path / "remote"
+        _patch_fake_remote(monkeypatch, remote_root)
+        first = _invoke(fixture.root, "remote", "promote", "--all", "--allow-missing-head")
+        assert first.exit_code == 0, first.output
+        stale_head = fixture.mgr.get_head("stable").generation_hash
+
+        # The hourly workflow advances the remote stable head past the local cache.
+        snap_b2 = _make_resource_snapshot(fixture.snap_store, fixture.blob_store, "beta", "b2")
+        gen_t3 = _create_generation(
+            fixture.gen_store,
+            {"alpha": fixture.snap_a2, "beta": snap_b2},
+            fixture.gen_t2,
+            "2026-06-03T00:00:00Z",
+        )
+        fixture.mgr.push("testing", gen_t3)
+        moved = fixture.mgr.promote(candidates={"beta": snap_b2}, actor="workflow")
+        publisher = _FakePublisher(fixture.root, remote_root)
+        publisher.publish_generation("stable", moved.generation_hash)
+        publisher.publish_head("stable")
+        fixture.mgr.revert("stable", stale_head)
+
+        result = _invoke(fixture.root, "remote", "promote", "--all")
+        assert result.exit_code != 0
+        assert "stale" in result.output
+        # The guard refreshed the local cache instead of mutating over it.
+        assert fixture.mgr.get_head("stable").generation_hash == moved.generation_hash
+
+    def test_suppress_uploads_only_suppressions_file(
+        self, fixture: _Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        remote_root = tmp_path / "remote"
+        publishers = _patch_fake_remote(monkeypatch, remote_root)
+        first = _invoke(fixture.root, "remote", "promote", "--all", "--allow-missing-head")
+        assert first.exit_code == 0, first.output
+
+        pair = f"alpha:{fixture.snap_a2}"
+        result = _invoke(fixture.root, "remote", "promote", "suppress", pair, "--reason", "bad")
+        assert result.exit_code == 0, result.output
+        assert publishers[-1].calls == ["suppressions"]
+
+        remote_mgr = SessionManager(remote_root)
+        remote_suppressions = remote_mgr.get_suppressions("stable")
+        assert [(e.server, e.checkout) for e in remote_suppressions.suppressions] == [
+            ("alpha", fixture.snap_a2)
+        ]
+        assert (
+            remote_mgr.get_head("stable").generation_hash
+            == fixture.mgr.get_head("stable").generation_hash
+        )
+
+    def test_unsuppress_uploads_only_suppressions_file(
+        self, fixture: _Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        remote_root = tmp_path / "remote"
+        publishers = _patch_fake_remote(monkeypatch, remote_root)
+        first = _invoke(fixture.root, "remote", "promote", "--all", "--allow-missing-head")
+        assert first.exit_code == 0, first.output
+        pair = f"alpha:{fixture.snap_a2}"
+        suppressed = _invoke(fixture.root, "remote", "promote", "suppress", pair)
+        assert suppressed.exit_code == 0, suppressed.output
+
+        result = _invoke(fixture.root, "remote", "promote", "unsuppress", pair)
+        assert result.exit_code == 0, result.output
+        assert publishers[-1].calls == ["suppressions"]
+        assert SessionManager(remote_root).get_suppressions("stable").suppressions == []
+
+    def test_suppress_refuses_when_remote_suppressions_drifted(
+        self, fixture: _Fixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        remote_root = tmp_path / "remote"
+        _patch_fake_remote(monkeypatch, remote_root)
+        first = _invoke(fixture.root, "remote", "promote", "--all", "--allow-missing-head")
+        assert first.exit_code == 0, first.output
+
+        # Another operator adds a suppression directly against the remote state.
+        remote_mgr = SessionManager(remote_root)
+        remote_mgr.save_suppressions(
+            "stable",
+            SuppressionList(
+                suppressions=[
+                    SuppressionEntry(
+                        server="beta",
+                        checkout=fixture.snap_b1,
+                        reason="other",
+                        suppressedAt="2026-06-14T12:00:00Z",
+                        actor="other-op",
+                    )
+                ]
+            ),
+        )
+
+        result = _invoke(fixture.root, "remote", "promote", "suppress", f"alpha:{fixture.snap_a2}")
+        assert result.exit_code != 0
+        assert "stale" in result.output
+        # The guard refreshed the local cache; the remote list was not clobbered.
+        assert [e.server for e in fixture.mgr.get_suppressions("stable").suppressions] == ["beta"]
+        assert [e.server for e in remote_mgr.get_suppressions("stable").suppressions] == ["beta"]

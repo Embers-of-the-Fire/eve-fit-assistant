@@ -116,6 +116,22 @@ class Syncer:
 
         return result
 
+    def sync_head(self, channel: str) -> SyncResult:
+        """Sync only the channel's head files (metadata, reflog, suppressions).
+
+        Used by mutating CLI paths that must check the local head against the
+        remote head before writing; generations and snapshots are not pulled.
+        """
+        self._ensure_alias()
+        result = SyncResult(channel=channel)
+        result.head_meta = self._download_head_metadata(channel)
+        if not result.head_meta:
+            return result
+        result.reflog = self._download_reflog(channel)
+        # Tolerate 404: heads predating the suppression list have none.
+        result.suppressions = self._download_suppressions(channel)
+        return result
+
     def sync_all_channels(self, *, max_depth: int = -1) -> dict[str, SyncResult]:
         """Sync all channels found in the remote registry."""
         self._ensure_alias()
