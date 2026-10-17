@@ -654,6 +654,7 @@
   "appSettingsPageRemoteContentChannelTesting": "Testing",
   "appSettingsPageRemoteContentChannelStable": "Stable",
   "appSettingsPageRemoteContentChannelSwitchDescription": "Switching the channel re-binds all data sources to the new channel. Newer data will appear as available updates; nothing is removed.",
+  "appSettingsPageRemoteContentChannelSwitchFailed": "Could not switch channel: {error}",
   "appSettingsPageRemoteContentCadenceLabel": "Update Cadence",
   "appSettingsPageRemoteContentCadenceImmediate": "Immediate",
   "appSettingsPageRemoteContentCadenceWeekly": "Weekly",

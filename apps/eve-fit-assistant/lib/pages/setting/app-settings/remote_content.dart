@@ -117,7 +117,16 @@ Future<void> _showRemoteContentEndpointDialog(
   // A changed channel is a real switch: sync the target channel, re-bind every
   // checkout, and force all update checks to re-resolve against it.
   if (result.channel != config.channel) {
-    await _switchChannel(ref, result.channel);
+    final failure = await _switchChannel(ref, result.channel);
+    if (failure != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(error: failure),
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -125,10 +134,21 @@ Future<void> _showRemoteContentEndpointDialog(
 /// channel's generation (including the promoted history), re-binds checkouts,
 /// and invalidates every consumer of channel state so tiles re-check
 /// immediately against the new channel.
-Future<void> _switchChannel(WidgetRef ref, String channel) async {
+///
+/// Returns an error message when discovery or sync fails; in that case the
+/// switch aborts before re-binding, so checkouts stay on their original
+/// channel (whose local head metadata is still present) and update checks
+/// keep resolving against the previous channel state.
+Future<String?> _switchChannel(WidgetRef ref, String channel) async {
   final repo = ref.read(repoServiceProvider);
-  await repo.discoverChannels();
-  await repo.syncChannelGeneration(channel);
+  final discoverResult = await repo.discoverChannels();
+  if (discoverResult.isLeft()) {
+    return discoverResult.getLeft().toNullable()!;
+  }
+  final syncResult = await repo.syncChannelGeneration(channel);
+  if (syncResult.isLeft()) {
+    return syncResult.getLeft().toNullable()!;
+  }
   await ref.read(dataUpdateServiceProvider).rebindCheckoutsToChannel(channel);
 
   ref
@@ -138,6 +158,7 @@ Future<void> _switchChannel(WidgetRef ref, String channel) async {
     ref.invalidate(checkoutUpdateControllerProvider(checkoutId));
   }
   ref.invalidate(appReleaseCheckStatusProvider);
+  return null;
 }
 
 class _RemoteContentEndpointDialog extends StatefulWidget {

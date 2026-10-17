@@ -1311,6 +1311,7 @@
   "appSettingsPageRemoteContentChannelTesting": "测试版",
   "appSettingsPageRemoteContentChannelStable": "稳定版",
   "appSettingsPageRemoteContentChannelSwitchDescription": "切换频道会将所有数据源重新绑定到新频道。更新的数据将显示为可用更新；不会删除任何内容。",
+  "appSettingsPageRemoteContentChannelSwitchFailed": "切换频道失败：{error}",
   "appSettingsPageRemoteContentCadenceLabel": "更新频率",
   "appSettingsPageRemoteContentCadenceImmediate": "立即",
   "appSettingsPageRemoteContentCadenceWeekly": "每周",
