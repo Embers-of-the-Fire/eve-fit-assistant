@@ -152,6 +152,11 @@ class _WelcomeFlowHostState extends ConsumerState<_WelcomeFlowHost> {
           () => ChannelStepPage(
             onContinue: (channelName) {
               setState(() => _selectedChannel = channelName);
+              // Persist the wizard's channel choice; it is the install's
+              // initial content channel from here on.
+              ref
+                  .read(appSettingServiceProvider.notifier)
+                  .update((s) => s.copyWith.remoteContent(channel: channelName));
               _nextStep();
             },
             onSkip: _skip,

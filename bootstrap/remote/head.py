@@ -14,6 +14,7 @@ from bootstrap.remote.generation import utc_timestamp
 from bootstrap.remote.models import ChannelHeadMetadata
 from bootstrap.remote.models import ChannelInfo
 from bootstrap.remote.models import ChannelRegistry
+from bootstrap.remote.models import SuppressionList
 from bootstrap.remote.models import append_head_reflog_entry
 from bootstrap.remote.models import read_json
 from bootstrap.remote.models import read_pb2
@@ -23,6 +24,7 @@ from bootstrap.remote.paths import channel_head_dir
 from bootstrap.remote.paths import channel_registry_path
 from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_reflog_path
+from bootstrap.remote.paths import head_suppressions_path
 
 
 if TYPE_CHECKING:
@@ -125,6 +127,20 @@ class ChannelHeadStore:
             empty.schema_version = 1
             return empty
         return read_pb2(path, HeadReflog)
+
+    # --- Suppressions ----------------------------------------------------------
+
+    def get_suppressions(self, channel: str) -> SuppressionList:
+        """Load the channel's promotion suppression list (absent file → empty)."""
+        path = head_suppressions_path(self.root, channel)
+        if not path.is_file():
+            return SuppressionList()
+        return SuppressionList.model_validate(read_json(path))
+
+    def save_suppressions(self, channel: str, suppressions: SuppressionList) -> None:
+        """Persist the channel's promotion suppression list atomically."""
+        self._ensure_channel_dir(channel)
+        write_json_atomic(head_suppressions_path(self.root, channel), suppressions)
 
     # --- Internal ------------------------------------------------------------
 

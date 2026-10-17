@@ -25,22 +25,21 @@ class ChannelStepPage extends ConsumerStatefulWidget {
 }
 
 class _ChannelStepPageState extends ConsumerState<ChannelStepPage> {
-  // FIXME(welcome): the default channel selection is hardcoded to `testing`.
-  // It should follow ChannelOverview.defaultChannel (the registry `active`
-  // channel) once the remote registry reliably advertises the intended
-  // default; this hardcoding forces `testing` regardless of registry state.
-  String? _selected = Channel.testing.value;
+  // Null until the user picks a channel explicitly; the effective selection
+  // then follows the registry's advertised defaultChannel.
+  String? _selected;
 
   // The channel name reported to [onContinue]; refined to the resolved
   // selection once the channel list is available.
-  String _effectiveSelected = Channel.testing.value;
+  String _effectiveSelected = Channel.defaultChannel.value;
 
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider).name;
     final overview = ref.watch(channelOverviewProvider);
 
-    _effectiveSelected = _selected ?? Channel.testing.value;
+    _effectiveSelected =
+        _selected ?? overview.value?.defaultChannel ?? Channel.defaultChannel.value;
 
     return WizardScaffold(
       title: context.l10n.welcomeChannelTitle,

@@ -137,6 +137,7 @@ class Publisher:
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
+        self._ensure_alias()
         prefixes = self._gen_remote_prefix()
         head_dir = channel_head_dir(self.local_root, channel)
         self._upload_tree(head_dir, prefixes + f"channels/heads/{channel}")
@@ -144,6 +145,15 @@ class Publisher:
         registry_path = channel_registry_path(self.local_root)
         if registry_path.is_file():
             self._upload_file(registry_path, prefixes + "channels/heads/channels.json")
+
+    def publish_registry(self) -> None:
+        """Upload only the channel registry (channels.json) to remote."""
+        self._ensure_alias()
+        registry_path = channel_registry_path(self.local_root)
+        if registry_path.is_file():
+            self._upload_file(
+                registry_path, self._gen_remote_prefix() + "channels/heads/channels.json"
+            )
 
     def publish_all_for_head(self, channel: str) -> None:
         """Publish full chain from head → generation → snapshots → blobs → head."""

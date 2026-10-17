@@ -3,7 +3,9 @@ import "dart:async";
 import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/components/list/config_list.dart";
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/storage/repo/providers.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
@@ -111,6 +113,31 @@ Future<void> _showRemoteContentEndpointDialog(
   ref
       .read(appSettingServiceProvider.notifier)
       .update((setting) => setting.copyWith(remoteContent: result));
+
+  // A changed channel is a real switch: sync the target channel, re-bind every
+  // checkout, and force all update checks to re-resolve against it.
+  if (result.channel != config.channel) {
+    await _switchChannel(ref, result.channel);
+  }
+}
+
+/// Performs the channel switch: discovers the registry, syncs the target
+/// channel's generation (including the promoted history), re-binds checkouts,
+/// and invalidates every consumer of channel state so tiles re-check
+/// immediately against the new channel.
+Future<void> _switchChannel(WidgetRef ref, String channel) async {
+  final repo = ref.read(repoServiceProvider);
+  await repo.discoverChannels();
+  await repo.syncChannelGeneration(channel);
+  await ref.read(dataUpdateServiceProvider).rebindCheckoutsToChannel(channel);
+
+  ref
+    ..invalidate(repoStateProvider)
+    ..invalidate(batchDataUpdateControllerProvider);
+  for (final checkoutId in ref.read(installedCheckoutIdsProvider)) {
+    ref.invalidate(checkoutUpdateControllerProvider(checkoutId));
+  }
+  ref.invalidate(appReleaseCheckStatusProvider);
 }
 
 class _RemoteContentEndpointDialog extends StatefulWidget {
@@ -125,12 +152,14 @@ class _RemoteContentEndpointDialog extends StatefulWidget {
 class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDialog> {
   late final TextEditingController originController;
   late Channel _channel;
+  late DataCadence _cadence;
 
   @override
   void initState() {
     super.initState();
     originController = TextEditingController(text: widget.config.originUrl);
     _channel = Channel.tryParse(widget.config.channel) ?? Channel.defaultChannel;
+    _cadence = DataCadence.parse(widget.config.cadence);
   }
 
   @override
@@ -177,6 +206,51 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
               }
             },
           ),
+          if (_channel != Channel.tryParse(widget.config.channel))
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                context.l10n.appSettingsPageRemoteContentChannelSwitchDescription,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          DropdownButtonFormField<DataCadence>(
+            initialValue: _cadence,
+            decoration: InputDecoration(
+              labelText: context.l10n.appSettingsPageRemoteContentCadenceLabel,
+            ),
+            items: DataCadence.values
+                .map(
+                  (c) => DropdownMenuItem<DataCadence>(
+                    value: c,
+                    child: Text(switch (c) {
+                      DataCadence.immediate =>
+                        context.l10n.appSettingsPageRemoteContentCadenceImmediate,
+                      DataCadence.weekly => context.l10n.appSettingsPageRemoteContentCadenceWeekly,
+                      DataCadence.monthly =>
+                        context.l10n.appSettingsPageRemoteContentCadenceMonthly,
+                    }),
+                  ),
+                )
+                .toList(),
+            // The cadence preference is inert on the testing channel, which
+            // always tracks immediately; the stored value is left untouched.
+            onChanged: _channel == Channel.testing
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _cadence = value);
+                    }
+                  },
+          ),
+          if (_channel == Channel.testing)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                context.l10n.appSettingsPageRemoteContentCadenceTestingHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
         ],
       ),
     ),
@@ -187,7 +261,11 @@ class _RemoteContentEndpointDialogState extends State<_RemoteContentEndpointDial
       ),
       TextButton(
         onPressed: () => Navigator.of(context).pop(
-          widget.config.copyWith(originUrl: originController.text.trim(), channel: _channel.value),
+          widget.config.copyWith(
+            originUrl: originController.text.trim(),
+            channel: _channel.value,
+            cadence: _cadence.value,
+          ),
         ),
         child: Text(MaterialLocalizations.of(context).saveButtonLabel),
       ),

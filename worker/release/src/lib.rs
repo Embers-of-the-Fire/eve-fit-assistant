@@ -23,6 +23,8 @@ struct ArtifactResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     artifacts: Option<HashMap<String, ArtifactInfo>>,
     channels: Vec<String>,
+    #[serde(rename = "defaultChannel")]
+    default_channel: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -141,6 +143,7 @@ fn artifact_error_response(msg: &str, status: u16) -> Result<Response> {
         ok: false,
         artifacts: None,
         channels: vec![],
+        default_channel: String::new(),
         error: Some(msg.to_string()),
         errors: None,
     })?;
@@ -328,10 +331,18 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
         }
     };
 
-    let channels: Vec<String> = registry["channels"]
+    let default_channel = registry["defaultChannel"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+
+    // Default-first ordering so naive `channels[0]` fallbacks land on the
+    // registry default (stable once rolled out).
+    let mut channels: Vec<String> = registry["channels"]
         .as_object()
         .map(|m| m.keys().cloned().collect())
         .unwrap_or_default();
+    channels.sort_by_key(|ch| if *ch == default_channel { 0 } else { 1 });
 
     let mut artifacts = HashMap::new();
     let mut errors = HashMap::new();
@@ -381,6 +392,7 @@ async fn handle_artifacts(req: Request, env: Env) -> Result<Response> {
         ok: true,
         artifacts: Some(artifacts),
         channels,
+        default_channel,
         error: None,
         errors: if errors.is_empty() {
             None

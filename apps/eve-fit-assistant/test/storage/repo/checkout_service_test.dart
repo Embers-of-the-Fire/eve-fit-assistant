@@ -65,6 +65,10 @@ MockRemoteCatalogService _mockRemote({
   when(() => mock.fetchHeadMeta(_testChannelName)).thenAnswer(
     (_) async => Right(headMetaResult ?? _headMeta(generationHash: _testGenerationHashNew)),
   );
+  // No promoted history by default: admission timestamps resolve to null.
+  when(
+    () => mock.fetchServerHistory(any()),
+  ).thenAnswer((_) async => const Left(CatalogNotFoundError(message: "no history")));
   when(() => mock.blobUri(any(), any())).thenAnswer(
     (inv) => Uri.parse(
       "http://test/efa/v2/assets/blobs/00/${inv.positionalArguments[0]}/${inv.positionalArguments[1]}",

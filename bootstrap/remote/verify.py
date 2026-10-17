@@ -30,6 +30,7 @@ from bootstrap.remote.paths import blob_path
 from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_reflog_path
+from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import resource_snapshot_dir
 
 
@@ -60,7 +61,88 @@ class Verifier:
             "blobs": self.verify_blob_integrity(),
             "history": self.verify_history_consistency(),
             "history_reachability": self.verify_history_reachability(),
+            "suppressions": self.verify_suppressions(),
         }
+
+    # --- Suppression list ----------------------------------------------------
+
+    def verify_suppressions(self) -> list[Issue]:
+        """Validate each channel's suppressions.json, when present.
+
+        Unparseable files are errors; suppressed checkouts that no longer
+        resolve to any known generation or history entry are warnings (the
+        snapshot may have been pruned from advertised history).
+        """
+        issues: list[Issue] = []
+        registry = self.head_store.get_registry()
+
+        from bootstrap.remote.models import SuppressionList
+        from bootstrap.remote.models import read_json
+
+        for channel_name in registry.channels:
+            path = head_suppressions_path(self.root, channel_name)
+            if not path.is_file():
+                continue
+
+            try:
+                suppressions = SuppressionList.model_validate(read_json(path))
+            except Exception as exc:  # noqa: BLE001
+                issues.append(
+                    Issue(
+                        entity=channel_name,
+                        entity_type="suppressions",
+                        severity="error",
+                        message=f"Failed to parse suppressions.json: {exc}",
+                    )
+                )
+                continue
+
+            known = self._known_channel_checkouts(channel_name)
+            for entry in suppressions.suppressions:
+                if entry.checkout not in known:
+                    issues.append(
+                        Issue(
+                            entity=f"{entry.server}:{entry.checkout[:12]}...",
+                            entity_type="suppressions",
+                            severity="warning",
+                            message=(
+                                f"Suppressed checkout {entry.checkout[:12]}... for server "
+                                f"{entry.server!r} not found in channel {channel_name!r} "
+                                "refs or advertised history"
+                            ),
+                        )
+                    )
+
+        return issues
+
+    def _known_channel_checkouts(self, channel_name: str) -> set[str]:
+        """Snapshot hashes referenced by the channel head generation or its history."""
+        from bootstrap.remote.models import ServerHistory
+
+        known: set[str] = set()
+        try:
+            head = self.head_store.get_head(channel_name)
+        except (FileNotFoundError, json.JSONDecodeError, ValidationError):
+            return known
+        if not head.generation_hash:
+            return known
+        gen_dir = generation_dir(self.root, head.generation_hash)
+        try:
+            gen = self.gen_store.load(head.generation_hash)
+            for entry in gen.resources.entries:
+                known.add(entry.snapshot_hash)
+        except (FileNotFoundError, json.JSONDecodeError, ValidationError):
+            pass
+        history_path = gen_dir / "history.pb2"
+        if history_path.is_file():
+            try:
+                history = _models_read_pb2(history_path, ServerHistory)
+                for server in history.servers:
+                    for snap in server.snapshots:
+                        known.add(snap.snapshot_hash)
+            except Exception:  # noqa: BLE001, S110
+                pass
+        return known
 
     # --- Head integrity ------------------------------------------------------
 

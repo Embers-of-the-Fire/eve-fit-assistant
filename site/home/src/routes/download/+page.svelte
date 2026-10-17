@@ -10,6 +10,7 @@ type ApiResponse =
           ok: true;
           artifacts: Record<string, ArtifactInfo>;
           channels: string[];
+          defaultChannel: string;
       }
     | {
           ok: false;
@@ -146,7 +147,7 @@ $effect(() => {
             }
             downloadState.artifacts = data.artifacts;
             if (!data.artifacts[downloadState.activeChannel]) {
-                downloadState.activeChannel = data.channels[0] ?? "";
+                downloadState.activeChannel = data.defaultChannel ?? data.channels[0] ?? "";
             }
             downloadState.state = "loaded";
         })

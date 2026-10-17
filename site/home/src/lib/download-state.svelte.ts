@@ -18,7 +18,8 @@ export type PageState = "loading" | "loaded" | "error" | "empty";
 let _state = $state<PageState>("loading");
 let _channels = $state<string[]>([]);
 let _artifacts = $state<Record<string, ArtifactInfo>>({});
-let _activeChannel = $state("testing");
+// Initialized from the artifacts response's defaultChannel; no local seed.
+let _activeChannel = $state("");
 
 export const downloadState = {
     get state() {

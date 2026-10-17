@@ -21,6 +21,7 @@ from bootstrap.remote.paths import channel_registry_path
 from bootstrap.remote.paths import generation_dir
 from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_reflog_path
+from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.paths import resource_snapshot_dir
 
@@ -37,6 +38,7 @@ class SyncResult:
     registry: bool = False
     head_meta: bool = False
     reflog: bool = False
+    suppressions: bool = False
     generations: int = 0
     resource_snapshots: int = 0
     release_snapshots: int = 0
@@ -85,6 +87,8 @@ class Syncer:
             return result
 
         result.reflog = self._download_reflog(channel)
+        # Tolerate 404: heads predating the suppression list have none.
+        result.suppressions = self._download_suppressions(channel)
 
         gen_hash = self._read_head_gen_hash(channel)
 
@@ -207,6 +211,12 @@ class Syncer:
         return self._download_file(
             f"channels/heads/{channel}/reflog.pb2",
             head_reflog_path(self.local_root, channel),
+        )
+
+    def _download_suppressions(self, channel: str) -> bool:
+        return self._download_file(
+            f"channels/heads/{channel}/suppressions.json",
+            head_suppressions_path(self.local_root, channel),
         )
 
     def _download_generation(self, gen_hash: str) -> bool:

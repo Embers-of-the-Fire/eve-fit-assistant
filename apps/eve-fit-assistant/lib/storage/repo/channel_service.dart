@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:efa_proto/generation_pointer.pb.dart";
 import "package:efa_proto/generation_resources.pb.dart";
+import "package:efa_proto/server_history.pb.dart";
 import "package:efa_proto/server_index.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/fs/blob_store.dart";
@@ -90,11 +91,12 @@ class ChannelService {
   /// - channels/{channel}/server.pb2      — ServerIndex
   /// - channels/{channel}/resources.pb2   — GenerationResources
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
+  /// - channels/{channel}/history.pb2     — ServerHistory (promoted history)
   Future<Either<String, Unit>> syncChannelGeneration(
     String channelName, {
     void Function(int current, int total)? onProgress,
   }) async {
-    const totalSteps = 4;
+    const totalSteps = 5;
     onProgress?.call(0, totalSteps);
 
     // Fetch head metadata to get the generation hash
@@ -138,6 +140,13 @@ class ChannelService {
       fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
       channelName: channelName,
       path: RepoPaths.channelReleasesPath(channelName),
+    );
+    onProgress?.call(4, totalSteps);
+
+    await _fetchAndPersistBytes(
+      fetcher: () => remoteCatalogService.fetchServerHistory(generationHash),
+      channelName: channelName,
+      path: RepoPaths.channelHistoryPath(channelName),
     );
     onProgress?.call(totalSteps, totalSteps);
 
@@ -216,6 +225,19 @@ class ChannelService {
     if (bytes == null) return const None();
     try {
       return Some(GenerationPointer.fromBuffer(bytes));
+    } on Exception {
+      return const None();
+    }
+  }
+
+  /// Reads the ServerHistory protobuf for [channelName].
+  ///
+  /// Returns [None] if not present locally.
+  Future<Option<ServerHistory>> readServerHistory(String channelName) async {
+    final bytes = await _store.read(RepoPaths.channelHistoryPath(channelName));
+    if (bytes == null) return const None();
+    try {
+      return Some(ServerHistory.fromBuffer(bytes));
     } on Exception {
       return const None();
     }

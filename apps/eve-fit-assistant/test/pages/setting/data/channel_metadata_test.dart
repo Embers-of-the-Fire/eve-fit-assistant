@@ -90,7 +90,9 @@ void main() {
       ProviderScope(
         overrides: [
           channelServiceProvider.overrideWith((_) => mockChannelService),
-          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          appSettingServiceProvider.overrideWithValue(
+            _testAppSetting(remoteContent: const RemoteContentSetting(exposed: true, channel: "testing")),
+          ),
         ],
         child: testApp(const ChannelMetadataPage()),
       ),

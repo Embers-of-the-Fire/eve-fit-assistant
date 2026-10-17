@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show unreadAnnouncementCountProvider;
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/pages/router.dart"
     show AnnouncementFeedRoute, DeveloperSettingsRoute;
 import "package:eve_fit_assistant/pages/setting/version/update_check_tile.dart";
@@ -138,6 +139,18 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                           (
                             label: context.l10n.versionPageChannel,
                             value: appSetting.remoteContent.channel,
+                            onTap: null,
+                          ),
+                          (
+                            label: context.l10n.versionPageCadence,
+                            value: switch (DataCadence.parse(appSetting.remoteContent.cadence)) {
+                              DataCadence.immediate =>
+                                context.l10n.appSettingsPageRemoteContentCadenceImmediate,
+                              DataCadence.weekly =>
+                                context.l10n.appSettingsPageRemoteContentCadenceWeekly,
+                              DataCadence.monthly =>
+                                context.l10n.appSettingsPageRemoteContentCadenceMonthly,
+                            },
                             onTap: null,
                           ),
                         ],

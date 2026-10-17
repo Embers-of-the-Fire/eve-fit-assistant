@@ -76,10 +76,11 @@ struct ChannelRegistry {
 }
 
 /// Channel selection, mirroring the app (`generation_nav.dart`): an empty
-/// `defaultChannel` falls back to `"testing"`.
+/// `defaultChannel` (a registry predating the stable rollout) falls back to
+/// `"stable"`.
 fn select_channel(registry: &ChannelRegistry) -> &str {
     if registry.default_channel.is_empty() {
-        "testing"
+        "stable"
     } else {
         &registry.default_channel
     }
@@ -354,17 +355,17 @@ mod tests {
     }
 
     #[test]
-    fn empty_default_channel_falls_back_to_testing() {
-        // Mirrors the app (`generation_nav.dart`): the live prod registry
-        // ships `"defaultChannel": ""`.
+    fn empty_default_channel_falls_back_to_stable() {
+        // Mirrors the app (`generation_nav.dart`): a registry predating the
+        // stable rollout ships `"defaultChannel": ""`.
         let registry = ChannelRegistry {
             default_channel: String::new(),
         };
-        assert_eq!(select_channel(&registry), "testing");
-        let registry = ChannelRegistry {
-            default_channel: "stable".to_string(),
-        };
         assert_eq!(select_channel(&registry), "stable");
+        let registry = ChannelRegistry {
+            default_channel: "testing".to_string(),
+        };
+        assert_eq!(select_channel(&registry), "testing");
     }
 
     #[test]

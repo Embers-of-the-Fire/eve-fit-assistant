@@ -1,4 +1,6 @@
 import "package:efa_proto/generation_resources.pb.dart";
+import "package:efa_proto/server_history.pb.dart";
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
@@ -52,6 +54,7 @@ class DataUpdateService {
     required this.checkoutService,
     required this.assetStore,
     required this.remoteCatalogService,
+    this.cadence = DataCadence.immediate,
   });
 
   final RepoService repoService;
@@ -59,6 +62,10 @@ class DataUpdateService {
   final CheckoutService checkoutService;
   final AssetStore assetStore;
   final RemoteCatalogService remoteCatalogService;
+
+  /// The user's data cadence preference. The effective tier is derived per
+  /// checkout channel via [effectiveTier] (testing always tracks immediately).
+  final DataCadence cadence;
 
   Future<DataUpdateCheckResult> checkForCheckout(String checkoutId) async {
     final checkout = _readCheckout(checkoutId);
@@ -72,7 +79,7 @@ class DataUpdateService {
       return channelResult.getLeft().toNullable()!;
     }
     final info = channelResult.getRight().toNullable()!;
-    return _evaluateCheckout(entry, info.remoteGenerationHash, info.generationResources);
+    return _evaluateCheckout(entry, info);
   }
 
   Option<CheckoutRegistryEntry> _readCheckout(String checkoutId) => repoService.checkoutRegistry
@@ -115,10 +122,17 @@ class DataUpdateService {
       );
     }
 
+    final history = await _resolveServerHistory(
+      channelName: channelName,
+      remoteGenerationHash: remoteGenerationHash,
+      localGenerationHash: localHash,
+    );
+
     return Right(
       _ChannelUpdateInfo(
         remoteGenerationHash: remoteGenerationHash,
         generationResources: generationResources,
+        history: history,
       ),
     );
   }
@@ -149,45 +163,139 @@ class DataUpdateService {
     return genResourcesOpt.toNullable();
   }
 
+  /// Resolves the promoted history for [channelName]. Prefers the locally
+  /// cached history when the remote generation matches the local one;
+  /// otherwise fetches from remote. Returns `null` when unavailable —
+  /// non-fatal: immediate-tier checks fall back to the head snapshot.
+  Future<ServerHistory?> _resolveServerHistory({
+    required String channelName,
+    required String remoteGenerationHash,
+    required String localGenerationHash,
+  }) async {
+    if (remoteGenerationHash == localGenerationHash) {
+      final local = await channelService.readServerHistory(channelName);
+      if (local.isSome()) return local.toNullable();
+    }
+    final result = await remoteCatalogService.fetchServerHistory(remoteGenerationHash);
+    if (result.isLeft()) return null;
+    try {
+      return ServerHistory.fromBuffer(result.getRight().toNullable()!);
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// The history entry list (newest first) for [serverId], or null when the
+  /// history or the server is absent from it.
+  static List<ServerHistory_Snapshot>? _serverHistoryEntries(
+    ServerHistory? history,
+    String serverId,
+  ) {
+    if (history == null) return null;
+    for (final entry in history.servers) {
+      if (entry.serverId == serverId) return entry.snapshots;
+    }
+    return null;
+  }
+
+  /// Resolves the snapshot a checkout on its channel should track under the
+  /// effective cadence tier, plus the admission timestamp of that
+  /// snapshot. Returns null when the server is absent from the generation.
+  _ResolvedTarget? _resolveTarget(CheckoutRegistryEntry checkout, _ChannelUpdateInfo info) {
+    final channel = Channel.tryParse(checkout.channel) ?? Channel.defaultChannel;
+    final tier = effectiveTier(channel, cadence);
+    final historyEntries = _serverHistoryEntries(info.history, checkout.serverId);
+
+    if (tier != DataCadence.immediate) {
+      // Cadence tiers resolve over the promoted history; without it there is
+      // nothing to resolve against (non-fatal: retried at the next check).
+      if (historyEntries == null || historyEntries.isEmpty) return null;
+      final resolved = resolveCheckout(tier, historyEntries, DateTime.now().toUtc());
+      if (resolved == null) return null;
+      return _ResolvedTarget(snapshotHash: resolved.snapshotHash, promotedAt: resolved.timestamp);
+    }
+
+    String? headSnapshotHash;
+    for (final entry in info.generationResources!.entries) {
+      if (entry.serverId == checkout.serverId) {
+        headSnapshotHash = entry.snapshotHash;
+        break;
+      }
+    }
+    if (headSnapshotHash == null) return null;
+    final headPromotedAt =
+        (historyEntries != null && historyEntries.isNotEmpty) &&
+            historyEntries.first.snapshotHash == headSnapshotHash
+        ? historyEntries.first.timestamp
+        : null;
+    return _ResolvedTarget(snapshotHash: headSnapshotHash, promotedAt: headPromotedAt);
+  }
+
+  /// Whether [target] should be offered over the checkout's active snapshot:
+  /// an update is offered iff the resolved checkout differs from the active
+  /// checkout and is newer by admission time. A slower tier mid-cycle is a
+  /// lag, not a rewind — never offer a silent downgrade. An active hash that
+  /// is absent from the history, or whose age is unknown, re-binds to the
+  /// resolved target.
+  static bool _shouldOfferUpdate(
+    CheckoutRegistryEntry checkout,
+    _ResolvedTarget target,
+    List<ServerHistory_Snapshot>? historyEntries,
+  ) {
+    if (target.snapshotHash == checkout.resourceSnapshotHash) return false;
+
+    if (historyEntries != null && historyEntries.isNotEmpty) {
+      final activeKnown = historyEntries.any(
+        (s) => s.snapshotHash == checkout.resourceSnapshotHash,
+      );
+      if (!activeKnown) return true;
+    }
+
+    final activeAt = DateTime.tryParse(checkout.promotedAt ?? "")?.toUtc();
+    final targetAt = DateTime.tryParse(target.promotedAt ?? "")?.toUtc();
+    if (activeAt == null || targetAt == null) return true;
+    return targetAt.isAfter(activeAt);
+  }
+
   Future<DataUpdateCheckResult> _evaluateCheckout(
     CheckoutRegistryEntry checkout,
-    String remoteGenerationHash,
-    GenerationResources? generationResources,
+    _ChannelUpdateInfo info,
   ) async {
     final localHash = await channelService.localGenerationHash(checkout.channel);
     if (localHash == null || localHash.isEmpty) {
       return const DataUpdateCheckResult.upToDate(currentGenerationHash: "");
     }
 
-    if (generationResources == null) {
+    if (info.generationResources == null) {
       return const DataUpdateCheckResult.failed(
         message: "Server not found in latest generation",
         canRetry: true,
       );
     }
 
-    String? targetSnapshotHash;
-    for (final entry in generationResources.entries) {
-      if (entry.serverId == checkout.serverId) {
-        targetSnapshotHash = entry.snapshotHash;
-        break;
-      }
-    }
-
-    if (targetSnapshotHash == null) {
-      return const DataUpdateCheckResult.failed(
-        message: "Server not found in latest generation",
+    final target = _resolveTarget(checkout, info);
+    if (target == null) {
+      // Either the server is absent from the generation, or a cadence tier
+      // could not resolve without the promoted history (retried later).
+      final inResources = info.generationResources!.entries.any(
+        (e) => e.serverId == checkout.serverId,
+      );
+      return DataUpdateCheckResult.failed(
+        message: inResources
+            ? "Promoted history unavailable"
+            : "Server not found in latest generation",
         canRetry: true,
       );
     }
 
-    if (targetSnapshotHash == checkout.resourceSnapshotHash) {
+    final historyEntries = _serverHistoryEntries(info.history, checkout.serverId);
+    if (!_shouldOfferUpdate(checkout, target, historyEntries)) {
       return DataUpdateCheckResult.upToDate(currentGenerationHash: localHash);
     }
 
     return DataUpdateCheckResult.available(
       currentGenerationHash: localHash,
-      newGenerationHash: remoteGenerationHash,
+      newGenerationHash: info.remoteGenerationHash,
     );
   }
 
@@ -201,13 +309,25 @@ class DataUpdateService {
       return const Left("Checkout not found");
     }
 
-    final channelName = entry.toNullable()!.channel;
+    final checkout = entry.toNullable()!;
+    final channelName = checkout.channel;
     final channel = Channel.tryParse(channelName) ?? Channel.defaultChannel;
+
+    // Resolve the cadence target so a lagging tier applies the resolved
+    // snapshot, not the channel head. Unresolvable targets (missing history
+    // on a cadence tier) fall back to the head snapshot.
+    String? targetSnapshotHash;
+    final channelResult = await _checkChannel(channelName);
+    final info = channelResult.toNullable();
+    if (info != null && info.generationResources != null) {
+      targetSnapshotHash = _resolveTarget(checkout, info)?.snapshotHash;
+    }
 
     final applyResult = await checkoutService.applyDataUpdate(
       checkoutId: checkoutId,
       channel: channel,
       channelName: channelName,
+      targetSnapshotHash: targetSnapshotHash,
       onProgress: onProgress,
     );
 
@@ -223,6 +343,24 @@ class DataUpdateService {
     }
 
     return Right(newSnapshotHash);
+  }
+
+  /// Re-binds every checkout to [channelName] after a channel switch.
+  ///
+  /// Checkout data is kept in place; re-resolution against the target
+  /// channel's history happens at the next update check (newer resolutions
+  /// surface as available updates, older/equal ones report up to date).
+  Future<void> rebindCheckoutsToChannel(String channelName) async {
+    final registry = repoService.checkoutRegistry.readRegistry();
+    if (registry.isNone()) return;
+    final r = registry.toNullable()!;
+    var checkouts = r.checkouts;
+    for (final entry in r.checkouts.entries) {
+      if (entry.value.channel != channelName) {
+        checkouts = checkouts.add(entry.key, entry.value.copyWith(channel: channelName));
+      }
+    }
+    await repoService.checkoutRegistry.writeRegistry(r.copyWith(checkouts: checkouts));
   }
 
   Future<Map<String, DataUpdateCheckResult>> checkAllCheckouts() async {
@@ -250,11 +388,7 @@ class DataUpdateService {
         results[checkoutId] = channelResult.getLeft().toNullable()!;
       } else {
         final info = channelResult.getRight().toNullable()!;
-        results[checkoutId] = await _evaluateCheckout(
-          checkout,
-          info.remoteGenerationHash,
-          info.generationResources,
-        );
+        results[checkoutId] = await _evaluateCheckout(checkout, info);
       }
     }
     return results;
@@ -328,8 +462,22 @@ class DataUpdateService {
 
 /// Lightweight value type for the result of checking a single channel.
 class _ChannelUpdateInfo {
-  const _ChannelUpdateInfo({required this.remoteGenerationHash, required this.generationResources});
+  const _ChannelUpdateInfo({
+    required this.remoteGenerationHash,
+    required this.generationResources,
+    this.history,
+  });
 
   final String remoteGenerationHash;
   final GenerationResources? generationResources;
+  final ServerHistory? history;
+}
+
+/// The snapshot a checkout should track under the effective cadence tier,
+/// plus the admission timestamp (`promoted_at`) of that snapshot, when known.
+class _ResolvedTarget {
+  const _ResolvedTarget({required this.snapshotHash, this.promotedAt});
+
+  final String snapshotHash;
+  final String? promotedAt;
 }

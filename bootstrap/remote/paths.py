@@ -62,6 +62,11 @@ def head_reflog_path(root: Path, channel: str) -> Path:
     return channel_head_dir(root, channel) / "reflog.pb2"
 
 
+def head_suppressions_path(root: Path, channel: str) -> Path:
+    """channels/heads/{channel}/suppressions.json"""
+    return channel_head_dir(root, channel) / "suppressions.json"
+
+
 # ---------------------------------------------------------------------------
 # Temp / atomic write helpers
 # ---------------------------------------------------------------------------
