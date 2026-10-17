@@ -221,12 +221,14 @@ async fn resolve_icon_urls_inner(
     let registry: ChannelRegistry = fetch_json(&registry_url, HEAD_CACHE_TTL_S)
         .await
         .ok_or_else(|| format!("channel registry {registry_url}: fetch/parse failed"))?;
-    // Retry `testing` when the selected head is unavailable: a legacy
-    // registry with an empty `defaultChannel` selects `stable`, which may not
-    // exist yet while the `testing` head does.
+    // Retry `testing` only for legacy registries: an empty `defaultChannel`
+    // selects `stable`, which may not exist yet while the `testing` head
+    // does. When a channel is explicitly configured, retrying `testing`
+    // would bake testing icon URLs into a snapshot intended for that
+    // channel, so keep the plain best-effort failure instead.
     let selected = select_channel(&registry);
     let mut candidates = vec![selected];
-    if selected != "testing" {
+    if registry.default_channel.is_empty() {
         candidates.push("testing");
     }
     let mut head: Option<HeadMeta> = None;
