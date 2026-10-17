@@ -18,6 +18,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from bootstrap.remote.channel import Channel
 from bootstrap.remote.generation import GenerationStore
 from bootstrap.remote.hash import SNAPSHOT_PROTO_NAME as _SNAPSHOT_PROTO_NAME
 from bootstrap.remote.hash import content_hash as _content_hash
@@ -71,7 +72,9 @@ class Verifier:
 
         Unparseable files are errors; suppressed checkouts that no longer
         resolve to any known generation or history entry are warnings (the
-        snapshot may have been pruned from advertised history).
+        snapshot may have been pruned from advertised history). For the
+        stable channel, the testing channel's head and history also count as
+        known, since suppressions commonly veto checkouts before promotion.
         """
         issues: list[Issue] = []
         registry = self.head_store.get_registry()
@@ -98,6 +101,10 @@ class Verifier:
                 continue
 
             known = self._known_channel_checkouts(channel_name)
+            if channel_name == str(Channel.STABLE):
+                # Stable suppressions usually veto testing checkouts before promotion,
+                # so the source channel's head and history are also valid referents.
+                known |= self._known_channel_checkouts(str(Channel.TESTING))
             for entry in suppressions.suppressions:
                 if entry.checkout not in known:
                     issues.append(

@@ -691,6 +691,29 @@ class TestVerifySuppressions:
         assert issues[0].severity == "warning"
         assert "b" * 12 in issues[0].entity
 
+    def test_preemptive_suppression_of_testing_checkout_ok(self, fixture: _Fixture) -> None:
+        # Suppression vetoes a testing checkout before it reaches stable.
+        fixture.mgr.save_suppressions(
+            "stable",
+            SuppressionList(
+                suppressions=[
+                    SuppressionEntry(
+                        server="alpha",
+                        checkout=fixture.snap_a2,
+                        suppressedAt="2026-06-14T12:00:00Z",
+                    ),
+                    SuppressionEntry(
+                        server="alpha",
+                        checkout=fixture.snap_a1,
+                        suppressedAt="2026-06-14T12:00:00Z",
+                    ),
+                ]
+            ),
+        )
+
+        issues = fixture.mgr.verify()["suppressions"]
+        assert issues == []
+
 
 class _FakePublisher:
     """Publisher stand-in: copies uploads into a remote-mirror directory."""
