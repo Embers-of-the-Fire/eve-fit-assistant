@@ -450,7 +450,7 @@ class CheckoutService {
       if (existing != null) {
         final updatedEntry = existing.copyWith(
           resourceSnapshotHash: targetSnapshotHash,
-          promotedAt: await _readPromotedAt(m.channel, targetSnapshotHash),
+          promotedAt: await _readPromotedAt(existing.channel, targetSnapshotHash),
         );
         await checkoutRegistry.writeRegistry(
           r.copyWith(checkouts: r.checkouts.add(checkoutId, updatedEntry)),
