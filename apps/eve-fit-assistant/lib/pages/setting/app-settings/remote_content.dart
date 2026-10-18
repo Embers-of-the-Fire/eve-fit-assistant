@@ -133,7 +133,10 @@ Future<void> _showRemoteContentEndpointDialog(
 /// Performs the channel switch: discovers the registry, syncs the target
 /// channel's generation (including the promoted history), re-binds checkouts,
 /// and invalidates every consumer of channel state so tiles re-check
-/// immediately against the new channel.
+/// immediately against the new channel. The repo lifecycle is re-initialized
+/// (never merely invalidated — a bare invalidate resets it to `uninitialized`
+/// with no one left to re-run initialization, leaving the app on the
+/// SchemaGuard spinner forever).
 ///
 /// Returns an error message when discovery or sync fails; in that case the
 /// switch aborts before re-binding, so checkouts stay on their original
@@ -151,13 +154,12 @@ Future<String?> _switchChannel(WidgetRef ref, String channel) async {
   }
   await ref.read(dataUpdateServiceProvider).rebindCheckoutsToChannel(channel);
 
-  ref
-    ..invalidate(repoStateProvider)
-    ..invalidate(batchDataUpdateControllerProvider);
+  ref.invalidate(batchDataUpdateControllerProvider);
   for (final checkoutId in ref.read(installedCheckoutIdsProvider)) {
     ref.invalidate(checkoutUpdateControllerProvider(checkoutId));
   }
   ref.invalidate(appReleaseCheckStatusProvider);
+  await ref.read(repoStateProvider.notifier).initialize();
   return null;
 }
 
