@@ -118,6 +118,15 @@ Future<void> _showRemoteContentEndpointDialog(
   // checkout, and force all update checks to re-resolve against it.
   if (result.channel != config.channel) {
     final failure = await _switchChannel(ref, result.channel);
+    if (failure != null) {
+      // The switch failed before re-binding: restore the previous channel while
+      // keeping the other remote-content edits (origin, cadence) the user made.
+      ref
+          .read(appSettingServiceProvider.notifier)
+          .update(
+            (setting) => setting.copyWith(remoteContent: result.copyWith(channel: config.channel)),
+          );
+    }
     if (failure != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
