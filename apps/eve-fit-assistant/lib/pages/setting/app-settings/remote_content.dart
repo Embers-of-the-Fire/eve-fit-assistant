@@ -110,33 +110,36 @@ Future<void> _showRemoteContentEndpointDialog(
   if (result == null || !context.mounted) {
     return;
   }
-  ref
-      .read(appSettingServiceProvider.notifier)
-      .update((setting) => setting.copyWith(remoteContent: result));
-
   // A changed channel is a real switch: sync the target channel, re-bind every
-  // checkout, and force all update checks to re-resolve against it.
+  // checkout, and force all update checks to re-resolve against it. Commit the
+  // new channel to settings only after the switch succeeds so a failure cannot
+  // leave the stored channel ahead of the checkout bindings.
   if (result.channel != config.channel) {
     final failure = await _switchChannel(ref, result.channel);
     if (failure != null) {
-      // The switch failed before re-binding: restore the previous channel while
-      // keeping the other remote-content edits (origin, cadence) the user made.
+      // The switch failed before re-binding: keep the previous channel while
+      // committing the other remote-content edits (origin, cadence) the user
+      // made, so reopening the dialog can still retry the switch.
       ref
           .read(appSettingServiceProvider.notifier)
           .update(
             (setting) => setting.copyWith(remoteContent: result.copyWith(channel: config.channel)),
           );
-    }
-    if (failure != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(error: failure),
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(error: failure),
+            ),
           ),
-        ),
-      );
+        );
+      }
+      return;
     }
   }
+  ref
+      .read(appSettingServiceProvider.notifier)
+      .update((setting) => setting.copyWith(remoteContent: result));
 }
 
 /// Performs the channel switch: discovers the registry, syncs the target
