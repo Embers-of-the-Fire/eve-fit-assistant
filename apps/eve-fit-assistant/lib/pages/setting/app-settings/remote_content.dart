@@ -115,7 +115,10 @@ Future<void> _showRemoteContentEndpointDialog(
   // new channel to settings only after the switch succeeds so a failure cannot
   // leave the stored channel ahead of the checkout bindings.
   if (result.channel != config.channel) {
-    final failure = await _switchChannel(ref, result.channel);
+    final failure = await _switchChannel(context, ref, result.channel);
+    if (!context.mounted) {
+      return;
+    }
     if (failure != null) {
       // The switch failed before re-binding: keep the previous channel while
       // committing the other remote-content edits (origin, cadence) the user
@@ -154,7 +157,7 @@ Future<void> _showRemoteContentEndpointDialog(
 /// switch aborts before re-binding, so checkouts stay on their original
 /// channel (whose local head metadata is still present) and update checks
 /// keep resolving against the previous channel state.
-Future<String?> _switchChannel(WidgetRef ref, String channel) async {
+Future<String?> _switchChannel(BuildContext context, WidgetRef ref, String channel) async {
   final repo = ref.read(repoServiceProvider);
   final discoverResult = await repo.discoverChannels();
   if (discoverResult.isLeft()) {
@@ -164,8 +167,13 @@ Future<String?> _switchChannel(WidgetRef ref, String channel) async {
   if (syncResult.isLeft()) {
     return syncResult.getLeft().toNullable()!;
   }
+  if (!context.mounted) {
+    return null;
+  }
   await ref.read(dataUpdateServiceProvider).rebindCheckoutsToChannel(channel);
-
+  if (!context.mounted) {
+    return null;
+  }
   ref.invalidate(batchDataUpdateControllerProvider);
   for (final checkoutId in ref.read(installedCheckoutIdsProvider)) {
     ref.invalidate(checkoutUpdateControllerProvider(checkoutId));
