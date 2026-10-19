@@ -30,7 +30,6 @@ part "account_endpoint.dart";
 part "attribute_debug_view.dart";
 part "debug_log.dart";
 part "force_column.dart";
-part "remote_content_entry.dart";
 
 @RoutePage()
 class DeveloperSettingsPage extends ConsumerWidget {
@@ -52,7 +51,6 @@ class DeveloperSettingsPage extends ConsumerWidget {
           ConfigListTile.title(context.l10n.developerSettingsPageSectionToggles),
           const ConfigListTile.custom(DebugLogTile()),
           const ConfigListTile.custom(AttributeDebugViewTile()),
-          const ConfigListTile.custom(RemoteContentSettingsVisibilityTile()),
           const ConfigListTile.custom(ForceColumnTile()),
           const ConfigListTile.custom(AccountApiEndpointTile()),
           const ConfigListTile.custom(CloudflareAccessServiceTokenTile()),

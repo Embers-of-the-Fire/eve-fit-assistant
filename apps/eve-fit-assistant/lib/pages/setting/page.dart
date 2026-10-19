@@ -5,7 +5,6 @@ import "package:eve_fit_assistant/components/list/config_list.dart";
 import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/pages/router.dart";
-import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
@@ -15,48 +14,37 @@ class SettingPage extends ConsumerWidget {
   const SettingPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final showRemoteContent = ref.watch(
-      appSettingServiceProvider.select((setting) => setting.remoteContent.exposed),
-    );
-    return ConfigListView(
-      children: [
-        const ConfigListTile.space(20),
-        ConfigListTile.item(
-          icon: const Icon(Icons.person_outline),
-          title: context.l10n.settingTileAccountTitle,
-          onTap: () => unawaited(context.router.push(const AccountRoute())),
-        ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.settings),
-          title: context.l10n.settingTileAppSettingsTitle,
-          onTap: () => unawaited(context.router.push(const AppSettingsRoute())),
-        ),
-        if (showRemoteContent)
-          ConfigListTile.item(
-            icon: const Icon(Icons.cloud_sync_outlined),
-            title: context.l10n.settingTileRemoteContentTitle,
-            onTap: () => unawaited(context.router.push(const RemoteContentSettingsRoute())),
-          ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.storage_outlined),
-          title: context.l10n.settingTileDataStorageTitle,
-          onTap: () => unawaited(context.router.push(const StorageManagement())),
-        ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.feedback_outlined),
-          title: context.l10n.workspaceTabReportTitle,
-          onTap: () => unawaited(context.router.push(ReportFeedbackRoute())),
-        ),
-        ConfigListTile.item(
-          icon: const Icon(Icons.volunteer_activism_outlined),
-          title: context.l10n.sponsorshipTileTitle,
-          onTap: () => unawaited(openSponsorshipPage(context)),
-        ),
-        ConfigListTile.custom(_buildVersionTile(context, ref)),
-      ],
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => ConfigListView(
+    children: [
+      const ConfigListTile.space(20),
+      ConfigListTile.item(
+        icon: const Icon(Icons.person_outline),
+        title: context.l10n.settingTileAccountTitle,
+        onTap: () => unawaited(context.router.push(const AccountRoute())),
+      ),
+      ConfigListTile.item(
+        icon: const Icon(Icons.settings),
+        title: context.l10n.settingTileAppSettingsTitle,
+        onTap: () => unawaited(context.router.push(const AppSettingsRoute())),
+      ),
+      ConfigListTile.item(
+        icon: const Icon(Icons.storage_outlined),
+        title: context.l10n.settingTileDataStorageTitle,
+        onTap: () => unawaited(context.router.push(const StorageManagement())),
+      ),
+      ConfigListTile.item(
+        icon: const Icon(Icons.feedback_outlined),
+        title: context.l10n.workspaceTabReportTitle,
+        onTap: () => unawaited(context.router.push(ReportFeedbackRoute())),
+      ),
+      ConfigListTile.item(
+        icon: const Icon(Icons.volunteer_activism_outlined),
+        title: context.l10n.sponsorshipTileTitle,
+        onTap: () => unawaited(openSponsorshipPage(context)),
+      ),
+      ConfigListTile.custom(_buildVersionTile(context, ref)),
+    ],
+  );
 
   Widget _buildVersionTile(BuildContext context, WidgetRef ref) {
     // The changelog is not served on web; skip the announcement feed read so
