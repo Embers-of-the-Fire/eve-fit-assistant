@@ -91,9 +91,7 @@ void main() {
     when(() => mockRepoService.checkoutRegistry).thenReturn(mockRegistryService);
 
     // Default: no promoted history anywhere (pre-rollout channels).
-    when(
-      () => mockChannelService.readServerHistory(any()),
-    ).thenAnswer((_) async => const None());
+    when(() => mockChannelService.readServerHistory(any())).thenAnswer((_) async => const None());
     when(
       () => mockRemoteCatalogService.fetchServerHistory(any()),
     ).thenAnswer((_) async => const Left(CatalogNotFoundError(message: "no history")));
@@ -109,15 +107,14 @@ void main() {
   const testRemoteHash =
       "sha256:ffff0000111122223333444455556666777788889999aaaabbbbccccddddeeeeffff";
 
-  DataUpdateService makeService({DataCadence cadence = DataCadence.immediate}) =>
-      DataUpdateService(
-        repoService: mockRepoService,
-        channelService: mockChannelService,
-        checkoutService: mockCheckoutService,
-        assetStore: mockAssetStore,
-        remoteCatalogService: mockRemoteCatalogService,
-        cadence: cadence,
-      );
+  DataUpdateService makeService({DataCadence cadence = DataCadence.immediate}) => DataUpdateService(
+    repoService: mockRepoService,
+    channelService: mockChannelService,
+    checkoutService: mockCheckoutService,
+    assetStore: mockAssetStore,
+    remoteCatalogService: mockRemoteCatalogService,
+    cadence: cadence,
+  );
 
   CheckoutRegistryEntry testEntry({String channel = "testing"}) => CheckoutRegistryEntry(
     channel: channel,
@@ -153,9 +150,11 @@ void main() {
   group("checkForCheckout", () {
     test("returns upToDate when local and remote generation hashes match", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -164,9 +163,9 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockChannelService.readGenerationResources("testing"),
-      ).thenAnswer((_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
+      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
       when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
@@ -187,9 +186,11 @@ void main() {
 
     test("returns available when remote hash differs", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -224,9 +225,11 @@ void main() {
 
     test("returns available when generation matches but snapshot differs", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -235,9 +238,9 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockChannelService.readGenerationResources("testing"),
-      ).thenAnswer((_) async => Some(_generationResources(serverId: "tq", snapshotHash: "new_snapshot_hash")));
+      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "new_snapshot_hash")),
+      );
       when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
@@ -260,9 +263,11 @@ void main() {
 
     test("returns failed when server is missing from generation resources", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -271,8 +276,9 @@ void main() {
           ),
         ),
       );
-      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer((_) async => 
-        Some(_generationResources(serverId: "other", snapshotHash: "other_snapshot_hash")),
+      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer(
+        (_) async =>
+            Some(_generationResources(serverId: "other", snapshotHash: "other_snapshot_hash")),
       );
       when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
@@ -318,9 +324,11 @@ void main() {
 
     test("returns failed with canRetry: true when remote head fetch fails", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -352,6 +360,66 @@ void main() {
 
       expect(result.isLeft(), isTrue);
       expect(result.getLeft().toNullable(), "Checkout not found");
+    });
+
+    test("returns the channel-check error when the channel check fails", () async {
+      stubRegistry({"checkout-1": testEntry()});
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(
+        () => mockRemoteCatalogService.fetchHeadMeta("testing"),
+      ).thenAnswer((_) async => const Left(CatalogNetworkError(message: "connection refused")));
+
+      final service = makeService();
+      final result = await service.applyCheckoutUpdate("checkout-1", onProgress: (_, _) {});
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), contains("connection refused"));
+      verifyNever(
+        () => mockCheckoutService.applyDataUpdate(
+          checkoutId: any(named: "checkoutId"),
+          channel: any(named: "channel"),
+          channelName: any(named: "channelName"),
+          targetSnapshotHash: any(named: "targetSnapshotHash"),
+          onProgress: any(named: "onProgress"),
+        ),
+      );
+    });
+
+    test("rejects an unresolved cadence target instead of applying the head", () async {
+      stubRegistry({"checkout-1": testEntry(channel: "stable")});
+      when(
+        () => mockChannelService.localGenerationHash("stable"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockRemoteCatalogService.fetchHeadMeta("stable")).thenAnswer(
+        (_) async => Right(
+          ChannelHeadMeta(
+            schemaVersion: 1,
+            generationHash: testLocalHash,
+            updatedAt: "2026-06-17T12:00:00Z",
+            label: IMap(const {"en": "Stable"}),
+          ),
+        ),
+      );
+      when(() => mockChannelService.readGenerationResources("stable")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "snap_new")),
+      );
+
+      final service = makeService(cadence: DataCadence.weekly);
+      final result = await service.applyCheckoutUpdate("checkout-1", onProgress: (_, _) {});
+
+      expect(result.isLeft(), isTrue);
+      expect(result.getLeft().toNullable(), "Promoted history unavailable");
+      verifyNever(
+        () => mockCheckoutService.applyDataUpdate(
+          checkoutId: any(named: "checkoutId"),
+          channel: any(named: "channel"),
+          channelName: any(named: "channelName"),
+          targetSnapshotHash: any(named: "targetSnapshotHash"),
+          onProgress: any(named: "onProgress"),
+        ),
+      );
     });
 
     test("returns Left when checkout service applyDataUpdate fails", () async {
@@ -395,7 +463,9 @@ void main() {
             ..contentHash = "hash_a"
             ..size = Int64(5),
         );
-      when(() => mockAssetStore.readResourceIndex("new_snapshot_hash")).thenAnswer((_) async => Some(ri));
+      when(
+        () => mockAssetStore.readResourceIndex("new_snapshot_hash"),
+      ).thenAnswer((_) async => Some(ri));
 
       final service = makeService();
       final result = await service.applyCheckoutUpdate("checkout-1", onProgress: (_, _) {});
@@ -431,9 +501,11 @@ void main() {
   group("checkAllCheckouts", () {
     test("returns all upToDate when all checkouts are up to date", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -442,9 +514,9 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockChannelService.readGenerationResources("testing"),
-      ).thenAnswer((_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
+      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
       when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
@@ -466,9 +538,11 @@ void main() {
 
     test("shares one head and generation-resources fetch per channel", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -504,10 +578,14 @@ void main() {
 
     test("groups checkouts by channel", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry(channel: "stable")});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.localGenerationHash("stable")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(
+        () => mockChannelService.localGenerationHash("stable"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -516,8 +594,8 @@ void main() {
           ),
         ),
       );
-      when(() => mockChannelService.readHeadMeta("stable")).thenAnswer((_) async => 
-        Some(
+      when(() => mockChannelService.readHeadMeta("stable")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -550,9 +628,9 @@ void main() {
         (_) async =>
             Right(_generationResourcesBytes(serverId: "tq", snapshotHash: "new_snapshot_hash")),
       );
-      when(
-        () => mockChannelService.readGenerationResources("stable"),
-      ).thenAnswer((_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
+      when(() => mockChannelService.readGenerationResources("stable")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
 
       final service = makeService();
       final results = await service.checkAllCheckouts();
@@ -566,9 +644,11 @@ void main() {
 
     test("returns all available when all checkouts have updates", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -602,9 +682,7 @@ void main() {
 
     test("only iterates registered checkouts", () async {
       stubRegistry({"checkout-1": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer(
-        (_) async => null,
-      );
+      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => null);
 
       final service = makeService();
       final results = await service.checkAllCheckouts();
@@ -617,9 +695,11 @@ void main() {
   group("applyAllCheckouts", () {
     test("updates all available checkouts", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -660,7 +740,9 @@ void main() {
             ..contentHash = "hash_a"
             ..size = Int64(5),
         );
-      when(() => mockAssetStore.readResourceIndex("new_snapshot_hash")).thenAnswer((_) async => Some(ri));
+      when(
+        () => mockAssetStore.readResourceIndex("new_snapshot_hash"),
+      ).thenAnswer((_) async => Some(ri));
       when(() => mockRepoService.pruneAsync()).thenAnswer((_) async => 0);
 
       final service = makeService();
@@ -676,9 +758,11 @@ void main() {
 
     test("continues on failure and reports summary", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -725,7 +809,9 @@ void main() {
             ..contentHash = "hash_a"
             ..size = Int64(5),
         );
-      when(() => mockAssetStore.readResourceIndex("new_snapshot_hash")).thenAnswer((_) async => Some(ri));
+      when(
+        () => mockAssetStore.readResourceIndex("new_snapshot_hash"),
+      ).thenAnswer((_) async => Some(ri));
       when(() => mockRepoService.pruneAsync()).thenAnswer((_) async => 0);
 
       final service = makeService();
@@ -738,9 +824,11 @@ void main() {
 
     test("skips up-to-date checkouts", () async {
       stubRegistry({"checkout-1": testEntry(), "checkout-2": testEntry()});
-      when(() => mockChannelService.localGenerationHash("testing")).thenAnswer((_) async => testLocalHash);
-      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer((_) async => 
-        Some(
+      when(
+        () => mockChannelService.localGenerationHash("testing"),
+      ).thenAnswer((_) async => testLocalHash);
+      when(() => mockChannelService.readHeadMeta("testing")).thenAnswer(
+        (_) async => Some(
           ChannelHeadMeta(
             schemaVersion: 1,
             generationHash: testLocalHash,
@@ -749,9 +837,9 @@ void main() {
           ),
         ),
       );
-      when(
-        () => mockChannelService.readGenerationResources("testing"),
-      ).thenAnswer((_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")));
+      when(() => mockChannelService.readGenerationResources("testing")).thenAnswer(
+        (_) async => Some(_generationResources(serverId: "tq", snapshotHash: "old_snapshot_hash")),
+      );
       when(() => mockRemoteCatalogService.fetchHeadMeta("testing")).thenAnswer(
         (_) async => Right(
           ChannelHeadMeta(
@@ -783,7 +871,10 @@ void main() {
     // oldTs precedes it, newTs follows it.
     (String oldTs, String newTs) boundaryTimestamps() {
       final boundary = weekBoundaryUtc(DateTime.now().toUtc());
-      return (ts(boundary.subtract(const Duration(days: 3))), ts(boundary.add(const Duration(hours: 1))));
+      return (
+        ts(boundary.subtract(const Duration(days: 3))),
+        ts(boundary.add(const Duration(hours: 1))),
+      );
     }
 
     ServerHistory historyFor(String oldTs, String newTs) => ServerHistory(
@@ -942,9 +1033,7 @@ void main() {
           schemaVersion: 1,
           checkouts: IMap({
             "checkout-1": testEntry(),
-            "checkout-2": testEntry(
-              channel: "stable",
-            ).copyWith(promotedAt: "2026-06-01T00:00:00Z"),
+            "checkout-2": testEntry(channel: "stable").copyWith(promotedAt: "2026-06-01T00:00:00Z"),
           }),
         ),
       );

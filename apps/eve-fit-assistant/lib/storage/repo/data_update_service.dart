@@ -326,13 +326,26 @@ class DataUpdateService {
     final channel = Channel.tryParse(channelName) ?? Channel.defaultChannel;
 
     // Resolve the cadence target so a lagging tier applies the resolved
-    // snapshot, not the channel head. Unresolvable targets (missing history
-    // on a cadence tier) fall back to the head snapshot.
+    // snapshot, not the channel head. A failed channel check or an
+    // unresolvable cadence target (missing history on a cadence tier) rejects
+    // the apply rather than silently falling back to the head snapshot.
     String? targetSnapshotHash;
     final channelResult = await _checkChannel(channelName);
-    final info = channelResult.toNullable();
-    if (info != null && info.generationResources != null) {
-      targetSnapshotHash = _resolveTarget(checkout, info)?.snapshotHash;
+    if (channelResult.isLeft()) {
+      return Left(channelResult.getLeft().toNullable()!.message);
+    }
+    final info = channelResult.getRight().toNullable()!;
+    if (info.generationResources != null) {
+      final target = _resolveTarget(checkout, info);
+      if (target == null) {
+        final inResources = info.generationResources!.entries.any(
+          (e) => e.serverId == checkout.serverId,
+        );
+        return Left(
+          inResources ? "Promoted history unavailable" : "Server not found in latest generation",
+        );
+      }
+      targetSnapshotHash = target.snapshotHash;
     }
 
     final applyResult = await checkoutService.applyDataUpdate(
