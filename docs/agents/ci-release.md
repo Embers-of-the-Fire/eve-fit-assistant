@@ -117,11 +117,27 @@ guards; fork PRs never run these jobs.
    `testing` channel.
 3. `d1-sync` — registers snapshot engine data into the platform D1 through the data-sync
    worker; real releases only.
-4. `notify-qqbot` — posts a `data_update` event with one entry per rebuilt server (Chinese
-   name, game build/version, and snapshot creation time from each snapshot's `metadata.json`)
-   to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-data`; real
-   releases only. Depends only on `publish`, never on `d1-sync`, so a platform D1 sync
-   failure does not suppress the announcement.
+4. `notify-qqbot` — posts a `data_update` event with `channel: "testing"` and one entry per
+   rebuilt server (Chinese name, game build/version, and snapshot creation time from each
+   snapshot's `metadata.json`) to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET`
+   from `production-data`; real releases only. Depends only on `publish`, never on `d1-sync`,
+   so a platform D1 sync failure does not suppress the announcement.
+
+## Stable Channel Promotion Workflow
+
+`release-data-promote.yml` (hourly cron plus manual dispatch) promotes soak-eligible testing
+snapshots into the `stable` channel via `ci release-data promote`:
+
+1. `promote` — syncs both channel heads, admits testing publishes older than 24h minus the
+   stable suppression list, and publishes the new stable generation. A quiet period (nothing
+   eligible) is a successful no-op. The command's `--report` JSON (admitted snapshots with
+   embedded `metadata.json` content, plus suppressed skips) is uploaded as the
+   `promote-report` artifact; it is written for every outcome, quiet periods included.
+2. `notify-qqbot` — posts a `data_update` event with `channel: "stable"` built from the
+   report to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-data`;
+   real runs only, and skipped entirely when the report's `admitted` list is empty.
+
+The manual override path `./x remote promote` accepts the same `--report` flag.
 
 Real-release paths are never canceled mid-flight: `release-data.yml` (manual
 dispatch) and `update-raw-data.yml`'s non-PR runs use `cancel-in-progress: false`, so

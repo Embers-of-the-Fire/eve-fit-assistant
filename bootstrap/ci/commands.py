@@ -611,6 +611,14 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default=False,
         help="Allow promoting into a stable channel without a head (first run).",
     )
+    @click.option(
+        "--report",
+        "report_path",
+        type=click.Path(dir_okay=False, path_type=Path),
+        default=None,
+        help="Write a JSON promotion report (admitted snapshots + metadata) to this path; "
+        "written for every outcome, including quiet periods.",
+    )
     def release_data_promote(
         schema_root: Path,
         test_mode: bool,
@@ -623,6 +631,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
         workers: int,
         actor: str,
         allow_missing_head: bool,
+        report_path: Path | None,
     ):
         """Promote soak-eligible testing snapshots into the stable channel.
 
@@ -636,8 +645,10 @@ def register_ci_commands(cli_group: click.Group) -> None:
         from bootstrap.remote.models import ServerHistory
         from bootstrap.remote.models import read_pb2
         from bootstrap.remote.paths import generation_dir
+        from bootstrap.remote.promote import PromoteResult
         from bootstrap.remote.promote import PromotionError
         from bootstrap.remote.promote import compute_promotion_eligibility
+        from bootstrap.remote.promote import write_promotion_report
 
         resolved_root = (PROJECT_ROOT / schema_root).resolve()
         mgr = SessionManager(resolved_root)
@@ -666,6 +677,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
             history, source_gen.resources, datetime.datetime.now(datetime.UTC)
         )
         if not candidates:
+            if report_path is not None:
+                empty = PromoteResult(source=str(source), target=str(Channel.STABLE))
+                write_promotion_report(mgr, empty, (PROJECT_ROOT / report_path).resolve())
             click.echo("Nothing eligible for promotion (quiet period).")
             return
 
@@ -684,6 +698,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
             click.echo(f"Promoted {server_id}: {checkout[:16]}...")
         for server_id, checkout in sorted(result.skipped_suppressed.items()):
             click.echo(f"Suppressed {server_id}: {checkout[:16]}... (skipped)")
+
+        if report_path is not None:
+            write_promotion_report(mgr, result, (PROJECT_ROOT / report_path).resolve())
 
         if result.noop:
             click.echo("Nothing eligible for promotion (quiet period).")

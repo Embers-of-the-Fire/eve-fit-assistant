@@ -4,6 +4,9 @@ name: Release Data Promote
 # channel (docs/temp/stable/snap.plan.md §3.4). Eligibility = testing publish
 # older than 24h, minus the stable channel's suppression list. An empty plan
 # (quiet period) is a successful no-op; failures surface as failed runs.
+# Non-quiet promotions are announced to the QQ bot as channel="stable"
+# data_update events (the testing-channel publish is announced separately by
+# _release-data.yml).
 
 permissions:
   contents: read
@@ -115,6 +118,7 @@ jobs:
               --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
               ci release-data promote \
               --schema-root cache/remote \
+              --report promote-report.json \
               --target s3'
 
       - name: Promote eligible snapshots (MinIO mock)
@@ -123,7 +127,19 @@ jobs:
           nix develop .#python --command bash -c \
             'uv run x.py ci release-data promote \
               --schema-root cache/remote \
+              --report promote-report.json \
               --target minio'
+
+      # The report drives the stable-channel QQ bot announcement in the
+      # notify-qqbot job; it is written for every outcome, quiet periods
+      # included (empty admitted list). The promote step may be skipped
+      # entirely in test mode (empty mock), hence the hashFiles guard.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: success() && hashFiles('promote-report.json') != ''
+        with:
+          name: promote-report
+          path: promote-report.json
+          retention-days: 1
 
       - name: Upload diagnostics
         if: failure()
@@ -133,3 +149,59 @@ jobs:
           redact-values: |
             ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
             ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+
+  notify-qqbot:
+    name: Announce stable promotion to QQ bot
+    needs: [promote]
+    runs-on: ubuntu-slim
+    # Post-promotion announcement, real runs only: in test mode the promotion
+    # targets the MinIO mock, so mock promotions never reach the bot. The
+    # production-data environment supplies the bot's bearer secret.
+    if: |
+      always() &&
+      needs.promote.result == 'success' &&
+      inputs.test_mode == false
+    environment: production-data
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: promote-report
+          path: .
+
+      # Quiet period: the report is always written, with an empty admitted
+      # list when nothing was promoted; skip the broadcast in that case.
+      - name: Check for promoted snapshots
+        id: check
+        run: |
+          count=$(jq '.admitted | length' promote-report.json)
+          echo "Promoted snapshots: ${count}"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+
+      # Event API contract (bofa-qqbot EVENT.md): bearer auth plus
+      # {"type": "data_update", "payload": {channel, servers: [{id, name, build,
+      # version, createdAt}]}}. channel="stable" distinguishes this promotion
+      # announcement from the testing-channel publish announced by
+      # _release-data.yml. Each admitted entry embeds the snapshot's
+      # metadata.json content.
+      - name: Post data_update event
+        if: steps.check.outputs.count != '0'
+        env:
+          QQBOT_EVENT_SECRET: ${{ secrets.QQBOT_EVENT_SECRET }}
+        run: |
+          set -euo pipefail
+          payload=$(jq '{type: "data_update", payload: {
+            channel: "stable",
+            servers: [.admitted[] | {
+              id: .metadata.serverId,
+              name: (.metadata.name.zh // .metadata.name.en // .metadata.serverId),
+              build: (.metadata.gameBuild | tonumber),
+              version: .metadata.gameVersion,
+              createdAt: .metadata.createdAt
+            }]
+          }}' promote-report.json)
+          response=$(curl --fail-with-body -sS --retry 3 --retry-all-errors --retry-delay 5 \
+            -X POST "https://bot.efa-tech.dev/event" \
+            -H "Authorization: Bearer ${QQBOT_EVENT_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          echo "QQ bot response: $response"
