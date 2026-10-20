@@ -76,10 +76,11 @@ struct ChannelRegistry {
 }
 
 /// Channel selection, mirroring the app (`generation_nav.dart`): an empty
-/// `defaultChannel` falls back to `"testing"`.
+/// `defaultChannel` (a registry predating the stable rollout) falls back to
+/// `"stable"`.
 fn select_channel(registry: &ChannelRegistry) -> &str {
     if registry.default_channel.is_empty() {
-        "testing"
+        "stable"
     } else {
         &registry.default_channel
     }
@@ -220,13 +221,29 @@ async fn resolve_icon_urls_inner(
     let registry: ChannelRegistry = fetch_json(&registry_url, HEAD_CACHE_TTL_S)
         .await
         .ok_or_else(|| format!("channel registry {registry_url}: fetch/parse failed"))?;
-    let head_url = catalog_url(
-        &origin,
-        &format!("channels/heads/{}/metadata.json", select_channel(&registry)),
-    );
-    let head: HeadMeta = fetch_json(&head_url, HEAD_CACHE_TTL_S)
-        .await
-        .ok_or_else(|| format!("head metadata {head_url}: fetch/parse failed"))?;
+    // Retry `testing` only for legacy registries: an empty `defaultChannel`
+    // selects `stable`, which may not exist yet while the `testing` head
+    // does. When a channel is explicitly configured, retrying `testing`
+    // would bake testing icon URLs into a snapshot intended for that
+    // channel, so keep the plain best-effort failure instead.
+    let selected = select_channel(&registry);
+    let mut candidates = vec![selected];
+    if registry.default_channel.is_empty() {
+        candidates.push("testing");
+    }
+    let mut head: Option<HeadMeta> = None;
+    let mut head_err = String::new();
+    for channel in candidates {
+        let head_url = catalog_url(&origin, &format!("channels/heads/{channel}/metadata.json"));
+        match fetch_json(&head_url, HEAD_CACHE_TTL_S).await {
+            Some(meta) => {
+                head = Some(meta);
+                break;
+            }
+            None => head_err = format!("head metadata {head_url}: fetch/parse failed"),
+        }
+    }
+    let head = head.ok_or(head_err)?;
     let gen_url = catalog_url(
         &origin,
         &format!("channels/refs/{}/resources.pb2", head.generation_hash),
@@ -354,17 +371,17 @@ mod tests {
     }
 
     #[test]
-    fn empty_default_channel_falls_back_to_testing() {
-        // Mirrors the app (`generation_nav.dart`): the live prod registry
-        // ships `"defaultChannel": ""`.
+    fn empty_default_channel_falls_back_to_stable() {
+        // Mirrors the app (`generation_nav.dart`): a registry predating the
+        // stable rollout ships `"defaultChannel": ""`.
         let registry = ChannelRegistry {
             default_channel: String::new(),
         };
-        assert_eq!(select_channel(&registry), "testing");
-        let registry = ChannelRegistry {
-            default_channel: "stable".to_string(),
-        };
         assert_eq!(select_channel(&registry), "stable");
+        let registry = ChannelRegistry {
+            default_channel: "testing".to_string(),
+        };
+        assert_eq!(select_channel(&registry), "testing");
     }
 
     #[test]

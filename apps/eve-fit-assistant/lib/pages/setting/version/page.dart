@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/components/layout.dart";
 import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart"
     show unreadAnnouncementCountProvider;
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/pages/router.dart"
     show AnnouncementFeedRoute, DeveloperSettingsRoute;
 import "package:eve_fit_assistant/pages/setting/version/update_check_tile.dart";
@@ -66,6 +67,47 @@ class _VersionPageState extends ConsumerState<VersionPage> {
           final loading = info == null;
           final isWide = screenColumnTarget(context) != ScreenColumnTarget.one;
 
+          final appRows = <({String label, String? value, VoidCallback? onTap})>[
+            (
+              label: context.l10n.versionPageAppVersion,
+              value: info?.version,
+              onTap: () => _onVersionRowTapped(context),
+            ),
+            (label: context.l10n.versionPageBuildNumber, value: info?.buildNumber, onTap: null),
+            (label: context.l10n.versionPagePackageName, value: info?.packageName, onTap: null),
+          ];
+          final storageRows = <({String label, String? value, VoidCallback? onTap})>[
+            (
+              label: context.l10n.versionPageSchemaVersion,
+              value: currentSchemaVersion.toString(),
+              onTap: null,
+            ),
+            (
+              label: context.l10n.versionPageRrsVersion,
+              value: kResourceResolutionSchemaVersion.toString(),
+              onTap: null,
+            ),
+            (
+              label: context.l10n.versionPageActiveData,
+              value: _activeCheckoutLabel(context, activeCheckout),
+              onTap: null,
+            ),
+            (
+              label: context.l10n.versionPageChannel,
+              value: appSetting.remoteContent.channel,
+              onTap: null,
+            ),
+            (
+              label: context.l10n.versionPageCadence,
+              value: switch (DataCadence.parse(appSetting.remoteContent.cadence)) {
+                DataCadence.immediate => context.l10n.appSettingsPageRemoteContentCadenceImmediate,
+                DataCadence.weekly => context.l10n.appSettingsPageRemoteContentCadenceWeekly,
+                DataCadence.monthly => context.l10n.appSettingsPageRemoteContentCadenceMonthly,
+              },
+              onTap: null,
+            ),
+          ];
+
           return ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             children: [
@@ -95,23 +137,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     Expanded(
                       child: _InfoSection(
                         title: context.l10n.appTitle,
-                        rows: [
-                          (
-                            label: context.l10n.versionPageAppVersion,
-                            value: info?.version,
-                            onTap: () => _onVersionRowTapped(context),
-                          ),
-                          (
-                            label: context.l10n.versionPageBuildNumber,
-                            value: info?.buildNumber,
-                            onTap: null,
-                          ),
-                          (
-                            label: context.l10n.versionPagePackageName,
-                            value: info?.packageName,
-                            onTap: null,
-                          ),
-                        ],
+                        rows: appRows,
                         loading: loading,
                       ),
                     ),
@@ -119,28 +145,7 @@ class _VersionPageState extends ConsumerState<VersionPage> {
                     Expanded(
                       child: _InfoSection(
                         title: context.l10n.storageDataManagementTitle,
-                        rows: [
-                          (
-                            label: context.l10n.versionPageSchemaVersion,
-                            value: currentSchemaVersion.toString(),
-                            onTap: null,
-                          ),
-                          (
-                            label: context.l10n.versionPageRrsVersion,
-                            value: kResourceResolutionSchemaVersion.toString(),
-                            onTap: null,
-                          ),
-                          (
-                            label: context.l10n.versionPageActiveData,
-                            value: _activeCheckoutLabel(context, activeCheckout),
-                            onTap: null,
-                          ),
-                          (
-                            label: context.l10n.versionPageChannel,
-                            value: appSetting.remoteContent.channel,
-                            onTap: null,
-                          ),
-                        ],
+                        rows: storageRows,
                         loading: loading,
                       ),
                     ),
@@ -149,52 +154,11 @@ class _VersionPageState extends ConsumerState<VersionPage> {
               else
                 Column(
                   children: [
-                    _InfoSection(
-                      title: context.l10n.appTitle,
-                      rows: [
-                        (
-                          label: context.l10n.versionPageAppVersion,
-                          value: info?.version,
-                          onTap: () => _onVersionRowTapped(context),
-                        ),
-                        (
-                          label: context.l10n.versionPageBuildNumber,
-                          value: info?.buildNumber,
-                          onTap: null,
-                        ),
-                        (
-                          label: context.l10n.versionPagePackageName,
-                          value: info?.packageName,
-                          onTap: null,
-                        ),
-                      ],
-                      loading: loading,
-                    ),
+                    _InfoSection(title: context.l10n.appTitle, rows: appRows, loading: loading),
                     const SizedBox(height: 16),
                     _InfoSection(
                       title: context.l10n.storageDataManagementTitle,
-                      rows: [
-                        (
-                          label: context.l10n.versionPageSchemaVersion,
-                          value: currentSchemaVersion.toString(),
-                          onTap: null,
-                        ),
-                        (
-                          label: context.l10n.versionPageRrsVersion,
-                          value: kResourceResolutionSchemaVersion.toString(),
-                          onTap: null,
-                        ),
-                        (
-                          label: context.l10n.versionPageActiveData,
-                          value: _activeCheckoutLabel(context, activeCheckout),
-                          onTap: null,
-                        ),
-                        (
-                          label: context.l10n.versionPageChannel,
-                          value: appSetting.remoteContent.channel,
-                          onTap: null,
-                        ),
-                      ],
+                      rows: storageRows,
                       loading: loading,
                     ),
                   ],

@@ -51,6 +51,9 @@ class _SchemaGuardState extends ConsumerState<SchemaGuard> {
     final RepoState state = ref.watch(repoStateProvider);
 
     if (state is RepoStateUninitialized) {
+      // The repo provider may be invalidated back to uninitialized after the
+      // first init; release the latch so initialization runs again.
+      _initialized = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _tryInitialize());
       return _buildLoading();
     }

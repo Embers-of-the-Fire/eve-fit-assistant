@@ -117,6 +117,14 @@ class RemoteCatalogService {
     return _fetchBytes(uri);
   }
 
+  /// GET `channels/refs/{generationHash}/history.pb2`
+  ///
+  /// The per-generation promoted/published snapshot history (ServerHistory).
+  Future<Either<CatalogError, Uint8List>> fetchServerHistory(String generationHash) async {
+    final uri = _buildUri("channels/refs/$generationHash/history.pb2");
+    return _fetchBytes(uri);
+  }
+
   // ── Release fetch ───────────────────────────────────────────────────────────
 
   /// GET `assets/resources/{snapshotHash}/metadata.json`

@@ -14,6 +14,7 @@ from bootstrap.remote.generation import utc_timestamp
 from bootstrap.remote.models import ChannelHeadMetadata
 from bootstrap.remote.models import ChannelInfo
 from bootstrap.remote.models import ChannelRegistry
+from bootstrap.remote.models import SuppressionList
 from bootstrap.remote.models import append_head_reflog_entry
 from bootstrap.remote.models import read_json
 from bootstrap.remote.models import read_pb2
@@ -23,6 +24,7 @@ from bootstrap.remote.paths import channel_head_dir
 from bootstrap.remote.paths import channel_registry_path
 from bootstrap.remote.paths import head_metadata_path
 from bootstrap.remote.paths import head_reflog_path
+from bootstrap.remote.paths import head_suppressions_path
 
 
 if TYPE_CHECKING:
@@ -49,10 +51,17 @@ class ChannelHeadStore:
         write_json_atomic(channel_registry_path(self.root), registry)
 
     def ensure_channel(self, name: str, label: dict[str, str] | None = None) -> None:
-        """Ensure a channel exists in the registry and its head directory is created."""
+        """Ensure a channel exists in the registry and its head directory is created.
+
+        Heads left behind by an unregistered bootstrap promotion (empty label)
+        are repaired in place when a label is supplied.
+        """
         registry = self.get_registry()
         if name not in registry.channels:
             registry.channels[name] = ChannelInfo(label=label or {"en": name})
+            self._save_registry(registry)
+        elif label and not registry.channels[name].label:
+            registry.channels[name].label = label
             self._save_registry(registry)
 
         head_dir = channel_head_dir(self.root, name)
@@ -62,6 +71,11 @@ class ChannelHeadStore:
         if not meta_path.is_file():
             meta = ChannelHeadMetadata(generationHash="", label=label or {"en": name})
             write_json_atomic(meta_path, meta)
+        elif label:
+            existing = ChannelHeadMetadata.model_validate(read_json(meta_path))
+            if not existing.label:
+                existing.label = label
+                write_json_atomic(meta_path, existing)
 
         reflog_path = head_reflog_path(self.root, name)
         if not reflog_path.is_file():
@@ -125,6 +139,20 @@ class ChannelHeadStore:
             empty.schema_version = 1
             return empty
         return read_pb2(path, HeadReflog)
+
+    # --- Suppressions ----------------------------------------------------------
+
+    def get_suppressions(self, channel: str) -> SuppressionList:
+        """Load the channel's promotion suppression list (absent file → empty)."""
+        path = head_suppressions_path(self.root, channel)
+        if not path.is_file():
+            return SuppressionList()
+        return SuppressionList.model_validate(read_json(path))
+
+    def save_suppressions(self, channel: str, suppressions: SuppressionList) -> None:
+        """Persist the channel's promotion suppression list atomically."""
+        self._ensure_channel_dir(channel)
+        write_json_atomic(head_suppressions_path(self.root, channel), suppressions)
 
     # --- Internal ------------------------------------------------------------
 

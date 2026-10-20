@@ -4,6 +4,7 @@ import "package:dio/dio.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/dio_factory.dart";
 import "package:eve_fit_assistant/features/schema_guard/schema_guard.dart" show SchemaGuard;
@@ -210,6 +211,7 @@ DataUpdateService dataUpdateService(Ref ref) => DataUpdateService(
   checkoutService: ref.watch(checkoutServiceProvider),
   assetStore: ref.watch(assetStoreProvider),
   remoteCatalogService: ref.watch(remoteCatalogServiceProvider),
+  cadence: DataCadence.parse(ref.watch(appSettingServiceProvider).remoteContent.cadence),
 );
 
 // ── Reactive stream providers ─────────────────────────────────────────────────

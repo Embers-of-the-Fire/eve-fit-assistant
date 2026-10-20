@@ -24,6 +24,7 @@ from bootstrap.remote.paths import blob_path
 from bootstrap.remote.paths import channel_head_dir
 from bootstrap.remote.paths import channel_registry_path
 from bootstrap.remote.paths import generation_dir
+from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.paths import resource_snapshot_dir
 from bootstrap.remote.resource_manager import ResourceManager
@@ -137,6 +138,7 @@ class Publisher:
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
+        self._ensure_alias()
         prefixes = self._gen_remote_prefix()
         head_dir = channel_head_dir(self.local_root, channel)
         self._upload_tree(head_dir, prefixes + f"channels/heads/{channel}")
@@ -144,6 +146,27 @@ class Publisher:
         registry_path = channel_registry_path(self.local_root)
         if registry_path.is_file():
             self._upload_file(registry_path, prefixes + "channels/heads/channels.json")
+
+    def publish_suppressions(self, channel: str) -> None:
+        """Upload only the channel's suppression list (suppressions.json).
+
+        Suppression updates must not re-upload the whole head tree: with a
+        stale local cache that would roll the remote head pointer and reflog
+        back over a newer remote state.
+        """
+        self._ensure_alias()
+        supp_path = head_suppressions_path(self.local_root, channel)
+        remote = self._gen_remote_prefix() + f"channels/heads/{channel}/suppressions.json"
+        self._upload_file(supp_path, remote, overwrite=True)
+
+    def publish_registry(self) -> None:
+        """Upload only the channel registry (channels.json) to remote."""
+        self._ensure_alias()
+        registry_path = channel_registry_path(self.local_root)
+        if registry_path.is_file():
+            self._upload_file(
+                registry_path, self._gen_remote_prefix() + "channels/heads/channels.json"
+            )
 
     def publish_all_for_head(self, channel: str) -> None:
         """Publish full chain from head → generation → snapshots → blobs → head."""
@@ -483,10 +506,15 @@ class Publisher:
         return len(unique)
 
     def _upload_file(
-        self, src: Path, remote_path: str, *, attrs: dict[str, str] | None = None
+        self,
+        src: Path,
+        remote_path: str,
+        *,
+        attrs: dict[str, str] | None = None,
+        overwrite: bool = False,
     ) -> None:
         if self.origin_dir is not None:
-            self._upload_local(src, remote_path)
+            self._upload_local(src, remote_path, overwrite=overwrite)
         else:
             self._upload_s3(src, remote_path, attrs=attrs)
 
@@ -536,11 +564,11 @@ class Publisher:
                     future.result()
                     pbar.update(1)
 
-    def _upload_local(self, src: Path, remote_path: str) -> None:
+    def _upload_local(self, src: Path, remote_path: str, *, overwrite: bool = False) -> None:
         import shutil
 
         dst = self.origin_dir / remote_path
-        if dst.exists():
+        if dst.exists() and not overwrite:
             return
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)

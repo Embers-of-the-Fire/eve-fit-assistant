@@ -1,0 +1,135 @@
+name: Release Data Promote
+
+# Hourly auto-promotion of soak-eligible testing snapshots into the stable
+# channel (docs/temp/stable/snap.plan.md §3.4). Eligibility = testing publish
+# older than 24h, minus the stable channel's suppression list. An empty plan
+# (quiet period) is a successful no-op; failures surface as failed runs.
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Run in test mode (against a local MinIO mock instead of the real remote)"
+        type: boolean
+        default: false
+
+# Promotions move the stable head; never run two concurrently and never cancel
+# one mid-publish.
+concurrency:
+  group: data-promote
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote eligible snapshots to stable
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Python env
+        uses: $/.github/actions/setup-python-env
+        with:
+          init-dev-env: true
+
+      - name: Generate protobuf
+        run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
+
+      - name: Start MinIO mock
+        if: inputs.test_mode
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote mock launch --daemon'
+
+      - name: Sync remote channel heads
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              remote sync \
+              --target s3 \
+              --channel testing \
+              --schema-root cache/remote'
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              remote sync \
+              --target s3 \
+              --channel stable \
+              --schema-root cache/remote'
+
+      # The mock starts empty on a fresh dispatch; a missing testing head means
+      # there is simply nothing to promote in this smoke run.
+      - name: Sync remote channel heads (MinIO mock)
+        if: inputs.test_mode
+        id: sync
+        continue-on-error: true
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py remote sync \
+              --target minio \
+              --channel testing \
+              --schema-root cache/remote'
+          nix develop .#python --command bash -c \
+            'uv run x.py remote sync \
+              --target minio \
+              --channel stable \
+              --schema-root cache/remote'
+
+      - name: Promote eligible snapshots
+        if: inputs.test_mode == false
+        env:
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
+              ci release-data promote \
+              --schema-root cache/remote \
+              --target s3'
+
+      - name: Promote eligible snapshots (MinIO mock)
+        if: inputs.test_mode && steps.sync.outcome == 'success'
+        run: |
+          nix develop .#python --command bash -c \
+            'uv run x.py ci release-data promote \
+              --schema-root cache/remote \
+              --target minio'
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: $/.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-data-promote
+          redact-values: |
+            ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+            ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}

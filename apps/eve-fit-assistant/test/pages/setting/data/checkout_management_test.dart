@@ -36,7 +36,7 @@ AppSetting _testAppSetting({RemoteContentSetting? remoteContent}) => AppSetting(
   showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
   developerMode: false,
-  remoteContent: remoteContent ?? const RemoteContentSetting(exposed: true),
+  remoteContent: remoteContent ?? const RemoteContentSetting(),
 );
 
 CheckoutRegistry _testRegistry({String activeId = "checkout-1", int count = 1}) {

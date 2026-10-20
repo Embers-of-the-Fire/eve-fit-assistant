@@ -14,6 +14,9 @@ import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
+import "package:eve_fit_assistant/features/remote_content/cadence.dart";
+import "package:eve_fit_assistant/features/remote_content/channel.dart";
+import "package:eve_fit_assistant/features/remote_content/channel_switch.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
@@ -25,6 +28,7 @@ import "package:path/path.dart" as p;
 import "package:restart_app/restart_app.dart";
 
 part "anti_scroll.dart";
+part "data_channel.dart";
 part "font_scale.dart";
 part "impact_warning.dart";
 part "locale.dart";
@@ -57,6 +61,9 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(ListReturnBehaviorTile()),
         ConfigListTile.title(context.l10n.appSettingsPageSectionCheckout),
         const ConfigListTile.custom(CheckoutImpactWarningTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionDataUpdates),
+        const ConfigListTile.custom(DataChannelTile()),
+        const ConfigListTile.custom(DataCadenceTile()),
         // Market price is disabled at the provider root on web, so its
         // settings do not apply there.
         if (!kIsWeb) ...[

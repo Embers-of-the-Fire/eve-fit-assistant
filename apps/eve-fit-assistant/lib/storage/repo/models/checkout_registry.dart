@@ -27,6 +27,12 @@ abstract class CheckoutRegistryEntry with _$CheckoutRegistryEntry {
     required String resourceSnapshotHash,
     required String createdAt,
     @Default(IMap<String, String>.empty()) IMap<String, String> name,
+
+    /// ISO 8601 UTC timestamp at which the active snapshot was admitted into
+    /// the checkout's channel (the `promoted_at` of its history entry).
+    /// Recorded at provision and at every applied update; null means the age
+    /// is unknown (pre-cadence installs, cross-channel re-binds).
+    String? promotedAt,
   }) = _CheckoutRegistryEntry;
 
   factory CheckoutRegistryEntry.fromJson(Map<String, dynamic> json) =>

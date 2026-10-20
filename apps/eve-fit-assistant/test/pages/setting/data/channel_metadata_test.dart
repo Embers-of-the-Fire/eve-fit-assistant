@@ -27,7 +27,7 @@ AppSetting _testAppSetting({RemoteContentSetting? remoteContent}) => AppSetting(
   showCheckoutImpactWarnings: true,
   typeListReturnBehavior: TypeListReturnBehavior.previousPage,
   developerMode: false,
-  remoteContent: remoteContent ?? const RemoteContentSetting(exposed: true),
+  remoteContent: remoteContent ?? const RemoteContentSetting(),
 );
 
 void main() {
@@ -90,7 +90,9 @@ void main() {
       ProviderScope(
         overrides: [
           channelServiceProvider.overrideWith((_) => mockChannelService),
-          appSettingServiceProvider.overrideWithValue(_testAppSetting()),
+          appSettingServiceProvider.overrideWithValue(
+            _testAppSetting(remoteContent: const RemoteContentSetting(channel: "testing")),
+          ),
         ],
         child: testApp(const ChannelMetadataPage()),
       ),
