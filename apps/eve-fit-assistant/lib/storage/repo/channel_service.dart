@@ -82,12 +82,15 @@ class ChannelService {
 
   /// Fetches and persists all generation-level files for [channelName].
   ///
-  /// Best-effort: individual file fetch failures are logged but do not abort
-  /// the overall sync. The only hard failure is an inability to fetch the
-  /// channel head metadata (which provides the generation hash).
+  /// Every generation file is required: the new channel head metadata is
+  /// published only after all of them persist. If any fetch or write fails,
+  /// the previous head stays in place and the sync returns a [Left], so
+  /// later reads never pair the new generation hash with stale resources or
+  /// history. The only tolerated absence is a missing channel head (channel
+  /// not yet initialized on remote).
   ///
   /// Persisted files:
-  /// - channels/{channel}/metadata.json   — channel head metadata
+  /// - channels/{channel}/metadata.json   — channel head metadata (written last)
   /// - channels/{channel}/server.pb2      — ServerIndex
   /// - channels/{channel}/resources.pb2   — GenerationResources
   /// - channels/{channel}/releases.pb2    — GenerationPointer (releases)
@@ -115,40 +118,49 @@ class ChannelService {
     }
     final head = headResult.getRight().toNullable()!;
     final generationHash = head.generationHash;
-
-    // Write local channel head metadata
-    await _writeLocalHeadMeta(channelName, head);
     onProgress?.call(1, totalSteps);
 
-    // Fetch and persist all generation-level files independently.
-    // Failure of one does not abort the others.
-    await _fetchAndPersistBytes(
-      fetcher: () => remoteCatalogService.fetchServerIndex(generationHash),
-      channelName: channelName,
-      path: RepoPaths.channelServerIndexPath(channelName),
-    );
-    onProgress?.call(2, totalSteps);
+    // Fetch and persist every required generation file before publishing the
+    // new head. A partial sync must keep the previous head in place so no
+    // reader can observe the new generation hash alongside stale files.
+    final requiredFiles = [
+      (
+        label: "server index",
+        fetcher: () => remoteCatalogService.fetchServerIndex(generationHash),
+        path: RepoPaths.channelServerIndexPath(channelName),
+      ),
+      (
+        label: "generation resources",
+        fetcher: () => remoteCatalogService.fetchGenerationResources(generationHash),
+        path: RepoPaths.channelResourcesPath(channelName),
+      ),
+      (
+        label: "release pointer",
+        fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
+        path: RepoPaths.channelReleasesPath(channelName),
+      ),
+      (
+        label: "server history",
+        fetcher: () => remoteCatalogService.fetchServerHistory(generationHash),
+        path: RepoPaths.channelHistoryPath(channelName),
+      ),
+    ];
 
-    await _fetchAndPersistBytes(
-      fetcher: () => remoteCatalogService.fetchGenerationResources(generationHash),
-      channelName: channelName,
-      path: RepoPaths.channelResourcesPath(channelName),
-    );
-    onProgress?.call(3, totalSteps);
+    var step = 1;
+    for (final file in requiredFiles) {
+      final error = await _fetchAndPersistBytes(
+        fetcher: file.fetcher,
+        channelName: channelName,
+        path: file.path,
+        label: file.label,
+      );
+      step += 1;
+      onProgress?.call(step, totalSteps);
+      if (error != null) return Left(error);
+    }
 
-    await _fetchAndPersistBytes(
-      fetcher: () => remoteCatalogService.fetchGenerationPointer(generationHash),
-      channelName: channelName,
-      path: RepoPaths.channelReleasesPath(channelName),
-    );
-    onProgress?.call(4, totalSteps);
-
-    await _fetchAndPersistBytes(
-      fetcher: () => remoteCatalogService.fetchServerHistory(generationHash),
-      channelName: channelName,
-      path: RepoPaths.channelHistoryPath(channelName),
-    );
-    onProgress?.call(totalSteps, totalSteps);
+    // Publish the new head only after every generation file persisted.
+    await _writeLocalHeadMeta(channelName, head);
 
     return const Right(unit);
   }
@@ -292,31 +304,31 @@ class ChannelService {
 
   /// Fetches bytes using [fetcher] and atomically writes them to [path].
   ///
-  /// Failures are logged at warning level and do not propagate — the caller
-  /// determines whether a particular file is critical.
-  Future<void> _fetchAndPersistBytes({
+  /// Returns an error message when the fetch or the write fails, and null on
+  /// success. The caller decides whether the failure aborts the operation.
+  Future<String?> _fetchAndPersistBytes({
     required Future<Either<CatalogError, Uint8List>> Function() fetcher,
     required String channelName,
     required String path,
+    required String label,
   }) async {
     final result = await fetcher();
     if (result.isLeft()) {
       final err = result.getLeft().toNullable()!;
-      if (err is CatalogNotFoundError) {
-        debug("Generation file not found for $channelName: $path");
-      } else {
-        warning(
-          "Failed to fetch generation file for $channelName: ${err is CatalogNetworkError ? err.message : err.toString()}",
-        );
-      }
-      return;
+      return switch (err) {
+        CatalogNetworkError() => "Network error fetching $label for $channelName: ${err.message}",
+        CatalogParseError() => "Failed to parse $label for $channelName: ${err.message}",
+        CatalogNotFoundError() => "$label not found for $channelName: ${err.message}",
+      };
     }
     final bytes = result.getRight().toNullable()!;
     try {
       await _store.write(path, bytes);
     } catch (e, stackTrace) {
-      warning("Failed to write generation file for $channelName: $path", stackTrace: stackTrace);
+      warning("Failed to write $label for $channelName: $path", stackTrace: stackTrace);
+      return "Failed to write $label for $channelName";
     }
+    return null;
   }
 
   Future<void> _writeChannelRegistry(ChannelRegistry registry) async {
