@@ -62,7 +62,7 @@ Future<void> _selectDropdownItem<T>(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets("channel switch commits the new channel on success", (tester) async {
+  testWidgets("channel switch delegates the target channel to the switch action", (tester) async {
     final calls = <String>[];
     await tester.pumpWidget(_wrap(const DataChannelTile(), calls: calls));
 
@@ -71,14 +71,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(calls, ["testing"]);
-    final context = tester.element(find.byType(DataChannelTile));
-    final container = ProviderScope.containerOf(context);
-    expect(container.read(appSettingServiceProvider).remoteContent.channel, "testing");
   });
 
-  testWidgets("failed channel switch keeps the stored channel and shows the error", (
-    tester,
-  ) async {
+  testWidgets("failed channel switch keeps the stored channel and shows the error", (tester) async {
     final calls = <String>[];
     await tester.pumpWidget(
       _wrap(const DataChannelTile(), switchError: "sync failed", calls: calls),
@@ -116,7 +111,10 @@ void main() {
       find.byType(DropdownButton<DataCadence>),
     );
     expect(dropdown.onChanged, isNull);
-    expect(find.text("The testing channel always tracks the latest data immediately."), findsOneWidget);
+    expect(
+      find.text("The testing channel always tracks the latest data immediately."),
+      findsOneWidget,
+    );
   });
 
   testWidgets("cadence change commits immediately on the stable channel", (tester) async {

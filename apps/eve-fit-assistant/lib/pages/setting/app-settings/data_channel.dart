@@ -52,8 +52,8 @@ class _DataChannelTileState extends ConsumerState<DataChannelTile> {
     );
     if (!confirmed || !mounted) return;
     setState(() => _switching = true);
-    // Commit the new channel to settings only after the switch succeeds so a
-    // failure cannot leave the stored channel ahead of the checkout bindings.
+    // The action commits the new channel to settings on success; the widget
+    // only surfaces a failure, which is safe to skip once disposed.
     final failure = await ref.read(channelSwitchActionProvider)(next.value);
     if (!mounted) return;
     setState(() => _switching = false);
@@ -65,11 +65,7 @@ class _DataChannelTileState extends ConsumerState<DataChannelTile> {
           ),
         ),
       );
-      return;
     }
-    ref
-        .read(appSettingServiceProvider.notifier)
-        .update((setting) => setting.copyWith.remoteContent(channel: next.value));
   }
 }
 
