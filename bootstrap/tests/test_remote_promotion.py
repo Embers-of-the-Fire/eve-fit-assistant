@@ -9,6 +9,7 @@ history snapshots.
 from __future__ import annotations
 
 import datetime
+import json
 import shutil
 import tempfile
 
@@ -674,6 +675,31 @@ class TestPromoteCli:
         bad = _invoke(fixture.root, "remote", "set-default-channel", "nope", "--test-mode")
         assert bad.exit_code != 0
 
+    def test_report_written(self, fixture: _Fixture, tmp_root: Path) -> None:
+        report = tmp_root / "report.json"
+        result = _invoke(
+            fixture.root,
+            "remote",
+            "promote",
+            "--all",
+            "--test-mode",
+            "--allow-missing-head",
+            "--report",
+            str(report),
+        )
+        assert result.exit_code == 0, result.output
+
+        data = json.loads(report.read_text(encoding="utf-8"))
+        assert data["quiet"] is False
+        assert {entry["server"] for entry in data["admitted"]} == {"alpha", "beta"}
+
+        noop_report = tmp_root / "noop-report.json"
+        noop = _invoke(
+            fixture.root, "remote", "promote", "--all", "--test-mode", "--report", str(noop_report)
+        )
+        assert noop.exit_code == 0, noop.output
+        assert json.loads(noop_report.read_text(encoding="utf-8"))["quiet"] is True
+
 
 class TestCiPromoteCommand:
     def test_promotes_eligible_and_quiet_period(self, fixture: _Fixture) -> None:
@@ -720,6 +746,82 @@ class TestCiPromoteCommand:
         result = _invoke(tmp_root, "ci", "release-data", "promote", "--test-mode")
         assert result.exit_code != 0
         assert "remote sync" in result.output
+
+    def test_report_written_on_promotion(self, fixture: _Fixture, tmp_root: Path) -> None:
+        report = tmp_root / "report.json"
+        result = _invoke(
+            fixture.root,
+            "ci",
+            "release-data",
+            "promote",
+            "--test-mode",
+            "--allow-missing-head",
+            "--report",
+            str(report),
+        )
+        assert result.exit_code == 0, result.output
+
+        data = json.loads(report.read_text(encoding="utf-8"))
+        assert data["schemaVersion"] == 1
+        assert data["source"] == "testing"
+        assert data["target"] == "stable"
+        assert data["quiet"] is False
+        assert data["generation"] == fixture.mgr.get_head("stable").generation_hash
+        admitted = {entry["server"]: entry for entry in data["admitted"]}
+        assert sorted(admitted) == ["alpha", "beta"]
+        assert admitted["alpha"]["checkout"] == fixture.snap_a2
+        assert admitted["alpha"]["metadata"]["serverId"] == "alpha"
+        assert admitted["alpha"]["metadata"]["gameBuild"] == "build-a2"
+        assert admitted["alpha"]["metadata"]["gameVersion"] == "va2"
+        assert admitted["alpha"]["metadata"]["createdAt"] == "2026-06-14T12:00:00Z"
+        assert data["skippedSuppressed"] == []
+
+    def test_report_written_on_quiet_period(self, fixture: _Fixture, tmp_root: Path) -> None:
+        first = _invoke(
+            fixture.root, "ci", "release-data", "promote", "--test-mode", "--allow-missing-head"
+        )
+        assert first.exit_code == 0, first.output
+
+        report = tmp_root / "report.json"
+        second = _invoke(
+            fixture.root, "ci", "release-data", "promote", "--test-mode", "--report", str(report)
+        )
+        assert second.exit_code == 0, second.output
+
+        data = json.loads(report.read_text(encoding="utf-8"))
+        assert data["quiet"] is True
+        assert data["admitted"] == []
+        assert data["generation"] == ""
+
+    def test_report_lists_suppressed(self, fixture: _Fixture, tmp_root: Path) -> None:
+        fixture.mgr.save_suppressions(
+            "stable",
+            SuppressionList(
+                suppressions=[
+                    SuppressionEntry(
+                        server="alpha",
+                        checkout=fixture.snap_a2,
+                        suppressedAt="2026-06-14T12:00:00Z",
+                    )
+                ]
+            ),
+        )
+        report = tmp_root / "report.json"
+        result = _invoke(
+            fixture.root,
+            "ci",
+            "release-data",
+            "promote",
+            "--test-mode",
+            "--allow-missing-head",
+            "--report",
+            str(report),
+        )
+        assert result.exit_code == 0, result.output
+
+        data = json.loads(report.read_text(encoding="utf-8"))
+        assert [entry["server"] for entry in data["admitted"]] == ["beta"]
+        assert data["skippedSuppressed"] == [{"server": "alpha", "checkout": fixture.snap_a2}]
 
 
 class TestVerifySuppressions:

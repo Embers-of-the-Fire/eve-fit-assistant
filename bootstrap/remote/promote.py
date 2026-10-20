@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from bootstrap.remote import SessionManager
+    from bootstrap.remote.models import ResourceSnapshotMetadata
     from bootstrap.remote.models import ServerHistory
 
 
@@ -198,6 +199,42 @@ def promote(
     result.generation_hash = gen_hash
     result.admitted = admitted
     return result
+
+
+def write_promotion_report(mgr: SessionManager, result: PromoteResult, path: Path) -> None:
+    """Write a JSON promotion report for workflow handoff (e.g. bot notify jobs).
+
+    The report is written for every outcome, including quiet periods, so the
+    consumer can distinguish "nothing promoted" from a missing report. Each
+    admitted entry embeds the snapshot's full metadata (aliased field names,
+    matching ``metadata.json`` on disk).
+    """
+    import json
+
+    admitted: list[dict] = []
+    for server, checkout in sorted(result.admitted.items()):
+        meta: ResourceSnapshotMetadata = mgr.snap_store.load_resource_snapshot(checkout)[0]
+        admitted.append(
+            {
+                "server": server,
+                "checkout": checkout,
+                "metadata": json.loads(meta.model_dump_json(by_alias=True)),
+            }
+        )
+    report = {
+        "schemaVersion": 1,
+        "source": result.source,
+        "target": result.target,
+        "generation": result.generation_hash,
+        "quiet": result.noop,
+        "admitted": admitted,
+        "skippedSuppressed": [
+            {"server": server, "checkout": checkout}
+            for server, checkout in sorted(result.skipped_suppressed.items())
+        ],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _valid_source_checkouts(root: Path, source_gen) -> dict[str, set[str]]:

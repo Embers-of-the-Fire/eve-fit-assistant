@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -27,11 +28,10 @@ from bootstrap.remote.channel import Channel
 from bootstrap.remote.generation import utc_timestamp
 from bootstrap.remote.models import SuppressionEntry
 from bootstrap.remote.promote import PromotionError
+from bootstrap.remote.promote import write_promotion_report
 
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from bootstrap.remote.promote import PromoteResult
 
 
@@ -251,6 +251,13 @@ def register_remote_promotion(remote: click.Group) -> None:
         help="Exercise the full local flow only; no remote upload.",
     )
     @click.option("--actor", default=None, help="Recorded actor (default: git identity).")
+    @click.option(
+        "--report",
+        "report_path",
+        type=click.Path(dir_okay=False, path_type=Path),
+        default=None,
+        help="Write a JSON promotion report (admitted snapshots + metadata) to this path.",
+    )
     @_with_target_options
     @_SCHEMA_ROOT_OPTION
     @click.pass_context
@@ -264,6 +271,7 @@ def register_remote_promotion(remote: click.Group) -> None:
         allow_missing_head: bool,
         test_mode: bool,
         actor: str | None,
+        report_path: Path | None,
         target: str,
         endpoint: str | None,
         bucket: str | None,
@@ -343,6 +351,8 @@ def register_remote_promotion(remote: click.Group) -> None:
             raise click.ClickException(str(exc)) from exc
 
         _print_plan(result)
+        if report_path is not None:
+            write_promotion_report(mgr, result, report_path)
         if result.noop:
             click.echo("Nothing to promote: no generation created, head unchanged.")
             return
