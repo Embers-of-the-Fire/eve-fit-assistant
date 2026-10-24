@@ -215,8 +215,10 @@ jobs:
           path: .
 
       # Event API contract (bofa-qqbot EVENT.md): bearer auth plus
-      # {"type": "data_update", "payload": {servers: [{id, name, build,
-      # version, createdAt}]}}. snapshot-hashes.json lists exactly the servers
+      # {"type": "data_update", "payload": {channel, servers: [{id, name, build,
+      # version, createdAt}]}}. This job announces the testing-channel publish
+      # (channel="testing"); the stable-channel announcement lives in
+      # release-data-promote.yml. snapshot-hashes.json lists exactly the servers
       # rebuilt in this run (the publish step's merge only carries forward
       # in-memory); each snapshot's metadata.json carries the localized name,
       # game build/version, and creation timestamp.
@@ -242,7 +244,7 @@ jobs:
               }]' "$meta")
           done < <(jq -r 'to_entries[] | [.key, .value] | @tsv' snapshot-hashes.json)
           payload=$(jq -n --argjson servers "$servers" \
-            '{type: "data_update", payload: {servers: $servers}}')
+            '{type: "data_update", payload: {channel: "testing", servers: $servers}}')
           response=$(curl --fail-with-body -sS --retry 3 --retry-all-errors --retry-delay 5 \
             -X POST "https://bot.efa-tech.dev/event" \
             -H "Authorization: Bearer ${QQBOT_EVENT_SECRET}" \

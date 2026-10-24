@@ -314,7 +314,7 @@ environment protection rules gate which refs may do so.
 | Environment | Protection | Contents | Consumed by |
 |-------------|------------|----------|-------------|
 | `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`; web deploy secrets `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`; announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases, including `site-deploy` to the `efa-app` Pages project) |
-| `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three); announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish, d1-sync, and notify-qqbot jobs (real data releases) |
+| `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three); announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish, d1-sync, and notify-qqbot jobs (real data releases); `release-data-promote.yml` promote and notify-qqbot jobs |
 | `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `update-raw-data.yml` upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
 | `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews) and `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
@@ -344,15 +344,20 @@ Operational notes:
 - Real app releases pause for a required-reviewer approval before the job can
   access `production-app` secrets. Data releases and raw-data uploads run
   unattended (`dev`-branch restriction only).
-- Data snapshot announcements: after a real data release's channel publish,
-  `_release-data.yml`'s `notify-qqbot` job posts a `data_update` event to the
-  bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`) with one entry
-  per rebuilt server (localized Chinese name, game build/version, snapshot
-  creation time, read from each snapshot's `metadata.json`), which broadcasts
-  the announcement to the configured QQ groups. The job depends only on
-  `publish` — it deliberately does not wait for the platform D1 sync, so a
-  `d1-sync` failure never suppresses the announcement. Test-mode runs never
-  reach the bot.
+- Data snapshot announcements: snapshots reach users through two stages, and
+  each stage posts its own `data_update` event to the bofa-qqbot event
+  endpoint (`https://bot.efa-tech.dev/event`), distinguished by
+  `payload.channel`. After a real data release's publish to the `testing`
+  channel, `_release-data.yml`'s `notify-qqbot` job posts with
+  `channel: "testing"` (one entry per rebuilt server: localized Chinese name,
+  game build/version, snapshot creation time, read from each snapshot's
+  `metadata.json`). The job depends only on `publish` — it deliberately does
+  not wait for the platform D1 sync, so a `d1-sync` failure never suppresses
+  the announcement. When the hourly auto-promotion admits snapshots into the
+  `stable` channel, `release-data-promote.yml`'s `notify-qqbot` job posts with
+  `channel: "stable"`, driven by the promote command's JSON report
+  (`--report`); quiet periods (empty `admitted`) skip the broadcast.
+  Test-mode runs never reach the bot.
 - Android release signing: real app releases sign the APK with the EFA release
   key. `_release.yml` decodes `APP_KEYSTORE` (base64) into a runner-temp file
   and passes it plus the passwords/alias to Gradle as `EFA_*` environment
