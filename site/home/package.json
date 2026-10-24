@@ -12,9 +12,9 @@
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
     },
     "devDependencies": {
-        "@sveltejs/adapter-cloudflare": "^7.2.9",
+        "@sveltejs/adapter-cloudflare": "^8.0.0",
         "@typescript/native": "npm:typescript@^7.0.0",
-        "@sveltejs/kit": "^2.70.2",
+        "@sveltejs/kit": "^3.0.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.0",
         "@tailwindcss/vite": "^4.3.3",
         "svelte": "^5.56.8",
