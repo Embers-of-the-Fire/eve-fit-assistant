@@ -136,7 +136,19 @@ class _ChannelSwitchDialogState extends ConsumerState<ChannelSwitchDialog> {
     });
     // The action commits the new channel to settings on success; the dialog
     // only surfaces a failure inline, which is safe to skip once disposed.
-    final failure = await ref.read(channelSwitchActionProvider)(target.value);
+    // Exceptions from rebind or re-initialization are not converted to error
+    // strings by the action, so catch them here to restore the dialog state.
+    final String? failure;
+    try {
+      failure = await ref.read(channelSwitchActionProvider)(target.value);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _switching = false;
+        _failure = error.toString();
+      });
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _switching = false;
