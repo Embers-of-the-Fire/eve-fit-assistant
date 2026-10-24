@@ -48,70 +48,76 @@ class _ChannelSwitchDialogState extends ConsumerState<ChannelSwitchDialog> {
     final selected = _selected ?? current;
     final canApply = !_switching && selected != current;
 
-    return AppDialog(
-      title: context.l10n.channelSwitchDialogTitle,
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              WizardOptionList(
-                children: [
-                  for (final channel in Channel.values)
-                    WizardOptionTile(
-                      title: switch (channel) {
-                        Channel.testing => context.l10n.appSettingsPageRemoteContentChannelTesting,
-                        Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
-                      },
-                      subtitle: switch (channel) {
-                        Channel.testing => context.l10n.channelSwitchDialogTestingDescription,
-                        Channel.stable => context.l10n.channelSwitchDialogStableDescription,
-                      },
-                      badge: channel == current
-                          ? context.l10n.channelSwitchDialogCurrentBadge
-                          : null,
-                      selected: channel == selected,
-                      onTap: _switching
-                          ? () {}
-                          : () => setState(() {
-                              _selected = channel;
-                              _failure = null;
-                            }),
-                    ),
-                ],
-              ),
-              if (_failure != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(error: _failure!),
-                    style: context.theme.textTheme.bodySmall?.copyWith(
-                      color: context.theme.colorScheme.error,
+    return PopScope(
+      canPop: !_switching,
+      child: AppDialog(
+        title: context.l10n.channelSwitchDialogTitle,
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                WizardOptionList(
+                  children: [
+                    for (final channel in Channel.values)
+                      WizardOptionTile(
+                        title: switch (channel) {
+                          Channel.testing =>
+                            context.l10n.appSettingsPageRemoteContentChannelTesting,
+                          Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
+                        },
+                        subtitle: switch (channel) {
+                          Channel.testing => context.l10n.channelSwitchDialogTestingDescription,
+                          Channel.stable => context.l10n.channelSwitchDialogStableDescription,
+                        },
+                        badge: channel == current
+                            ? context.l10n.channelSwitchDialogCurrentBadge
+                            : null,
+                        selected: channel == selected,
+                        onTap: _switching
+                            ? () {}
+                            : () => setState(() {
+                                _selected = channel;
+                                _failure = null;
+                              }),
+                      ),
+                  ],
+                ),
+                if (_failure != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(
+                        error: _failure!,
+                      ),
+                      style: context.theme.textTheme.bodySmall?.copyWith(
+                        color: context.theme.colorScheme.error,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _switching ? null : () => context.nav.pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: canApply ? () => unawaited(_apply(selected)) : null,
+            child: _switching
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(context.l10n.channelSwitchDialogSwitchButton),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _switching ? null : () => context.nav.pop(),
-          child: Text(context.l10n.cancel),
-        ),
-        ElevatedButton(
-          onPressed: canApply ? () => unawaited(_apply(selected)) : null,
-          child: _switching
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.l10n.channelSwitchDialogSwitchButton),
-        ),
-      ],
     );
   }
 
