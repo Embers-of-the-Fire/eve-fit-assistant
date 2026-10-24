@@ -9,6 +9,11 @@ library;
 /// URL scheme for in-app links, e.g. `efa://manual/fitting`.
 const String appLinkScheme = "efa";
 
+/// Path prefix reserved for in-app action links, e.g.
+/// `efa://action/switch-channel`. Action links trigger behavior (dialogs,
+/// switches) instead of navigating to a route.
+const String appLinkActionPrefix = "action/";
+
 /// A resolved link target.
 sealed class AppLink {
   const AppLink();
@@ -22,6 +27,14 @@ final class InternalAppLink extends AppLink {
   final String path;
 }
 
+/// An in-app action, e.g. `efa://action/switch-channel`. [name] is the
+/// normalized action name (no leading/trailing slashes).
+final class ActionAppLink extends AppLink {
+  const ActionAppLink(this.name);
+
+  final String name;
+}
+
 /// A destination outside the app (http(s), mailto, ...).
 final class ExternalAppLink extends AppLink {
   const ExternalAppLink(this.uri);
@@ -32,6 +45,7 @@ final class ExternalAppLink extends AppLink {
 /// Parse [rawUrl] into an [AppLink].
 ///
 /// Supported forms:
+/// - `efa://action/<name>` — in-app action link; resolves to [ActionAppLink].
 /// - `efa://<path>` — in-app link; the part after the scheme becomes the
 ///   absolute route path (`efa://manual/fitting` -> `/manual/fitting`).
 /// - `/<path>` — in-app absolute route path.
@@ -47,7 +61,12 @@ AppLink? parseAppLink(String rawUrl, {String basePath = "/"}) {
 
   if (url.toLowerCase().startsWith("$appLinkScheme://")) {
     final rest = url.substring("$appLinkScheme://".length);
-    return InternalAppLink(_joinAbsolute(const [], rest));
+    final normalized = _joinAbsolute(const [], rest);
+    if (normalized.toLowerCase().startsWith("/$appLinkActionPrefix")) {
+      final name = normalized.substring(appLinkActionPrefix.length + 1);
+      return ActionAppLink(name);
+    }
+    return InternalAppLink(normalized);
   }
 
   final uri = Uri.tryParse(url);

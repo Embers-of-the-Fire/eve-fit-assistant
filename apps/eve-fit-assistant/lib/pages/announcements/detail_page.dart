@@ -1,7 +1,10 @@
+import "dart:async";
+
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/features/announcements/models/models.dart";
 import "package:eve_fit_assistant/features/announcements/remote/remote.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
+import "package:eve_fit_assistant/features/deeplink/app_link_handler.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter/material.dart";
@@ -151,7 +154,10 @@ class AnnouncementDetailContent extends ConsumerWidget {
                         padding: EdgeInsets.zero,
                         softLineBreak: true,
                         styleSheet: markdownDarkStyleSheet,
-                        onTapLink: openMarkdownLinkExternally,
+                        onTapLink: (text, href, title) {
+                          if (href == null) return;
+                          unawaited(ref.read(appLinkHandlerProvider).open(context, href));
+                        },
                       ),
                     );
                   },

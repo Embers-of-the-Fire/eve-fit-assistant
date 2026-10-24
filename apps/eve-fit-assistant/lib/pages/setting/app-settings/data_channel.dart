@@ -1,17 +1,10 @@
 part of "page.dart";
 
-class DataChannelTile extends ConsumerStatefulWidget {
+class DataChannelTile extends ConsumerWidget {
   const DataChannelTile({super.key});
 
   @override
-  ConsumerState<DataChannelTile> createState() => _DataChannelTileState();
-}
-
-class _DataChannelTileState extends ConsumerState<DataChannelTile> {
-  bool _switching = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final channelName = ref.watch(
       appSettingServiceProvider.select((setting) => setting.remoteContent.channel),
     );
@@ -20,52 +13,12 @@ class _DataChannelTileState extends ConsumerState<DataChannelTile> {
       leading: const Icon(Icons.cloud_outlined),
       title: Text(context.l10n.appSettingsPageDataChannelTitle),
       subtitle: Text(context.l10n.appSettingsPageDataChannelDescription),
-      trailing: _switching
-          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-          : DropdownButton<Channel>(
-              value: channel,
-              items: Channel.values
-                  .map(
-                    (c) => DropdownMenuItem<Channel>(
-                      value: c,
-                      child: Text(switch (c) {
-                        Channel.testing => context.l10n.appSettingsPageRemoteContentChannelTesting,
-                        Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
-                      }),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (next) {
-                if (next != null) unawaited(_switchTo(next));
-              },
-            ),
+      trailing: Text(switch (channel) {
+        Channel.testing => context.l10n.appSettingsPageRemoteContentChannelTesting,
+        Channel.stable => context.l10n.appSettingsPageRemoteContentChannelStable,
+      }),
+      onTap: () => unawaited(showChannelSwitchDialog(context)),
     );
-  }
-
-  Future<void> _switchTo(Channel next) async {
-    final current = ref.read(appSettingServiceProvider).remoteContent.channel;
-    if (next.value == current) return;
-    final confirmed = await showConfirmDialog(
-      context,
-      title: context.l10n.appSettingsPageDataChannelSwitchConfirmTitle,
-      content: Text(context.l10n.appSettingsPageRemoteContentChannelSwitchDescription),
-    );
-    if (!confirmed || !mounted) return;
-    setState(() => _switching = true);
-    // The action commits the new channel to settings on success; the widget
-    // only surfaces a failure, which is safe to skip once disposed.
-    final failure = await ref.read(channelSwitchActionProvider)(next.value);
-    if (!mounted) return;
-    setState(() => _switching = false);
-    if (failure != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.l10n.appSettingsPageRemoteContentChannelSwitchFailed(error: failure),
-          ),
-        ),
-      );
-    }
   }
 }
 
