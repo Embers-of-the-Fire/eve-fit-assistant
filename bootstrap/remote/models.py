@@ -91,6 +91,23 @@ class ChannelRegistry(BaseModel):
     channels: dict[str, ChannelInfo] = Field(default_factory=dict)
 
 
+class SuppressionEntry(BaseModel):
+    """One (server, checkout) pair vetoed from automatic promotion."""
+
+    server: str
+    checkout: str
+    reason: str = ""
+    suppressed_at: str = Field(alias="suppressedAt")
+    actor: str = ""
+
+
+class SuppressionList(BaseModel):
+    """Server-side promotion suppression list (suppressions.json)."""
+
+    schema_version: int = Field(default=1, alias="schemaVersion")
+    suppressions: list[SuppressionEntry] = Field(default_factory=list)
+
+
 class CheckoutEntry(BaseModel):
     channel: str
     server_id: str = Field(alias="serverId")

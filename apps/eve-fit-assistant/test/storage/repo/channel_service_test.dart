@@ -30,6 +30,7 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
     this.serverIndexResult,
     this.generationResourcesResult,
     this.generationPointerResult,
+    this.serverHistoryResult,
   }) : super(dio: Dio(), originUrl: "https://test.local");
 
   Either<CatalogError, ChannelRegistry>? channelRegistryResult;
@@ -37,6 +38,7 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   Either<CatalogError, Uint8List>? serverIndexResult;
   Either<CatalogError, Uint8List>? generationResourcesResult;
   Either<CatalogError, Uint8List>? generationPointerResult;
+  Either<CatalogError, Uint8List>? serverHistoryResult;
 
   // Captured invocations for test assertions
   String? lastHeadMetaChannel;
@@ -63,6 +65,10 @@ class _FakeRemoteCatalogService extends RemoteCatalogService {
   @override
   Future<Either<CatalogError, Uint8List>> fetchGenerationPointer(String generationHash) async =>
       generationPointerResult ?? Left(const CatalogNetworkError(message: "not configured"));
+
+  @override
+  Future<Either<CatalogError, Uint8List>> fetchServerHistory(String generationHash) async =>
+      serverHistoryResult ?? Left(const CatalogNetworkError(message: "not configured"));
 }
 
 void main() {
@@ -103,6 +109,7 @@ void main() {
         serverIndexResult: Right(Uint8List.fromList([10, 20, 30])),
         generationResourcesResult: Right(Uint8List.fromList([40, 50, 60])),
         generationPointerResult: Right(Uint8List.fromList([70, 80, 90])),
+        serverHistoryResult: Right(Uint8List.fromList([100, 110, 120])),
       );
       final service = _makeService(fakeRemote);
 
@@ -131,6 +138,11 @@ void main() {
         isTrue,
         reason: "releases.pb2 should exist",
       );
+      expect(
+        File(RepoPaths.channelHistoryPath("testing")).existsSync(),
+        isTrue,
+        reason: "history.pb2 should exist",
+      );
 
       // Verify file contents
       final metaJson =
@@ -146,9 +158,26 @@ void main() {
 
       final releasesBytes = File(RepoPaths.channelReleasesPath("testing")).readAsBytesSync();
       expect(releasesBytes, [70, 80, 90]);
+
+      final historyBytes = File(RepoPaths.channelHistoryPath("testing")).readAsBytesSync();
+      expect(historyBytes, [100, 110, 120]);
     });
 
-    test("best-effort: continues when individual file fetches fail", () async {
+    test("returns Left and keeps the previous head when a required fetch fails", () async {
+      const oldGenerationHash =
+          "sha256:0000aaaabbbbccccddddeeeeffff000011112222333344445555666677778888";
+      // Pre-existing head from an earlier, fully synced generation.
+      final headPath = RepoPaths.channelHeadMetaPath("testing");
+      File(headPath).parent.createSync(recursive: true);
+      File(headPath).writeAsStringSync(
+        jsonEncode({
+          "schemaVersion": 1,
+          "generationHash": oldGenerationHash,
+          "updatedAt": "2026-06-14T12:00:00Z",
+          "label": {"en": "Previous Release"},
+        }),
+      );
+
       final fakeRemote = _FakeRemoteCatalogService(
         headMetaResult: Right(
           ChannelHeadMeta(
@@ -160,24 +189,26 @@ void main() {
         ),
         serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
         generationResourcesResult: Left(const CatalogNetworkError(message: "timeout")),
-        generationPointerResult: Left(const CatalogNotFoundError(message: "not found")),
+        generationPointerResult: Right(Uint8List.fromList([7, 8, 9])),
+        serverHistoryResult: Right(Uint8List.fromList([4, 5, 6])),
       );
       final service = _makeService(fakeRemote);
 
       final result = await service.syncChannelGeneration("testing");
 
-      // Overall sync should succeed (head meta was fetched)
-      expect(result.isRight(), isTrue);
+      expect(result.isLeft(), isTrue);
+      expect(
+        result.getLeft().toNullable(),
+        "Network error fetching generation resources for testing: timeout",
+      );
 
-      // server.pb2 should be written
-      expect(File(RepoPaths.channelServerIndexPath("testing")).existsSync(), isTrue);
+      // The new head must NOT be published: the previous generation hash stays.
+      final metaJson = jsonDecode(File(headPath).readAsStringSync()) as Map<String, dynamic>;
+      expect(metaJson["generationHash"], oldGenerationHash);
 
-      // Failed fetches should NOT produce files (but sync continues)
+      // Files fetched before the failure may exist, but no reader can pair
+      // them with the new generation hash because the head was never rebound.
       expect(File(RepoPaths.channelResourcesPath("testing")).existsSync(), isFalse);
-      expect(File(RepoPaths.channelReleasesPath("testing")).existsSync(), isFalse);
-
-      // metadata.json should still be written
-      expect(File(RepoPaths.channelHeadMetaPath("testing")).existsSync(), isTrue);
     });
 
     test("returns Right when channel not yet initialized on remote (404)", () async {
@@ -220,6 +251,7 @@ void main() {
         serverIndexResult: Right(Uint8List.fromList([1, 2, 3])),
         generationResourcesResult: Right(Uint8List.fromList([4, 5, 6])),
         generationPointerResult: Right(Uint8List.fromList([7, 8, 9])),
+        serverHistoryResult: Right(Uint8List.fromList([10, 11, 12])),
       );
       final service = _makeService(fakeRemote);
 
@@ -230,6 +262,7 @@ void main() {
       expect(File("${RepoPaths.channelServerIndexPath("testing")}.tmp").existsSync(), isFalse);
       expect(File("${RepoPaths.channelResourcesPath("testing")}.tmp").existsSync(), isFalse);
       expect(File("${RepoPaths.channelReleasesPath("testing")}.tmp").existsSync(), isFalse);
+      expect(File("${RepoPaths.channelHistoryPath("testing")}.tmp").existsSync(), isFalse);
     });
   });
 

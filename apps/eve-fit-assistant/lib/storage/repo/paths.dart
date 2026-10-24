@@ -79,6 +79,10 @@ class RepoPaths {
   static String channelReleasesPath(String channelName) =>
       p.join(channelsPath, channelName, "releases.pb2");
 
+  /// channels/{channel}/history.pb2 — ServerHistory persisted from generation.
+  static String channelHistoryPath(String channelName) =>
+      p.join(channelsPath, channelName, "history.pb2");
+
   // ── checkouts/ (client-side) ────────────────────────────────────────────────
 
   static String get checkoutsPath => p.join(schemaResourcesPath, "checkouts");

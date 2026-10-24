@@ -575,6 +575,148 @@ def register_ci_commands(cli_group: click.Group) -> None:
             )
         )
 
+    @release_data.command("promote")
+    @click.option(
+        "--schema-root",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="cache/remote",
+        help="Schema V2 root containing the synced channel heads (default: cache/remote).",
+    )
+    @click.option(
+        "--test-mode",
+        is_flag=True,
+        help="Promote locally only; skip publish/sync/verify.",
+    )
+    @click.option(
+        "--target",
+        type=click.Choice(["minio", "s3"]),
+        default="s3",
+        help="Remote target type (default: s3).",
+    )
+    @click.option("--endpoint", default=None, help="Override remote endpoint URL.")
+    @click.option("--bucket", default=None, help="Override remote bucket name.")
+    @click.option("--access-key", default=None, help="Override remote access key.")
+    @click.option("--secret-key", default=None, help="Override remote secret key.")
+    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+    @click.option(
+        "--workers",
+        type=click.IntRange(min=1),
+        default=8,
+        help="Number of parallel upload/download workers.",
+    )
+    @click.option("--actor", default="ci", help="Recorded actor (default: ci).")
+    @click.option(
+        "--allow-missing-head",
+        is_flag=True,
+        default=False,
+        help="Allow promoting into a stable channel without a head (first run).",
+    )
+    def release_data_promote(
+        schema_root: Path,
+        test_mode: bool,
+        target: str,
+        endpoint: str | None,
+        bucket: str | None,
+        access_key: str | None,
+        secret_key: str | None,
+        alias_name: str | None,
+        workers: int,
+        actor: str,
+        allow_missing_head: bool,
+    ):
+        """Promote soak-eligible testing snapshots into the stable channel.
+
+        Eligible = published to testing at least 24h ago, not suppressed, and
+        not already at the stable head. An empty plan (quiet period) exits 0.
+        """
+        import datetime
+
+        from bootstrap.remote import SessionManager
+        from bootstrap.remote.channel import Channel
+        from bootstrap.remote.models import ServerHistory
+        from bootstrap.remote.models import read_pb2
+        from bootstrap.remote.paths import generation_dir
+        from bootstrap.remote.promote import PromotionError
+        from bootstrap.remote.promote import compute_promotion_eligibility
+
+        resolved_root = (PROJECT_ROOT / schema_root).resolve()
+        mgr = SessionManager(resolved_root)
+
+        source = Channel.TESTING
+        try:
+            source_head = mgr.get_head(source)
+        except FileNotFoundError:
+            raise click.ClickException(
+                f"No local channel head for {source!r} under {resolved_root}; "
+                "run `remote sync --channel testing` first."
+            ) from None
+        if not source_head.generation_hash:
+            raise click.ClickException(f"Channel {source} has no head generation.")
+        source_gen = mgr.load_generation(source_head.generation_hash)
+
+        history_path = generation_dir(resolved_root, source_head.generation_hash) / "history.pb2"
+        if not history_path.is_file():
+            raise click.ClickException(
+                f"Testing head generation {source_head.generation_hash[:16]}... has no "
+                "history.pb2; cannot compute promotion eligibility."
+            )
+        history = read_pb2(history_path, ServerHistory)
+
+        candidates = compute_promotion_eligibility(
+            history, source_gen.resources, datetime.datetime.now(datetime.UTC)
+        )
+        if not candidates:
+            click.echo("Nothing eligible for promotion (quiet period).")
+            return
+
+        try:
+            result = mgr.promote(
+                source=source,
+                target=Channel.STABLE,
+                candidates=candidates,
+                actor=actor,
+                allow_missing_head=allow_missing_head,
+            )
+        except PromotionError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        for server_id, checkout in sorted(result.admitted.items()):
+            click.echo(f"Promoted {server_id}: {checkout[:16]}...")
+        for server_id, checkout in sorted(result.skipped_suppressed.items()):
+            click.echo(f"Suppressed {server_id}: {checkout[:16]}... (skipped)")
+
+        if result.noop:
+            click.echo("Nothing eligible for promotion (quiet period).")
+            return
+
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Promoted generation: {result.generation_hash[:16]}...",
+            )
+        )
+
+        if test_mode:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "Test mode: skipped publish/sync/verify.")
+            )
+            return
+
+        from bootstrap.cli.remote.promotion import _publish_and_verify
+
+        _publish_and_verify(
+            mgr,
+            str(Channel.STABLE),
+            result.generation_hash,
+            target,
+            endpoint,
+            bucket,
+            access_key,
+            secret_key,
+            alias_name,
+            workers,
+        )
+
     @release_data.command("d1-sync")
     @click.option(
         "--hashes",

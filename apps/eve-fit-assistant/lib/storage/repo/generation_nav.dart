@@ -113,7 +113,9 @@ class GenerationNavigationService {
     return Right(
       ChannelOverview(
         channels: registry.channels,
-        defaultChannel: registry.active.isEmpty ? "testing" : registry.active,
+        // Registries predating the stable rollout carry no defaultChannel;
+        // stable is the catch-up default, never the unvetted channel.
+        defaultChannel: registry.active.isEmpty ? Channel.stable.value : registry.active,
       ),
     );
   }

@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:efa_proto/checkout_reflog.pb.dart";
 import "package:efa_proto/generation_resources.pb.dart";
 import "package:efa_proto/resource_index.pb.dart";
+import "package:efa_proto/server_history.pb.dart";
 import "package:efa_proto/server_index.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
@@ -121,6 +122,7 @@ class CheckoutService {
       resourceSnapshotHash: resourceSnapshotHash,
       name: name,
       createdAt: now,
+      promotedAt: await _fetchPromotedAt(generationHash, serverId, resourceSnapshotHash),
     );
     await checkoutRegistry.addCheckout(checkoutId: checkoutId, entry: entry);
 
@@ -226,10 +228,15 @@ class CheckoutService {
   /// failure. All mutations are performed inside this method; if any required
   /// fetch or write fails the method returns `Left` without touching the
   /// checkout pointer, registry, or channel head metadata.
+  ///
+  /// [targetSnapshotHash] pins the snapshot to apply (the cadence-resolved
+  /// target from the update check); when null the channel head's snapshot is
+  /// applied.
   Future<Either<String, String>> applyDataUpdate({
     required String checkoutId,
     required Channel channel,
     required String channelName,
+    String? targetSnapshotHash,
     void Function(int downloaded, int total)? onProgress,
   }) async {
     final meta = await readCheckoutMeta(checkoutId);
@@ -276,6 +283,13 @@ class CheckoutService {
         genResourcesBytes.getRight().toNullable()!,
       );
 
+      // Keep the local promoted history in step with the generation the head
+      // moved to, so admission timestamps resolve locally afterwards.
+      final historyBytes = await remoteCatalogService.fetchServerHistory(newGenerationHash);
+      if (historyBytes.isRight()) {
+        await _writeServerHistory(channelName, historyBytes.getRight().toNullable()!);
+      }
+
       for (final entry in genResources.entries) {
         if (entry.serverId == m.serverId) {
           newSnapshotHash = entry.snapshotHash;
@@ -285,6 +299,11 @@ class CheckoutService {
       if (newSnapshotHash == null) {
         return const Left("Server not found in new generation");
       }
+    }
+
+    // A cadence-pinned target (slower tier) overrides the head snapshot.
+    if (targetSnapshotHash != null) {
+      newSnapshotHash = targetSnapshotHash;
     }
 
     // 3. Same snapshot: no diff to apply, but entries that became eager
@@ -429,7 +448,10 @@ class CheckoutService {
       final r = registry.toNullable()!;
       final existing = r.checkouts[checkoutId];
       if (existing != null) {
-        final updatedEntry = existing.copyWith(resourceSnapshotHash: targetSnapshotHash);
+        final updatedEntry = existing.copyWith(
+          resourceSnapshotHash: targetSnapshotHash,
+          promotedAt: await _readPromotedAt(existing.channel, targetSnapshotHash),
+        );
         await checkoutRegistry.writeRegistry(
           r.copyWith(checkouts: r.checkouts.add(checkoutId, updatedEntry)),
         );
@@ -601,6 +623,55 @@ class CheckoutService {
     }
   }
 
+  Future<void> _writeServerHistory(String channelName, Uint8List bytes) async {
+    try {
+      await _store.write(RepoPaths.channelHistoryPath(channelName), bytes);
+    } catch (e, stackTrace) {
+      warning("Failed to write server history for $channelName", stackTrace: stackTrace);
+    }
+  }
+
+  /// The admission timestamp of [snapshotHash] in the locally cached channel
+  /// history, or null when unknown (history absent, hash not listed).
+  Future<String?> _readPromotedAt(String channelName, String snapshotHash) async {
+    try {
+      final bytes = await _store.read(RepoPaths.channelHistoryPath(channelName));
+      if (bytes == null) return null;
+      final history = ServerHistory.fromBuffer(bytes);
+      for (final server in history.servers) {
+        for (final snap in server.snapshots) {
+          if (snap.snapshotHash == snapshotHash) return snap.timestamp;
+        }
+      }
+    } on Exception {
+      // best-effort
+    }
+    return null;
+  }
+
+  /// The admission timestamp of [snapshotHash] per the remote history of
+  /// [generationHash]. Best-effort: null on any fetch/parse failure.
+  Future<String?> _fetchPromotedAt(
+    String generationHash,
+    String serverId,
+    String snapshotHash,
+  ) async {
+    final result = await remoteCatalogService.fetchServerHistory(generationHash);
+    if (result.isLeft()) return null;
+    try {
+      final history = ServerHistory.fromBuffer(result.getRight().toNullable()!);
+      for (final server in history.servers) {
+        if (server.serverId != serverId) continue;
+        for (final snap in server.snapshots) {
+          if (snap.snapshotHash == snapshotHash) return snap.timestamp;
+        }
+      }
+    } on Exception {
+      // best-effort
+    }
+    return null;
+  }
+
   Future<void> _updateAfterFetch(
     String checkoutId,
     String channelName,
@@ -627,7 +698,10 @@ class CheckoutService {
       final r = registry.toNullable()!;
       final existing = r.checkouts[checkoutId];
       if (existing != null) {
-        final updatedEntry = existing.copyWith(resourceSnapshotHash: newSnapshotHash);
+        final updatedEntry = existing.copyWith(
+          resourceSnapshotHash: newSnapshotHash,
+          promotedAt: await _readPromotedAt(channelName, newSnapshotHash),
+        );
         await checkoutRegistry.writeRegistry(
           r.copyWith(checkouts: r.checkouts.add(checkoutId, updatedEntry)),
         );

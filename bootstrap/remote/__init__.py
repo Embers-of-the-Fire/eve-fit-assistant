@@ -20,6 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from bootstrap.remote.blob import BlobStore
+from bootstrap.remote.channel import CHANNEL_LABELS
 from bootstrap.remote.channel import Channel as Channel
 from bootstrap.remote.gc import GarbageCollector
 from bootstrap.remote.generation import GenerationStore
@@ -37,6 +38,8 @@ if TYPE_CHECKING:
     from bootstrap.remote.models import GenerationResources
     from bootstrap.remote.models import Issue
     from bootstrap.remote.models import ServerIndex
+    from bootstrap.remote.models import SuppressionList
+    from bootstrap.remote.promote import PromoteResult
 
 
 class SessionManagerCommittedError(Exception):
@@ -65,7 +68,7 @@ class SessionManager:
     # --- Channel registry ----------------------------------------------------
 
     def ensure_channel(self, name: str, label: dict[str, str] | None = None) -> None:
-        self.head_store.ensure_channel(name, label)
+        self.head_store.ensure_channel(name, label or CHANNEL_LABELS.get(name))
 
     def set_default_channel(self, name: str) -> None:
         self.head_store.set_default(name)
@@ -161,6 +164,37 @@ class SessionManager:
 
     def get_reflog(self, channel: str):
         return self.head_store.get_reflog(channel)
+
+    # --- Promotion -----------------------------------------------------------
+
+    def get_suppressions(self, channel: str) -> SuppressionList:
+        return self.head_store.get_suppressions(channel)
+
+    def save_suppressions(self, channel: str, suppressions: SuppressionList) -> None:
+        self.head_store.save_suppressions(channel, suppressions)
+
+    def promote(
+        self,
+        *,
+        source: Channel = Channel.TESTING,
+        target: Channel = Channel.STABLE,
+        candidates: dict[str, str],
+        actor: str,
+        respect_suppressions: bool = True,
+        allow_missing_head: bool = False,
+    ) -> PromoteResult:
+        """Admit ``{server_id: checkout}`` pairs from *source* into *target*."""
+        from bootstrap.remote.promote import promote
+
+        return promote(
+            self,
+            source=source,
+            target=target,
+            candidates=candidates,
+            actor=actor,
+            respect_suppressions=respect_suppressions,
+            allow_missing_head=allow_missing_head,
+        )
 
     # --- Publishing ----------------------------------------------------------
 

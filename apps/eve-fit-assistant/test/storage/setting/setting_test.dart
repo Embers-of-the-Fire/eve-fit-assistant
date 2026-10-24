@@ -124,4 +124,30 @@ void main() {
     expect(setting.connections.keys, [ChatProvider.anthropic]);
     expect(setting.model, "claude");
   });
+
+  test("RemoteContentSetting defaults to the stable channel and weekly cadence", () {
+    final setting = RemoteContentSetting.fromJson(const {});
+
+    expect(setting.channel, "stable");
+    expect(setting.cadence, "weekly");
+  });
+
+  test("RemoteContentSetting reads legacy JSON without cadence", () {
+    final setting = RemoteContentSetting.fromJson(const {"channel": "testing"});
+
+    expect(setting.channel, "testing");
+    expect(setting.cadence, "weekly");
+  });
+
+  test("channel and cadence writes do not clobber each other", () {
+    const setting = RemoteContentSetting();
+
+    final byChannel = setting.copyWith(channel: "testing");
+    expect(byChannel.channel, "testing");
+    expect(byChannel.cadence, "weekly");
+
+    final byCadence = setting.copyWith(cadence: "monthly");
+    expect(byCadence.channel, "stable");
+    expect(byCadence.cadence, "monthly");
+  });
 }
