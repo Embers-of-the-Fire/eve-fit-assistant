@@ -2,9 +2,11 @@ import "dart:async";
 
 import "package:eve_fit_assistant/components/dialog/dialog.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
+import "package:eve_fit_assistant/features/deeplink/app_link_handler.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 typedef AnnouncementDialogDetailCallback = FutureOr<void> Function();
 typedef AnnouncementDialogPersistenceCallback =
@@ -33,7 +35,7 @@ Future<void> showAnnouncementDialog(
   ),
 );
 
-class AnnouncementDialog extends StatefulWidget {
+class AnnouncementDialog extends ConsumerStatefulWidget {
   const AnnouncementDialog({
     required this.title,
     super.key,
@@ -55,10 +57,10 @@ class AnnouncementDialog extends StatefulWidget {
   final bool initialDontShowAgain;
 
   @override
-  State<AnnouncementDialog> createState() => _AnnouncementDialogState();
+  ConsumerState<AnnouncementDialog> createState() => _AnnouncementDialogState();
 }
 
-class _AnnouncementDialogState extends State<AnnouncementDialog> {
+class _AnnouncementDialogState extends ConsumerState<AnnouncementDialog> {
   late bool _dontShowAgain = widget.initialDontShowAgain;
 
   @override
@@ -77,7 +79,7 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
                       data: widget.bodyMarkdown!,
                       softLineBreak: true,
                       styleSheet: markdownDarkStyleSheet,
-                      onTapLink: openMarkdownLinkExternally,
+                      onTapLink: _handleTapLink,
                     )
                   : Text(widget.informationText ?? "", style: context.theme.textTheme.bodyMedium),
             ),
@@ -115,6 +117,11 @@ class _AnnouncementDialogState extends State<AnnouncementDialog> {
       ),
     ],
   );
+
+  void _handleTapLink(String text, String? href, String title) {
+    if (href == null) return;
+    unawaited(ref.read(appLinkHandlerProvider).open(context, href));
+  }
 
   Future<void> _handleClose() async {
     await _persistPreference();

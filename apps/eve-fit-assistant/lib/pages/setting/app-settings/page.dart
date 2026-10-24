@@ -16,7 +16,7 @@ import "package:eve_fit_assistant/features/app_update/platform/update_platform.d
 import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
 import "package:eve_fit_assistant/features/remote_content/cadence.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
-import "package:eve_fit_assistant/features/remote_content/channel_switch.dart";
+import "package:eve_fit_assistant/features/remote_content/channel_switch_dialog.dart";
 import "package:eve_fit_assistant/storage/repo/localization_db.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";

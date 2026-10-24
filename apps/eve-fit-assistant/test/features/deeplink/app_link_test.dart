@@ -17,6 +17,24 @@ void main() {
       );
     });
 
+    test("efa action links resolve to actions", () {
+      final link = parseAppLink("efa://action/switch-channel");
+      expect(link, isA<ActionAppLink>());
+      expect((link! as ActionAppLink).name, "switch-channel");
+    });
+
+    test("action links tolerate extra slashes and a case-insensitive prefix", () {
+      expect((parseAppLink("efa://action//switch-channel/")! as ActionAppLink).name,
+          "switch-channel");
+      expect((parseAppLink("efa://ACTION/switch-channel")! as ActionAppLink).name,
+          "switch-channel");
+    });
+
+    test("the bare action prefix stays a route link", () {
+      expect(parseAppLink("efa://action"), isA<InternalAppLink>());
+      expect(parseAppLink("efa://action/"), isA<InternalAppLink>());
+    });
+
     test("efa scheme is case-insensitive", () {
       expect((parseAppLink("EFA://manual/fitting")! as InternalAppLink).path, "/manual/fitting");
     });

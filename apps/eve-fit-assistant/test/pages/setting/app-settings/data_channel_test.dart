@@ -5,8 +5,8 @@ import "package:eve_fit_assistant/config/locale.dart" as app_locale;
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/remote_content/cadence.dart";
-import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/features/remote_content/channel_switch.dart";
+import "package:eve_fit_assistant/features/remote_content/channel_switch_dialog.dart";
 import "package:eve_fit_assistant/pages/setting/app-settings/page.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter/material.dart";
@@ -62,46 +62,19 @@ Future<void> _selectDropdownItem<T>(WidgetTester tester, String label) async {
 }
 
 void main() {
-  testWidgets("channel switch delegates the target channel to the switch action", (tester) async {
-    final calls = <String>[];
-    await tester.pumpWidget(_wrap(const DataChannelTile(), calls: calls));
+  testWidgets("tapping the tile opens the channel switch dialog", (tester) async {
+    await tester.pumpWidget(_wrap(const DataChannelTile()));
 
-    await _selectDropdownItem<Channel>(tester, "Testing");
-    await tester.tap(find.widgetWithText(ElevatedButton, "Confirm"));
+    await tester.tap(find.byType(DataChannelTile));
     await tester.pumpAndSettle();
 
-    expect(calls, ["testing"]);
+    expect(find.byType(ChannelSwitchDialog), findsOneWidget);
   });
 
-  testWidgets("failed channel switch keeps the stored channel and shows the error", (tester) async {
-    final calls = <String>[];
-    await tester.pumpWidget(
-      _wrap(const DataChannelTile(), switchError: "sync failed", calls: calls),
-    );
+  testWidgets("the tile shows the current channel", (tester) async {
+    await tester.pumpWidget(_wrap(const DataChannelTile(), channel: "testing"));
 
-    await _selectDropdownItem<Channel>(tester, "Testing");
-    await tester.tap(find.widgetWithText(ElevatedButton, "Confirm"));
-    await tester.pumpAndSettle();
-
-    expect(calls, ["testing"]);
-    final context = tester.element(find.byType(DataChannelTile));
-    final container = ProviderScope.containerOf(context);
-    expect(container.read(appSettingServiceProvider).remoteContent.channel, "stable");
-    expect(find.textContaining("sync failed"), findsOneWidget);
-  });
-
-  testWidgets("canceling the confirmation does not switch", (tester) async {
-    final calls = <String>[];
-    await tester.pumpWidget(_wrap(const DataChannelTile(), calls: calls));
-
-    await _selectDropdownItem<Channel>(tester, "Testing");
-    await tester.tap(find.widgetWithText(TextButton, "Cancel"));
-    await tester.pumpAndSettle();
-
-    expect(calls, isEmpty);
-    final context = tester.element(find.byType(DataChannelTile));
-    final container = ProviderScope.containerOf(context);
-    expect(container.read(appSettingServiceProvider).remoteContent.channel, "stable");
+    expect(find.text("Testing"), findsOneWidget);
   });
 
   testWidgets("cadence dropdown is disabled on the testing channel", (tester) async {

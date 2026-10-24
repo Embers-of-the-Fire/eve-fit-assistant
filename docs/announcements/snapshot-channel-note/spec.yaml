@@ -1,0 +1,8 @@
+id: snapshot-channel-note
+publishedAt: '2026-10-24T00:00:00Z'
+tags:
+  - announcement
+startup: true
+channels:
+  - stable
+  - testing
