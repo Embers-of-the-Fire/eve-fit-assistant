@@ -198,13 +198,21 @@ class Syncer:
         return f"{self._s3_prefix}/{rel_path}"
 
     def _download_file(self, rel_path: str, local_path: Path) -> bool:
-        """Download a single file from remote. Returns True on success."""
+        """Download a single file from remote.
+
+        Returns False only when the object is confirmed missing; raises OSError
+        on any other failure.
+        """
         local_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = [self.mc_bin, "cp", self._s3_path(rel_path), str(local_path)]
         return _run_optional(cmd, rel_path)
 
     def _download_dir(self, rel_path: str, local_dir: Path) -> bool:
-        """Download a directory recursively from remote. Returns True on success."""
+        """Download a directory recursively from remote.
+
+        Returns False only when the prefix is confirmed missing; raises OSError
+        on any other failure.
+        """
         local_dir.mkdir(parents=True, exist_ok=True)
         s3_path = f"{self._s3_path(rel_path)}/"
         cmd = [self.mc_bin, "cp", "--recursive", s3_path, str(local_dir)]
@@ -353,7 +361,32 @@ def _run(
         raise OSError(msg)
 
 
+_MISSING_OBJECT_MARKERS = (
+    # mc client-side source check.
+    "Object does not exist",
+    # S3 NoSuchKey surfaced by the backend.
+    "The specified key does not exist",
+    "NoSuchKey",
+)
+
+
+def _is_missing_object_error(stderr: str) -> bool:
+    """True only when mc's stderr confirms the remote object is absent.
+
+    Broader phrasing like "does not exist" must not match: mc also uses it for
+    missing buckets and even rejected access keys, which are real failures.
+    """
+    return any(marker in stderr for marker in _MISSING_OBJECT_MARKERS)
+
+
 def _run_optional(cmd: list[str], label: str, timeout: float = 300) -> bool:
+    """Run a download command.
+
+    Returns True on success and False only when the remote object is confirmed
+    missing. Raises OSError for every other failure (timeout, missing
+    executable, nonzero exit) so a failed download is never mistaken for an
+    absent object.
+    """
     try:
         out = subprocess.run(
             cmd,
@@ -364,6 +397,16 @@ def _run_optional(cmd: list[str], label: str, timeout: float = 300) -> bool:
             timeout=timeout,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except subprocess.TimeoutExpired:
+        raise OSError(f"Download timed out after {timeout}s: {label}") from None
+    except FileNotFoundError as exc:
+        raise OSError(f"Download executable not found: {cmd[0]}") from exc
+    if out.returncode == 0:
+        return True
+    stderr = (out.stderr or "").strip()
+    if _is_missing_object_error(stderr):
         return False
-    return out.returncode == 0
+    msg = f"Failed to download [{out.returncode}]: {label}"
+    if stderr:
+        msg += f"\n{stderr}"
+    raise OSError(msg)
