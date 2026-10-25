@@ -1,9 +1,17 @@
 name: Release Data Promote
 
-# Hourly auto-promotion of soak-eligible testing snapshots into the stable
-# channel. Eligibility = testing publish
-# older than 24h, minus the stable channel's suppression list. An empty plan
-# (quiet period) is a successful no-op; failures surface as failed runs.
+# Daily auto-promotion of soak-eligible testing snapshots into the stable
+# channel. Eligibility = testing publish older than 24h, minus the stable
+# channel's suppression list. An empty plan (quiet period) is a successful
+# no-op; failures surface as failed runs.
+#
+# The cron is intentionally scheduled ~2h after the 04:00 UTC
+# update-raw-data.yml chain (the normal daily snapshot update), so a typical
+# snapshot is promoted ~26h after its testing publish (24h soak + up to ~2h
+# cron latency). Edge case: a publish that lands after 06:07 UTC misses that
+# day's run and is promoted the next day (~48h latency) — an accepted,
+# intentional delay.
+#
 # Non-quiet promotions are announced to the QQ bot as channel="stable"
 # data_update events (the testing-channel publish is announced separately by
 # _release-data.yml).
@@ -13,7 +21,8 @@ permissions:
 
 on:
   schedule:
-    - cron: "7 * * * *"
+    # Daily, ~2h after the 04:00 UTC update-raw-data chain; see header comment.
+    - cron: "7 6 * * *"
   workflow_dispatch:
     inputs:
       test_mode:
@@ -71,6 +80,10 @@ jobs:
               --target s3 \
               --channel testing \
               --schema-root cache/remote'
+          # The stable channel may not exist remotely yet (before the first
+          # promotion); tolerate a missing head so the bootstrap promotion
+          # below can create it. The testing head stays strict — its absence
+          # in production is a genuine error.
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             'uv run x.py \
@@ -81,6 +94,7 @@ jobs:
               remote sync \
               --target s3 \
               --channel stable \
+              --allow-missing-head \
               --schema-root cache/remote'
 
       # The mock starts empty on a fresh dispatch; a missing testing head means
@@ -119,6 +133,7 @@ jobs:
               ci release-data promote \
               --schema-root cache/remote \
               --report promote-report.json \
+              --allow-missing-head \
               --target s3'
 
       - name: Promote eligible snapshots (MinIO mock)
