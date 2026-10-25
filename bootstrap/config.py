@@ -275,7 +275,7 @@ class ReleaseVersion:
 
 
 class ProjectVersion(BaseModel):
-    """Dual-track application version model (see docs/temp/stable/bin.md).
+    """Dual-track application version model.
 
     ``build`` is shared and monotonic across both tracks (Android
     ``versionCode``); ``testing`` carries the beta prerelease counter;

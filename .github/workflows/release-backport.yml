@@ -3,7 +3,7 @@ name: Release Backport
 permissions:
   contents: read
 
-# Backport releases (spec docs/temp/stable/bin.md §6): a short-lived
+# Backport releases: a short-lived
 # backport/* branch off the newest stable tag carries a cherry-picked fix, a
 # [version.stable] patch bump, and a build bump. The parsed diff against the
 # base tag is the release trigger; the production-app environment's reviewer

@@ -1,7 +1,7 @@
 name: Release Data Promote
 
 # Hourly auto-promotion of soak-eligible testing snapshots into the stable
-# channel (docs/temp/stable/snap.plan.md §3.4). Eligibility = testing publish
+# channel. Eligibility = testing publish
 # older than 24h, minus the stable channel's suppression list. An empty plan
 # (quiet period) is a successful no-op; failures surface as failed runs.
 # Non-quiet promotions are announced to the QQ bot as channel="stable"

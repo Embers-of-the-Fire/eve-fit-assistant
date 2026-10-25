@@ -20,6 +20,8 @@ scoped `AGENTS.md`.
 - `packages/eve-fit-os/` is a Git submodule with independent history and versioning; do not
   leave unrelated parent-repository changes inside it.
 - `CLAUDE.md` is a symlink to this file.
+- `docs/temp` is ignored by git. **DO NOT** reference files in that folder. This also applies
+  to other directories and files. Any reference must point to a valid anchor in the git repo.
 
 ## Top-Level Organization
 
