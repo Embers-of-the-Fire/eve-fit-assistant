@@ -358,10 +358,10 @@ def register_remote_lifecycle(remote: click.Group) -> None:
                 else:
                     raise click.ClickException(
                         f"Channel head not found on remote for '{resolved_channel}': "
-                        f"channels/heads/{resolved_channel}/metadata.json could not be "
-                        "downloaded. The channel may not exist remotely, or the "
-                        "download failed. Refusing to report success without a head, "
-                        "since downstream steps (e.g. release-data publish) rely on it."
+                        f"channels/heads/{resolved_channel}/metadata.json is absent "
+                        "(download failures raise before this point). Refusing to "
+                        "report success without a head, since downstream steps "
+                        "(e.g. release-data publish) rely on it."
                     )
         else:
             click.echo(styled([Style.BRIGHT, Fore.GREEN], "Syncing all channels..."))
