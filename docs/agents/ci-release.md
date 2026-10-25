@@ -125,14 +125,20 @@ guards; fork PRs never run these jobs.
 
 ## Stable Channel Promotion Workflow
 
-`release-data-promote.yml` (hourly cron plus manual dispatch) promotes soak-eligible testing
-snapshots into the `stable` channel via `ci release-data promote`:
+`release-data-promote.yml` (daily cron at 06:07 UTC plus manual dispatch) promotes
+soak-eligible testing snapshots into the `stable` channel via `ci release-data promote`. The
+schedule intentionally trails the 04:00 UTC `update-raw-data.yml` chain by ~2h, so a typical
+snapshot is promoted ~26h after its testing publish (24h soak + up to ~2h cron latency); a
+publish landing after 06:07 UTC waits for the next day's run (~48h).
 
 1. `promote` — syncs both channel heads, admits testing publishes older than 24h minus the
-   stable suppression list, and publishes the new stable generation. A quiet period (nothing
-   eligible) is a successful no-op. The command's `--report` JSON (admitted snapshots with
-   embedded `metadata.json` content, plus suppressed skips) is uploaded as the
-   `promote-report` artifact; it is written for every outcome, quiet periods included.
+   stable suppression list, and publishes the new stable generation. The `stable` sync and the
+   promote command both pass `--allow-missing-head` so the workflow can bootstrap a stable
+   channel that does not exist remotely yet (the `testing` head stays strict — its absence is
+   a genuine error). A quiet period (nothing eligible) is a successful no-op. The command's
+   `--report` JSON (admitted snapshots with embedded `metadata.json` content, plus suppressed
+   skips) is uploaded as the `promote-report` artifact; it is written for every outcome, quiet
+   periods included.
 2. `notify-qqbot` — posts a `data_update` event with `channel: "stable"` built from the
    report to the bofa-qqbot event endpoint using `QQBOT_EVENT_SECRET` from `production-data`;
    real runs only, and skipped entirely when the report's `admitted` list is empty.

@@ -123,3 +123,30 @@ class TestSyncMissingHead:
 
         assert result.exit_code == 0, result.output
         assert "Sync complete." in result.output
+
+
+class TestSyncAllowMissingHead:
+    def test_channel_sync_tolerates_missing_head_with_flag(
+        self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        results = {"stable": SyncResult(channel="stable", registry=True, head_meta=False)}
+        result = _invoke_sync(
+            tmp_project, monkeypatch, results, "--channel", "stable", "--allow-missing-head"
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "treating the channel as absent" in result.output
+        assert "Sync complete." in result.output
+
+    def test_sync_all_tolerates_missing_heads_with_flag(
+        self, tmp_project: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        results = {
+            "testing": SyncResult(channel="testing", registry=True, head_meta=True),
+            "stable": SyncResult(channel="stable", registry=True, head_meta=False),
+        }
+        result = _invoke_sync(tmp_project, monkeypatch, results, "--allow-missing-head")
+
+        assert result.exit_code == 0, result.output
+        assert "treating them as absent" in result.output
+        assert "Sync complete." in result.output
