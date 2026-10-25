@@ -66,6 +66,56 @@ class TestDownloadClassification:
         )
         assert syncer._download_head_metadata("stable") is False
 
+    def test_recursive_all_errors_missing_returns_false(
+        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stderr = (
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
+            " Object does not exist\n"
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
+            " The specified key does not exist.\n"
+        )
+        monkeypatch.setattr(sync_module.subprocess, "run", lambda *a, **kw: _completed(1, stderr))
+        assert syncer._download_generation("aa") is False
+
+    def test_recursive_mixed_errors_raise(
+        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        stderr = (
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
+            " Object does not exist\n"
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
+            " Access Denied.\n"
+        )
+        monkeypatch.setattr(sync_module.subprocess, "run", lambda *a, **kw: _completed(1, stderr))
+        with pytest.raises(OSError, match="Failed to download"):
+            syncer._download_generation("aa")
+
+    def test_mixed_errors_abort_generation_walk(
+        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        head_dir = tmp_path / "channels" / "heads" / "stable"
+        stderr = (
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
+            " Object does not exist\n"
+            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
+            " Access Denied.\n"
+        )
+
+        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
+            src = cmd[2]
+            if src.endswith("metadata.json") and "--recursive" not in cmd:
+                head_dir.mkdir(parents=True, exist_ok=True)
+                (head_dir / "metadata.json").write_text('{"generationHash": "aa"}')
+                return _completed(0)
+            if "--recursive" in cmd:
+                return _completed(1, stderr)
+            return _completed(0)
+
+        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        with pytest.raises(OSError, match="Failed to download"):
+            syncer.sync_channel("stable")
+
     def test_access_denied_raises(self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             sync_module.subprocess,

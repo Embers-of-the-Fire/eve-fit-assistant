@@ -370,13 +370,25 @@ _MISSING_OBJECT_MARKERS = (
 )
 
 
+# mc tags every error line on stderr with "<ERROR>" ("<prog>: <ERROR> msg");
+# a recursive copy reports one such line per failed object.
+_MC_ERROR_TAG = "<ERROR>"
+
+
 def _is_missing_object_error(stderr: str) -> bool:
     """True only when mc's stderr confirms the remote object is absent.
+
+    Every error line mc reports must confirm absence; a recursive copy that
+    mixes a missing object with any other failure must raise, not be mistaken
+    for an absent prefix. Non-error lines (progress, blanks) are ignored.
 
     Broader phrasing like "does not exist" must not match: mc also uses it for
     missing buckets and even rejected access keys, which are real failures.
     """
-    return any(marker in stderr for marker in _MISSING_OBJECT_MARKERS)
+    error_lines = [line for line in stderr.splitlines() if _MC_ERROR_TAG in line]
+    if not error_lines:
+        return False
+    return all(any(marker in line for marker in _MISSING_OBJECT_MARKERS) for line in error_lines)
 
 
 def _run_optional(cmd: list[str], label: str, timeout: float = 300) -> bool:
