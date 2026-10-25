@@ -105,6 +105,30 @@ class TestChangelogLoading:
         with pytest.raises(ValueError, match="appVersion"):
             _load_spec(spec_path)
 
+    def test_changelog_from_ref_accepted(self, tmp_path: Path) -> None:
+        spec_path = tmp_path / "changelog" / "1-0-0" / "spec.yaml"
+        spec_path.parent.mkdir(parents=True)
+        spec_path.write_text(
+            'publishedAt: 2026-01-01T00:00:00Z\nappVersion: "1.0.0"\nfromRef: releases/v0.21.0\n',
+            encoding="utf-8",
+        )
+
+        metadata = _load_spec(spec_path)
+
+        assert metadata.from_ref == "releases/v0.21.0"
+
+    def test_from_ref_defaults_to_none(self, tmp_path: Path) -> None:
+        spec_path = tmp_path / "changelog" / "1-0-0" / "spec.yaml"
+        spec_path.parent.mkdir(parents=True)
+        spec_path.write_text(
+            'publishedAt: 2026-01-01T00:00:00Z\nappVersion: "1.0.0"\n',
+            encoding="utf-8",
+        )
+
+        metadata = _load_spec(spec_path)
+
+        assert metadata.from_ref is None
+
 
 class TestPathDiscovery:
     def test_path_discovery_skips_hidden_and_files(self, tmp_path: Path) -> None:
