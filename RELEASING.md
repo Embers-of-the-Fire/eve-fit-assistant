@@ -73,8 +73,15 @@ through the ship and backport procedures below.
 ### 1.2. Generate the release note
 
 ```bash
-./x release relnote
+./x release relnote --track testing --from-ref releases/v<previous-tag>
 ```
+
+- `--track testing|stable` (default `testing`) selects which configured track
+  version in `efa.config.toml` to render; it is ignored when `--version` is given.
+- `--from-ref <ref>` sets the base git ref (tag or commit) `git-cliff` compares
+  against — typically the previous release tag, e.g. `releases/v0.21.0`. When
+  omitted, the last tag matching the version pattern is used. The value is
+  recorded in `spec.yaml` as `fromRef` for provenance.
 
 This creates `docs/changelog/<version-dir>/` containing:
 
@@ -270,7 +277,8 @@ development line:
    stable line (`releases/v<major.minor.patch>` — the latest patch, not the
    line's origin). Cherry-pick the fix; bump `[version.stable].patch` and
    `build`; leave `[version.testing]` untouched; add the changelog entry
-   (`./x release relnote --version <M.m.p>` → `docs/changelog/<M-m-p>/`).
+   (`./x release relnote --track stable --from-ref releases/v<previous-patch>`
+   → `docs/changelog/<M-m-p>/`).
 3. Push the branch. `release-backport.yml` classifies the diff against the base
    tag with the backport carve-out (a stable-only patch change, which preflight
    rejects on the mainline), then builds and publishes to the `stable` channel
@@ -429,7 +437,7 @@ wired into releases as follows:
 |------|------------------|
 | Bump version (testing release) | Edit `efa.config.toml` `[version.testing]` + shared `build` |
 | Classify release intent | `./x ci release intent --base-ref origin/dev` |
-| Generate release note | `./x release relnote` |
+| Generate release note | `./x release relnote --track <track> --from-ref releases/v<previous>` |
 | Generate version banner image | `./x release version-image` |
 | Author localized content | `docs/changelog/<version-dir>/content.{zh,en}.md` |
 | Sync version targets | `./x release version sync --track testing` |

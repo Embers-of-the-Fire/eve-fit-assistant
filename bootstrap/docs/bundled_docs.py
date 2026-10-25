@@ -67,6 +67,7 @@ class BundledSourceMetadata(BaseModel):
     min_app_version: str | None = Field(alias="minAppVersion", default=None)
     max_app_version: str | None = Field(alias="maxAppVersion", default=None)
     app_version: str | None = Field(alias="appVersion", default=None)
+    from_ref: str | None = Field(alias="fromRef", default=None)
 
 
 def _iter_announcement_dirs() -> Iterable[tuple[str, Path]]:

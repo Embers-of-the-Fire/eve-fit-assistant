@@ -43,7 +43,7 @@ The fitting-engine submodule `packages/eve-fit-os` has independent versioning. S
 Create the raw release-note scaffold with:
 
 ```sh
-./x release relnote
+./x release relnote --track testing --from-ref releases/v<previous-tag>
 ```
 
 The command emits `spec.yaml` and `changelog.md`; author `content.zh.md` and
