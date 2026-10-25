@@ -240,60 +240,66 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
         context: context,
         useSafeArea: true,
         showDragHandle: true,
-        builder: (_) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(child: Text(displayName, style: theme.textTheme.titleLarge)),
-                  _statusBadge(isActive),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _checkoutField(l10n.checkoutFieldChannel, entry.channel),
-              _checkoutField(l10n.checkoutFieldServerId, entry.serverId),
-              _checkoutField(l10n.checkoutFieldSnapshotHash, _truncate(entry.resourceSnapshotHash)),
-              _checkoutField(l10n.checkoutFieldUpdatedAt, _formatTime(entry.createdAt)),
-              _checkoutField(
-                l10n.checkoutFieldFileCount,
-                fileCount >= 0 ? fileCount.toString() : l10n.checkoutNA,
-              ),
-              _checkoutField(
-                l10n.checkoutFieldTotalSize,
-                totalSize >= 0 ? _formatSize(totalSize) : l10n.checkoutNA,
-              ),
-              if (split != null) ...[
+        builder: (_) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(displayName, style: theme.textTheme.titleLarge)),
+                    _statusBadge(isActive),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _checkoutField(l10n.checkoutFieldChannel, entry.channel),
+                _checkoutField(l10n.checkoutFieldServerId, entry.serverId),
                 _checkoutField(
-                  l10n.storageDownloadedLabel,
-                  l10n.storageDownloadedValue(
-                    count: split.downloadedCount,
-                    size: _formatSize(split.downloadedSize),
-                  ),
+                  l10n.checkoutFieldSnapshotHash,
+                  _truncate(entry.resourceSnapshotHash),
+                ),
+                _checkoutField(l10n.checkoutFieldUpdatedAt, _formatTime(entry.createdAt)),
+                _checkoutField(
+                  l10n.checkoutFieldFileCount,
+                  fileCount >= 0 ? fileCount.toString() : l10n.checkoutNA,
                 ),
                 _checkoutField(
-                  l10n.storageOnDemandLabel,
-                  l10n.storageOnDemandValue(
-                    count: split.onDemandCount,
-                    size: _formatSize(split.onDemandSize),
+                  l10n.checkoutFieldTotalSize,
+                  totalSize >= 0 ? _formatSize(totalSize) : l10n.checkoutNA,
+                ),
+                if (split != null) ...[
+                  _checkoutField(
+                    l10n.storageDownloadedLabel,
+                    l10n.storageDownloadedValue(
+                      count: split.downloadedCount,
+                      size: _formatSize(split.downloadedSize),
+                    ),
+                  ),
+                  _checkoutField(
+                    l10n.storageOnDemandLabel,
+                    l10n.storageOnDemandValue(
+                      count: split.onDemandCount,
+                      size: _formatSize(split.onDemandSize),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.history, size: 18),
+                    label: Text(l10n.checkoutHistoryButton),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _openHistory(checkoutId);
+                    },
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.history, size: 18),
-                  label: Text(l10n.checkoutHistoryButton),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _openHistory(checkoutId);
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

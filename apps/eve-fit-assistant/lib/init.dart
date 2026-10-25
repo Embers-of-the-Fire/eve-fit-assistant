@@ -8,6 +8,7 @@ import "package:eve_fit_assistant/config/loading.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
+import "package:eve_fit_assistant/config/system_ui.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
 import "package:eve_fit_assistant/features/announcements/remote/body_cache.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
@@ -49,6 +50,7 @@ class InitializedStores {
 
 Future<InitializedStores> initSingletons() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppSystemUi.apply();
   if (kIsWeb) {
     // The engine wasm is built with atomics so FRB can run engine calls in
     // its Web Worker pool; the shared memory behind that only exists on

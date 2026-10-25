@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:eve_fit_assistant/config/provider_observer.dart";
+import "package:eve_fit_assistant/config/system_ui.dart";
 import "package:eve_fit_assistant/constant/colors.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
 import "package:eve_fit_assistant/features/account/providers.dart";
@@ -19,6 +20,7 @@ import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:eve_fit_assistant/utils/fd_limit.dart";
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 void main() async {
@@ -116,15 +118,18 @@ class MyApp extends ConsumerWidget {
                 );
               });
             }
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
-              child: FeedbackGate(
-                appRouter: appRouter,
-                child: StartupAnnouncementGate(
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: AppSystemUi.overlayStyleFor(context),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(fontScale)),
+                child: FeedbackGate(
                   appRouter: appRouter,
-                  child: FitLinkIntakeGate(
+                  child: StartupAnnouncementGate(
                     appRouter: appRouter,
-                    child: initBuilder(context, child),
+                    child: FitLinkIntakeGate(
+                      appRouter: appRouter,
+                      child: initBuilder(context, child),
+                    ),
                   ),
                 ),
               ),
