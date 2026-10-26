@@ -12,6 +12,7 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private lateinit var installChannel: MethodChannel
+    private lateinit var systemUiChannel: MethodChannel
 
     init {
         System.loadLibrary("rust_lib_eve_fit_assistant")
@@ -24,6 +25,20 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL_NAME,
         )
+        systemUiChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SYSTEM_UI_CHANNEL_NAME,
+        )
+        systemUiChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                // Edge-to-edge only takes effect on Android 10 (API 29) and
+                // later; Dart gates the transparent navigation bar on this.
+                "getSdkInt" -> result.success(Build.VERSION.SDK_INT)
+
+                else -> result.notImplemented()
+            }
+        }
+
         installChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getSupportedAbis" -> {
@@ -91,5 +106,6 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL_NAME = "dev.efa_tech.eve_fit_assistant/installer"
+        private const val SYSTEM_UI_CHANNEL_NAME = "dev.efa_tech.eve_fit_assistant/system_ui"
     }
 }
