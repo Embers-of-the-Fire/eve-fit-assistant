@@ -65,42 +65,45 @@ class _ManualSearchSheetState extends ConsumerState<ManualSearchSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SizedBox(
-        height: context.mediaQuery.size.height * 0.75,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                controller: _controller,
-                autofocus: true,
-                onChanged: _onQueryChanged,
-                decoration: InputDecoration(
-                  hintText: context.l10n.manualSearchHint,
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: context.l10n.manualSearchClear,
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _controller.clear();
-                            _onQueryChanged("");
-                          },
-                        ),
-                  border: const OutlineInputBorder(),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: context.mediaQuery.size.height * 0.75,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  onChanged: _onQueryChanged,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.manualSearchHint,
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: context.l10n.manualSearchClear,
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _controller.clear();
+                              _onQueryChanged("");
+                            },
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: switch (serviceAsync) {
-                AsyncError() => _SearchMessage(message: context.l10n.manualSearchUnavailable),
-                AsyncLoading() => const Center(child: CircularProgressIndicator()),
-                _ => _SearchResultList(query: _query, results: _results),
-              },
-            ),
-          ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: switch (serviceAsync) {
+                  AsyncError() => _SearchMessage(message: context.l10n.manualSearchUnavailable),
+                  AsyncLoading() => const Center(child: CircularProgressIndicator()),
+                  _ => _SearchResultList(query: _query, results: _results),
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
