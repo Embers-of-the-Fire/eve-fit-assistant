@@ -244,9 +244,8 @@ class _CheckoutManagementPageState extends ConsumerState<CheckoutManagementPage>
           top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
+              shrinkWrap: true,
               children: [
                 Row(
                   children: [
