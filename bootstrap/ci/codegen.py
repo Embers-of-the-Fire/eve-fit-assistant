@@ -353,6 +353,7 @@ STEPS: tuple[Step, ...] = (
         outputs=(
             "apps/eve-fit-assistant/lib/constant/assets_generated.dart",
             "apps/eve-fit-assistant/lib/constant/resource_vocabulary.g.dart",
+            "apps/eve-fit-assistant/lib/storage/repo/resource_resolution.g.dart",
             "apps/eve-fit-assistant/lib/config/locale.dart",
             "apps/eve-fit-assistant/lib/storage/repo/repo_version.dart",
             "packages/efa_constant/lib/eve_attr_generated.dart",

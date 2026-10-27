@@ -222,25 +222,21 @@ class TestCustomResolutionVocabulary:
     def test_d1_resource_ids_follow_custom_scheme(
         self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from bootstrap.config import ProjectConfiguration
+        import bootstrap.resolution
+
         from bootstrap.data.d1.sync import collection_resource_id
         from bootstrap.data.d1.sync import engine_resource_id
         from bootstrap.data.d1.sync import load_snapshot_entries
         from bootstrap.data.d1.sync import localization_resource_id
 
-        cfg = ProjectConfiguration.model_validate(
-            {
-                "localizations": {
-                    "default": "en",
-                    "supported": ["en"],
-                    "translation": {"en": "English"},
-                },
-                "paths": {"log": "data/log"},
-                "version": {"major": 0, "minor": 1, "patch": 0},
-                "resolution": {"scheme": "custom://"},
+        spec = bootstrap.resolution.resolution_spec().model_copy(
+            update={
+                "vocabulary": bootstrap.resolution.resolution_vocabulary().model_copy(
+                    update={"scheme": "custom://"}
+                )
             }
         )
-        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+        monkeypatch.setattr(bootstrap.resolution, "_SPEC", spec)
 
         assert engine_resource_id("types") == "custom://static/native/types.pb2"
         assert engine_resource_id("buffs") == "custom://static/native/dbuffcollections.pb2"
@@ -266,23 +262,19 @@ class TestCustomResolutionVocabulary:
     def test_custom_legacy_localization_db_path(
         self, schema_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from bootstrap.config import ProjectConfiguration
+        import bootstrap.resolution
+
         from bootstrap.data.d1.sync import load_snapshot_entries
         from bootstrap.data.d1.sync import localization_resource_id
 
-        cfg = ProjectConfiguration.model_validate(
-            {
-                "localizations": {
-                    "default": "en",
-                    "supported": ["en"],
-                    "translation": {"en": "English"},
-                },
-                "paths": {"log": "data/log"},
-                "version": {"major": 0, "minor": 1, "patch": 0},
-                "resolution": {"legacy_localization_db": "i18n/combined.db"},
+        spec = bootstrap.resolution.resolution_spec().model_copy(
+            update={
+                "vocabulary": bootstrap.resolution.resolution_vocabulary().model_copy(
+                    update={"legacy_localization_db": "i18n/combined.db"}
+                )
             }
         )
-        monkeypatch.setattr("bootstrap.config.CONFIGURATION", cfg)
+        monkeypatch.setattr(bootstrap.resolution, "_SPEC", spec)
 
         assert localization_resource_id() == "resource://i18n/combined.db"
 
