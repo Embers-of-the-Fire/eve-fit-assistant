@@ -82,7 +82,7 @@ class SessionStore:
             return False
         try:
             self.load()
-        except (ValueError, FileNotFoundError):
+        except ValueError, FileNotFoundError:
             return False
         else:
             return True

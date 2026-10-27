@@ -130,7 +130,7 @@ class Verifier:
         known: set[tuple[str, str]] = set()
         try:
             head = self.head_store.get_head(channel_name)
-        except (FileNotFoundError, json.JSONDecodeError, ValidationError):
+        except FileNotFoundError, json.JSONDecodeError, ValidationError:
             return known
         if not head.generation_hash:
             return known
@@ -139,7 +139,7 @@ class Verifier:
             gen = self.gen_store.load(head.generation_hash)
             for entry in gen.resources.entries:
                 known.add((entry.server_id, entry.snapshot_hash))
-        except (FileNotFoundError, json.JSONDecodeError, ValidationError):
+        except FileNotFoundError, json.JSONDecodeError, ValidationError:
             pass
         history_path = gen_dir / "history.pb2"
         if history_path.is_file():

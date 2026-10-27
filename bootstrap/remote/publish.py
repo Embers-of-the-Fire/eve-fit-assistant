@@ -492,7 +492,7 @@ class Publisher:
                 if snap_dir.is_dir() and pb2_file.is_file():
                     try:
                         rel_index = read_pb2(pb2_file, ReleaseIndex)
-                    except (OSError, DecodeError):
+                    except OSError, DecodeError:
                         rel_index = None
                     if rel_index is not None:
                         for _, _, v in _iter_release_variants(rel_index):
@@ -629,6 +629,6 @@ def _stat_ok(cmd: list[str], timeout: float = 60) -> bool:
             timeout=timeout,
             check=False,
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except subprocess.TimeoutExpired, FileNotFoundError:
         return False
     return out.returncode == 0

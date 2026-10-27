@@ -6,7 +6,7 @@ import json
 
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
+lazy import matplotlib.pyplot as plt
 
 
 if TYPE_CHECKING:

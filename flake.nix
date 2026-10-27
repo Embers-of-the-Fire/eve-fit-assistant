@@ -5,12 +5,22 @@
   inputs.fenix.url = "github:nix-community/fenix";
   inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
+  inputs.nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-26.05";
+
   outputs =
-    { nixpkgs, fenix, ... }:
+    { nixpkgs, nixpkgs-stable, fenix, ... }:
     let
       system = "x86_64-linux";
 
       pkgs = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;
+          android_sdk.accept_license = true;
+        };
+      };
+
+      minioPkgs = import nixpkgs-stable {
         inherit system;
         config = {
           allowUnfree = true;
@@ -146,13 +156,16 @@
         pnpm
       ];
 
-      releasePackages = with pkgs; [
-        cargo-expand
-        git-cliff
-        minio
-        minio-client
-        wrangler
-      ];
+      releasePackages =
+        (with pkgs; [
+          cargo-expand
+          git-cliff
+          wrangler
+        ])
+        ++ (with minioPkgs; [
+          minio
+          minio-client
+        ]);
 
       # Not packaged in nixpkgs; wrap the upstream AppImage with appimage-run.
       # Not packaged in nixpkgs. The upstream AppImage's payload binaries
@@ -317,8 +330,8 @@
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
           python = pkgs.mkShell {
             packages = pythonPackages ++ [
-              pkgs.minio
-              pkgs.minio-client
+              minioPkgs.minio
+              minioPkgs.minio-client
             ];
 
             inherit (localeEnv) LANG LC_ALL;

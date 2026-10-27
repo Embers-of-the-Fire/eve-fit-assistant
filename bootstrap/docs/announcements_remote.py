@@ -757,7 +757,7 @@ def _load_remote_body_hashes(remote_dir: Path | None) -> dict[str, dict[str, str
     ws = _FakeWorkspaceRead(remote_dir)
     try:
         catalog = ws._read_catalog(remote_dir)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError, ValueError:
         return hashes
     for page_meta in catalog.pages:
         with contextlib.suppress(FileNotFoundError):
