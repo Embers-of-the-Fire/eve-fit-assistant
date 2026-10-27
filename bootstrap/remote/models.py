@@ -17,7 +17,6 @@ from bootstrap.remote.canonical_json import encode_canonical_json
 
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
 
@@ -236,37 +235,19 @@ def __getattr__(name: str):
 RESOURCE_INDEX_FORMAT_VERSION = 2
 
 
-def is_lazy_resource(resource_id: str, lazy_prefixes: Sequence[str]) -> bool:
-    """Return whether [resource_id] matches any lazy prefix.
-
-    Prefixes are matched against the resource path relative to the
-    effective resolution scheme (e.g. ``static/images/`` matches
-    ``resource://static/images/icons/1.png`` under the built-in
-    vocabulary).
-    """
-    from bootstrap.config import effective_resolution
-
-    path = resource_id.removeprefix(effective_resolution().scheme)
-    return any(path.startswith(prefix) for prefix in lazy_prefixes)
-
-
 def make_resource_index(
     entries: list[tuple[str, str, int]],
-    lazy_prefixes: Sequence[str] | None = None,
 ) -> ResourceIndex:
     """Build a ResourceIndex from (resource_id, content_hash, size) tuples.
 
-    Emits [RESOURCE_INDEX_FORMAT_VERSION]: entries whose resource_id matches
-    a lazy prefix are marked NON_FORCE; all others are marked FORCE.
-
-    ``lazy_prefixes`` defaults to the effective configuration's prefixes
-    (derived from the ``[resolution]`` vocabulary unless ``[download]``
-    overrides them); pass an explicit list to override, or an empty list to
-    mark every entry FORCE (download everything ahead of time).
+    Emits [RESOURCE_INDEX_FORMAT_VERSION]: entries are stamped FORCE or
+    NON_FORCE according to the Resource Resolution Schema rules
+    (``data/schema/resource_resolution.toml``, see ``bootstrap.resolution``).
+    The stamp is derived from the same rules the app's resolver evaluates, so
+    it cannot diverge from the client-side resolution.
     """
-    from bootstrap.config import effective_lazy_prefixes
+    from bootstrap.resolution import is_lazy_resource
 
-    prefixes = effective_lazy_prefixes() if lazy_prefixes is None else lazy_prefixes
     msg = _load_pb2_type("ResourceIndex")()
     msg.schema_version = 1
     msg.format_version = RESOURCE_INDEX_FORMAT_VERSION
@@ -276,9 +257,7 @@ def make_resource_index(
         entry.resource_id = rid
         entry.content_hash = content
         entry.size = size
-        entry.download_policy = (
-            policy.NON_FORCE if is_lazy_resource(rid, prefixes) else policy.FORCE
-        )
+        entry.download_policy = policy.NON_FORCE if is_lazy_resource(rid) else policy.FORCE
     return msg
 
 

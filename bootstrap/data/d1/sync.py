@@ -70,7 +70,6 @@ from typing import Any
 from typing import Protocol
 from typing import Self
 
-from bootstrap.config import effective_resolution as _effective_resolution
 from bootstrap.constant import NATIVE_LIB_ROOT
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -79,6 +78,7 @@ from bootstrap.remote.hash import ident_hash
 from bootstrap.remote.models import read_pb2
 from bootstrap.remote.paths import blob_path
 from bootstrap.remote.paths import resource_snapshot_dir
+from bootstrap.resolution import resolution_vocabulary as _resolution_vocabulary
 
 
 if TYPE_CHECKING:
@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 
 
 #: Engine data families, mapped to their snapshot resource path (relative to
-#: the effective resolution scheme) and the efos protobuf message used to
+#: the resolution scheme) and the efos protobuf message used to
 #: decode the whole collection.
 ENGINE_FAMILIES: dict[str, tuple[str, str]] = {
     "types": ("static/native/types.pb2", "Types"),
@@ -96,29 +96,29 @@ ENGINE_FAMILIES: dict[str, tuple[str, str]] = {
     "buffs": ("static/native/dbuffcollections.pb2", "BuffCollections"),
 }
 
-#: Resource path (relative to the effective resolution scheme) of the
+#: Resource path (relative to the resolution scheme) of the
 #: collection snapshot resource.
 COLLECTION_RESOURCE_PATH = "static/collection.pb2"
 
 
 def engine_resource_id(family: str) -> str:
-    """Snapshot resource ID of an engine family under the effective vocabulary.
+    """Snapshot resource ID of an engine family under the spec vocabulary.
 
-    The scheme comes from the ``[resolution]`` configuration after loading,
-    so a custom vocabulary addresses the same generated resources the Dart
-    client resolves.
+    The scheme comes from the RRS spec (``data/schema/resource_resolution.toml``),
+    so the generated resources are addressed the same way the Dart client
+    resolves them.
     """
-    return f"{_effective_resolution().scheme}{ENGINE_FAMILIES[family][0]}"
+    return f"{_resolution_vocabulary().scheme}{ENGINE_FAMILIES[family][0]}"
 
 
 def collection_resource_id() -> str:
-    """Snapshot resource ID of the collection under the effective vocabulary."""
-    return f"{_effective_resolution().scheme}{COLLECTION_RESOURCE_PATH}"
+    """Snapshot resource ID of the collection under the spec vocabulary."""
+    return f"{_resolution_vocabulary().scheme}{COLLECTION_RESOURCE_PATH}"
 
 
 def localization_resource_id() -> str:
-    """Snapshot resource ID of the legacy localization db (effective vocabulary)."""
-    vocab = _effective_resolution()
+    """Snapshot resource ID of the legacy localization db (spec vocabulary)."""
+    vocab = _resolution_vocabulary()
     return f"{vocab.scheme}{vocab.legacy_localization_db}"
 
 

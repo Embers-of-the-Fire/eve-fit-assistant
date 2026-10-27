@@ -6,12 +6,24 @@ import pytest
 
 from pydantic import ValidationError
 
-from bootstrap.config import ResolutionVocabulary
+from bootstrap.resolution import ResolutionVocabulary
+
+
+def _vocabulary(**overrides: str) -> ResolutionVocabulary:
+    base = {
+        "scheme": "resource://",
+        "legacy_localization_db": "localization/localization.db",
+        "localization_locales_prefix": "localization/locales/",
+        "static_images_prefix": "static/images/",
+        "locale_placeholder": "locale",
+    }
+    base.update(overrides)
+    return ResolutionVocabulary(**base)
 
 
 class TestResolutionVocabularyPaths:
-    def test_defaults_are_valid(self) -> None:
-        vocab = ResolutionVocabulary()
+    def test_spec_values_are_valid(self) -> None:
+        vocab = _vocabulary()
         assert vocab.legacy_localization_db == "localization/localization.db"
         assert vocab.localization_locales_prefix == "localization/locales/"
 
@@ -31,7 +43,7 @@ class TestResolutionVocabularyPaths:
     )
     def test_legacy_localization_db_rejects_escaping_paths(self, value: str) -> None:
         with pytest.raises(ValidationError):
-            ResolutionVocabulary(legacy_localization_db=value)
+            _vocabulary(legacy_localization_db=value)
 
     @pytest.mark.parametrize(
         "value",
@@ -49,7 +61,7 @@ class TestResolutionVocabularyPaths:
     )
     def test_localization_locales_prefix_rejects_escaping_paths(self, value: str) -> None:
         with pytest.raises(ValidationError):
-            ResolutionVocabulary(localization_locales_prefix=value)
+            _vocabulary(localization_locales_prefix=value)
 
     @pytest.mark.parametrize(
         ("field", "value"),
@@ -61,5 +73,5 @@ class TestResolutionVocabularyPaths:
     def test_relative_paths_without_parent_segments_are_accepted(
         self, field: str, value: str
     ) -> None:
-        vocab = ResolutionVocabulary(**{field: value})
+        vocab = _vocabulary(**{field: value})
         assert getattr(vocab, field) == value

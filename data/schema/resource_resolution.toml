@@ -1,0 +1,63 @@
+# Resource Resolution Schema (RRS) — the single source of truth for which
+# checkout resources clients download eagerly, lazily, or not at all.
+#
+# Consumed by:
+#   - the Dart codegen (bootstrap/data/codegen/resource_resolution.py), which
+#     emits the app's resolveResource() evaluator and vocabulary constants;
+#   - the Python data pipeline (bootstrap/resolution.py), which derives the
+#     FORCE/NON_FORCE download_policy stamped into ResourceIndex snapshots
+#     for pre-RRS clients. The stamp is derived from the rules, never
+#     configured: a rule stamps NON_FORCE iff it can resolve lazy in some
+#     context and never excluded (`excluded` resources exist *for* older
+#     clients, so they must stay FORCE).
+
+# The RRS version shipped with the app, generated as
+# kResourceResolutionSchemaVersion. Bump when the rule list changes in a
+# behaviorally meaningful way.
+version = 1
+
+# Client-side state available to rule evaluation. Each entry is generated
+# into the Dart ResourceResolutionContext class; `import` is required only
+# for non-built-in types. Rule patterns reference fields as {name}.
+[[context]]
+name = "locale"
+type = "String"
+doc = 'The active app locale (e.g. "en", "zh").'
+
+# Shared resource-layout vocabulary: the strings the app, the data pipeline,
+# and the D1 sync must agree on. Rule matchers below repeat these literals;
+# bootstrap/tests/test_resolution_spec.py pins the agreement.
+[vocabulary]
+scheme = "resource://"
+legacy_localization_db = "localization/localization.db"
+localization_locales_prefix = "localization/locales/"
+static_images_prefix = "static/images/"
+locale_placeholder = "locale"
+
+# Ordered rules; first match wins. Each rule has exactly one matcher
+# (`exact`, `prefix`, or `pattern` with exactly one {context-field}
+# placeholder) and either a static `resolution` ("eager" / "lazy" /
+# "excluded") or the `on_context_match` / `on_context_mismatch` pair
+# ("eager" / "lazy"). `excluded_when_prefix_present` resolves the resource
+# to `excluded` when the index contains any entry under that prefix; it
+# requires a static `resolution` for the non-excluded case.
+# The implicit final rule resolves everything else to `eager` (fail closed).
+
+# The legacy combined localization db: superseded (excluded) when per-locale
+# replacements exist, eager otherwise (compatibility hinge: a new app on an
+# old snapshot behaves like an old app).
+[[rules]]
+exact = "localization/localization.db"
+resolution = "eager"
+excluded_when_prefix_present = "localization/locales/"
+
+# Per-locale localization dbs: the active locale's db is eager, others lazy.
+[[rules]]
+pattern = "localization/locales/{locale}.db"
+on_context_match = "eager"
+on_context_mismatch = "lazy"
+
+# Static images are fetched on demand.
+[[rules]]
+prefix = "static/images/"
+resolution = "lazy"

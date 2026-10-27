@@ -5,7 +5,7 @@ from enum import unique
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-import bootstrap.config
+import bootstrap.resolution
 
 
 if TYPE_CHECKING:
@@ -28,9 +28,7 @@ class PathManager:
         self.__base_output_path = base_output_path
 
         # Resource layout vocabulary shared with the app via codegen.
-        bootstrap.config.ProjectConfiguration.ensure_loaded()
-        assert bootstrap.config.CONFIGURATION is not None
-        vocab = bootstrap.config.CONFIGURATION.resolution
+        vocab = bootstrap.resolution.resolution_vocabulary()
         self.__legacy_localization_db_rel = PurePosixPath(vocab.legacy_localization_db)
         self.__localization_locales_rel = PurePosixPath(vocab.localization_locales_prefix)
 
