@@ -1,6 +1,6 @@
 <script lang="ts">
-import { locale } from "$lib/i18n/index.svelte";
-import type { Locale } from "$lib/i18n/translations";
+import { locale } from "#lib/i18n/index.svelte.js";
+import type { Locale } from "#lib/i18n/translations.js";
 
 const langs: { code: Locale; label: string }[] = [
     { code: "en", label: "EN" },

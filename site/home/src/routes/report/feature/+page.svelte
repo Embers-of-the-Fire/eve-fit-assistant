@@ -1,12 +1,12 @@
 <script lang="ts">
-import { page } from "$app/state";
 import {
     type ApiError,
     type IssueResult,
     submitFeatureRequest,
     type ValidationError,
-} from "$lib/api/report";
-import { locale, t } from "$lib/i18n/index.svelte";
+} from "#lib/api/report.js";
+import { locale, t } from "#lib/i18n/index.svelte.js";
+import { page } from "$app/state";
 
 let title = $state("");
 let problem = $state("");
@@ -72,7 +72,7 @@ async function handleSubmit(e: Event) {
 
     submitting = true;
     try {
-        const payload: import("$lib/api/report").FeatureRequestPayload = {
+        const payload: import("#lib/api/report.js").FeatureRequestPayload = {
             language: locale.current,
             title: t("report.form.feature.prefix") + title.trim(),
             problem: problem.trim(),
