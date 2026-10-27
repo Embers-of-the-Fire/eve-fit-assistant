@@ -242,9 +242,10 @@ The `release.yml` workflow on the merge commit then:
    rendered version already heads the target channel (absorbing reruns and
    backport merge-backs).
 7. Creates a lightweight Git tag (`releases/v<version>`) pointing at the merge commit.
-8. Posts a `release-created` event (version, tag, and the Chinese release note) to the
-   bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`), which broadcasts the
-   announcement to the configured QQ groups.
+8. Posts a `release-created` event (version, tag, classified track, and the Chinese
+   release note) to the bofa-qqbot event endpoint (`https://bot.efa-tech.dev/event`),
+   which broadcasts the announcement to the configured QQ groups; the bot renders the
+   track as a title marker (`（测试版）` / `（稳定版）`).
 
 If the merged PR is missing `V-Tested Release`, the release aborts.
 
