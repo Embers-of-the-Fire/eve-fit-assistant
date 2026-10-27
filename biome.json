@@ -49,11 +49,15 @@
     },
     "overrides": [
         {
-            "includes": ["site/**/*.svelte", "packages/efa_fit_snapshot_ts/**/*.svelte"],
+            "includes": ["**/*.svelte"],
             "linter": {
                 "rules": {
                     "style": {
                         "useConst": "off"
+                    },
+                    "correctness": {
+                        "noUnusedVariables": "off",
+                        "noUnusedImports": "off"
                     }
                 }
             }

@@ -56,10 +56,6 @@ function call(ws: WebSocket, message: Record<string, unknown>): Promise<Record<s
     });
 }
 
-function get(path: string): Promise<Response> {
-    return Promise.resolve(worker.fetch(new Request(`https://example.com${MOUNT}${path}`), env));
-}
-
 async function sha256Hex(data: Uint8Array): Promise<string> {
     const digest = await crypto.subtle.digest("SHA-256", data.buffer as ArrayBuffer);
     return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
