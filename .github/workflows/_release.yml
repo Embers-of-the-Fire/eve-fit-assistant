@@ -775,13 +775,16 @@ jobs:
     env:
       TAG: ${{ needs.verify.outputs.tag }}
       VERSION: ${{ needs.verify.outputs.version }}
+      TRACK: ${{ inputs.track }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       # Event API contract (bofa-qqbot EVENT.md): bearer auth plus
-      # {"type": "release-created", "payload": {version, tag, changelog}}.
+      # {"type": "release-created", "payload": {version, tag, changelog,
+      # track}}. track is the classified release track (testing or stable)
+      # from this workflow's input; the bot renders it as a title marker.
       - name: Post release-created event
         env:
           QQBOT_EVENT_SECRET: ${{ secrets.QQBOT_EVENT_SECRET }}
@@ -798,12 +801,14 @@ jobs:
           payload=$(jq -n \
             --arg version "$VERSION" \
             --arg tag "$TAG" \
+            --arg track "$TRACK" \
             --rawfile raw "$notes" \
             '{
               type: "release-created",
               payload: {
                 version: $version,
                 tag: $tag,
+                track: $track,
                 changelog: ($raw | sub("^#[^\\n]*\\n"; "") | gsub("^\\s+|\\s+$"; ""))
               }
             }')
