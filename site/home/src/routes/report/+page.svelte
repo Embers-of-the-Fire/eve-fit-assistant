@@ -1,7 +1,7 @@
 <script lang="ts">
+import { t } from "#lib/i18n/index.svelte.js";
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
-import { t } from "$lib/i18n/index.svelte";
 
 $effect(() => {
     const params = page.url.searchParams;
@@ -9,10 +9,10 @@ $effect(() => {
     if (variant !== "bug" && variant !== "feature" && variant !== "agent" && variant !== "platform")
         return;
 
-    const forward = new URLSearchParams(params);
+    const forward = new URLSearchParams(params.toString());
     forward.delete("variant");
     const qs = forward.toString();
-    goto(`/report/${variant}${qs ? `?${qs}` : ""}`, { replaceState: true });
+    goto(`/report/${variant}${qs ? `?${qs}` : ""}`, { replace: true });
 });
 </script>
 

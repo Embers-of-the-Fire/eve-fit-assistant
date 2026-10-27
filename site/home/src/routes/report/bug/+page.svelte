@@ -1,23 +1,25 @@
 <script lang="ts">
-import { page } from "$app/state";
 import {
     type ApiError,
     type IssueResult,
     type Platform,
     submitBugReport,
     type ValidationError,
-} from "$lib/api/report";
-import { locale, t } from "$lib/i18n/index.svelte";
+} from "#lib/api/report.js";
+import { locale, t } from "#lib/i18n/index.svelte.js";
+import { page } from "$app/state";
 
-const platforms: { value: Platform; labelKey: import("$lib/i18n/translations").TranslationKey }[] =
-    [
-        { value: "Android", labelKey: "report.form.platform.android" },
-        { value: "iOS", labelKey: "report.form.platform.ios" },
-        { value: "Web", labelKey: "report.form.platform.web" },
-        { value: "Windows 10/11", labelKey: "report.form.platform.windows" },
-        { value: "Linux", labelKey: "report.form.platform.linux" },
-        { value: "Other", labelKey: "report.form.platform.other" },
-    ];
+const platforms: {
+    value: Platform;
+    labelKey: import("#lib/i18n/translations.js").TranslationKey;
+}[] = [
+    { value: "Android", labelKey: "report.form.platform.android" },
+    { value: "iOS", labelKey: "report.form.platform.ios" },
+    { value: "Web", labelKey: "report.form.platform.web" },
+    { value: "Windows 10/11", labelKey: "report.form.platform.windows" },
+    { value: "Linux", labelKey: "report.form.platform.linux" },
+    { value: "Other", labelKey: "report.form.platform.other" },
+];
 
 let title = $state("");
 let summary = $state("");
@@ -86,7 +88,7 @@ async function handleSubmit(e: Event) {
 
     submitting = true;
     try {
-        const payload: import("$lib/api/report").BugReportPayload = {
+        const payload: import("#lib/api/report.js").BugReportPayload = {
             language: locale.current,
             title: t("report.form.bug.prefix") + title.trim(),
             summary: summary.trim(),

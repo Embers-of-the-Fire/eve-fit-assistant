@@ -1,9 +1,9 @@
 <script lang="ts">
-import { RELEASE_API_URL } from "$lib/api/releases";
-import type { ArtifactInfo, VariantInfo } from "$lib/download-state.svelte";
-import { downloadState } from "$lib/download-state.svelte";
-import { t } from "$lib/i18n/index.svelte";
-import type { TranslationKey } from "$lib/i18n/translations";
+import { RELEASE_API_URL } from "#lib/api/releases.js";
+import type { ArtifactInfo, VariantInfo } from "#lib/download-state.svelte.js";
+import { downloadState } from "#lib/download-state.svelte.js";
+import { t } from "#lib/i18n/index.svelte.js";
+import type { TranslationKey } from "#lib/i18n/translations.js";
 
 type ApiResponse =
     | {

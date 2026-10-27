@@ -1,6 +1,6 @@
 <script lang="ts">
-import LangSwitcher from "$lib/components/LangSwitcher.svelte";
-import { initLangAttribute, t } from "$lib/i18n/index.svelte";
+import LangSwitcher from "#lib/components/LangSwitcher.svelte";
+import { initLangAttribute, t } from "#lib/i18n/index.svelte.js";
 import "./layout.css";
 
 const { children } = $props();
