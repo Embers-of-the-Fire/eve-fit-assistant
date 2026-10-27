@@ -11,7 +11,7 @@ This document maps the repository's major areas. Scoped operating rules live in 
 | `efa.config.toml` | Canonical version, declared data workspaces, and project-level datasource configuration. |
 | `pubspec.yaml` / `melos.yaml` configuration in the root pub workspace | Melos workspace for Dart/Flutter packages; app-scoped tasks use `app:*` scripts. |
 | `Cargo.toml` | Cargo workspace root. |
-| `pyproject.toml` / `uv.lock` | Python 3.13+ project and locked `uv` environment. |
+| `pyproject.toml` / `uv.lock` | Python project (version floor in `requires-python`, pin in `.python-version`) and locked `uv` environment. |
 | `flake.nix` | Primary Linux development environment and toolchain source of truth. |
 | `./x`, `./x.ps1`, `x.py` | Workspace CLI and its Python implementation. Prefer `./x --help` over copied command prose. |
 | `bootstrap/ci/` | Change-aware CI selection: package registry (`registry.py`), codegen step graph (`codegen.py`), task catalog (`catalog.py`), and resolver (`resolve.py`); validated against manifests by `bootstrap/tests/test_ci_registry.py`. |

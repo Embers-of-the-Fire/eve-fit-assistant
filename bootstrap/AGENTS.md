@@ -6,7 +6,8 @@ Scope: Python workspace tooling in `bootstrap/`, including the implementation be
 
 - Run the CLI as `./x`, `./x.ps1`, or `uv run x.py` from the repository root; do not rely on
   a global Python interpreter.
-- Python requires 3.13+ and dependencies are managed by `uv`.
+- Python version is pinned by the root `.python-version` (floor: `requires-python` in
+  `pyproject.toml`); dependencies are managed by `uv`.
 - Follow the repository Ruff rules: future annotations, absolute imports, one import per
   line, double quotes, and 100-column formatting.
 - Generated protobuf modules under `bootstrap/data/schema/` are outputs; change

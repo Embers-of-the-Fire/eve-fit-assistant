@@ -16,8 +16,9 @@ The equivalent inside the dev shell is `flutter pub get` plus `uv sync`.
 
 ## Local Configuration
 
-- Python requires 3.13+ and is managed by `uv`: the interpreter is uv-downloaded
-  (python-build-standalone) and pinned by `.python-version`. Renovate has no uv manager;
+- Python's minimum version is declared by `requires-python` in `pyproject.toml` and is
+  managed by `uv`: the interpreter is uv-downloaded (python-build-standalone) and pinned
+  by `.python-version`. Renovate has no uv manager;
   its built-in `pyenv` manager matches `.python-version` but only supports the `docker`
   datasource (rendering Python as a Docker dependency), so `renovate.json5` disables
   `pyenv` and bumps the pin with a custom regex manager on the `python-version`
