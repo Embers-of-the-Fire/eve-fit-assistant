@@ -55,7 +55,7 @@ _PLACEHOLDER_RE = re.compile(r"\{([^{}]+)\}")
 class ResolutionContextField(BaseModel):
     """One client-side state field available to rule evaluation."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     #: Field name; patterns reference it as ``{name}``.
     name: str
@@ -77,7 +77,7 @@ class ResolutionVocabulary(BaseModel):
     ``bootstrap.data.codegen.resource_resolution``.
     """
 
-    model_config = ConfigDict(validate_default=True)
+    model_config = ConfigDict(validate_default=True, extra="forbid")
 
     #: URI scheme prefix of checkout resource ids.
     scheme: str
@@ -123,6 +123,8 @@ class ResolutionVocabulary(BaseModel):
 class ResolutionRule(BaseModel):
     """One ordered RRS rule: a matcher plus a resolution or context pair."""
 
+    model_config = ConfigDict(extra="forbid")
+
     #: Matches when the resource path equals this literal.
     exact: str | None = None
     #: Matches when the resource path starts with this literal.
@@ -166,7 +168,7 @@ class ResolutionRule(BaseModel):
 class ResolutionSpec(BaseModel):
     """The parsed ``data/schema/resource_resolution.toml``."""
 
-    model_config = ConfigDict(validate_default=True)
+    model_config = ConfigDict(validate_default=True, extra="forbid")
 
     #: RRS version shipped with the app; codegen'd as
     #: ``kResourceResolutionSchemaVersion``.
