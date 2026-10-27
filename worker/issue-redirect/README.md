@@ -140,9 +140,7 @@ footer is rendered with a `<small>` tag.
 ```json
 {
     "error": "Validation failed",
-    "details": [
-        { "path": "summary", "message": "summary is required" }
-    ]
+    "details": [{ "path": "summary", "message": "summary is required" }]
 }
 ```
 
@@ -181,7 +179,7 @@ footer is rendered with a `<small>` tag.
 
 9. After installation, you will be redirected to the installation page. The URL looks like:
    `https://github.com/settings/installations/12345678`
-   
+
    The number at the end is your `GITHUB_APP_INSTALLATION_ID`.
 
 ### 2. Configure Secrets

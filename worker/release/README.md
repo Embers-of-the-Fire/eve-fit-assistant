@@ -75,10 +75,10 @@ failing the whole route:
 
 ```json
 {
-  "ok": false,
-  "artifacts": null,
-  "channels": [],
-  "error": "channel registry not found: …"
+    "ok": false,
+    "artifacts": null,
+    "channels": [],
+    "error": "channel registry not found: …"
 }
 ```
 

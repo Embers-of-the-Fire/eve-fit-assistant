@@ -4,14 +4,14 @@ Scope: repository-managed Cloudflare Workers under `worker/`.
 
 ## Worker Map
 
-| Path | Role |
-| ---- | ---- |
-| `efa-platform-api/` | Platform API worker. |
-| `efa-platform-data-sync/` | Snapshot engine-data sync into the platform D1. |
+| Path                        | Role                                                          |
+| --------------------------- | ------------------------------------------------------------- |
+| `efa-platform-api/`         | Platform API worker.                                          |
+| `efa-platform-data-sync/`   | Snapshot engine-data sync into the platform D1.               |
 | `efa-platform-fit-storage/` | Fit storage worker sharing the platform `FIT_DB` D1 database. |
-| `email-filter/` | Email handling/filter worker. |
-| `issue-redirect/` | GitHub issue redirect/integration worker. |
-| `release/` | Release worker and its build package. |
+| `email-filter/`             | Email handling/filter worker.                                 |
+| `issue-redirect/`           | GitHub issue redirect/integration worker.                     |
+| `release/`                  | Release worker and its build package.                         |
 
 ## Local Rules
 

@@ -13,11 +13,11 @@ Generated output (`src/content/docs/`, `src/generated/sidebar.json`) is git-igno
 
 Run from the repository root unless noted otherwise:
 
-| Command                        | Action                                                  |
-| :----------------------------- | :------------------------------------------------------ |
-| `./x build site-manual`        | Generate site content from `docs/` raw sources          |
-| `pnpm --filter manual build`   | Build the production site to `site/manual/dist/`        |
-| `pnpm --filter manual dev`     | Start the local dev server at `localhost:4321`          |
+| Command                      | Action                                           |
+| :--------------------------- | :----------------------------------------------- |
+| `./x build site-manual`      | Generate site content from `docs/` raw sources   |
+| `pnpm --filter manual build` | Build the production site to `site/manual/dist/` |
+| `pnpm --filter manual dev`   | Start the local dev server at `localhost:4321`   |
 
 Always run `./x build site-manual` before `pnpm build` — the site will not build without the
 generated content.

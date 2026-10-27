@@ -38,14 +38,14 @@ Returned by `verify-email`, `login`, `refresh`, and `reset-password/confirm`.
 }
 ```
 
-| Status | Codes used |
-| --- | --- |
-| 400 | `bad_request` — malformed JSON or schema violation |
-| 401 | `invalid_credentials`, `otp_invalid`, `otp_expired`, `invalid_token` |
-| 403 | `email_unverified` |
-| 409 | `email_taken`, `already_verified` |
-| 429 | `rate_limited` — always with a `Retry-After: <seconds>` header |
-| 500 | `internal` |
+| Status | Codes used                                                           |
+| ------ | -------------------------------------------------------------------- |
+| 400    | `bad_request` — malformed JSON or schema violation                   |
+| 401    | `invalid_credentials`, `otp_invalid`, `otp_expired`, `invalid_token` |
+| 403    | `email_unverified`                                                   |
+| 409    | `email_taken`, `already_verified`                                    |
+| 429    | `rate_limited` — always with a `Retry-After: <seconds>` header       |
+| 500    | `internal`                                                           |
 
 (The `/platform/internal` mount additionally uses `403 forbidden` for ACL
 permission failures; see README.md. The auth mount itself has no
@@ -135,7 +135,7 @@ Responses:
 Rotation semantics:
 
 - Presenting the immediately-previous token within its ~60 s grace window
-  returns the *same* successor pair (idempotent replay — a response lost after
+  returns the _same_ successor pair (idempotent replay — a response lost after
   server-side rotation must not log the client out).
 - Concurrent rotations of the same token resolve to a single successor: the
   rotation claim is atomic, so the losing request follows the replay path
@@ -223,14 +223,14 @@ Responses:
 
 Exceeded limits return `429 { "error": "rate_limited" }` with `Retry-After`.
 
-| Bucket | Limit |
-| --- | --- |
-| `signup` per IP | 5 / hour (shared with `/signup/resend`) |
-| Verification OTP sends per address | 10 min cooldown + 10 / day |
-| Reset OTP sends per address | 60 s cooldown + 10 / day |
-| OTP verify attempts | 5 per issued code |
-| `login` per account+IP | 5 failures / 30 min |
-| `login` per IP | 30 / 5 min |
-| `refresh`/`logout` per IP | 30 / 5 min |
-| `deregister` per account+IP | 5 failures / 30 min |
-| `reset-password` per address | 3 / hour |
+| Bucket                             | Limit                                   |
+| ---------------------------------- | --------------------------------------- |
+| `signup` per IP                    | 5 / hour (shared with `/signup/resend`) |
+| Verification OTP sends per address | 10 min cooldown + 10 / day              |
+| Reset OTP sends per address        | 60 s cooldown + 10 / day                |
+| OTP verify attempts                | 5 per issued code                       |
+| `login` per account+IP             | 5 failures / 30 min                     |
+| `login` per IP                     | 30 / 5 min                              |
+| `refresh`/`logout` per IP          | 30 / 5 min                              |
+| `deregister` per account+IP        | 5 failures / 30 min                     |
+| `reset-password` per address       | 3 / hour                                |

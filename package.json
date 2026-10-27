@@ -18,6 +18,6 @@
     "test:js": "pnpm --filter efa-platform-api --filter efa-platform-data-sync test"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7"
+    "@biomejs/biome": "^2.6.3"
   }
 }

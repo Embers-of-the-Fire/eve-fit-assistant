@@ -15,11 +15,11 @@ This worker has **no public route**; it is reachable only through the
 Protobuf-only (`application/x-protobuf`); error responses keep the JSON
 envelope.
 
-| Endpoint | Request | Response |
-| --- | --- | --- |
-| `POST /platform/storage/fit/submit` | `FitUploadRequest` protobuf body | `FitStoreResponse` protobuf |
-| `GET /platform/storage/fit/by-hash/:fit_hash` | — | `FitSnapshot` protobuf bytes; 404 if unknown |
-| `GET /platform/storage/fit/health` | — | 200 JSON `{ "ok": true }` after a `SELECT 1` on both databases |
+| Endpoint                                      | Request                          | Response                                                       |
+| --------------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| `POST /platform/storage/fit/submit`           | `FitUploadRequest` protobuf body | `FitStoreResponse` protobuf                                    |
+| `GET /platform/storage/fit/by-hash/:fit_hash` | —                                | `FitSnapshot` protobuf bytes; 404 if unknown                   |
+| `GET /platform/storage/fit/health`            | —                                | 200 JSON `{ "ok": true }` after a `SELECT 1` on both databases |
 
 The wire messages live in `data/schema/fit_request.proto` (package `fit`).
 The fit hash is `lowercase_hex(sha256(canonical FitState bytes))`; the
@@ -45,13 +45,13 @@ Error responses are JSON `{ "error": <code>, "message": <string> }` (+ an
 `issues` array for `validation_failed`, + `latest_snapshot_hash` for
 `snapshot_incomplete` when a fallback candidate exists):
 
-| Status | Code | Condition |
-| --- | --- | --- |
-| 400 | `bad_request` | Malformed protobuf, constraint violations |
-| 404 | `not_found` | Unknown fit hash |
-| 409 | `snapshot_incomplete` | `(server_id, snapshot_hash)` has no completed row in the `snapshots` registry; carries `latest_snapshot_hash` when a same-server fallback candidate exists |
-| 422 | `unknown_type` | A referenced type ID has no row in the snapshot |
-| 422 | `validation_failed` | Engine `validate_fit` returned Error-level issues |
+| Status | Code                  | Condition                                                                                                                                                  |
+| ------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | `bad_request`         | Malformed protobuf, constraint violations                                                                                                                  |
+| 404    | `not_found`           | Unknown fit hash                                                                                                                                           |
+| 409    | `snapshot_incomplete` | `(server_id, snapshot_hash)` has no completed row in the `snapshots` registry; carries `latest_snapshot_hash` when a same-server fallback candidate exists |
+| 422    | `unknown_type`        | A referenced type ID has no row in the snapshot                                                                                                            |
+| 422    | `validation_failed`   | Engine `validate_fit` returned Error-level issues                                                                                                          |
 
 ## How it works
 

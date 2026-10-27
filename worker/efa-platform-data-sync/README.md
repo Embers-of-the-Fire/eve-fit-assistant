@@ -66,14 +66,14 @@ HTTP GET probes below are public.
 
 ```json
 {
-  "type": "content",
-  "id": 1,
-  "family": "types",
-  "content_hash": "sha256-hex",
-  "entry_count": 137,
-  "first_entry_id": 587,
-  "last_entry_id": 42000,
-  "content_b64": "..."
+    "type": "content",
+    "id": 1,
+    "family": "types",
+    "content_hash": "sha256-hex",
+    "entry_count": 137,
+    "first_entry_id": 587,
+    "last_entry_id": 42000,
+    "content_b64": "..."
 }
 ```
 
@@ -99,11 +99,11 @@ blob ids for registration.
 
 ```json
 {
-  "type": "register",
-  "id": 3,
-  "server_id": "tranquility",
-  "snapshot_hash": "sha256-hex",
-  "segments": [{ "family": "types", "seq": 0, "blob_id": 123 }]
+    "type": "register",
+    "id": 3,
+    "server_id": "tranquility",
+    "snapshot_hash": "sha256-hex",
+    "segments": [{ "family": "types", "seq": 0, "blob_id": 123 }]
 }
 ```
 
@@ -121,7 +121,13 @@ further registrations fail with `Snapshot already complete`. Replies
 ### Frame: `complete`
 
 ```json
-{ "type": "complete", "id": 4, "server_id": "tranquility", "snapshot_hash": "sha256-hex", "entry_count": 8 }
+{
+    "type": "complete",
+    "id": 4,
+    "server_id": "tranquility",
+    "snapshot_hash": "sha256-hex",
+    "entry_count": 8
+}
 ```
 
 Marks a snapshot complete. Verifies server-side that
