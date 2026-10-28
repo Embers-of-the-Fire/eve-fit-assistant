@@ -3,7 +3,7 @@ name = "eve-fit-assistant"
 version = "1.0.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.15"
+requires-python = ">=3.14"
 dependencies = [
     # Floor pin: 2026.10.23 restores the emSign roots removed from the Mozilla
     # bundle; older certifi breaks TLS to endpoints chaining to emSign CAs.
