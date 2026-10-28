@@ -263,7 +263,14 @@ class S3Client:
 
         With ``delete=True``, remote objects without a local counterpart are
         removed (``mc mirror --overwrite --remove`` equivalent).
+
+        A missing *src_dir* raises instead of mirroring an empty tree (``mc
+        mirror`` also fails on a missing source). This matters most with
+        ``delete=True``: an empty local set would otherwise mark every remote
+        object under *prefix* as stale and delete it.
         """
+        if not src_dir.is_dir():
+            raise NotADirectoryError(f"Mirror source directory does not exist: {src_dir}")
         base = prefix.rstrip("/")
         local_rel: set[str] = set()
         for f in sorted(src_dir.rglob("*")):
@@ -278,10 +285,19 @@ class S3Client:
             ]
             for chunk_start in range(0, len(stale), 1000):
                 chunk = stale[chunk_start : chunk_start + 1000]
-                self._client.delete_objects(
+                response = self._client.delete_objects(
                     Bucket=self.bucket,
                     Delete={"Objects": [{"Key": key} for key in chunk]},
                 )
+                # delete_objects reports per-key failures in the Errors field
+                # and does not raise; surface them instead of dropping them.
+                errors = response.get("Errors", [])
+                if errors:
+                    detail = "; ".join(
+                        f"{err['Key']}: {err.get('Code', '')} {err.get('Message', '')}".rstrip()
+                        for err in errors
+                    )
+                    raise OSError(f"Failed to delete stale objects: {detail}")
 
     def mirror_down(self, prefix: str, dest_dir: Path) -> None:
         """Mirror all objects under *prefix* into *dest_dir*, overwriting."""

@@ -184,3 +184,61 @@ class TestDownloadFile:
         with pytest.raises(ClientError, match="403"):
             client.download_file("some/key", tmp_path / "out.bin")
         stubber.assert_no_pending_responses()
+
+
+class TestMirrorUp:
+    def test_missing_src_dir_raises_without_delete(self, tmp_path: Path) -> None:
+        """mc mirror fails on a missing source; so must mirror_up."""
+        client, stubber = _make_client()
+        with pytest.raises(NotADirectoryError, match="Mirror source"):
+            client.mirror_up(tmp_path / "nope", "pfx")
+        stubber.assert_no_pending_responses()
+
+    def test_missing_src_dir_never_deletes_remote(self, tmp_path: Path) -> None:
+        """A missing source must not read as 'delete every remote object'."""
+        client, stubber = _make_client()
+        with pytest.raises(NotADirectoryError, match="Mirror source"):
+            client.mirror_up(tmp_path / "nope", "pfx", delete=True)
+        stubber.assert_no_pending_responses()
+
+    def test_delete_removes_stale_objects(self, tmp_path: Path) -> None:
+        client, stubber = _make_client()
+        (tmp_path / "kept.txt").write_text("data")
+        stubber.add_response(
+            "put_object",
+            {},
+            expected_params={
+                "Bucket": "bucket",
+                "Key": "pfx/kept.txt",
+                "Body": ANY,
+                "ChecksumAlgorithm": "CRC32",
+                "ContentType": "text/plain",
+            },
+        )
+        stubber.add_response(
+            "list_objects_v2",
+            {"Contents": [{"Key": "pfx/stale.txt"}, {"Key": "pfx/kept.txt"}]},
+        )
+        stubber.add_response(
+            "delete_objects",
+            {"Deleted": [{"Key": "pfx/stale.txt"}]},
+            expected_params={
+                "Bucket": "bucket",
+                "Delete": {"Objects": [{"Key": "pfx/stale.txt"}]},
+            },
+        )
+        client.mirror_up(tmp_path, "pfx", delete=True)
+        stubber.assert_no_pending_responses()
+
+    def test_delete_per_key_failures_raise(self, tmp_path: Path) -> None:
+        """delete_objects reports per-key failures in Errors without raising;
+        those failures must surface instead of being silently dropped."""
+        client, stubber = _make_client()
+        stubber.add_response("list_objects_v2", {"Contents": [{"Key": "pfx/stale.txt"}]})
+        stubber.add_response(
+            "delete_objects",
+            {"Errors": [{"Key": "pfx/stale.txt", "Code": "AccessDenied", "Message": "denied"}]},
+        )
+        with pytest.raises(OSError, match=r"Failed to delete stale objects.*AccessDenied"):
+            client.mirror_up(tmp_path, "pfx", delete=True)
+        stubber.assert_no_pending_responses()
