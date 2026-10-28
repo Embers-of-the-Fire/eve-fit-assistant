@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-import pickle
+import os
 import sqlite3
 
 from typing import TYPE_CHECKING
 
 import bootstrap.config
 
-from bootstrap.localization import to_native_localization
+from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
+from bootstrap.data.workspace.generate.loc_source import find_missing_strings
+from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
+from bootstrap.data.workspace.generate.loc_source import load_localized_strings
 from bootstrap.log import info
+from bootstrap.log import warning
 
 
 if TYPE_CHECKING:
@@ -28,13 +32,24 @@ LOCALIZATION_DB_SCHEMA_VERSION = 1
 #: database, so client query text is identical for both.
 LOCALE_DB_SCHEMA_VERSION = 2
 
+#: Maximum number of still-missing strings sampled into log lines and CI
+#: annotations per locale (the full count is always reported).
+_MISSING_SAMPLE_LIMIT = 20
+
 
 async def generate(ws_data: GeneratorDatasource):
     info("Generating localizations...")
 
     target_languages = bootstrap.config.CONFIGURATION.localizations.supported
+    default_language = bootstrap.config.CONFIGURATION.localizations.default
 
     per_language = await asyncio.gather(*(__generate(ws_data, lang) for lang in target_languages))
+    reference = dict(per_language)[default_language]
+    for lang, strings in per_language:
+        if lang == default_language:
+            continue
+        __apply_patches(ws_data, lang, strings, reference)
+        __report_missing(ws_data, lang, strings, reference)
 
     __write_localization_db(ws_data.paths.localization_db_path, per_language)
     for lang, strings in per_language:
@@ -46,19 +61,60 @@ async def generate(ws_data: GeneratorDatasource):
 async def __generate(
     ws_data: GeneratorDatasource, lang: LocalizationType
 ) -> tuple[str, dict[int, str]]:
-    file = ws_data.resources.res.get_resource(
-        f"res:/localizationfsd/localization_fsd_{to_native_localization(lang)}.pickle"
-    )
-
-    async with file.open() as f:
-        _lang_code, loc = pickle.loads(await f.read())
-
-    strings: dict[int, str] = {key: value[0] for key, value in loc.items()}
+    strings = await load_localized_strings(ws_data, lang)
 
     # Localization ships only as the SQLite database; the per-language
     # protobuf bundle is no longer emitted.
     info(f"Generated localization for {lang}.")
     return lang, strings
+
+
+def __apply_patches(
+    ws_data: GeneratorDatasource,
+    lang: LocalizationType,
+    strings: dict[int, str],
+    reference: dict[int, str],
+):
+    """Fills missing strings from the workspace's curated localization patches."""
+    patch_map = load_localization_patch_map(ws_data, lang)
+    if not patch_map:
+        return
+    report = apply_localization_patches(strings, reference, patch_map)
+    if report.filled:
+        info(f"Applied {len(report.filled)} curated localization patches for {lang}.")
+    for key in report.stale_keys:
+        warning(
+            f"Stale localization patch for {lang}: {key!r}"
+            " (already translated upstream, or the English source text changed)"
+        )
+
+
+def __report_missing(
+    ws_data: GeneratorDatasource,
+    lang: LocalizationType,
+    strings: dict[int, str],
+    reference: dict[int, str],
+):
+    """Flags strings still missing after patching; surfaces as a GitHub
+    Actions warning annotation when running in CI."""
+    missing = find_missing_strings(strings, reference)
+    if not missing:
+        return
+    workspace = ws_data.config.metadata.identifier
+    patch_hint = f"data/resources/{workspace}/patches/localization.yaml"
+    sample = ", ".join(
+        f"{text!r} ({message_id})" for message_id, text in missing[:_MISSING_SAMPLE_LIMIT]
+    )
+    warning(
+        f"{len(missing)} strings have no {lang} localization on {workspace}"
+        f" (e.g. {sample}); add curated translations to {patch_hint}"
+    )
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(
+            f"::warning title=Missing {lang} localization ({workspace})::"
+            f"{len(missing)} strings have no {lang} text (e.g. {sample})."
+            f" Add curated translations to {patch_hint}."
+        )
 
 
 def __write_localization_db(path: Path, per_language: list[tuple[str, dict[int, str]]]):

@@ -58,6 +58,19 @@ And, the localizations are stored in SQLite databases queried lazily by clients:
 a legacy combined database (`localization.db`, all locales), plus one
 per-locale database (`locales/<locale>.db`) per supported locale.
 
+CCP's non-English FSD localization lags behind new content, so a workspace may
+ship curated overrides in `resources/<server name>/patches/localization.yaml`,
+keyed by locale and then by the English source text (so entries survive
+message-ID changes). Patches only fill strings that are missing or empty
+upstream and never override existing translations; the data build warns about
+still-missing strings (as a GitHub Actions annotation in CI) and stale patch
+entries:
+
+```yaml
+zh:
+  "Advanced Carriers": "高级航空母舰"
+```
+
 The converted output shall contain:
 ```text
 - /

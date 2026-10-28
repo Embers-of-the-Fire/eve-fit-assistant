@@ -9,7 +9,6 @@ display names via longest-common-prefix within each grade cluster.
 from __future__ import annotations
 
 import os
-import pickle
 
 from collections import defaultdict
 from typing import TYPE_CHECKING
@@ -24,7 +23,9 @@ import bootstrap.config
 from bootstrap.constant import IMPLANT_SLOT_ATTR_ID
 from bootstrap.data.schema import collections_pb2
 from bootstrap.data.schema import fit_pb2
-from bootstrap.localization import to_native_localization
+from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
+from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
+from bootstrap.data.workspace.generate.loc_source import load_localized_strings
 from bootstrap.log import error
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -259,17 +260,6 @@ def assign_set_ids(sets: list[MergedSet]) -> list[tuple[int, MergedSet]]:
     return assigned
 
 
-async def _load_localized_names(
-    data: GeneratorDatasource, lang: LocalizationType
-) -> dict[int, str]:
-    resource = data.resources.res.get_resource(
-        f"res:/localizationfsd/localization_fsd_{to_native_localization(lang)}.pickle"
-    )
-    async with resource.open() as f:
-        _lang_code, loc = pickle.loads(await f.read())
-    return {int(key): value[0] for key, value in loc.items()}
-
-
 async def generate(data: GeneratorDatasource, collection: collections_pb2.Collection):
     info("Generating implant sets...")
 
@@ -328,7 +318,15 @@ async def generate(data: GeneratorDatasource, collection: collections_pb2.Collec
                 )
 
     locales: list[LocalizationType] = bootstrap.config.CONFIGURATION.localizations.supported
-    names_by_locale = {lang: await _load_localized_names(data, lang) for lang in locales}
+    default_lang: LocalizationType = bootstrap.config.CONFIGURATION.localizations.default
+    names_by_locale = {lang: await load_localized_strings(data, lang) for lang in locales}
+    reference = names_by_locale[default_lang]
+    for lang in locales:
+        if lang == default_lang:
+            continue
+        apply_localization_patches(
+            names_by_locale[lang], reference, load_localization_patch_map(data, lang)
+        )
     cluster_lang: LocalizationType = "en" if "en" in locales else locales[0]
 
     def name_of(lang: LocalizationType, type_id: int) -> str:

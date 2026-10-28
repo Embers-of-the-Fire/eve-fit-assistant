@@ -1,0 +1,11 @@
+# Curated translations for strings missing from CCP's FSD localization.
+#
+# CCP no longer keeps non-English FSD localization up to date, so strings for
+# new content (e.g. the carrier market-group split) are missing and surface as
+# `LOC[<id>]` in the app. Entries are keyed by the English source text so they
+# survive message-ID changes, and only fill strings that are missing or empty
+# upstream — they never override existing translations. The data build warns
+# about entries that have become stale.
+zh:
+  "Advanced Carriers": "高级航母"
+  "Standard Carriers": "标准航母"

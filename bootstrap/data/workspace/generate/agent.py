@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import pickle
 import sqlite3
 
 from dataclasses import dataclass
@@ -14,7 +13,9 @@ import bootstrap.config
 
 from bootstrap.constant import BOOSTER_SLOT_ATTR_ID
 from bootstrap.constant import IMPLANT_SLOT_ATTR_ID
-from bootstrap.localization import to_native_localization
+from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
+from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
+from bootstrap.data.workspace.generate.loc_source import load_localized_strings
 from bootstrap.log import error
 from bootstrap.log import info
 
@@ -76,9 +77,21 @@ async def generate(ws_data: GeneratorDatasource):
     )
 
     target_languages = bootstrap.config.CONFIGURATION.localizations.supported
-    per_locale = await asyncio.gather(
-        *(_locale_rows(ws_data, lang, name_ids) for lang in target_languages)
+    default_language = bootstrap.config.CONFIGURATION.localizations.default
+    strings_by_locale = dict(
+        zip(
+            target_languages,
+            await asyncio.gather(
+                *(load_localized_strings(ws_data, lang) for lang in target_languages)
+            ),
+            strict=True,
+        )
     )
+    reference = strings_by_locale[default_language]
+    per_locale = [
+        _locale_rows(ws_data, lang, strings, reference, name_ids)
+        for lang, strings in strings_by_locale.items()
+    ]
 
     _write_db(ws_data.paths.agent_resource_db_path, per_locale, metas)
 
@@ -141,22 +154,23 @@ def _type_metas(raw_types: dict, raw_groups: dict, raw_typedogma: dict) -> dict[
     return metas
 
 
-async def _locale_rows(
+def _locale_rows(
     ws_data: GeneratorDatasource,
     lang: LocalizationType,
+    strings: dict[int, str],
+    reference: dict[int, str],
     name_ids: dict[int, int],
 ) -> tuple[str, list[tuple[int, str]]]:
-    """Resolves (type id, localized name) rows for one locale."""
-    resource = ws_data.resources.res.get_resource(
-        f"res:/localizationfsd/localization_fsd_{to_native_localization(lang)}.pickle"
-    )
-    async with resource.open() as f:
-        _lang_code, loc = pickle.loads(await f.read())
+    """Resolves (type id, localized name) rows for one locale.
+
+    Non-default locales are first patched from the workspace's curated
+    `patches/localization.yaml` (see `loc_source`).
+    """
+    if lang != bootstrap.config.CONFIGURATION.localizations.default:
+        apply_localization_patches(strings, reference, load_localization_patch_map(ws_data, lang))
 
     rows = [
-        (type_id, loc[name_id][0])
-        for type_id, name_id in name_ids.items()
-        if name_id in loc and loc[name_id][0]
+        (type_id, strings[name_id]) for type_id, name_id in name_ids.items() if strings.get(name_id)
     ]
     return lang, rows
 

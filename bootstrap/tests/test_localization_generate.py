@@ -6,6 +6,8 @@ import sqlite3
 
 from typing import TYPE_CHECKING
 
+from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
+from bootstrap.data.workspace.generate.loc_source import find_missing_strings
 from bootstrap.data.workspace.generate.localizations import LOCALE_DB_SCHEMA_VERSION
 from bootstrap.data.workspace.generate.localizations import LOCALIZATION_DB_SCHEMA_VERSION
 from bootstrap.data.workspace.generate.localizations import _write_locale_db
@@ -96,3 +98,76 @@ class TestLocaleDb:
             connection.close()
 
         assert count == 1
+
+
+class TestApplyLocalizationPatches:
+    def test_fills_missing_by_english_text(self) -> None:
+        reference = {1054541: "Advanced Carriers", 34: "Tritanium"}
+        strings = {34: "三钛合金"}
+
+        report = apply_localization_patches(
+            strings, reference, {"Advanced Carriers": "高级航空母舰"}
+        )
+
+        assert strings[1054541] == "高级航空母舰"
+        assert report.filled == {1054541: "高级航空母舰"}
+        assert report.stale_keys == []
+
+    def test_fills_empty_upstream_string(self) -> None:
+        reference = {1: "Advanced Carriers"}
+        strings = {1: ""}
+
+        report = apply_localization_patches(
+            strings, reference, {"Advanced Carriers": "高级航空母舰"}
+        )
+
+        assert strings[1] == "高级航空母舰"
+        assert report.filled == {1: "高级航空母舰"}
+
+    def test_never_overrides_existing_translation(self) -> None:
+        reference = {1: "Carriers"}
+        strings = {1: "航空母舰"}
+
+        report = apply_localization_patches(strings, reference, {"Carriers": "母舰"})
+
+        assert strings[1] == "航空母舰"
+        assert report.filled == {}
+        # Already translated upstream: the patch can never apply again.
+        assert report.stale_keys == ["Carriers"]
+
+    def test_ignores_empty_reference_text(self) -> None:
+        reference = {1: ""}
+        strings: dict[int, str] = {}
+
+        report = apply_localization_patches(strings, reference, {"": "无"})
+
+        assert strings == {}
+        assert report.filled == {}
+
+    def test_reports_stale_keys(self) -> None:
+        reference = {1: "Advanced Carriers"}
+        strings = {1: "高级航空母舰"}
+
+        report = apply_localization_patches(
+            strings,
+            reference,
+            {"Advanced Carriers": "高级航空母舰", "Removed Group": "已移除"},
+        )
+
+        assert report.filled == {}
+        assert report.stale_keys == ["Advanced Carriers", "Removed Group"]
+
+
+class TestFindMissingStrings:
+    def test_reports_missing_and_empty(self) -> None:
+        reference = {1: "Advanced Carriers", 2: "Tritanium", 3: "Empty In Target"}
+        strings = {2: "三钛合金", 3: ""}
+
+        assert find_missing_strings(strings, reference) == [
+            (1, "Advanced Carriers"),
+            (3, "Empty In Target"),
+        ]
+
+    def test_ignores_empty_reference_text(self) -> None:
+        reference = {1: ""}
+        assert find_missing_strings({}, reference) == []

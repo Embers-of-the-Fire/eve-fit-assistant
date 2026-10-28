@@ -44,14 +44,26 @@ class PatchesManager:
 
         For example, `get("aaa", "json")` will load `aaa.json` file.
         """
+        data = self.get_optional(patch_key, variant)
+        if data is None:
+            patch_path = self.__patches_root_dir / f"{patch_key.lower()}.{variant}"
+            error(f"Patch file does not exist: {patch_path}")
+            sys.exit(1)
+        return data
+
+    def get_optional(self, patch_key: str, variant: Literal["yaml", "json"] = "yaml") -> Any:
+        """Get patch data by patch key, or `None` when the patch file does not exist.
+
+        Same key/variant semantics as `get`; intended for optional patches
+        (e.g. curated localization overrides) that a workspace may omit.
+        """
         patch_key = patch_key.lower()
         if patch_key in self.__cache:
             return self.__cache[patch_key]
 
         patch_path = self.__patches_root_dir / f"{patch_key}.{variant}"
         if not patch_path.exists():
-            error(f"Patch file does not exist: {patch_path}")
-            sys.exit(1)
+            return None
 
         if not patch_path.is_file():
             error(f"Patch path is not a file: {patch_path}")
@@ -65,6 +77,11 @@ class PatchesManager:
             else:
                 error(f"Unsupported patch variant: {variant}")
                 sys.exit(1)
+
+        # An empty patch file parses to None; treat it as an empty mapping so
+        # `get` only errors for genuinely missing files.
+        if data is None:
+            data = {}
 
         self.__cache[patch_key] = data
         return data
