@@ -18,6 +18,12 @@ PROTOBUF_SCHEMA_PATH = PROJECT_ROOT / "data" / "schema"
 PROTOBUF_PYTHON_OUT_PATH = PROJECT_ROOT / "bootstrap" / "data" / "schema"
 PROTOBUF_DART_OUT_PATH = PROJECT_ROOT / "packages" / "efa_proto" / "lib"
 
+# Pinned Dart protobuf generator. The plugin must emit code compatible with
+# the protobuf runtime locked in pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin
+# 25.0.0; 25.1.0 emits code that requires protobuf 6.1.0 and breaks
+# compilation). Bump both sides together.
+PROTOC_GEN_DART_VERSION = "25.0.0"
+
 NATIVE_LIB_ROOT = PROJECT_ROOT / "packages" / "eve-fit-os"
 
 I18N_ROOT = EFA_APP_ROOT / "l10n"

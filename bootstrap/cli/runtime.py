@@ -21,6 +21,7 @@ import bootstrap.config
 
 from bootstrap.color import styled
 from bootstrap.constant import PROJECT_ROOT
+from bootstrap.constant import PROTOC_GEN_DART_VERSION
 from bootstrap.data.workspace.config import WorkspaceConfig
 from bootstrap.log import info
 from bootstrap.utils import execute_command
@@ -159,19 +160,125 @@ def current_workspace_descriptor() -> WorkspaceConfig:
     return WorkspaceConfig.load_from_descriptor(ws)
 
 
-def env_install() -> None:
-    protoc_gen_dart = get_command("protoc-gen-dart")
-    if protoc_gen_dart is None:
+def _pub_cache_bin() -> Path:
+    """Location of the ``dart pub global`` executable shims."""
+    import os
+
+    from pathlib import Path
+
+    pub_cache = os.environ.get("PUB_CACHE")
+    if pub_cache:
+        return Path(pub_cache) / "bin"
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            return Path(local_app_data) / "Pub" / "Cache" / "bin"
+    return Path.home() / ".pub-cache" / "bin"
+
+
+def ensure_protoc_gen_dart() -> str:
+    """Ensure the pinned ``protoc_plugin`` is activated; return its shim path.
+
+    Codegen must not rely on an ambient ``protoc-gen-dart`` from PATH (for
+    example the nixpkgs-provided one): its output is only compatible with a
+    specific ``protobuf`` runtime, so the plugin version is pinned in
+    ``bootstrap.constant.PROTOC_GEN_DART_VERSION`` and passed to ``protoc``
+    via ``--plugin=``.
+    """
+    executable = _pub_cache_bin() / (
+        "protoc-gen-dart.bat" if sys.platform == "win32" else "protoc-gen-dart"
+    )
+    if _DRY_RUN:
+        info(f"[Dry-Run] Would ensure protoc_plugin {PROTOC_GEN_DART_VERSION} is activated")
+        return str(executable)
+
+    dart = get_command("dart")
+    listing = execute(
+        [dart, "pub", "global", "list"], "DART GLOBAL LIST OUTPUT", capture_stdout=True
+    )
+    if f"protoc_plugin {PROTOC_GEN_DART_VERSION}" not in listing:
         click.echo(
-            styled([Style.BRIGHT, Fore.RED], "Warning: ") + "protoc-gen-dart not found, installing"
+            styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+            + f"dart pub global activate protoc_plugin {PROTOC_GEN_DART_VERSION}"
         )
-        dart = get_command("dart")
-        # Pin to the plugin version matching the protobuf runtime locked in
-        # pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin 25.0.0); 25.1.0 emits
-        # code that requires protobuf 6.1.0 and breaks compilation.
         execute(
-            [dart, "pub", "global", "activate", "protoc_plugin", "25.0.0"], "DART ACTIVATE OUTPUT"
+            [dart, "pub", "global", "activate", "protoc_plugin", PROTOC_GEN_DART_VERSION],
+            "DART ACTIVATE OUTPUT",
         )
+    return str(executable)
+
+
+def protoc_gen_dart_plugin() -> str:
+    """Return a ``protoc``-launchable path to the pinned ``protoc-gen-dart``.
+
+    On Windows, ``dart pub global activate`` installs only a ``.bat`` shim, and
+    protoc launches an explicit ``--plugin=name=path`` mapping with
+    ``CreateProcessW(lpApplicationName=path)`` (EXACT_NAME mode in protobuf's
+    ``Subprocess::Start``; only the PATH-search mode is wrapped in
+    ``cmd.exe /c``). ``CreateProcessW`` cannot start batch files — they require
+    the command interpreter:
+
+    - https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/compiler/subprocess.cc
+    - https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw
+
+    Following the protoc_plugin README, the pinned plugin is compiled to a
+    standalone native executable with ``dart compile exe`` (cached per pinned
+    version in the pub cache bin dir) and that path is handed to ``--plugin``:
+
+    - https://github.com/google/protobuf.dart/tree/master/protoc_plugin#readme
+    """
+    shim = ensure_protoc_gen_dart()
+    if sys.platform != "win32":
+        return shim
+
+    executable = _pub_cache_bin() / f"protoc-gen-dart-{PROTOC_GEN_DART_VERSION}.exe"
+    if _DRY_RUN:
+        info(f"[Dry-Run] Would compile protoc-gen-dart to native executable: {executable}")
+        return str(executable)
+    if executable.exists():
+        return str(executable)
+
+    pub_cache = _pub_cache_bin().parent
+    entrypoint = (
+        pub_cache
+        / "hosted"
+        / "pub.dev"
+        / f"protoc_plugin-{PROTOC_GEN_DART_VERSION}"
+        / "bin"
+        / "protoc_plugin.dart"
+    )
+    package_config = (
+        pub_cache / "global_packages" / "protoc_plugin" / ".dart_tool" / "package_config.json"
+    )
+    for path in (entrypoint, package_config):
+        if not path.exists():
+            raise click.ClickException(
+                f"Activated protoc_plugin layout not found: {path}. "
+                f"Re-run `dart pub global activate protoc_plugin {PROTOC_GEN_DART_VERSION}`."
+            )
+
+    dart = get_command("dart")
+    click.echo(
+        styled([Style.BRIGHT, Fore.GREEN], "Executing command: ")
+        + f"dart compile exe {entrypoint} -o {executable}"
+    )
+    execute(
+        [
+            dart,
+            "compile",
+            "exe",
+            str(entrypoint),
+            f"--packages={package_config}",
+            "-o",
+            str(executable),
+        ],
+        "DART COMPILE PLUGIN OUTPUT",
+    )
+    return str(executable)
+
+
+def env_install() -> None:
+    ensure_protoc_gen_dart()
 
     uv = get_command("uv")
     click.echo(styled([Style.BRIGHT, Fore.GREEN], "Executing command: ") + "uv sync")

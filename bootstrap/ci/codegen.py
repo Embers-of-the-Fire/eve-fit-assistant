@@ -54,6 +54,13 @@ def _run_protobuf() -> None:
     """Generate protobuf code for Python and Dart."""
     runtime = _runtime()
     protoc = get_command("protoc")
+    # Explicit --plugin= pins the Dart generator: an ambient protoc-gen-dart
+    # on PATH (e.g. the nixpkgs one) may emit code incompatible with the
+    # protobuf runtime locked in pubspec.lock. On Windows the pub shim is a
+    # .bat, which protoc cannot launch for an explicit mapping (it uses
+    # CreateProcessW directly, not cmd.exe), so a compiled native executable
+    # is supplied there instead.
+    protoc_gen_dart = runtime.protoc_gen_dart_plugin()
 
     for out_path, label in (
         (PROTOBUF_PYTHON_OUT_PATH, "Python"),
@@ -71,6 +78,7 @@ def _run_protobuf() -> None:
         runtime.execute(
             [
                 protoc,
+                f"--plugin=protoc-gen-dart={protoc_gen_dart}",
                 f"--proto_path={PROTOBUF_SCHEMA_PATH}",
                 f"--python_out={PROTOBUF_PYTHON_OUT_PATH}",
                 f"--dart_out={PROTOBUF_DART_OUT_PATH}",
