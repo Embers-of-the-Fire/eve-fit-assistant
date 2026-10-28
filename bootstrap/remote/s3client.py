@@ -186,12 +186,16 @@ class S3Client:
         object key via :func:`mimetypes.guess_type` (``mc cp``/``mc mirror``
         behavior). boto3 sends no Content-Type otherwise, so S3/R2/RustFS
         would store binary/octet-stream — which costs JSON metadata its CDN
-        compression. Keys without a known extension keep no Content-Type.
+        compression. Keys without a known extension keep no Content-Type,
+        as do encoded keys (``.tar.gz``, ``.br``): their guess is the inner
+        type (``application/x-tar``), but no matching ContentEncoding is
+        sent, so publishing a gzip stream as tar would misstate the HTTP
+        representation.
         """
         extra = extra_args_from_attrs(attrs)
         if "ContentType" not in extra:
-            guessed = mimetypes.guess_type(key)[0]
-            if guessed is not None:
+            guessed, encoding = mimetypes.guess_type(key)
+            if guessed is not None and encoding is None:
                 extra["ContentType"] = guessed
         self._client.upload_file(
             str(src),

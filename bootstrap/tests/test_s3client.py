@@ -117,6 +117,26 @@ class TestUploadFile:
         )
         stubber.assert_no_pending_responses()
 
+    def test_encoded_key_sends_no_content_type(self, tmp_path: Path) -> None:
+        """Encoded keys skip the guess: no ContentEncoding is sent, so
+        claiming the inner type (application/x-tar) would misstate the
+        gzip bytes — the object keeps no Content-Type at all."""
+        src = tmp_path / "ci-native-data.tar.gz"
+        src.write_bytes(b"\x1f\x8b" + b"\x00" * 4)
+        client, stubber = _make_client()
+        stubber.add_response(
+            "put_object",
+            {},
+            expected_params={
+                "Bucket": "bucket",
+                "Key": "build-dependencies/ci-native-data.tar.gz",
+                "Body": ANY,
+                "ChecksumAlgorithm": "CRC32",
+            },
+        )
+        client.upload_file(src, "build-dependencies/ci-native-data.tar.gz")
+        stubber.assert_no_pending_responses()
+
     def test_unknown_extension_sends_no_content_type(self, tmp_path: Path) -> None:
         """Hash-named blobs keep attrs untouched and gain no guessed type."""
         src = tmp_path / "deadbeef"
