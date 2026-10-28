@@ -73,11 +73,14 @@
       ],
     },
     {
+      description:
+        'Bump floors explicitly: all Python deps are open `>=` ranges, and Renovate\'s default replace strategy treats the newest in-range release as current, so no update PR is ever created without this',
       groupName: 'Python dependencies (uv)',
       matchManagers: [
         'pep621',
         'pep723',
       ],
+      rangeStrategy: 'bump',
     },
     {
       description: 'Keep the .python-version pin in the Python batch',
