@@ -151,7 +151,7 @@ same-group runs queue sequentially at concurrency 1 (one running, one pending; a
 replaces the pending one). Both workflows share the literal `data-release-` concurrency group
 prefix, so a human-dispatched snapshot release can never overlap the cron chain's nested
 `_release-data.yml` publish. Interrupting the session → commit → publish cycle could leave the
-remote channel in an unrecoverable state. PR test runs target the local MinIO mock and remain
+remote channel in an unrecoverable state. PR test runs target the local RustFS mock and remain
 cancelable.
 
 The `publish` and `d1-sync` jobs share their preamble (checkout, Python env, `v2-snapshots`
@@ -196,7 +196,7 @@ artifacts plus fragment and add that fragment to the `publish` job's merge.
 ## Test-Mode Publishing
 
 In test mode, both release workflows exercise the full commit → publish → sync → verify cycle
-against a local MinIO mock instead of touching the real remote:
+against a local RustFS mock instead of touching the real remote:
 
 ```sh
 ./x remote mock launch --daemon

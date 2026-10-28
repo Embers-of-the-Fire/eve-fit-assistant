@@ -37,14 +37,14 @@ def register_remote_config(remote: click.Group) -> None:
             "mockOriginPath": str(origin_path),
         }
 
-        if remote_cfg.minio is not None:
-            minio_data_path = runtime.resolve_dev_path(remote_cfg.minio.data_dir)
-            minio_origin_url = (
-                f"http://{remote_cfg.host}:{remote_cfg.minio.port}/{remote_cfg.minio.bucket}"
+        if remote_cfg.mock is not None:
+            mock_data_path = runtime.resolve_dev_path(remote_cfg.mock.data_dir)
+            mock_origin_url = (
+                f"http://{remote_cfg.host}:{remote_cfg.mock.port}/{remote_cfg.mock.bucket}"
             )
-            resolved["minioDataPath"] = str(minio_data_path)
-            resolved["minioIndexUrl"] = (
-                f"{minio_origin_url.rstrip('/')}"
+            resolved["mockDataPath"] = str(mock_data_path)
+            resolved["mockIndexUrl"] = (
+                f"{mock_origin_url.rstrip('/')}"
                 f"/{bootstrap.config.CONFIGURATION.data_schema.resource_root.strip('/')}"
                 f"/channels/{remote_cfg.channel.value}/index.json"
             )

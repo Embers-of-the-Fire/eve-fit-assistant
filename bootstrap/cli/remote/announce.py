@@ -62,15 +62,14 @@ def register_remote_announce(remote: click.Group) -> None:
     @remote_announce.command("sync")
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default=None,
-        help="Remote target (default: minio).",
+        help="Remote target (default: mock).",
     )
     @click.option("--endpoint", default=None, help="Override endpoint URL.")
     @click.option("--bucket", default=None, help="Override bucket name.")
     @click.option("--access-key", default=None, help="Override access key.")
     @click.option("--secret-key", default=None, help="Override secret key.")
-    @click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
     @click.option("--full", is_flag=True, default=False, help="Download all document bodies.")
     def remote_announce_sync(
         target: str | None,
@@ -78,26 +77,24 @@ def register_remote_announce(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias: str | None,
         full: bool,
     ):
         """Download current server state to remote/ workspace."""
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
-        endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias
+        endpoint, bucket, access_key, secret_key = resolve_announce_remote_target(
+            target, endpoint, bucket, access_key, secret_key
         )
 
         workspace_root = get_announce_workspace()
         workspace = AnnouncementWorkspace(workspace_root)
         sync = AnnouncementRemoteSync(
             workspace=workspace,
-            target=target or "minio",
+            target=target or "mock",
             endpoint=endpoint,
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias,
             resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
         )
 
@@ -115,15 +112,14 @@ def register_remote_announce(remote: click.Group) -> None:
     @remote_announce.command("init")
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default=None,
-        help="Remote target (default: minio).",
+        help="Remote target (default: mock).",
     )
     @click.option("--endpoint", default=None, help="Override endpoint URL.")
     @click.option("--bucket", default=None, help="Override bucket name.")
     @click.option("--access-key", default=None, help="Override access key.")
     @click.option("--secret-key", default=None, help="Override secret key.")
-    @click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
     @click.option(
         "--force", is_flag=True, default=False, help="Overwrite if remote already has a catalog."
     )
@@ -133,7 +129,6 @@ def register_remote_announce(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias: str | None,
         force: bool,
     ):
         """Initialize a new empty announcement workspace on the remote.
@@ -144,20 +139,19 @@ def register_remote_announce(remote: click.Group) -> None:
         """
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
-        endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias
+        endpoint, bucket, access_key, secret_key = resolve_announce_remote_target(
+            target, endpoint, bucket, access_key, secret_key
         )
 
         workspace_root = get_announce_workspace()
         workspace = AnnouncementWorkspace(workspace_root)
         sync = AnnouncementRemoteSync(
             workspace=workspace,
-            target=target or "minio",
+            target=target or "mock",
             endpoint=endpoint,
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias,
             resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
         )
 
@@ -617,15 +611,14 @@ def register_remote_announce(remote: click.Group) -> None:
     @remote_announce.command("publish")
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default=None,
-        help="Remote target (default: minio).",
+        help="Remote target (default: mock).",
     )
     @click.option("--endpoint", default=None, help="Override endpoint URL.")
     @click.option("--bucket", default=None, help="Override bucket name.")
     @click.option("--access-key", default=None, help="Override access key.")
     @click.option("--secret-key", default=None, help="Override secret key.")
-    @click.option("--alias", default=None, help="Override MinIO/S3 alias name.")
     @click.option(
         "--dry-run",
         is_flag=True,
@@ -650,7 +643,6 @@ def register_remote_announce(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias: str | None,
         dry_run: bool,
         force: bool,
         no_check_remote: bool,
@@ -667,8 +659,8 @@ def register_remote_announce(remote: click.Group) -> None:
 
         from bootstrap.docs.announcements_remote import AnnouncementWorkspace
 
-        endpoint, bucket, access_key, secret_key, alias = resolve_announce_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias
+        endpoint, bucket, access_key, secret_key = resolve_announce_remote_target(
+            target, endpoint, bucket, access_key, secret_key
         )
 
         workspace_root = get_announce_workspace()
@@ -681,12 +673,11 @@ def register_remote_announce(remote: click.Group) -> None:
 
         sync = AnnouncementRemoteSync(
             workspace=workspace,
-            target=target or "minio",
+            target=target or "mock",
             endpoint=endpoint,
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias,
             resource_root=bootstrap.config.CONFIGURATION.data_schema.resource_root,
         )
 
@@ -750,7 +741,7 @@ def register_remote_announce(remote: click.Group) -> None:
                 click.echo(f"  Pages: {len(temp_catalog.pages)}")
                 click.echo(f"  Entries: {total_entries}")
                 click.echo(f"  Documents: {len(body_hashes)}")
-                click.echo(f"  Target: {target or 'minio'}")
+                click.echo(f"  Target: {target or 'mock'}")
                 sync.publish_dir(temp_dir, dry_run=True)
                 return
 

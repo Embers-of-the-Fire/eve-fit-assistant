@@ -27,7 +27,6 @@ import hashlib
 import json
 import re
 import shutil
-import subprocess
 import uuid as _uuid
 
 from datetime import UTC
@@ -41,7 +40,9 @@ from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
 
-from bootstrap.utils import get_command
+from bootstrap.remote.s3client import BotoCoreError
+from bootstrap.remote.s3client import ClientError
+from bootstrap.remote.s3client import S3Client
 
 
 if TYPE_CHECKING:
@@ -855,7 +856,6 @@ class AnnouncementRemoteSync:
         bucket: str,
         access_key: str,
         secret_key: str,
-        alias_name: str,
         resource_root: str = "efa/v2",
     ) -> None:
         self.workspace = workspace
@@ -864,20 +864,27 @@ class AnnouncementRemoteSync:
         self.bucket = bucket
         self.access_key = access_key
         self.secret_key = secret_key
-        self.alias_name = alias_name
         self.resource_root = resource_root.rstrip("/")
+        self._client: S3Client | None = None
+
+    def _s3(self) -> S3Client:
+        """Lazily construct the shared S3 client."""
+        if self._client is None:
+            self._client = S3Client(
+                endpoint=self.endpoint,
+                bucket=self.bucket,
+                access_key=self.access_key,
+                secret_key=self.secret_key,
+            )
+        return self._client
 
     def _cat_bytes(self, key: str) -> bytes:
-        """Download *key* via the configured ``mc`` alias (signed request)."""
-        mc_bin, alias_target = self._ensure_alias()
-        target_url = f"{alias_target}/{self.resource_root}/{key.lstrip('/')}"
-        result = subprocess.run(
-            [mc_bin, "cat", target_url], capture_output=True, text=False, timeout=30, check=False
-        )
-        if result.returncode != 0:
-            stderr = result.stderr.decode("utf-8", errors="replace").strip()
-            raise RuntimeError(f"Failed to download {key}: {stderr}")
-        return result.stdout
+        """Download *key* from the remote bucket (signed request)."""
+        s3_key = f"{self.resource_root}/{key.lstrip('/')}"
+        try:
+            return self._s3().read_bytes(s3_key)
+        except (ClientError, BotoCoreError) as exc:
+            raise RuntimeError(f"Failed to download {key}: {exc}") from exc
 
     def _download_json(self, path: str) -> dict[str, Any]:
         return json.loads(self._cat_bytes(path).decode("utf-8"))
@@ -888,7 +895,6 @@ class AnnouncementRemoteSync:
     def sync(self, full: bool = False) -> None:
         """Sync remote state to local workspace."""
         self.workspace.ensure_remote_directories()
-        self._ensure_alias()
 
         # Download catalog.json
         catalog_data = self._download_json("announcements/catalog.json")
@@ -944,48 +950,13 @@ class AnnouncementRemoteSync:
                         content = self._download_file(f"announcements/documents/{body_hash}.md")
                         doc_path.write_bytes(content)
 
-    def _run_mc(self, cmd: list[str], redacted_cmd: list[str], title: str) -> None:
-        """Run an ``mc`` command, logging only the redacted version."""
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Failed to execute [{title}] ({' '.join(redacted_cmd)}): {result.stderr}"
-            )
-
-    def _ensure_alias(self) -> tuple[str, str]:
-        """Set the S3 alias once, redacting credentials in any error message.
-
-        Returns the resolved ``mc`` binary path and the alias target URL prefix.
-        """
-        mc_bin = get_command("mc")
-        alias_target = f"{self.alias_name}/{self.bucket}"
-        redacted = "<redacted>"
-        self._run_mc(
-            [
-                mc_bin,
-                "alias",
-                "set",
-                self.alias_name,
-                self.endpoint,
-                self.access_key,
-                self.secret_key,
-                "--api",
-                "s3v4",
-            ],
-            [
-                mc_bin,
-                "alias",
-                "set",
-                self.alias_name,
-                self.endpoint,
-                redacted,
-                redacted,
-                "--api",
-                "s3v4",
-            ],
-            "ANNOUNCE ALIAS",
-        )
-        return mc_bin, alias_target
+    def _upload(self, local_path: Path, remote_path: str) -> None:
+        """Upload one file to the remote bucket."""
+        s3_key = f"{self.resource_root}/{remote_path}"
+        try:
+            self._s3().upload_file(local_path, s3_key)
+        except (ClientError, BotoCoreError) as exc:
+            raise RuntimeError(f"Failed to upload {local_path}: {exc}") from exc
 
     def init_remote(self, force: bool = False) -> None:
         """Initialize a new empty announcement workspace on the remote.
@@ -1040,16 +1011,8 @@ class AnnouncementRemoteSync:
             (self.workspace.remote_dir / "active.json", "announcements/active.json"),
         ]
 
-        mc_bin, alias_target = self._ensure_alias()
-
         for local_path, remote_path in uploads:
-            target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
-            cmd = [mc_bin, "cp", str(local_path), target_url]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, encoding="utf-8", check=False
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")
+            self._upload(local_path, remote_path)
 
     def publish_dir(self, publish_dir: Path, dry_run: bool = False) -> None:
         """Upload a constructed workspace directory to remote.
@@ -1084,7 +1047,6 @@ class AnnouncementRemoteSync:
                 print(f"Would upload: {local_path} → {remote_path}")
             return
 
-        mc_bin, alias_target = self._ensure_alias()
         seen: set[str] = set()
 
         for local_path, remote_path in files_to_upload:
@@ -1094,13 +1056,7 @@ class AnnouncementRemoteSync:
             if key in seen:
                 continue
             seen.add(key)
-            target_url = f"{alias_target}/{self.resource_root}/{remote_path}"
-            cmd = [mc_bin, "cp", str(local_path), target_url]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, encoding="utf-8", check=False
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"Failed to upload {local_path}: {result.stderr}")
+            self._upload(local_path, remote_path)
 
 
 # ---------------------------------------------------------------------------

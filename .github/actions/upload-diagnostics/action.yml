@@ -2,7 +2,7 @@ name: Upload diagnostics
 
 description: >-
   Collect failure diagnostics (x.py logs, JVM crash logs, Gradle daemon logs,
-  MinIO mock log, environment snapshot) into a staging directory, redact any
+  RustFS mock log, environment snapshot) into a staging directory, redact any
   secret values passed via env, and upload them as a workflow artifact.
   Invoke as the last step of a job with `if: failure()`.
 

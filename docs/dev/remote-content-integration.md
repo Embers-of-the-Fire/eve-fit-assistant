@@ -63,19 +63,19 @@ Android emulator channel index URL:
 http://10.0.2.2:8765/efa/v1/channels/testing/index.json
 ```
 
-Launch an S3-compatible MinIO mock:
+Launch an S3-compatible RustFS mock:
 
 ```bash
-./x remote mock launch --backend minio
+./x remote mock launch
 ```
 
-Default MinIO channel index URL:
+Default mock channel index URL:
 
 ```text
 http://127.0.0.1:9000/efa-dev/efa/v1/channels/testing/index.json
 ```
 
-Android emulator MinIO origin URL:
+Android emulator mock origin URL:
 
 ```text
 http://10.0.2.2:9000/efa-dev
@@ -96,45 +96,33 @@ Prepare bundle artifacts in the same origin after running the data build:
 
 The launcher reads defaults from `efa.dev.toml`, with CLI arguments taking precedence for a single
 invocation. Configure the default ports, bucket, credentials, channel, resource root, mock origin
-directory, and MinIO data directory in the `[remote]` section of `efa.dev.toml`. The default MinIO
-data directory is `cache/remote/minio-data/`, so object storage persists across launcher restarts.
+directory, and mock data directory in the `[remote]` and `[remote.mock]` sections of
+`efa.dev.toml`. The default mock data directory is `cache/remote/mock-data/`, so object storage
+persists across launcher restarts.
 
-Upload a materialized mock origin to an already running MinIO or S3-compatible endpoint:
+Upload a materialized mock origin to an already running mock or S3-compatible endpoint:
 
 ```bash
-./x remote publish upload --target minio
+./x remote publish <channel> --target mock
 ```
 
-The upload command uses the same `[remote]` defaults as the mock launcher. It configures the `mc`
-alias, creates the bucket if needed, optionally enables anonymous downloads, and follows a
-three-step atomic publish: (1) mirror shared content to immutable paths, (2) mirror
-generation-specific catalog metadata to `.generations/<gen>/`, (3) atomically copy the
-generation's `index.json` to the live channel path via a single S3 PUT.
-If interrupted, retry is safe and idempotent — only the successful step-3 index copy commits
-the new generation.
+The publish command uses the same `[remote]` defaults as the mock launcher. It uploads the
+channel's head chain (generation, snapshots, blobs) to the target bucket with content-addressed
+immutable paths, then moves the channel head pointer.
+If interrupted, retry is safe and idempotent — blobs already on the remote are skipped.
 
 Useful publishing overrides:
 
 ```bash
-./x remote publish upload --target minio --endpoint http://127.0.0.1:9000 --bucket efa-dev
-./x remote publish upload --target s3 --endpoint https://example-r2-or-oss-endpoint --bucket efa-prod --private
-./x --dry-run remote publish upload --target minio
-```
-
-The publishing defaults can be configured in `efa.dev.toml`:
-
-```toml
-[remote]
-publish_alias = "efa-remote-publish"
-publish_public_download = true
+./x remote publish testing --target mock --endpoint http://127.0.0.1:9000 --bucket efa-dev
+./x remote publish testing --target s3 --endpoint https://example-r2-or-oss-endpoint --bucket efa-prod
 ```
 
 Useful overrides:
 
 ```bash
-./x remote mock launch --backend static --port 8876
-./x remote mock launch --backend minio --port 9100 --console-port 9101 --bucket efa-test
-./x remote mock launch --backend minio --data-dir cache/remote/alternate-minio
+./x remote mock launch --port 9100 --console-port 9101 --bucket efa-test
+./x remote mock launch --data-dir cache/remote/alternate-mock
 ```
 
 The mock launcher uses local development credentials only. Production R2, OSS, or S3-compatible

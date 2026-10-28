@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       test_mode:
-        description: "Run in test mode (against a local MinIO mock instead of the real remote)"
+        description: "Run in test mode (against a local RustFS mock instead of the real remote)"
         type: boolean
         default: false
 
@@ -55,7 +55,7 @@ jobs:
       - name: Generate protobuf
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
-      - name: Start MinIO mock
+      - name: Start RustFS mock
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
@@ -99,19 +99,19 @@ jobs:
 
       # The mock starts empty on a fresh dispatch; a missing testing head means
       # there is simply nothing to promote in this smoke run.
-      - name: Sync remote channel heads (MinIO mock)
+      - name: Sync remote channel heads (RustFS mock)
         if: inputs.test_mode
         id: sync
         continue-on-error: true
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote sync \
-              --target minio \
+              --target mock \
               --channel testing \
               --schema-root cache/remote'
           nix develop .#python --command bash -c \
             'uv run x.py remote sync \
-              --target minio \
+              --target mock \
               --channel stable \
               --schema-root cache/remote'
 
@@ -136,14 +136,14 @@ jobs:
               --allow-missing-head \
               --target s3'
 
-      - name: Promote eligible snapshots (MinIO mock)
+      - name: Promote eligible snapshots (RustFS mock)
         if: inputs.test_mode && steps.sync.outcome == 'success'
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py ci release-data promote \
               --schema-root cache/remote \
               --report promote-report.json \
-              --target minio'
+              --target mock'
 
       # The report drives the stable-channel QQ bot announcement in the
       # notify-qqbot job; it is written for every outcome, quiet periods
@@ -170,7 +170,7 @@ jobs:
     needs: [promote]
     runs-on: ubuntu-slim
     # Post-promotion announcement, real runs only: in test mode the promotion
-    # targets the MinIO mock, so mock promotions never reach the bot. The
+    # targets the RustFS mock, so mock promotions never reach the bot. The
     # production-data environment supplies the bot's bearer secret.
     if: |
       always() &&

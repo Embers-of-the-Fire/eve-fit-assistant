@@ -2,7 +2,7 @@
 
 This reference defines the version 1 remote content storage contract for EVE Fit
 Assistant. The contract is designed for static HTTP and S3-compatible object storage,
-including Cloudflare R2, Alibaba OSS, MinIO, and CDN-backed buckets.
+including Cloudflare R2, Alibaba OSS, RustFS, and CDN-backed buckets.
 
 The v1 storage contract covers:
 
@@ -55,7 +55,7 @@ Field semantics:
 
 - `enabled`: whether the client should attempt remote content discovery.
 - `originUrl`: public static storage origin, CDN URL, bucket URL, R2/OSS custom domain, or local
-  mock origin. It may include a bucket path, such as a MinIO bucket prefix.
+  mock origin. It may include a bucket path, such as a local mock bucket prefix.
 - `resourceRoot`: versioned resource prefix. For v1, this is `efa/v1/`.
 - `channel`: content stream selected by the client.
 - `region`: optional storage or S3-compatible deployment region metadata, such as `global`, `cn`,
@@ -461,7 +461,7 @@ documents/../../secret.md
 ## S3-Compatible Publishing Rules
 
 The layout is designed to work as public read-only static object storage. The app never receives
-S3, R2, OSS, or MinIO credentials.
+S3, R2, OSS, or RustFS credentials.
 
 Each publish produces a **generation** — a self-contained snapshot written to a timestamped
 directory under `.generations/`. The channel `index.json` is the sole live-mutated object;
@@ -495,11 +495,11 @@ This three-step order ensures that interruption at any point leaves the live sta
 before the index update clients see the previous generation; after the index update
 they see the fully-uploaded new generation.
 
-The repository helper follows this order when uploading a local origin to MinIO or another
-S3-compatible endpoint:
+The repository helper follows this order when uploading a local origin to the local mock
+or another S3-compatible endpoint:
 
 ```bash
-./x remote publish upload --target minio
+./x remote publish <channel> --target mock
 ```
 
 ### Garbage Collection
@@ -516,11 +516,12 @@ previous generation by re-copying its `index.json` over the live path.
 
 ### Rollback
 
-To revert a bad publish, copy the previous generation's index to the live path:
+To revert a bad publish, copy the previous generation's index to the live path with any
+S3-compatible client:
 
 ```bash
-mc cp <alias>/<bucket>/efa/v1/channels/<channel>/.generations/<prev_gen>/index.json \
-      <alias>/<bucket>/efa/v1/channels/<channel>/index.json
+aws s3 cp s3://<bucket>/efa/v1/channels/<channel>/.generations/<prev_gen>/index.json \
+          s3://<bucket>/efa/v1/channels/<channel>/index.json --endpoint-url <endpoint>
 ```
 
 Recommended cache policy:
@@ -572,10 +573,10 @@ Channel index URL:
 http://127.0.0.1:8765/efa/v1/channels/testing/index.json
 ```
 
-MinIO-style bucket endpoint:
+RustFS bucket endpoint:
 
 ```bash
-./x remote mock launch --backend minio
+./x remote mock launch
 ```
 
 Channel index URL:
@@ -584,9 +585,9 @@ Channel index URL:
 http://127.0.0.1:9000/efa-dev/efa/v1/channels/testing/index.json
 ```
 
-The MinIO object store persists under the configured developer data directory. With the default
-configuration this is `cache/remote/minio-data/`. Change `[paths].root` or
-`[remote].minio_data_dir` in `efa.dev.toml` to move that persistent store.
+The RustFS object store persists under the configured developer data directory. With the default
+configuration this is `cache/remote/mock-data/`. Change `[paths].root` or
+`[remote.mock].data_dir` in `efa.dev.toml` to move that persistent store.
 
 ## V2 Storage Contract
 
@@ -866,11 +867,11 @@ Local static mocks for v2 use the same object layout. Committed fixture source:
 docs/examples/remote/mock-origin/efa/v2/
 ```
 
-The `./x remote prepare` CLI manages v2 publishing. For local development with
-MinIO, configure `[remote]` in `efa.dev.toml`:
+The `./x remote prepare` CLI manages v2 publishing. For local development with the
+RustFS mock, configure `[remote.mock]` in `efa.dev.toml`:
 
 ```bash
-./x remote prepare prepare --backend minio --channel testing --description "Local test"
+./x remote prepare prepare --channel testing --description "Local test"
 ./x remote prepare add-resources --checkout <path> --server <id> --name-en "..." --name-zh "..."
 ./x remote prepare add-release --version "0.2.0" --apk <path>
 ./x remote prepare publish
@@ -887,7 +888,7 @@ Path safety rules from v1 apply with equal strictness to v2:
 
 ### S3-Compatible Publishing
 
-The `./x remote prepare publish` command follows the same `mc`-based atomic
+The `./x remote prepare publish` command follows the same atomic
 publish pattern as v1:
 
 ```bash

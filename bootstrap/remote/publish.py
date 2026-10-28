@@ -1,4 +1,4 @@
-"""Publisher — idempotent upload of generations, snapshots, and blobs to S3/MinIO.
+"""Publisher — idempotent upload of generations, snapshots, and blobs to S3.
 
 Priority order: blobs → snapshots → generation → head (spec §11.3 remark).
 Idempotent: skip if remote file exists (content-addressed, immutable).
@@ -6,7 +6,6 @@ Idempotent: skip if remote file exists (content-addressed, immutable).
 
 from __future__ import annotations
 
-import subprocess
 import threading
 
 from concurrent.futures import ThreadPoolExecutor
@@ -28,6 +27,10 @@ from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.paths import resource_snapshot_dir
 from bootstrap.remote.resource_manager import ResourceManager
+from bootstrap.remote.s3client import BotoCoreError
+from bootstrap.remote.s3client import ClientError
+from bootstrap.remote.s3client import S3Client
+from bootstrap.remote.s3client import wrap_s3_error
 from bootstrap.remote.snapshot import SnapshotStore
 
 
@@ -59,37 +62,34 @@ if TYPE_CHECKING:
 
 
 class Publisher:
-    """Upload local schema state to S3/MinIO or local origin."""
+    """Upload local schema state to S3-compatible storage or a local origin."""
 
     def __init__(
         self,
         local_root: Path,
         *,
         remote_root: str = "efa/v2",
-        mc_bin: str | None = None,
+        client: S3Client | None = None,
         endpoint: str | None = None,
         bucket: str | None = None,
         access_key: str | None = None,
         secret_key: str | None = None,
-        alias_name: str | None = None,
         origin_dir: Path | None = None,
         workers: int = 8,
     ) -> None:
         self.local_root = local_root
         self.remote_root = remote_root.rstrip("/")
-        self.mc_bin = mc_bin
+        self._client = client
         self.endpoint = endpoint
         self.bucket = bucket
         self.access_key = access_key
         self.secret_key = secret_key
-        self.alias_name = alias_name
         self.origin_dir = origin_dir
         self.workers = workers
         self.gen_store = GenerationStore(local_root)
         self.snap_store = SnapshotStore(local_root)
         self.head_store = ChannelHeadStore(local_root)
-        self._alias_set = False
-        self._alias_lock = threading.Lock()
+        self._client_lock = threading.Lock()
 
     # --- Public API ----------------------------------------------------------
 
@@ -99,7 +99,7 @@ class Publisher:
         parent_gen = self._load_parent_generation(gen)
         prefixes = self._gen_remote_prefix()
 
-        self._ensure_alias()
+        self._ensure_client()
 
         rm = ResourceManager(
             self, expected_total=self._count_unique_blobs(gen, parent_gen, prefixes)
@@ -138,7 +138,7 @@ class Publisher:
 
     def publish_head(self, channel: str) -> None:
         """Upload channel head metadata and reflog to remote."""
-        self._ensure_alias()
+        self._ensure_client()
         prefixes = self._gen_remote_prefix()
         head_dir = channel_head_dir(self.local_root, channel)
         self._upload_tree(head_dir, prefixes + f"channels/heads/{channel}")
@@ -154,14 +154,14 @@ class Publisher:
         stale local cache that would roll the remote head pointer and reflog
         back over a newer remote state.
         """
-        self._ensure_alias()
+        self._ensure_client()
         supp_path = head_suppressions_path(self.local_root, channel)
         remote = self._gen_remote_prefix() + f"channels/heads/{channel}/suppressions.json"
         self._upload_file(supp_path, remote, overwrite=True)
 
     def publish_registry(self) -> None:
         """Upload only the channel registry (channels.json) to remote."""
-        self._ensure_alias()
+        self._ensure_client()
         registry_path = channel_registry_path(self.local_root)
         if registry_path.is_file():
             self._upload_file(
@@ -178,7 +178,7 @@ class Publisher:
         parent_gen = self._load_parent_generation(gen)
         prefixes = self._gen_remote_prefix()
 
-        self._ensure_alias()
+        self._ensure_client()
 
         rm = ResourceManager(
             self, expected_total=self._count_unique_blobs(gen, parent_gen, prefixes)
@@ -276,48 +276,22 @@ class Publisher:
         )
         return not self._remote_exists(remote_index)
 
-    def _ensure_alias(self) -> None:
-        """Set the S3 alias once (thread-safe, idempotent)."""
-        if self._alias_set:
+    def _ensure_client(self) -> None:
+        """Lazily construct the S3 client once (thread-safe, idempotent)."""
+        if self._client is not None:
             return
-        with self._alias_lock:
-            if self._alias_set:
+        with self._client_lock:
+            if self._client is not None:
                 return
             if self.origin_dir is not None:
-                self._alias_set = True
                 return
-            if self.mc_bin is None:
-                from bootstrap.utils import get_command
-
-                self.mc_bin = get_command("mc")
-
-            redacted = "<redacted>"
-            _run(
-                [
-                    self.mc_bin,
-                    "alias",
-                    "set",
-                    self.alias_name,
-                    self.endpoint or "",
-                    self.access_key or "",
-                    self.secret_key or "",
-                    "--api",
-                    "s3v4",
-                ],
-                [
-                    self.mc_bin,
-                    "alias",
-                    "set",
-                    self.alias_name,
-                    (self.endpoint or ""),
-                    redacted,
-                    redacted,
-                    "--api",
-                    "s3v4",
-                ],
-                "PUBLISH ALIAS",
+            self._client = S3Client(
+                endpoint=self.endpoint or "",
+                bucket=self.bucket or "",
+                access_key=self.access_key or "",
+                secret_key=self.secret_key or "",
+                workers=self.workers,
             )
-            self._alias_set = True
 
     def _enumerate_resource_blobs(
         self,
@@ -522,13 +496,11 @@ class Publisher:
         """True if the blob already exists at the destination (spec §3.1)."""
         if self.origin_dir is not None:
             return (self.origin_dir / remote_path).exists()
-        if self.mc_bin is None:
-            from bootstrap.utils import get_command
-
-            self.mc_bin = get_command("mc")
-        bucket_target = f"{self.alias_name}/{self.bucket}"
-        s3_path = f"{bucket_target}/{remote_path}"
-        return _stat_ok([self.mc_bin, "stat", s3_path])
+        assert self._client is not None
+        try:
+            return self._client.object_exists(remote_path)
+        except (ClientError, BotoCoreError) as exc:
+            raise wrap_s3_error(exc, f"PUBLISH STAT {remote_path}") from exc
 
     def _upload_dir(self, src_dir: Path, remote_path: str) -> None:
         if self.origin_dir is not None:
@@ -540,18 +512,11 @@ class Publisher:
             if files:
                 self._upload_files_parallel(files, desc=f"Uploading {src_dir.name}")
         else:
-            if self.mc_bin is None:
-                from bootstrap.utils import get_command
-
-                self.mc_bin = get_command("mc")
-
-            bucket_target = f"{self.alias_name}/{self.bucket}"
-            s3_path = f"{bucket_target}/{remote_path}"
-            _run(
-                [self.mc_bin, "cp", "--recursive", f"{src_dir}/", s3_path],
-                [self.mc_bin, "cp", "--recursive", f"{src_dir}/", s3_path],
-                f"PUBLISH DIR {remote_path}",
-            )
+            assert self._client is not None
+            try:
+                self._client.upload_dir(src_dir, remote_path)
+            except (ClientError, BotoCoreError) as exc:
+                raise wrap_s3_error(exc, f"PUBLISH DIR {remote_path}") from exc
 
     def _upload_tree(self, src_dir: Path, remote_path: str) -> None:
         self._upload_dir(src_dir, remote_path)
@@ -576,59 +541,8 @@ class Publisher:
     def _upload_s3(
         self, src: Path, remote_path: str, *, attrs: dict[str, str] | None = None
     ) -> None:
-        if self.mc_bin is None:
-            from bootstrap.utils import get_command
-
-            self.mc_bin = get_command("mc")
-
-        bucket_target = f"{self.alias_name}/{self.bucket}"
-        s3_path = f"{bucket_target}/{remote_path}"
-
-        cmd: list[str] = [self.mc_bin, "cp"]
-        if attrs:
-            for k, v in attrs.items():
-                cmd.extend(["--attr", f"{k}={v}"])
-        cmd.extend([str(src), s3_path])
-        _run(cmd, cmd, f"PUBLISH {remote_path}")
-
-
-def _run(
-    cmd: list[str],
-    redacted_cmd: list[str],
-    title: str,
-    timeout: float = 300,
-) -> None:
-    try:
-        out = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        raise OSError(f"{title} timed out after {timeout}s: {' '.join(redacted_cmd)}") from None
-    if out.returncode != 0:
-        msg = f"Failed to execute [{out.returncode}]: {' '.join(redacted_cmd)}"
-        stderr = (out.stderr or "").strip()
-        if stderr:
-            msg += f"\n{stderr}"
-        raise OSError(msg)
-
-
-def _stat_ok(cmd: list[str], timeout: float = 60) -> bool:
-    try:
-        out = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired, FileNotFoundError:
-        return False
-    return out.returncode == 0
+        assert self._client is not None
+        try:
+            self._client.upload_file(src, remote_path, attrs=attrs)
+        except (ClientError, BotoCoreError) as exc:
+            raise wrap_s3_error(exc, f"PUBLISH {remote_path}") from exc

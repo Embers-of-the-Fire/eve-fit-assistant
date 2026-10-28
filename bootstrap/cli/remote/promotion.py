@@ -77,7 +77,6 @@ def _guard_stable_head_fresh(
     bucket: str | None,
     access_key: str | None,
     secret_key: str | None,
-    alias_name: str | None,
     workers: int,
     op: str,
 ) -> None:
@@ -89,16 +88,13 @@ def _guard_stable_head_fresh(
     the mutation is never built on — or published over — a stale head.
     """
     channel = str(Channel.STABLE)
-    resolved = _resolve_remote_target(
-        target, endpoint, bucket, access_key, secret_key, alias_name, op
-    )
-    endpoint_r, bucket_r, access_r, secret_r, alias_r = resolved
+    resolved = _resolve_remote_target(target, endpoint, bucket, access_key, secret_key, op)
+    endpoint_r, bucket_r, access_r, secret_r = resolved
     syncer = mgr.make_syncer(
         endpoint=endpoint_r,
         bucket=bucket_r,
         access_key=access_r,
         secret_key=secret_r,
-        alias_name=alias_r,
         workers=workers,
     )
 
@@ -131,23 +127,19 @@ def _publish_and_verify(
     bucket: str | None,
     access_key: str | None,
     secret_key: str | None,
-    alias_name: str | None,
     workers: int,
     *,
     suppressions_only: bool = False,
 ) -> None:
     """Publish the head (or only its suppression list), sync back, assert match."""
-    resolved = _resolve_remote_target(
-        target, endpoint, bucket, access_key, secret_key, alias_name, "promote"
-    )
-    endpoint_r, bucket_r, access_r, secret_r, alias_r = resolved
+    resolved = _resolve_remote_target(target, endpoint, bucket, access_key, secret_key, "promote")
+    endpoint_r, bucket_r, access_r, secret_r = resolved
 
     pub = mgr.make_publisher(
         endpoint=endpoint_r,
         bucket=bucket_r,
         access_key=access_r,
         secret_key=secret_r,
-        alias_name=alias_r,
         workers=workers,
     )
     expected_suppressions = mgr.get_suppressions(channel) if suppressions_only else None
@@ -163,7 +155,6 @@ def _publish_and_verify(
         bucket=bucket_r,
         access_key=access_r,
         secret_key=secret_r,
-        alias_name=alias_r,
         workers=workers,
     )
     if suppressions_only:
@@ -194,7 +185,7 @@ def _publish_and_verify(
 _TARGET_OPTIONS = [
     click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default="s3",
         help="Remote target type (default: s3).",
     ),
@@ -202,7 +193,6 @@ _TARGET_OPTIONS = [
     click.option("--bucket", default=None, help="Override remote bucket name."),
     click.option("--access-key", default=None, help="Override remote access key."),
     click.option("--secret-key", default=None, help="Override remote secret key."),
-    click.option("--alias", "alias_name", default=None, help="Override mc alias name."),
     click.option(
         "--workers",
         type=click.IntRange(min=1),
@@ -277,7 +267,6 @@ def register_remote_promotion(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         schema_root: Path | None,
     ):
@@ -333,7 +322,6 @@ def register_remote_promotion(remote: click.Group) -> None:
                 bucket,
                 access_key,
                 secret_key,
-                alias_name,
                 workers,
                 "promote",
             )
@@ -379,7 +367,6 @@ def register_remote_promotion(remote: click.Group) -> None:
             bucket,
             access_key,
             secret_key,
-            alias_name,
             workers,
         )
 
@@ -404,7 +391,6 @@ def register_remote_promotion(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         schema_root: Path | None,
     ):
@@ -422,7 +408,6 @@ def register_remote_promotion(remote: click.Group) -> None:
                 bucket,
                 access_key,
                 secret_key,
-                alias_name,
                 workers,
                 "promote suppress",
             )
@@ -461,7 +446,6 @@ def register_remote_promotion(remote: click.Group) -> None:
             bucket,
             access_key,
             secret_key,
-            alias_name,
             workers,
             suppressions_only=True,
         )
@@ -483,7 +467,6 @@ def register_remote_promotion(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         schema_root: Path | None,
     ):
@@ -501,7 +484,6 @@ def register_remote_promotion(remote: click.Group) -> None:
                 bucket,
                 access_key,
                 secret_key,
-                alias_name,
                 workers,
                 "promote unsuppress",
             )
@@ -530,7 +512,6 @@ def register_remote_promotion(remote: click.Group) -> None:
             bucket,
             access_key,
             secret_key,
-            alias_name,
             workers,
             suppressions_only=True,
         )
@@ -570,7 +551,6 @@ def register_remote_promotion(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         schema_root: Path | None,
     ):
@@ -595,15 +575,14 @@ def register_remote_promotion(remote: click.Group) -> None:
             return
 
         resolved = _resolve_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias_name, "set-default-channel"
+            target, endpoint, bucket, access_key, secret_key, "set-default-channel"
         )
-        endpoint_r, bucket_r, access_r, secret_r, alias_r = resolved
+        endpoint_r, bucket_r, access_r, secret_r = resolved
         pub = mgr.make_publisher(
             endpoint=endpoint_r,
             bucket=bucket_r,
             access_key=access_r,
             secret_key=secret_r,
-            alias_name=alias_r,
             workers=workers,
         )
         pub.publish_registry()

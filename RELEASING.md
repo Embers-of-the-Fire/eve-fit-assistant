@@ -346,7 +346,7 @@ Repository-level entries that remain:
 Operational notes:
 
 - Test-mode runs (`V-Test`, `D-*` labels) declare the dedicated `ci-testing`
-  environment and publish to the local MinIO mock. `ci-testing` carries no
+  environment and publish to the local RustFS mock. `ci-testing` carries no
   production secrets or variables, so test runs see no production credentials
   by construction; the `production-app` / `production-data` secrets are never
   exposed to them.
