@@ -81,7 +81,7 @@ runs:
       with:
         apiToken: ${{ inputs.api-token }}
         accountId: ${{ inputs.account-id }}
-        wranglerVersion: "4.151.3"
+        wranglerVersion: "4.152.0"
         # The repo root carries a pnpm lockfile, which the action would
         # auto-detect and use to install wrangler; pnpm is not preinstalled
         # on the runner and npm suffices for a global wrangler install.
