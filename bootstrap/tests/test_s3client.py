@@ -152,6 +152,23 @@ class TestDownloadFile:
         assert not dest.exists()
         stubber.assert_no_pending_responses()
 
+    def test_missing_key_preserves_existing_dest(self, tmp_path: Path) -> None:
+        """A missing remote object must not delete a pre-existing local file.
+
+        boto3's download_file writes to a temp file and renames it only after
+        success, so a 404 leaves nothing partial at dest to clean up. Local
+        state that is not published yet (a committed head, a suppression)
+        must survive the sync.
+        """
+        client, stubber = _make_client()
+        stubber.add_client_error("head_object", service_error_code="404")
+        stubber.add_response("head_bucket", {})
+        dest = tmp_path / "out.bin"
+        dest.write_bytes(b"local-only content")
+        assert client.download_file("some/key", dest) is False
+        assert dest.read_bytes() == b"local-only content"
+        stubber.assert_no_pending_responses()
+
     def test_missing_bucket_raises(self, tmp_path: Path) -> None:
         """Preliminary HeadObject 404 + missing bucket must raise, not return False."""
         client, stubber = _make_client()

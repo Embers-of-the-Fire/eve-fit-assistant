@@ -220,6 +220,13 @@ class S3Client:
         Returns False only when the object is confirmed missing; raises
         (ClientError/BotoCoreError) on any other failure so a failed download
         is never mistaken for an absent object.
+
+        A missing object leaves any pre-existing *dest* untouched (the
+        transfer manager writes to a temp file and renames only on success,
+        so nothing partial exists at *dest* to clean up). Callers use a
+        missing remote object as "nothing to sync", not "delete local state"
+        — e.g. a locally committed head or suppression that is not published
+        yet must survive a sync.
         """
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -230,7 +237,6 @@ class S3Client:
             # from a missing bucket; confirm the bucket before reporting
             # the object as absent.
             if self._is_missing(exc, head_based=True):
-                dest.unlink(missing_ok=True)
                 return False
             raise
         return True
