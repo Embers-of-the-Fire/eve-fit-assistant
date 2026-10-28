@@ -206,7 +206,7 @@ class S3Client:
         base = prefix.rstrip("/")
         for f in sorted(src_dir.rglob("*")):
             if f.is_file():
-                self.upload_file(f, f"{base}/{f.relative_to(src_dir)}")
+                self.upload_file(f, f"{base}/{f.relative_to(src_dir).as_posix()}")
 
     # -- Download ----------------------------------------------------------------
 
@@ -263,7 +263,7 @@ class S3Client:
         for f in sorted(src_dir.rglob("*")):
             if not f.is_file():
                 continue
-            rel = str(f.relative_to(src_dir))
+            rel = f.relative_to(src_dir).as_posix()
             local_rel.add(rel)
             self.upload_file(f, f"{base}/{rel}")
         if delete:
