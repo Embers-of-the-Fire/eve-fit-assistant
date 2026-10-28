@@ -94,7 +94,12 @@ class TestDownloadClassification:
             syncer._download_head_metadata("stable")
 
     def test_missing_bucket_raises(self, tmp_path: Path) -> None:
-        """A missing bucket is a configuration failure, not an absent object."""
+        """A missing bucket is a configuration failure, not an absent object.
+
+        NoSuchBucket only reaches the Syncer from body-carrying (GET) errors;
+        on the HEAD-based download path a missing bucket arrives as a bare
+        "404" and is reclassified by S3Client — see test_s3client.py.
+        """
 
         def handler(key: str, dest: Path) -> bool:
             raise _client_error("NoSuchBucket", "The specified bucket does not exist.")

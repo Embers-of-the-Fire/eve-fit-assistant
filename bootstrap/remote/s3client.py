@@ -31,7 +31,20 @@ if TYPE_CHECKING:
 # (NoSuchBucket) is deliberately excluded: a missing bucket is a real
 # configuration failure and must raise, never be mistaken for an absent
 # channel head.
+#
+# Caveat: HEAD requests (HeadObject — issued directly by object_exists and
+# internally by boto3's transfer manager before download_file) have no error
+# body, so botocore falls back to the HTTP status as Error.Code. A missing
+# bucket and a missing key then both surface as a bare "404", which is in
+# this set. A bare "404" from a HEAD-based call must therefore be confirmed
+# against HeadBucket (S3Client._confirm_bucket_exists) before being treated
+# as "object absent".
 _MISSING_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
+
+# The only member of _MISSING_CODES that botocore synthesizes from a bare
+# HTTP status on a bodiless (HEAD) error response. NoSuchKey/NotFound come
+# from a parsed XML error body, which only exists when the bucket exists.
+_AMBIGUOUS_HEAD_404 = "404"
 
 # Legacy ``mc --attr`` headers mapped to boto3 ExtraArgs fields.
 _ATTR_EXTRA_ARGS = {
@@ -105,12 +118,51 @@ class S3Client:
 
     # -- Existence -------------------------------------------------------------
 
+    def _confirm_bucket_exists(self) -> None:
+        """Disambiguate a bare HEAD 404: raise NoSuchBucket when the bucket is gone.
+
+        HeadBucket is itself bodiless, so a missing bucket again surfaces as a
+        bare "404"; other failures (e.g. 403) propagate unchanged. When this
+        returns without raising, the bucket exists and the original 404 really
+        meant "object absent".
+        """
+        try:
+            self._client.head_bucket(Bucket=self.bucket)
+        except ClientError as exc:
+            if is_missing_error(exc):
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "NoSuchBucket",
+                            "Message": (
+                                f"Bucket {self.bucket!r} does not exist "
+                                "(HEAD 404 confirmed via HeadBucket)"
+                            ),
+                        }
+                    },
+                    "HeadBucket",
+                ) from exc
+            raise
+
+    def _is_missing(self, exc: ClientError, *, head_based: bool) -> bool:
+        """True when *exc* confirms the object is absent.
+
+        For HEAD-based calls a bare "404" is ambiguous (missing key vs missing
+        bucket), so the bucket is confirmed with HeadBucket first; a missing
+        bucket raises NoSuchBucket instead of reading as an absent object.
+        """
+        if not is_missing_error(exc):
+            return False
+        if head_based and exc.response.get("Error", {}).get("Code") == _AMBIGUOUS_HEAD_404:
+            self._confirm_bucket_exists()
+        return True
+
     def object_exists(self, key: str) -> bool:
         """True if the object exists; raises on any non-404 failure."""
         try:
             self._client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as exc:
-            if is_missing_error(exc):
+            if self._is_missing(exc, head_based=True):
                 return False
             raise
         return True
@@ -160,7 +212,11 @@ class S3Client:
         try:
             self._client.download_file(self.bucket, key, str(dest), Config=self._transfer)
         except ClientError as exc:
-            if is_missing_error(exc):
+            # A bare "404" comes from the transfer manager's preliminary
+            # HeadObject (bodiless), which cannot distinguish a missing key
+            # from a missing bucket; confirm the bucket before reporting
+            # the object as absent.
+            if self._is_missing(exc, head_based=True):
                 dest.unlink(missing_ok=True)
                 return False
             raise
