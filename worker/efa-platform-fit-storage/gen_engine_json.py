@@ -45,7 +45,9 @@ def collect_entries(section: str) -> dict[int, str]:
         if not filename.endswith(".yaml"):
             continue
         with open(PATCHES_DIR / filename, encoding="utf-8") as fp:
-            document = yaml.load(fp, Loader=yaml.CSafeLoader)
+            # Fall back to the pure-Python loader when PyYAML lacks the
+            # libyaml extension (no prebuilt wheel for the running CPython).
+            document = yaml.load(fp, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
         for patch in document.get(section, []):
             new = patch.get("new")
             if not new:

@@ -109,6 +109,11 @@
       # bumped by Renovate's uv manager). Only uv comes from nixpkgs.
       pythonPackages = with pkgs; [
         uv
+        # Headers for building PyYAML's libyaml C extension from sdist when no
+        # prebuilt wheel exists for the .python-version interpreter (mkShell
+        # already provides a cc wrapper and exports NIX_CFLAGS_COMPILE/LDFLAGS
+        # for its inputs).
+        libyaml
       ];
 
       rustPackages = [ rustToolchain ];
