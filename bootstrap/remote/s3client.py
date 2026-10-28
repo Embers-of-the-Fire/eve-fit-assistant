@@ -12,6 +12,7 @@ virtual-host DNS keep working; managed endpoints (R2/S3) accept both styles.
 from __future__ import annotations
 
 import json
+import mimetypes
 
 from typing import TYPE_CHECKING
 
@@ -179,12 +180,24 @@ class S3Client:
     # -- Upload ------------------------------------------------------------------
 
     def upload_file(self, src: Path, key: str, *, attrs: dict[str, str] | None = None) -> None:
-        """Upload one file, optionally with Cache-Control/Content-Type attrs."""
+        """Upload one file, optionally with Cache-Control/Content-Type attrs.
+
+        When no explicit Content-Type attr is given, one is guessed from the
+        object key via :func:`mimetypes.guess_type` (``mc cp``/``mc mirror``
+        behavior). boto3 sends no Content-Type otherwise, so S3/R2/RustFS
+        would store binary/octet-stream — which costs JSON metadata its CDN
+        compression. Keys without a known extension keep no Content-Type.
+        """
+        extra = extra_args_from_attrs(attrs)
+        if "ContentType" not in extra:
+            guessed = mimetypes.guess_type(key)[0]
+            if guessed is not None:
+                extra["ContentType"] = guessed
         self._client.upload_file(
             str(src),
             self.bucket,
             key,
-            ExtraArgs=extra_args_from_attrs(attrs),
+            ExtraArgs=extra,
             Config=self._transfer,
         )
 

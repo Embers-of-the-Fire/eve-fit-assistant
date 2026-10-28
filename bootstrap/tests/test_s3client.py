@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from botocore.stub import ANY
 from botocore.stub import Stubber
 
 from bootstrap.remote.s3client import ClientError
@@ -73,6 +74,70 @@ class TestObjectExists:
         stubber.add_client_error("head_object", service_error_code="403")
         with pytest.raises(ClientError, match="403"):
             client.object_exists("some/key")
+        stubber.assert_no_pending_responses()
+
+
+class TestUploadFile:
+    def test_content_type_guessed_from_key(self, tmp_path: Path) -> None:
+        """Without explicit attrs, Content-Type defaults to the key's guess."""
+        src = tmp_path / "catalog.json"
+        src.write_text("{}")
+        client, stubber = _make_client()
+        stubber.add_response(
+            "put_object",
+            {},
+            expected_params={
+                "Bucket": "bucket",
+                "Key": "announcements/catalog.json",
+                "Body": ANY,
+                "ChecksumAlgorithm": "CRC32",
+                "ContentType": "application/json",
+            },
+        )
+        client.upload_file(src, "announcements/catalog.json")
+        stubber.assert_no_pending_responses()
+
+    def test_explicit_content_type_wins(self, tmp_path: Path) -> None:
+        src = tmp_path / "catalog.json"
+        src.write_text("{}")
+        client, stubber = _make_client()
+        stubber.add_response(
+            "put_object",
+            {},
+            expected_params={
+                "Bucket": "bucket",
+                "Key": "some/catalog.json",
+                "Body": ANY,
+                "ChecksumAlgorithm": "CRC32",
+                "ContentType": "application/vnd.custom+json",
+            },
+        )
+        client.upload_file(
+            src, "some/catalog.json", attrs={"Content-Type": "application/vnd.custom+json"}
+        )
+        stubber.assert_no_pending_responses()
+
+    def test_unknown_extension_sends_no_content_type(self, tmp_path: Path) -> None:
+        """Hash-named blobs keep attrs untouched and gain no guessed type."""
+        src = tmp_path / "deadbeef"
+        src.write_bytes(b"\x00" * 4)
+        client, stubber = _make_client()
+        stubber.add_response(
+            "put_object",
+            {},
+            expected_params={
+                "Bucket": "bucket",
+                "Key": "efa/v2/assets/blobs/de/ad/deadbeef",
+                "Body": ANY,
+                "ChecksumAlgorithm": "CRC32",
+                "CacheControl": "immutable, max-age=31536000",
+            },
+        )
+        client.upload_file(
+            src,
+            "efa/v2/assets/blobs/de/ad/deadbeef",
+            attrs={"Cache-Control": "immutable, max-age=31536000"},
+        )
         stubber.assert_no_pending_responses()
 
 
