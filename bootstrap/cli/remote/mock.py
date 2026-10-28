@@ -18,6 +18,7 @@ from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import run_foreground
 from bootstrap.cli.remote.helpers import wait_for_http
 from bootstrap.color import styled
+from bootstrap.remote.s3client import S3Client
 from bootstrap.utils import get_command
 
 
@@ -43,7 +44,9 @@ def _is_safe_rmtree_target(path: Path) -> bool:
         raise click.ClickException(f"Refusing to remove non-directory path: {resolved}")
     protected = _get_protected_paths()
     for p in protected:
-        if resolved == p or p in resolved.parents:
+        # Refuse when the target IS a protected path or an ancestor of one
+        # (deleting it would wipe protected data); nested targets are fine.
+        if resolved == p or resolved in p.parents:
             raise click.ClickException(
                 f"Refusing to remove protected path: {resolved} (conflicts with {p})"
             )
@@ -62,7 +65,7 @@ def _is_stale_pid_error(exc: BaseException) -> bool:
     return isinstance(exc, OSError) and getattr(exc, "winerror", None) == 87
 
 
-def _start_minio_remote_mock(
+def _start_s3_mock(
     *,
     host: str,
     port: int,
@@ -71,7 +74,6 @@ def _start_minio_remote_mock(
     bucket: str,
     access_key: str,
     secret_key: str,
-    alias_name: str,
     public_download: bool,
     daemon: bool = False,
     pid_file: Path | None = None,
@@ -81,8 +83,7 @@ def _start_minio_remote_mock(
     endpoint = f"http://{host}:{port}"
     console_endpoint = f"http://{host}:{console_port}"
     command = [
-        "minio",
-        "server",
+        "rustfs",
         str(data_dir),
         "--address",
         f"{host}:{port}",
@@ -93,11 +94,11 @@ def _start_minio_remote_mock(
     if runtime.is_dry_run():
         return
 
-    minio = get_command("minio")
-    command[0] = minio
+    rustfs = get_command("rustfs")
+    command[0] = rustfs
     env = os.environ.copy()
-    env["MINIO_ROOT_USER"] = access_key
-    env["MINIO_ROOT_PASSWORD"] = secret_key
+    env["RUSTFS_ACCESS_KEY"] = access_key
+    env["RUSTFS_SECRET_KEY"] = secret_key
     if daemon:
         resolved_pid, resolved_log = _default_daemon_paths(data_dir, pid_file, log_file)
         with open(resolved_log, "a", encoding="utf-8") as log_handle:
@@ -112,30 +113,16 @@ def _start_minio_remote_mock(
     else:
         process = subprocess.Popen(command, env=env, text=True)
     try:
-        wait_for_http(f"{endpoint}/minio/health/ready")
+        wait_for_http(f"{endpoint}/health/ready")
 
-        mc = get_command("mc")
-        bucket_target = f"{alias_name}/{bucket}"
-        redacted = "<redacted>"
-        runtime.execute_redacted(
-            [mc, "alias", "set", alias_name, endpoint, access_key, secret_key, "--api", "s3v4"],
-            [mc, "alias", "set", alias_name, endpoint, redacted, redacted, "--api", "s3v4"],
-            "REMOTE MOCK ALIAS",
+        client = S3Client(
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
         )
-        runtime.execute(
-            [mc, "mb", "--ignore-existing", bucket_target],
-            "REMOTE MOCK BUCKET",
-        )
-        if public_download:
-            runtime.execute(
-                [mc, "anonymous", "set", "download", bucket_target],
-                "REMOTE MOCK ANONYMOUS",
-            )
-        else:
-            runtime.execute(
-                [mc, "anonymous", "set", "none", bucket_target],
-                "REMOTE MOCK ANONYMOUS",
-            )
+        client.create_bucket()
+        client.set_public_download(public_download)
 
         click.echo(
             styled(
@@ -143,18 +130,18 @@ def _start_minio_remote_mock(
                 "  No pre-existing data published. Use `./x remote session` to build from scratch.",
             )
         )
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO console: ") + console_endpoint)
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "RustFS console: ") + console_endpoint)
         if daemon:
             resolved_pid.write_text(f"{process.pid}\n", encoding="utf-8")
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO endpoint: ") + endpoint)
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO PID: ") + f"{process.pid}")
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO PID file: ") + str(resolved_pid))
-            click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO log file: ") + str(resolved_log))
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "RustFS endpoint: ") + endpoint)
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "RustFS PID: ") + f"{process.pid}")
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "RustFS PID file: ") + str(resolved_pid))
+            click.echo(styled([Style.BRIGHT, Fore.GREEN], "RustFS log file: ") + str(resolved_log))
             click.echo(
                 styled(Style.DIM, "  Detached. Stop with `./x remote mock stop` or kill the PID.")
             )
             return
-        run_foreground(process, "\nMinIO remote mock interrupted by user.")
+        run_foreground(process, "\nRustFS remote mock interrupted by user.")
     except Exception:
         process.terminate()
         try:
@@ -185,16 +172,16 @@ def register_remote_mock(remote: click.Group) -> None:
     @click.option("--origin-dir", type=click.Path(path_type=Path), default=None)
     @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
     def remote_mock_clean(origin_dir: Path | None, data_dir: Path | None):
-        """Remove all persisted remote mock data (MinIO storage + origin directory)."""
+        """Remove all persisted remote mock data (mock storage + origin directory)."""
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
-        minio = remote_cfg.require_minio("clean")
+        mock_cfg = remote_cfg.require_mock("clean")
 
-        resolved_data_dir = runtime.resolve_dev_path(data_dir or minio.data_dir)
+        resolved_data_dir = runtime.resolve_dev_path(data_dir or mock_cfg.data_dir)
         resolved_origin_dir = runtime.resolve_dev_path(origin_dir or remote_cfg.mock_origin_dir)
 
         any_removed = False
-        if _remove_mock_path(resolved_data_dir, "MinIO data directory"):
+        if _remove_mock_path(resolved_data_dir, "mock data directory"):
             any_removed = True
         if _remove_mock_path(resolved_origin_dir, "mock origin directory"):
             any_removed = True
@@ -208,12 +195,12 @@ def register_remote_mock(remote: click.Group) -> None:
     @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
     @click.option("--pid-file", type=click.Path(path_type=Path), default=None)
     def remote_mock_stop(data_dir: Path | None, pid_file: Path | None):
-        """Stop a detached MinIO remote mock started with `launch --daemon`."""
+        """Stop a detached remote mock started with `launch --daemon`."""
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
-        minio = remote_cfg.require_minio("stop")
+        mock_cfg = remote_cfg.require_mock("stop")
 
-        resolved_data_dir = runtime.resolve_dev_path(data_dir or minio.data_dir)
+        resolved_data_dir = runtime.resolve_dev_path(data_dir or mock_cfg.data_dir)
         resolved_pid_file = runtime.resolve_dev_path(pid_file) if pid_file else None
         resolved_pid, _ = _default_daemon_paths(resolved_data_dir, resolved_pid_file, None)
 
@@ -249,16 +236,15 @@ def register_remote_mock(remote: click.Group) -> None:
                     raise
 
         resolved_pid.unlink(missing_ok=True)
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Stopped MinIO mock (pid {pid})."))
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Stopped remote mock (pid {pid})."))
 
     @mock.command("launch")
     @click.option("--host", default=None, help="Override remote mock host.")
-    @click.option("--port", type=int, default=None, help="Override MinIO API port.")
-    @click.option("--console-port", type=int, default=None, help="Override MinIO console port.")
-    @click.option("--bucket", default=None, help="Override MinIO bucket name.")
-    @click.option("--access-key", default=None, help="Override MinIO access key.")
-    @click.option("--secret-key", default=None, help="Override MinIO secret key.")
-    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
+    @click.option("--port", type=int, default=None, help="Override mock S3 API port.")
+    @click.option("--console-port", type=int, default=None, help="Override mock console port.")
+    @click.option("--bucket", default=None, help="Override mock bucket name.")
+    @click.option("--access-key", default=None, help="Override mock access key.")
+    @click.option("--secret-key", default=None, help="Override mock secret key.")
     @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
     @click.option(
         "--public-download/--private",
@@ -291,14 +277,13 @@ def register_remote_mock(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         data_dir: Path | None,
         public_download: bool | None,
         daemon: bool,
         pid_file: Path | None,
         log_file: Path | None,
     ):
-        """Launch a local MinIO remote mock against persisted storage.
+        """Launch a local RustFS remote mock against persisted storage.
 
         No pre-existing data is published - use `./x remote session` commands
         to build data from scratch. Run `./x remote mock clean` first to
@@ -307,38 +292,37 @@ def register_remote_mock(remote: click.Group) -> None:
         bootstrap.config.DeveloperConfiguration.ensure_loaded()
         bootstrap.config.ProjectConfiguration.ensure_loaded()
         remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
-        minio = remote_cfg.require_minio("mock")
+        mock_cfg = remote_cfg.require_mock("mock")
 
         resolved_host = host or remote_cfg.host
-        resolved_data_dir = runtime.resolve_dev_path(data_dir or minio.data_dir)
-        resolved_port = port or minio.port
-        resolved_console_port = console_port or minio.console_port
-        resolved_bucket = bucket or minio.bucket
+        resolved_data_dir = runtime.resolve_dev_path(data_dir or mock_cfg.data_dir)
+        resolved_port = port or mock_cfg.port
+        resolved_console_port = console_port or mock_cfg.console_port
+        resolved_bucket = bucket or mock_cfg.bucket
         resolved_access_key = (
             access_key
             if access_key
-            else (minio.access_key.get_secret_value() if minio.access_key else "")
+            else (mock_cfg.access_key.get_secret_value() if mock_cfg.access_key else "")
         )
         resolved_secret_key = (
             secret_key
             if secret_key
-            else (minio.secret_key.get_secret_value() if minio.secret_key else "")
+            else (mock_cfg.secret_key.get_secret_value() if mock_cfg.secret_key else "")
         )
-        resolved_alias = alias_name or minio.alias
         resolved_public_download = (
-            public_download if public_download is not None else minio.public_download
+            public_download if public_download is not None else mock_cfg.public_download
         )
         resolved_pid_file = runtime.resolve_dev_path(pid_file) if pid_file else None
         resolved_log_file = runtime.resolve_dev_path(log_file) if log_file else None
 
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], "MinIO data path: ") + str(resolved_data_dir))
+        click.echo(styled([Style.BRIGHT, Fore.GREEN], "Mock data path: ") + str(resolved_data_dir))
         click.echo(
             styled(
                 Style.DIM,
                 "  Using persisted storage. Run `./x remote mock clean` for a fresh start.",
             )
         )
-        _start_minio_remote_mock(
+        _start_s3_mock(
             host=resolved_host,
             port=resolved_port,
             console_port=resolved_console_port,
@@ -346,7 +330,6 @@ def register_remote_mock(remote: click.Group) -> None:
             bucket=resolved_bucket,
             access_key=resolved_access_key,
             secret_key=resolved_secret_key,
-            alias_name=resolved_alias,
             public_download=resolved_public_download,
             daemon=daemon,
             pid_file=resolved_pid_file,

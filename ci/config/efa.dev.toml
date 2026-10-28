@@ -15,16 +15,15 @@ output_dir = "ci-native"
 [codegen]
 attr_id_source = "ci-native/json/dogmaAttributes.json"
 
-# Local MinIO mock used by test-mode release checks. Values are real (the mock
+# Local RustFS mock used by test-mode release checks. Values are real (the mock
 # runs inside the CI job) but intentionally throwaway.
-[remote.minio]
+[remote.mock]
 port = 9110
 console_port = 9111
 bucket = "efa-ci-mock"
 access_key = "efa-ci-mock-access"
 secret_key = "efa-ci-mock-secret"
-data_dir = "/tmp/efa-ci-minio"
-alias = "efa-ci-mock"
+data_dir = "/tmp/efa-ci-mock"
 public_download = true
 
 # Real remote publish target. Only non-secret defaults live here; the secret
@@ -34,7 +33,6 @@ endpoint = "https://s3.placeholder.invalid"
 bucket = "placeholder-bucket"
 access_key = "placeholder-access-key"
 secret_key = "placeholder-secret-key"
-alias = "efa-remote-publish"
 public_download = true
 
 # CI artifact storage. Only non-secret defaults live here; the secret fields
@@ -42,7 +40,6 @@ public_download = true
 [ci.storage]
 endpoint = "https://ci-storage.placeholder.invalid"
 bucket = "placeholder-bucket"
-alias = "efa-ci-storage"
 access_key = "placeholder-access-key"
 secret_key = "placeholder-secret-key"
 public_url = "https://ci.storage.efa-tech.dev"

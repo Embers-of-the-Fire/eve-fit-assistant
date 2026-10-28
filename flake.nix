@@ -5,10 +5,8 @@
   inputs.fenix.url = "github:nix-community/fenix";
   inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
-  inputs.nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-26.05";
-
   outputs =
-    { nixpkgs, nixpkgs-stable, fenix, ... }:
+    { nixpkgs, fenix, ... }:
     let
       system = "x86_64-linux";
 
@@ -16,15 +14,6 @@
         inherit system;
         config = {
           allowUnfree = true;
-          android_sdk.accept_license = true;
-        };
-      };
-
-      minioPkgs = import nixpkgs-stable {
-        inherit system;
-        config = {
-          allowUnfree = true;
-          permittedInsecurePackages = [ "minio-2025-10-15T17-29-55Z" ];
           android_sdk.accept_license = true;
         };
       };
@@ -156,16 +145,13 @@
         pnpm
       ];
 
-      releasePackages =
-        (with pkgs; [
-          cargo-expand
-          git-cliff
-          wrangler
-        ])
-        ++ (with minioPkgs; [
-          minio
-          minio-client
-        ]);
+      releasePackages = with pkgs; [
+        cargo-expand
+        git-cliff
+        wrangler
+        # Local S3-compatible mock server for `./x remote mock` (RustFS).
+        rustfs
+      ];
 
       # Not packaged in nixpkgs; wrap the upstream AppImage with appimage-run.
       # Not packaged in nixpkgs. The upstream AppImage's payload binaries
@@ -329,10 +315,7 @@
 
           # Minimal Python shell: linting, formatting, tests, and CI remote mocks
           python = pkgs.mkShell {
-            packages = pythonPackages ++ [
-              minioPkgs.minio
-              minioPkgs.minio-client
-            ];
+            packages = pythonPackages ++ [ pkgs.rustfs ];
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";

@@ -43,32 +43,31 @@ def _print_sync_result(result: SyncResult) -> None:
     click.echo("  " + "  ".join(parts))
 
 
-def _resolve_remote_target(target: str, endpoint, bucket, access_key, secret_key, alias_name, op):
+def _resolve_remote_target(target: str, endpoint, bucket, access_key, secret_key, op):
     bootstrap.config.DeveloperConfiguration.ensure_loaded()
     remote_cfg = bootstrap.config.DEV_CONFIGURATION.remote
 
-    if target == "minio":
-        minio_cfg = remote_cfg.require_minio(op)
+    if target == "mock":
+        mock_cfg = remote_cfg.require_mock(op)
         if access_key:
             resolved_access_key = access_key
-        elif minio_cfg.access_key:
-            resolved_access_key = minio_cfg.access_key.get_secret_value()
+        elif mock_cfg.access_key:
+            resolved_access_key = mock_cfg.access_key.get_secret_value()
         else:
             resolved_access_key = ""
 
         if secret_key:
             resolved_secret_key = secret_key
-        elif minio_cfg.secret_key:
-            resolved_secret_key = minio_cfg.secret_key.get_secret_value()
+        elif mock_cfg.secret_key:
+            resolved_secret_key = mock_cfg.secret_key.get_secret_value()
         else:
             resolved_secret_key = ""
 
         return (
-            endpoint or f"http://{remote_cfg.host}:{minio_cfg.port}",
-            bucket or minio_cfg.bucket,
+            endpoint or f"http://{remote_cfg.host}:{mock_cfg.port}",
+            bucket or mock_cfg.bucket,
             resolved_access_key,
             resolved_secret_key,
-            alias_name or minio_cfg.alias,
         )
     s3_cfg = remote_cfg.require_s3(op)
     if access_key:
@@ -90,7 +89,6 @@ def _resolve_remote_target(target: str, endpoint, bucket, access_key, secret_key
         bucket or s3_cfg.bucket,
         resolved_access_key,
         resolved_secret_key,
-        alias_name or s3_cfg.alias,
     )
 
 
@@ -203,7 +201,7 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @click.argument("channel")
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"], case_sensitive=False),
+        type=click.Choice(["mock", "s3"], case_sensitive=False),
         required=True,
         help="S3-compatible upload target (reads defaults from efa.dev.toml).",
     )
@@ -211,7 +209,6 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @click.option("--bucket", default=None, help="Override bucket name.")
     @click.option("--access-key", default=None, help="Override access key.")
     @click.option("--secret-key", default=None, help="Override secret key.")
-    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--workers",
         type=click.IntRange(min=1),
@@ -227,20 +224,16 @@ def register_remote_lifecycle(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         schema_root: Path | None,
     ):
-        """Publish the channel's current head to a remote S3/MinIO bucket."""
+        """Publish the channel's current head to a remote S3-compatible bucket."""
         (
             resolved_endpoint,
             resolved_bucket,
             resolved_access_key,
             resolved_secret_key,
-            resolved_alias,
-        ) = _resolve_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias_name, "publish"
-        )
+        ) = _resolve_remote_target(target, endpoint, bucket, access_key, secret_key, "publish")
 
         root = runtime.resolve_schema_root(schema_root)
         mgr = SessionManager(root)
@@ -252,7 +245,6 @@ def register_remote_lifecycle(remote: click.Group) -> None:
             bucket=resolved_bucket,
             access_key=resolved_access_key,
             secret_key=resolved_secret_key,
-            alias_name=resolved_alias,
             workers=workers,
         )
 
@@ -263,7 +255,7 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @remote.command("sync")
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"], case_sensitive=False),
+        type=click.Choice(["mock", "s3"], case_sensitive=False),
         required=True,
         help="S3-compatible sync target (reads defaults from efa.dev.toml).",
     )
@@ -271,7 +263,6 @@ def register_remote_lifecycle(remote: click.Group) -> None:
     @click.option("--bucket", default=None, help="Override bucket name.")
     @click.option("--access-key", default=None, help="Override access key.")
     @click.option("--secret-key", default=None, help="Override secret key.")
-    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--depth",
         type=click.IntRange(min=-1),
@@ -306,7 +297,6 @@ def register_remote_lifecycle(remote: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         depth: int,
         workers: int,
         schema_root: Path | None,
@@ -323,10 +313,7 @@ def register_remote_lifecycle(remote: click.Group) -> None:
             resolved_bucket,
             resolved_access_key,
             resolved_secret_key,
-            resolved_alias,
-        ) = _resolve_remote_target(
-            target, endpoint, bucket, access_key, secret_key, alias_name, "sync"
-        )
+        ) = _resolve_remote_target(target, endpoint, bucket, access_key, secret_key, "sync")
 
         root = runtime.resolve_schema_root(schema_root)
         mgr = SessionManager(root)
@@ -336,7 +323,6 @@ def register_remote_lifecycle(remote: click.Group) -> None:
             bucket=resolved_bucket,
             access_key=resolved_access_key,
             secret_key=resolved_secret_key,
-            alias_name=resolved_alias,
             workers=workers,
         )
 

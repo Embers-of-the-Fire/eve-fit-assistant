@@ -36,7 +36,7 @@ attr_id_source = "data/resources/tranquility/cache/native/json/dogmaAttributes.j
 # and publish content to S3-compatible storage.
 channel = "testing"
 
-# Common mock host for both MinIO and static mocks.
+# Common mock host for both RustFS and static mocks.
 host = "127.0.0.1"
 
 # Paths are resolved relative to [paths].root unless absolute.
@@ -44,28 +44,26 @@ mock_origin_dir = "remote/mock-origin"
 # verify_upload = true  # optional global override (overrides sub-target defaults)
 # verify_workers = 4   # optional global override for concurrent download workers
 
-[remote.minio]
-# MinIO mock server defaults. All fields are required — no silent defaults.
+[remote.mock]
+# RustFS mock server defaults. All fields are required — no silent defaults.
 # These credentials are for local development only.
 port = 9000
 console_port = 9001
 bucket = "efa-dev"
-access_key = "minioadmin"
-secret_key = "minioadmin"
-data_dir = "remote/minio-data"
-alias = "efa-remote-mock"
+access_key = "rustfsadmin"
+secret_key = "rustfsadmin"
+data_dir = "remote/mock-data"
 public_download = true
 # verify_upload = false  # default: false; re-download and SHA256-verify after upload
 # verify_workers = 4     # default: 4; concurrent download threads for verification
 
 [remote.s3]
 # S3-compatible publishing defaults. All fields are required.
-# Used by `./x remote publish upload --target s3`.
+# Used by `./x remote publish --target s3`.
 endpoint = "https://s3.example.com"
 bucket = "efa-publish"
 access_key = "your-access-key"
 secret_key = "your-secret-key"
-alias = "efa-remote-publish"
 public_download = true
 # verify_upload = true  # default: true; re-download and SHA256-verify after upload
 # verify_workers = 4    # default: 4; concurrent download threads for verification
@@ -76,7 +74,6 @@ public_download = true
 # The bucket should be publicly readable; the CI workflow fetches via public_url.
 endpoint = "https://<account_id>.r2.cloudflarestorage.com"
 bucket = "efa-ci-data"
-alias = "efa-ci-storage"
 access_key = "your-r2-access-key"
 secret_key = "your-r2-secret-key"
 public_url = "https://ci.storage.efa-tech.dev"
@@ -88,7 +85,6 @@ remote_root = "data-generator/raw-artifact"
 # Optional: override [ci.storage] values for the raw-artifact target.
 # endpoint = "https://<account_id>.r2.cloudflarestorage.com"
 # bucket = "efa-ci-data"
-# alias = "efa-ci-raw-artifacts"
 # access_key = "..."
 # secret_key = "..."
 

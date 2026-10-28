@@ -1,242 +1,189 @@
 """Tests for Syncer download failure classification (bootstrap/remote/sync.py).
 
-Only a confirmed-missing remote object may be reported as ``False``; every
-other download failure (nonzero mc exit, timeout, missing executable) must
-raise, so `--allow-missing-head` never masks a real failure as an absent
-channel.
+Only a confirmed-missing remote object (S3 404/NoSuchKey) may be reported as
+``False``; every other download failure (access denied, missing bucket,
+timeout, connection error) must raise, so `--allow-missing-head` never masks
+a real failure as an absent channel.
 """
 
 from __future__ import annotations
 
-import subprocess
-
 from typing import TYPE_CHECKING
-from typing import Any
 
 import pytest
 
-from bootstrap.remote import sync as sync_module
+from bootstrap.remote.s3client import ClientError
 from bootstrap.remote.sync import Syncer
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 
-def _completed(returncode: int, stderr: str = "") -> subprocess.CompletedProcess[str]:
-    return subprocess.CompletedProcess(args=["mc"], returncode=returncode, stdout="", stderr=stderr)
+def _client_error(code: str, message: str = "") -> ClientError:
+    return ClientError({"Error": {"Code": code, "Message": message}}, "GetObject")
 
 
-@pytest.fixture
-def syncer(tmp_path: Path) -> Syncer:
-    s = Syncer(tmp_path, alias_name="alias", bucket="bucket", mc_bin="mc")
-    s._alias_set = True
-    s._s3_prefix = "alias/bucket/efa/v2"
-    return s
+class _FakeS3Client:
+    """Stand-in for S3Client driven by a per-key handler.
+
+    The handler receives (key, dest) and returns True (downloaded), False
+    (confirmed missing), or raises ClientError/BotoCoreError (failure).
+    """
+
+    def __init__(self, handler: Callable[[str, Path], bool]) -> None:
+        self._handler = handler
+
+    def download_file(self, key: str, dest: Path) -> bool:
+        return self._handler(key, dest)
+
+    def download_dir(self, key: str, dest_dir: Path) -> bool:
+        return self._handler(key, dest_dir)
+
+
+def _make_syncer(tmp_path: Path, handler: Callable[[str, Path], bool]) -> Syncer:
+    return Syncer(tmp_path, client=_FakeS3Client(handler), bucket="bucket")
 
 
 class TestDownloadClassification:
-    def test_success_returns_true(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        monkeypatch.setattr(sync_module.subprocess, "run", lambda *a, **kw: _completed(0))
+    def test_success_returns_true(self, tmp_path: Path) -> None:
+        syncer = _make_syncer(tmp_path, lambda key, dest: True)
         assert syncer._download_head_metadata("stable") is True
 
-    def test_confirmed_missing_returns_false(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            sync_module.subprocess,
-            "run",
-            lambda *a, **kw: _completed(
-                1, "mc: <ERROR> Unable to prepare URL for copying. Object does not exist"
-            ),
-        )
+    def test_confirmed_missing_returns_false(self, tmp_path: Path) -> None:
+        syncer = _make_syncer(tmp_path, lambda key, dest: False)
         assert syncer._download_head_metadata("stable") is False
 
-    def test_s3_no_such_key_returns_false(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setattr(
-            sync_module.subprocess,
-            "run",
-            lambda *a, **kw: _completed(
-                1, "mc: <ERROR> Failed to copy. The specified key does not exist."
-            ),
-        )
-        assert syncer._download_head_metadata("stable") is False
-
-    def test_recursive_all_errors_missing_returns_false(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        stderr = (
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
-            " Object does not exist\n"
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
-            " The specified key does not exist.\n"
-        )
-        monkeypatch.setattr(sync_module.subprocess, "run", lambda *a, **kw: _completed(1, stderr))
+    def test_recursive_missing_prefix_returns_false(self, tmp_path: Path) -> None:
+        syncer = _make_syncer(tmp_path, lambda key, dest: False)
         assert syncer._download_generation("aa") is False
 
-    def test_recursive_mixed_errors_raise(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        stderr = (
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
-            " Object does not exist\n"
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
-            " Access Denied.\n"
-        )
-        monkeypatch.setattr(sync_module.subprocess, "run", lambda *a, **kw: _completed(1, stderr))
+    def test_recursive_failure_raises(self, tmp_path: Path) -> None:
+        def handler(key: str, dest: Path) -> bool:
+            if key.startswith("efa/v2/channels/refs/"):
+                raise _client_error("AccessDenied", "Access Denied.")
+            return True
+
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer._download_generation("aa")
 
-    def test_mixed_errors_abort_generation_walk(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_mixed_results_abort_generation_walk(self, tmp_path: Path) -> None:
         head_dir = tmp_path / "channels" / "heads" / "stable"
-        stderr = (
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/metadata.json`."
-            " Object does not exist\n"
-            "mc: <ERROR> Failed to copy `s3/bucket/efa/v2/channels/refs/aa/resources.pb2`."
-            " Access Denied.\n"
-        )
 
-        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-            src = cmd[2]
-            if src.endswith("metadata.json") and "--recursive" not in cmd:
+        def handler(key: str, dest: Path) -> bool:
+            if key.endswith("refs/aa"):
+                raise _client_error("AccessDenied", "Access Denied.")
+            if key.endswith("metadata.json") and "/heads/" in key:
                 head_dir.mkdir(parents=True, exist_ok=True)
                 (head_dir / "metadata.json").write_text('{"generationHash": "aa"}')
-                return _completed(0)
-            if "--recursive" in cmd:
-                return _completed(1, stderr)
-            return _completed(0)
+                return True
+            return True
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer.sync_channel("stable")
 
-    def test_access_denied_raises(self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sync_module.subprocess,
-            "run",
-            lambda *a, **kw: _completed(
-                1, "mc: <ERROR> Unable to prepare URL for copying. Access Denied."
-            ),
-        )
+    def test_access_denied_raises(self, tmp_path: Path) -> None:
+        def handler(key: str, dest: Path) -> bool:
+            raise _client_error("AccessDenied", "Access Denied.")
+
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer._download_head_metadata("stable")
 
-    def test_missing_bucket_raises(self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sync_module.subprocess,
-            "run",
-            lambda *a, **kw: _completed(
-                1,
-                "mc: <ERROR> Unable to prepare URL for copying. Bucket `nobucket` does not exist.",
-            ),
-        )
+    def test_missing_bucket_raises(self, tmp_path: Path) -> None:
+        """A missing bucket is a configuration failure, not an absent object."""
+
+        def handler(key: str, dest: Path) -> bool:
+            raise _client_error("NoSuchBucket", "The specified bucket does not exist.")
+
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer._download_head_metadata("stable")
 
-    def test_bad_access_key_raises(self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            sync_module.subprocess,
-            "run",
-            lambda *a, **kw: _completed(
-                1,
-                "mc: <ERROR> Unable to prepare URL for copying. "
-                "The Access Key Id you provided does not exist in our records.",
-            ),
-        )
+    def test_bad_access_key_raises(self, tmp_path: Path) -> None:
+        def handler(key: str, dest: Path) -> bool:
+            raise _client_error("InvalidAccessKeyId", "The access key does not exist.")
+
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer._download_head_metadata("stable")
 
-    def test_timeout_raises(self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch) -> None:
-        def fake_run(*a: Any, **kw: Any) -> subprocess.CompletedProcess[str]:
-            raise subprocess.TimeoutExpired(cmd=["mc"], timeout=300)
+    def test_timeout_raises(self, tmp_path: Path) -> None:
+        from botocore.exceptions import ReadTimeoutError
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
-        with pytest.raises(OSError, match="timed out"):
+        def handler(key: str, dest: Path) -> bool:
+            raise ReadTimeoutError(endpoint_url="http://mock.invalid")
+
+        syncer = _make_syncer(tmp_path, handler)
+        with pytest.raises(OSError, match="Failed to download"):
             syncer._download_head_metadata("stable")
 
-    def test_missing_executable_raises(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        def fake_run(*a: Any, **kw: Any) -> subprocess.CompletedProcess[str]:
-            raise FileNotFoundError(2, "No such file or directory", "mc")
+    def test_connection_error_raises(self, tmp_path: Path) -> None:
+        from botocore.exceptions import EndpointConnectionError
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
-        with pytest.raises(OSError, match="executable not found"):
+        def handler(key: str, dest: Path) -> bool:
+            raise EndpointConnectionError(endpoint_url="http://mock.invalid")
+
+        syncer = _make_syncer(tmp_path, handler)
+        with pytest.raises(OSError, match="Failed to download"):
             syncer._download_head_metadata("stable")
 
 
 class TestSyncChannelFailurePropagation:
-    def test_head_failure_raises_instead_of_reporting_absent(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-            if cmd[2].endswith("channels.json"):
-                return _completed(0)
-            return _completed(1, "mc: <ERROR> Unable to prepare URL for copying. Access Denied.")
+    def test_head_failure_raises_instead_of_reporting_absent(self, tmp_path: Path) -> None:
+        def handler(key: str, dest: Path) -> bool:
+            if key.endswith("channels.json"):
+                return True
+            raise _client_error("AccessDenied", "Access Denied.")
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer.sync_channel("stable")
 
-    def test_confirmed_missing_head_returns_early(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-            if cmd[2].endswith("channels.json"):
-                return _completed(0)
-            if "metadata.json" in cmd[2]:
-                return _completed(
-                    1, "mc: <ERROR> Unable to prepare URL for copying. Object does not exist"
-                )
-            pytest.fail(f"unexpected download after missing head: {cmd}")
+    def test_confirmed_missing_head_returns_early(self, tmp_path: Path) -> None:
+        def handler(key: str, dest: Path) -> bool:
+            if key.endswith("channels.json"):
+                return True
+            if key.endswith("metadata.json"):
+                return False
+            pytest.fail(f"unexpected download after missing head: {key}")
             raise AssertionError
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        syncer = _make_syncer(tmp_path, handler)
         result = syncer.sync_channel("stable")
         assert result.head_meta is False
         assert result.suppressions is False
 
-    def test_missing_suppressions_still_tolerated(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_missing_suppressions_still_tolerated(self, tmp_path: Path) -> None:
         head_dir = tmp_path / "channels" / "heads" / "stable"
 
-        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-            src = cmd[2]
-            if src.endswith("suppressions.json"):
-                return _completed(
-                    1, "mc: <ERROR> Unable to prepare URL for copying. Object does not exist"
-                )
-            if src.endswith("metadata.json"):
+        def handler(key: str, dest: Path) -> bool:
+            if key.endswith("suppressions.json"):
+                return False
+            if key.endswith("metadata.json"):
                 head_dir.mkdir(parents=True, exist_ok=True)
                 (head_dir / "metadata.json").write_text('{"generationHash": ""}')
-            return _completed(0)
+            return True
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        syncer = _make_syncer(tmp_path, handler)
         result = syncer.sync_channel("stable")
         assert result.head_meta is True
         assert result.suppressions is False
 
-    def test_suppressions_failure_raises(
-        self, syncer: Syncer, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_suppressions_failure_raises(self, tmp_path: Path) -> None:
         head_dir = tmp_path / "channels" / "heads" / "stable"
 
-        def fake_run(cmd: list[str], **kw: Any) -> subprocess.CompletedProcess[str]:
-            src = cmd[2]
-            if src.endswith("suppressions.json"):
-                return _completed(1, "mc: <ERROR> Failed to copy. Access Denied.")
-            if src.endswith("metadata.json"):
+        def handler(key: str, dest: Path) -> bool:
+            if key.endswith("suppressions.json"):
+                raise _client_error("AccessDenied", "Access Denied.")
+            if key.endswith("metadata.json"):
                 head_dir.mkdir(parents=True, exist_ok=True)
                 (head_dir / "metadata.json").write_text('{"generationHash": ""}')
-            return _completed(0)
+            return True
 
-        monkeypatch.setattr(sync_module.subprocess, "run", fake_run)
+        syncer = _make_syncer(tmp_path, handler)
         with pytest.raises(OSError, match="Failed to download"):
             syncer.sync_channel("stable")

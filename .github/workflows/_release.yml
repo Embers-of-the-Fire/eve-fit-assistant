@@ -354,7 +354,7 @@ jobs:
               --fragments cache/releases/linux/${VERSION}/${VERSION}-linux.json \
               --fragments cache/releases/windows/${VERSION}/${VERSION}-windows.json"
 
-      - name: Start MinIO mock
+      - name: Start RustFS mock
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
@@ -380,11 +380,11 @@ jobs:
               --channel "${TRACK}" \
               --schema-root cache/remote'
 
-      - name: Initialize remote announcement workspace (MinIO mock)
+      - name: Initialize remote announcement workspace (RustFS mock)
         if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py remote announce init --target minio --force'
+            'uv run x.py remote announce init --target mock --force'
 
       - name: Sync remote announcements
         if: inputs.test_mode == false && needs.verify.outputs.publishable == 'true'
@@ -404,11 +404,11 @@ jobs:
               remote announce sync \
               --target s3'
 
-      - name: Sync remote announcements (MinIO mock)
+      - name: Sync remote announcements (RustFS mock)
         if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py remote announce sync --target minio'
+            'uv run x.py remote announce sync --target mock'
 
       # Skipped for an unpublishable version (testing num = 0 in test mode):
       # the ceremonial post-ship state has no release notes to stage.
@@ -481,19 +481,19 @@ jobs:
               remote announce publish \
               --target s3'
 
-      - name: Publish to ${{ inputs.track }} channel (MinIO mock)
+      - name: Publish to ${{ inputs.track }} channel (RustFS mock)
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote publish "${TRACK}" \
-              --target minio \
+              --target mock \
               --schema-root cache/remote'
 
-      - name: Publish announcements (MinIO mock)
+      - name: Publish announcements (RustFS mock)
         if: inputs.test_mode && needs.verify.outputs.publishable == 'true'
         run: |
           nix develop .#python --command bash -c \
-            'uv run x.py remote announce publish --target minio'
+            'uv run x.py remote announce publish --target mock'
 
       - name: Sync and verify remote head
         if: inputs.test_mode == false
@@ -523,14 +523,14 @@ jobs:
           fi
           echo "Remote head verified: $synced_hash"
 
-      - name: Sync and verify remote head (MinIO mock)
+      - name: Sync and verify remote head (RustFS mock)
         if: inputs.test_mode
         env:
           COMMITTED: ${{ steps.commit.outputs.committed_hash }}
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py remote sync \
-              --target minio \
+              --target mock \
               --channel "${TRACK}" \
               --schema-root cache/remote'
           synced_hash=$(nix develop .#python --command bash -c \

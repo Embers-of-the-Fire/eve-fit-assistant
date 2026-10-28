@@ -201,23 +201,19 @@ class SessionManager:
     def make_publisher(
         self,
         *,
-        mc_bin: str | None = None,
         endpoint: str | None = None,
         bucket: str | None = None,
         access_key: str | None = None,
         secret_key: str | None = None,
-        alias_name: str | None = None,
         origin_dir: Path | None = None,
         workers: int = 8,
     ) -> Publisher:
         return Publisher(
             local_root=self.root,
-            mc_bin=mc_bin,
             endpoint=endpoint,
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias_name,
             origin_dir=origin_dir,
             workers=workers,
         )
@@ -227,22 +223,18 @@ class SessionManager:
     def make_syncer(
         self,
         *,
-        mc_bin: str | None = None,
         endpoint: str | None = None,
         bucket: str | None = None,
         access_key: str | None = None,
         secret_key: str | None = None,
-        alias_name: str | None = None,
         workers: int = 8,
     ) -> Syncer:
         return Syncer(
             local_root=self.root,
-            mc_bin=mc_bin,
             endpoint=endpoint,
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias_name,
             workers=workers,
         )
 

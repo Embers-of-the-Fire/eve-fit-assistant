@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import tomllib
 
 from typing import TYPE_CHECKING
@@ -32,7 +31,6 @@ from bootstrap.data.updater.server import get_server_config
 from bootstrap.data.updater.server import list_server_ids
 from bootstrap.data.updater.server import resolve_server_id
 from bootstrap.data.updater.uploader import _resolve_storage
-from bootstrap.data.updater.uploader import _run_mc
 
 
 if TYPE_CHECKING:
@@ -378,165 +376,54 @@ class TestReadBucketBuild:
         assert result is None
 
 
-class _MockProcess:
-    """A minimal async process for testing _run_mc."""
+class _FakeS3Client:
+    """Stand-in for S3Client recording upload/mirror calls."""
 
-    def __init__(self, returncode: int = 0, stdout_lines: list[bytes] | None = None) -> None:
-        self.returncode = returncode
-        self.stdout = _AsyncIterator(stdout_lines or [])
+    def __init__(self, endpoint: str, bucket: str) -> None:
+        self.endpoint = endpoint
+        self.bucket = bucket
+        self.mirror_up_calls: list[tuple[Path, str, bool]] = []
+        self.mirror_down_calls: list[tuple[str, Path]] = []
+        self.upload_calls: list[tuple[Path, str]] = []
 
-    async def wait(self) -> int:
-        return self.returncode
+    def mirror_up(self, src_dir: Path, prefix: str, *, delete: bool = False) -> None:
+        self.mirror_up_calls.append((src_dir, prefix, delete))
 
+    def mirror_down(self, prefix: str, dest_dir: Path) -> None:
+        self.mirror_down_calls.append((prefix, dest_dir))
 
-class _AsyncIterator:
-    """Async iterator wrapping a list of bytes for mocking stdout."""
-
-    def __init__(self, items: list[bytes]) -> None:
-        self._items = items
-        self._idx = 0
-
-    def __aiter__(self) -> _AsyncIterator:
-        return self
-
-    async def __anext__(self) -> bytes:
-        if self._idx >= len(self._items):
-            raise StopAsyncIteration
-        item = self._items[self._idx]
-        self._idx += 1
-        return item
+    def upload_file(self, src: Path, key: str, *, attrs: dict | None = None) -> None:
+        self.upload_calls.append((src, key))
 
 
-class TestRunMc:
-    @pytest.fixture(autouse=True)
-    def _stub_mc_command(self, monkeypatch) -> None:
-        monkeypatch.setattr("bootstrap.data.updater.uploader.get_command", lambda _name: "mc")
+class TestArtifactTransfer:
+    @pytest.fixture
+    def fake_client(self, monkeypatch) -> _FakeS3Client:
+        client = _FakeS3Client("https://s3.example.com", "bucket")
 
-    async def test_redacts_secret_values(self, monkeypatch) -> None:
-        logged: list[str] = []
-        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
+        def _factory(endpoint: str, bucket: str, access_key: str, secret_key: str):
+            client.factory_args = (endpoint, bucket, access_key, secret_key)
+            return client
 
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            return _MockProcess()
+        monkeypatch.setattr("bootstrap.data.updater.uploader._make_client", _factory)
+        return client
 
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        await _run_mc(
-            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", "SECRET"],
-            "TEST",
-            secrets={"ACCESS", "SECRET"},
-        )
-
-        assert len(logged) == 1
-        assert "ACCESS" not in logged[0]
-        assert "SECRET" not in logged[0]
-        assert "<redacted> <redacted>" in logged[0]
-
-    async def test_does_not_redact_unrelated_arguments(self, monkeypatch) -> None:
-        logged: list[str] = []
-        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        await _run_mc(
-            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", "SECRET"],
-            "TEST",
-            secrets={"OTHER"},
-        )
-
-        assert "ACCESS" in logged[0]
-        assert "SECRET" in logged[0]
-        assert "<redacted>" not in logged[0]
-
-    async def test_empty_secrets_do_not_redact(self, monkeypatch) -> None:
-        logged: list[str] = []
-        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        await _run_mc(
-            ["alias", "set", "myalias", "https://s3.example.com", "ACCESS", ""],
-            "TEST",
-            secrets={""},
-        )
-
-        assert "ACCESS" in logged[0]
-        assert "<redacted>" not in logged[0]
-
-    async def test_env_is_passed_to_subprocess(self, monkeypatch) -> None:
-        logged: list[str] = []
-        monkeypatch.setattr("bootstrap.data.updater.uploader.info", logged.append)
-
-        captured_env: dict[str, str] | None = None
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            nonlocal captured_env
-            captured_env = kwargs.get("env")
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        await _run_mc(
-            ["alias", "set", "myalias", "https://s3.example.com"],
-            "TEST",
-            env={"MC_HOST_myalias": "https://key:secret@s3.example.com"},
-        )
-
-        assert captured_env is not None
-        assert captured_env["MC_HOST_myalias"] == "https://key:secret@s3.example.com"
-
-    async def test_env_is_merged_with_os_environ(self, monkeypatch) -> None:
-        monkeypatch.setenv("EXISTING_VAR", "existing_value")
-        monkeypatch.setattr("bootstrap.data.updater.uploader.info", lambda _: None)
-
-        captured_env: dict[str, str] | None = None
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            nonlocal captured_env
-            captured_env = kwargs.get("env")
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        await _run_mc(
-            ["cp", "a", "b"],
-            "TEST",
-            env={"NEW_VAR": "new_value"},
-        )
-
-        assert captured_env is not None
-        assert captured_env["EXISTING_VAR"] == "existing_value"
-        assert captured_env["NEW_VAR"] == "new_value"
-
-    async def test_upload_artifacts_uses_mc_host_env(self, monkeypatch, tmp_path: Path) -> None:
-        from bootstrap.data.updater.uploader import upload_artifacts
-
-        commands: list[list[str]] = []
-        envs: list[dict[str, str] | None] = []
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            commands.append(list(args))
-            envs.append(kwargs.get("env"))
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        storage = DeveloperCiStorage(
+    @pytest.fixture
+    def storage(self) -> DeveloperCiStorage:
+        return DeveloperCiStorage(
             endpoint="https://s3.example.com",
             bucket="bucket",
-            alias="myalias",
             access_key="ACCESS_KEY",
             secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
         )
-        config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
 
+    async def test_upload_artifacts(
+        self, fake_client: _FakeS3Client, storage: DeveloperCiStorage, tmp_path: Path
+    ) -> None:
+        from bootstrap.data.updater.uploader import upload_artifacts
+
+        config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
         artifacts_dir = tmp_path / "artifacts"
         artifacts_dir.mkdir()
         build_file = tmp_path / "build.txt"
@@ -544,54 +431,32 @@ class TestRunMc:
 
         await upload_artifacts("tranquility", artifacts_dir, 123456, config, storage)
 
-        assert len(envs) == 3
-        for env in envs:
-            assert env is not None
-            assert env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
+        assert fake_client.factory_args == (
+            "https://s3.example.com",
+            "bucket",
+            "ACCESS_KEY",
+            "SECRET_KEY",
+        )
+        assert fake_client.mirror_up_calls == [
+            (artifacts_dir, "data-generator/raw-artifact/tranquility/artifacts", True)
+        ]
+        assert fake_client.upload_calls == [
+            (build_file, "data-generator/raw-artifact/tranquility/build.txt")
+        ]
 
-        alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
-        assert "ACCESS_KEY" not in alias_cmd
-        assert "SECRET_KEY" not in alias_cmd
-
-    async def test_download_artifacts_uses_mc_host_env(self, monkeypatch, tmp_path: Path) -> None:
+    async def test_download_artifacts(
+        self, fake_client: _FakeS3Client, storage: DeveloperCiStorage, tmp_path: Path
+    ) -> None:
         from bootstrap.data.updater.uploader import download_artifacts
 
-        commands: list[list[str]] = []
-        envs: list[dict[str, str] | None] = []
-
-        async def _fake_subprocess(*args: str, **kwargs) -> _MockProcess:
-            commands.append(list(args))
-            envs.append(kwargs.get("env"))
-            return _MockProcess()
-
-        monkeypatch.setattr(asyncio, "create_subprocess_exec", _fake_subprocess)
-
-        storage = DeveloperCiStorage(
-            endpoint="https://s3.example.com",
-            bucket="bucket",
-            alias="myalias",
-            access_key="ACCESS_KEY",
-            secret_key="SECRET_KEY",  # noqa: S106
-            public_url="https://public.example.com",
-        )
         config = DeveloperCiRawArtifacts(remote_root="data-generator/raw-artifact")
-
         output_dir = tmp_path / "out"
 
         await download_artifacts("tranquility", output_dir, config, storage)
 
-        assert len(envs) == 2
-        for env in envs:
-            assert env is not None
-            assert env["MC_HOST_myalias"] == "https://ACCESS_KEY:SECRET_KEY@s3.example.com"
-
-        mirror_cmd = next(cmd for cmd in commands if cmd[1:2] == ["mirror"])
-        assert mirror_cmd[-2] == "myalias/bucket/data-generator/raw-artifact/tranquility/artifacts/"
-        assert mirror_cmd[-1] == f"{output_dir / 'tranquility'}/"
-
-        alias_cmd = next(cmd for cmd in commands if cmd[1:3] == ["alias", "set"])
-        assert "ACCESS_KEY" not in alias_cmd
-        assert "SECRET_KEY" not in alias_cmd
+        assert fake_client.mirror_down_calls == [
+            ("data-generator/raw-artifact/tranquility/artifacts", output_dir / "tranquility")
+        ]
 
 
 class TestUpdateServer:
@@ -660,15 +525,13 @@ class TestUploader:
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
-            alias="alias",
             access_key="key",
             secret_key="secret",  # noqa: S106
             public_url="https://public.example.com",
         )
-        endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
+        endpoint, bucket, access_key, secret_key = _resolve_storage(config, storage)
         assert endpoint == "https://example.com"
         assert bucket == "bucket"
-        assert alias == "alias"
         assert access_key == "key"
         assert secret_key == "secret"  # noqa: S105
 
@@ -677,22 +540,19 @@ class TestUploader:
             remote_root="data-generator/raw-artifact",
             endpoint="https://override.com",
             bucket="override-bucket",
-            alias="override-alias",
             access_key="override-key",
             secret_key="override-secret",  # noqa: S106
         )
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
-            alias="alias",
             access_key="key",
             secret_key="secret",  # noqa: S106
             public_url="https://public.example.com",
         )
-        endpoint, bucket, access_key, secret_key, alias = _resolve_storage(config, storage)
+        endpoint, bucket, access_key, secret_key = _resolve_storage(config, storage)
         assert endpoint == "https://override.com"
         assert bucket == "override-bucket"
-        assert alias == "override-alias"
         assert access_key == "override-key"
         assert secret_key == "override-secret"  # noqa: S105
 
@@ -735,7 +595,6 @@ class TestConfigOverrides:
             [
                 ("ci.storage.endpoint", "https://test.example.com"),
                 ("ci.storage.bucket", "bucket"),
-                ("ci.storage.alias", "alias"),
                 ("ci.storage.access_key", "key"),
                 ("ci.storage.secret_key", "secret"),
             ],
@@ -744,7 +603,6 @@ class TestConfigOverrides:
         assert dev.ci.storage is not None
         assert dev.ci.storage.endpoint == "https://test.example.com"
         assert dev.ci.storage.bucket == "bucket"
-        assert dev.ci.storage.alias == "alias"
         assert dev.ci.storage.access_key.get_secret_value() == "key"
         assert dev.ci.storage.secret_key.get_secret_value() == "secret"
         assert dev.ci.storage.public_url is None
@@ -755,7 +613,6 @@ class TestSecretStrRedaction:
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
-            alias="alias",
             access_key="ACCESS_KEY",
             secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
@@ -772,7 +629,6 @@ class TestSecretStrRedaction:
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
-            alias="alias",
             access_key="ACCESS_KEY",
             secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",
@@ -784,7 +640,6 @@ class TestSecretStrRedaction:
         storage = DeveloperCiStorage(
             endpoint="https://example.com",
             bucket="bucket",
-            alias="alias",
             access_key="ACCESS_KEY",
             secret_key="SECRET_KEY",  # noqa: S106
             public_url="https://public.example.com",

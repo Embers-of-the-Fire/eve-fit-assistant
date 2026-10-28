@@ -944,7 +944,7 @@ class _FakeSyncer:
 def _patch_fake_remote(monkeypatch: pytest.MonkeyPatch, remote_root: Path) -> list[_FakePublisher]:
     monkeypatch.setattr(
         "bootstrap.cli.remote.promotion._resolve_remote_target",
-        lambda *args: ("https://s3.invalid", "bucket", "key", "secret", "alias"),
+        lambda *args: ("https://s3.invalid", "bucket", "key", "secret"),
     )
     monkeypatch.setattr(
         SessionManager,

@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       test_mode:
-        description: "Run in test mode (publish to a local MinIO mock instead of the real remote)"
+        description: "Run in test mode (publish to a local RustFS mock instead of the real remote)"
         type: boolean
         default: false
       servers:
@@ -96,14 +96,14 @@ jobs:
   publish:
     name: Publish to testing channel
     needs: build
-    # MinIO mock runs in test mode; keep on the full runner image.
+    # RustFS mock runs in test mode; keep on the full runner image.
     runs-on: ubuntu-latest
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
     steps:
       - name: Prepare data release workspace
         uses: $/.github/actions/prepare-data-workspace
 
-      - name: Start MinIO mock
+      - name: Start RustFS mock
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
@@ -149,14 +149,14 @@ jobs:
               --schema-root cache/remote \
               --target s3'
 
-      - name: Publish to testing channel (MinIO mock)
+      - name: Publish to testing channel (RustFS mock)
         if: inputs.test_mode
         run: |
           nix develop .#python --command bash -c \
             'uv run x.py ci release-data publish testing \
               --hashes snapshot-hashes.json \
               --schema-root cache/remote \
-              --target minio \
+              --target mock \
               --allow-missing-head'
 
       - name: Upload diagnostics
@@ -199,7 +199,7 @@ jobs:
     needs: [publish]
     runs-on: ubuntu-slim
     # Post-publish announcement, real releases only: in test mode the publish
-    # job targets the MinIO mock, so mock releases never reach the bot. The
+    # job targets the RustFS mock, so mock releases never reach the bot. The
     # announcement depends only on the published snapshots, not on the d1-sync
     # job, so a D1 sync failure never suppresses the broadcast. The
     # production-data environment supplies the bot's bearer secret.

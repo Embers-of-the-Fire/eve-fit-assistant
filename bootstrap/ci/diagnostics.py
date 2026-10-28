@@ -20,7 +20,7 @@ REDACTED = b"<redacted>"
 XPY_LOG_DIR = "xpy-log"
 JVM_CRASH_DIR = "jvm-crash"
 GRADLE_DAEMON_DIR = "gradle-daemon"
-MINIO_DIR = "minio"
+MOCK_DIR = "mock"
 
 JVM_CRASH_PATTERNS = ("hs_err_pid*.log", "replay_pid*.log")
 PRUNE_DIR_NAMES = frozenset(
@@ -35,7 +35,7 @@ PRUNE_DIR_NAMES = frozenset(
     }
 )
 CRASH_BYPRODUCT_PATTERNS = ("*.hprof", "core.[0-9]*")
-MINIO_LOG_PATHS = (Path("/tmp/efa-ci-minio.log"),)
+MOCK_LOG_PATHS = (Path("/tmp/efa-ci-mock.log"),)
 
 
 def _copy_into(files: list[Path], dest: Path) -> list[Path]:
@@ -75,8 +75,8 @@ def _collect_gradle_daemon_logs(stage: Path) -> list[Path]:
     return _copy_into(sorted(daemon_dir.glob("**/daemon-*.out.log")), stage / GRADLE_DAEMON_DIR)
 
 
-def _collect_minio_logs(stage: Path) -> list[Path]:
-    return _copy_into([p for p in MINIO_LOG_PATHS if p.is_file()], stage / MINIO_DIR)
+def _collect_mock_logs(stage: Path) -> list[Path]:
+    return _copy_into([p for p in MOCK_LOG_PATHS if p.is_file()], stage / MOCK_DIR)
 
 
 def _run_snapshot_command(cmd: list[str]) -> str:
@@ -141,7 +141,7 @@ def collect_diagnostics(root: Path, stage: Path) -> list[Path]:
         lambda: _collect_xpy_logs(root, stage),
         lambda: _collect_jvm_crash_logs(root, stage),
         lambda: _collect_gradle_daemon_logs(stage),
-        lambda: _collect_minio_logs(stage),
+        lambda: _collect_mock_logs(stage),
         lambda: [_write_environment_snapshot(stage)],
     ]
     for collector in collectors:

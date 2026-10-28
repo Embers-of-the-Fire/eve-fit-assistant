@@ -477,8 +477,8 @@ class DeveloperNative(BaseModel):
     output_dir: ProjectPath | None = Field(default=None)
 
 
-class DeveloperRemoteMinio(BaseModel):
-    """MinIO mock server configuration. All fields required — no silent defaults."""
+class DeveloperRemoteMock(BaseModel):
+    """Local mock server (RustFS) configuration. All fields required — no silent defaults."""
 
     port: int
     console_port: int
@@ -486,7 +486,6 @@ class DeveloperRemoteMinio(BaseModel):
     access_key: SecretStr
     secret_key: SecretStr
     data_dir: Path
-    alias: str
     public_download: bool
     verify_upload: bool = False
     verify_workers: int = 4
@@ -499,7 +498,6 @@ class DeveloperRemoteS3(BaseModel):
     bucket: str
     access_key: SecretStr
     secret_key: SecretStr
-    alias: str
     public_download: bool
     verify_upload: bool = True
     verify_workers: int = 4
@@ -510,7 +508,6 @@ class DeveloperCiStorage(BaseModel):
 
     endpoint: str
     bucket: str
-    alias: str
     access_key: SecretStr
     secret_key: SecretStr
     public_url: str | None = None
@@ -522,7 +519,6 @@ class DeveloperCiRawArtifacts(BaseModel):
     remote_root: str = Field(default="data-generator/raw-artifact")
     endpoint: str | None = None
     bucket: str | None = None
-    alias: str | None = None
     access_key: SecretStr | None = None
     secret_key: SecretStr | None = None
     public_url: str | None = None
@@ -546,13 +542,29 @@ class DeveloperRemote(BaseModel):
     mock_origin_dir: Path = Field(default=Path("remote/mock-origin"))
     verify_upload: bool | None = None
     verify_workers: int | None = None
-    minio: DeveloperRemoteMinio | None = None
+    mock: DeveloperRemoteMock | None = None
     s3: DeveloperRemoteS3 | None = None
 
-    def require_minio(self, command_group: str = "mock") -> DeveloperRemoteMinio:
-        if self.minio is None:
-            _fail_remote_sub("remote.minio", command_group)
-        return self.minio  # type: ignore[return-value]
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_retired_minio_table(cls, data: object) -> object:
+        """Fail loudly on the retired [remote.minio] table.
+
+        The mock backend moved to RustFS; silently ignoring the old table
+        would mask a stale local configuration.
+        """
+        if isinstance(data, dict) and "minio" in data:
+            raise ValueError(
+                "[remote.minio] is no longer part of efa.dev.toml; the local mock "
+                "now runs on RustFS. Rename the section to [remote.mock] and drop "
+                "the `alias` field. See efa.dev.example.toml."
+            )
+        return data
+
+    def require_mock(self, command_group: str = "mock") -> DeveloperRemoteMock:
+        if self.mock is None:
+            _fail_remote_sub("remote.mock", command_group)
+        return self.mock  # type: ignore[return-value]
 
     def require_s3(self, command_group: str = "publish") -> DeveloperRemoteS3:
         if self.s3 is None:

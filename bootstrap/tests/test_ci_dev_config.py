@@ -21,18 +21,17 @@ def test_ci_dev_config_validates():
     _load_ci_dev_config()
 
 
-def test_ci_dev_config_minio_mock_values():
+def test_ci_dev_config_mock_values():
     cfg = _load_ci_dev_config()
-    minio = cfg.remote.minio
-    assert minio is not None
-    assert minio.port == 9110
-    assert minio.console_port == 9111
-    assert minio.bucket == "efa-ci-mock"
-    assert minio.access_key.get_secret_value() == "efa-ci-mock-access"
-    assert minio.secret_key.get_secret_value() == "efa-ci-mock-secret"
-    assert minio.data_dir == Path("/tmp/efa-ci-minio")
-    assert minio.alias == "efa-ci-mock"
-    assert minio.public_download is True
+    mock = cfg.remote.mock
+    assert mock is not None
+    assert mock.port == 9110
+    assert mock.console_port == 9111
+    assert mock.bucket == "efa-ci-mock"
+    assert mock.access_key.get_secret_value() == "efa-ci-mock-access"
+    assert mock.secret_key.get_secret_value() == "efa-ci-mock-secret"
+    assert mock.data_dir == Path("/tmp/efa-ci-mock")
+    assert mock.public_download is True
 
 
 def test_ci_dev_config_s3_secrets_are_placeholders():
@@ -43,7 +42,6 @@ def test_ci_dev_config_s3_secrets_are_placeholders():
     assert s3.bucket.startswith("placeholder")
     assert s3.access_key.get_secret_value().startswith("placeholder")
     assert s3.secret_key.get_secret_value().startswith("placeholder")
-    assert s3.alias == "efa-remote-publish"
     assert s3.public_download is True
 
 
@@ -55,7 +53,6 @@ def test_ci_dev_config_ci_storage_secrets_are_placeholders():
     assert storage.bucket.startswith("placeholder")
     assert storage.access_key.get_secret_value().startswith("placeholder")
     assert storage.secret_key.get_secret_value().startswith("placeholder")
-    assert storage.alias == "efa-ci-storage"
     assert storage.public_url == "https://ci.storage.efa-tech.dev"
 
 

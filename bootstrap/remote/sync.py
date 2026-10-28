@@ -6,9 +6,6 @@ Metadata-only: skips assets/blobs/ entirely.
 
 from __future__ import annotations
 
-import subprocess
-import threading
-
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 from dataclasses import dataclass
@@ -24,6 +21,9 @@ from bootstrap.remote.paths import head_reflog_path
 from bootstrap.remote.paths import head_suppressions_path
 from bootstrap.remote.paths import release_snapshot_dir
 from bootstrap.remote.paths import resource_snapshot_dir
+from bootstrap.remote.s3client import BotoCoreError
+from bootstrap.remote.s3client import ClientError
+from bootstrap.remote.s3client import S3Client
 
 
 if TYPE_CHECKING:
@@ -52,32 +52,27 @@ class Syncer:
         local_root: Path,
         *,
         remote_root: str = "efa/v2",
-        mc_bin: str | None = None,
+        client: S3Client | None = None,
         endpoint: str | None = None,
         bucket: str | None = None,
         access_key: str | None = None,
         secret_key: str | None = None,
-        alias_name: str | None = None,
         workers: int = 8,
     ) -> None:
         self.local_root = local_root
         self.remote_root = remote_root.rstrip("/")
-        self.mc_bin = mc_bin
+        self._client = client
         self.endpoint = endpoint
         self.bucket = bucket
         self.access_key = access_key
         self.secret_key = secret_key
-        self.alias_name = alias_name
         self.workers = workers
-        self._alias_set = False
-        self._alias_lock = threading.Lock()
-        self._s3_prefix: str = ""
 
     # --- Public API ----------------------------------------------------------
 
     def sync_channel(self, channel: str, *, max_depth: int = -1) -> SyncResult:
         """Sync a single channel from remote to local. Returns summary."""
-        self._ensure_alias()
+        self._ensure_client()
         result = SyncResult(channel=channel)
 
         result.registry = self._download_registry()
@@ -122,7 +117,7 @@ class Syncer:
         Used by mutating CLI paths that must check the local head against the
         remote head before writing; generations and snapshots are not pulled.
         """
-        self._ensure_alias()
+        self._ensure_client()
         result = SyncResult(channel=channel)
         result.head_meta = self._download_head_metadata(channel)
         if not result.head_meta:
@@ -134,7 +129,7 @@ class Syncer:
 
     def sync_all_channels(self, *, max_depth: int = -1) -> dict[str, SyncResult]:
         """Sync all channels found in the remote registry."""
-        self._ensure_alias()
+        self._ensure_client()
         self._download_registry()
 
         from bootstrap.remote.models import ChannelRegistry
@@ -150,52 +145,23 @@ class Syncer:
             results[ch_name] = self.sync_channel(ch_name, max_depth=max_depth)
         return results
 
-    # --- Internal: alias management ------------------------------------------
+    # --- Internal: client management ------------------------------------------
 
-    def _ensure_alias(self) -> None:
-        if self._alias_set:
-            return
-        with self._alias_lock:
-            if self._alias_set:
-                return
-            if self.mc_bin is None:
-                from bootstrap.utils import get_command
-
-                self.mc_bin = get_command("mc")
-
-            redacted = "<redacted>"
-            _run(
-                [
-                    self.mc_bin,
-                    "alias",
-                    "set",
-                    self.alias_name,
-                    self.endpoint or "",
-                    self.access_key or "",
-                    self.secret_key or "",
-                    "--api",
-                    "s3v4",
-                ],
-                [
-                    self.mc_bin,
-                    "alias",
-                    "set",
-                    self.alias_name,
-                    (self.endpoint or ""),
-                    redacted,
-                    redacted,
-                    "--api",
-                    "s3v4",
-                ],
-                "SYNC ALIAS",
+    def _ensure_client(self) -> None:
+        """Lazily construct the S3 client once."""
+        if self._client is None:
+            self._client = S3Client(
+                endpoint=self.endpoint or "",
+                bucket=self.bucket or "",
+                access_key=self.access_key or "",
+                secret_key=self.secret_key or "",
+                workers=self.workers,
             )
-            self._s3_prefix = f"{self.alias_name}/{self.bucket}/{self.remote_root}"
-            self._alias_set = True
 
     # --- Internal: download helpers ------------------------------------------
 
-    def _s3_path(self, rel_path: str) -> str:
-        return f"{self._s3_prefix}/{rel_path}"
+    def _s3_key(self, rel_path: str) -> str:
+        return f"{self.remote_root}/{rel_path}"
 
     def _download_file(self, rel_path: str, local_path: Path) -> bool:
         """Download a single file from remote.
@@ -203,20 +169,25 @@ class Syncer:
         Returns False only when the object is confirmed missing; raises OSError
         on any other failure.
         """
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        cmd = [self.mc_bin, "cp", self._s3_path(rel_path), str(local_path)]
-        return _run_optional(cmd, rel_path)
+        key = self._s3_key(rel_path)
+        assert self._client is not None
+        try:
+            return self._client.download_file(key, local_path)
+        except (ClientError, BotoCoreError) as exc:
+            raise OSError(f"Failed to download: {rel_path}\n{exc}") from exc
 
     def _download_dir(self, rel_path: str, local_dir: Path) -> bool:
         """Download a directory recursively from remote.
 
-        Returns False only when the prefix is confirmed missing; raises OSError
+        Returns False only when the prefix is confirmed empty; raises OSError
         on any other failure.
         """
-        local_dir.mkdir(parents=True, exist_ok=True)
-        s3_path = f"{self._s3_path(rel_path)}/"
-        cmd = [self.mc_bin, "cp", "--recursive", s3_path, str(local_dir)]
-        return _run_optional(cmd, rel_path)
+        key = self._s3_key(rel_path)
+        assert self._client is not None
+        try:
+            return self._client.download_dir(key, local_dir)
+        except (ClientError, BotoCoreError) as exc:
+            raise OSError(f"Failed to download: {rel_path}\n{exc}") from exc
 
     # --- Internal: specific downloads ----------------------------------------
 
@@ -333,92 +304,3 @@ class Syncer:
                         count += 1
                     pbar.update(1)
         return count
-
-
-def _run(
-    cmd: list[str],
-    redacted_cmd: list[str],
-    title: str,
-    timeout: float = 300,
-) -> None:
-    try:
-        out = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        raise OSError(f"{title} timed out after {timeout}s: {' '.join(redacted_cmd)}") from None
-    if out.returncode != 0:
-        msg = f"Failed to execute [{out.returncode}]: {' '.join(redacted_cmd)}"
-        stderr = (out.stderr or "").strip()
-        if stderr:
-            msg += f"\n{stderr}"
-        raise OSError(msg)
-
-
-_MISSING_OBJECT_MARKERS = (
-    # mc client-side source check.
-    "Object does not exist",
-    # S3 NoSuchKey surfaced by the backend.
-    "The specified key does not exist",
-    "NoSuchKey",
-)
-
-
-# mc tags every error line on stderr with "<ERROR>" ("<prog>: <ERROR> msg");
-# a recursive copy reports one such line per failed object.
-_MC_ERROR_TAG = "<ERROR>"
-
-
-def _is_missing_object_error(stderr: str) -> bool:
-    """True only when mc's stderr confirms the remote object is absent.
-
-    Every error line mc reports must confirm absence; a recursive copy that
-    mixes a missing object with any other failure must raise, not be mistaken
-    for an absent prefix. Non-error lines (progress, blanks) are ignored.
-
-    Broader phrasing like "does not exist" must not match: mc also uses it for
-    missing buckets and even rejected access keys, which are real failures.
-    """
-    error_lines = [line for line in stderr.splitlines() if _MC_ERROR_TAG in line]
-    if not error_lines:
-        return False
-    return all(any(marker in line for marker in _MISSING_OBJECT_MARKERS) for line in error_lines)
-
-
-def _run_optional(cmd: list[str], label: str, timeout: float = 300) -> bool:
-    """Run a download command.
-
-    Returns True on success and False only when the remote object is confirmed
-    missing. Raises OSError for every other failure (timeout, missing
-    executable, nonzero exit) so a failed download is never mistaken for an
-    absent object.
-    """
-    try:
-        out = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        raise OSError(f"Download timed out after {timeout}s: {label}") from None
-    except FileNotFoundError as exc:
-        raise OSError(f"Download executable not found: {cmd[0]}") from exc
-    if out.returncode == 0:
-        return True
-    stderr = (out.stderr or "").strip()
-    if _is_missing_object_error(stderr):
-        return False
-    msg = f"Failed to download [{out.returncode}]: {label}"
-    if stderr:
-        msg += f"\n{stderr}"
-    raise OSError(msg)

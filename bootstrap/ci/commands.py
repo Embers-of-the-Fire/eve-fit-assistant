@@ -208,35 +208,26 @@ def register_ci_commands(cli_group: click.Group) -> None:
             )
         )
 
-        remote_path = f"{storage.alias}/{storage.bucket}/build-dependencies/ci-native-data.tar.gz"
+        remote_key = "build-dependencies/ci-native-data.tar.gz"
 
         if upload:
-            mc = get_command("mc")
-            redacted = "<redacted>"
-            runtime.execute_redacted(
-                [
-                    mc,
-                    "alias",
-                    "set",
-                    storage.alias,
-                    storage.endpoint,
-                    storage.access_key.get_secret_value(),
-                    storage.secret_key.get_secret_value(),
-                ],
-                [
-                    mc,
-                    "alias",
-                    "set",
-                    storage.alias,
-                    storage.endpoint,
-                    redacted,
-                    redacted,
-                ],
-                "CI STORAGE ALIAS",
+            from bootstrap.remote.s3client import S3Client
+
+            client = S3Client(
+                endpoint=storage.endpoint,
+                bucket=storage.bucket,
+                access_key=storage.access_key.get_secret_value(),
+                secret_key=storage.secret_key.get_secret_value(),
             )
-            runtime.execute([mc, "cp", str(out_path), remote_path], "CI STORAGE UPLOAD")
+            click.echo(
+                styled(
+                    [Style.BRIGHT, Fore.GREEN],
+                    f"Uploading {out_path} -> s3://{storage.bucket}/{remote_key}",
+                )
+            )
+            client.upload_file(out_path, remote_key)
         else:
-            click.echo(f"Upload with: mc cp {out_path} {remote_path}")
+            click.echo(f"Upload with: ./x ci pack-data --upload -o {out_path}")
 
     def _lookup_command(ctx: click.Context, *path: str) -> click.Command:
         """Walk from the root CLI group to a nested command by name."""
@@ -393,7 +384,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
     )
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default="s3",
         help="Remote target type (default: s3).",
     )
@@ -401,7 +392,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @click.option("--bucket", default=None, help="Override remote bucket name.")
     @click.option("--access-key", default=None, help="Override remote access key.")
     @click.option("--secret-key", default=None, help="Override remote secret key.")
-    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--workers",
         type=click.IntRange(min=1),
@@ -438,7 +428,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         sync_depth: int,
         merge: bool,
@@ -543,7 +532,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias_name,
             workers=workers,
             schema_root=resolved_root,
         )
@@ -555,7 +543,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
             bucket=bucket,
             access_key=access_key,
             secret_key=secret_key,
-            alias_name=alias_name,
             depth=sync_depth,
             workers=workers,
             schema_root=resolved_root,
@@ -589,7 +576,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
     )
     @click.option(
         "--target",
-        type=click.Choice(["minio", "s3"]),
+        type=click.Choice(["mock", "s3"]),
         default="s3",
         help="Remote target type (default: s3).",
     )
@@ -597,7 +584,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @click.option("--bucket", default=None, help="Override remote bucket name.")
     @click.option("--access-key", default=None, help="Override remote access key.")
     @click.option("--secret-key", default=None, help="Override remote secret key.")
-    @click.option("--alias", "alias_name", default=None, help="Override mc alias name.")
     @click.option(
         "--workers",
         type=click.IntRange(min=1),
@@ -627,7 +613,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
         bucket: str | None,
         access_key: str | None,
         secret_key: str | None,
-        alias_name: str | None,
         workers: int,
         actor: str,
         allow_missing_head: bool,
@@ -730,7 +715,6 @@ def register_ci_commands(cli_group: click.Group) -> None:
             bucket,
             access_key,
             secret_key,
-            alias_name,
             workers,
         )
 

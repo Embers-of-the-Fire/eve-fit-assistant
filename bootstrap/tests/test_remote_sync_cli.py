@@ -57,7 +57,7 @@ def _invoke_sync(
 ) -> click.testing.Result:
     monkeypatch.setattr(
         "bootstrap.cli.remote.lifecycle._resolve_remote_target",
-        lambda *args: ("https://s3.invalid", "bucket", "key", "secret", "alias"),
+        lambda *args: ("https://s3.invalid", "bucket", "key", "secret"),
     )
     fake = _FakeSyncer(results)
     monkeypatch.setattr(SessionManager, "make_syncer", lambda self, **kwargs: fake)
