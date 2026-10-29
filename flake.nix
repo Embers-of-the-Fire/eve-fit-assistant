@@ -246,6 +246,7 @@
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
               export NATIVE_RUST_TOOLCHAIN_PATH="${nativeRustToolchainPath}"
               export PATH="${nativeRustToolchainPath}:$PATH"
+              export SSL_CERT_FILE="''${SSL_CERT_FILE:-${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt}"
               . scripts/setup-ld-library-path.sh
               . scripts/setup-rust-toolchain.sh
               . scripts/setup-android-sdk.sh
@@ -322,13 +323,17 @@
           # (jsPackages: the data pipeline shells out to Node for the
           # tools/carbon-gr2-to-glb model converter)
           python = pkgs.mkShell {
-            packages = pythonPackages ++ jsPackages ++ [ pkgs.rustfs ];
+            packages =
+              pythonPackages
+              ++ jsPackages
+              ++ [ pkgs.rustfs ];
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";
 
             shellHook = ''
               export LD_LIBRARY_PATH_RUNTIME="${runtimeLibraryPath}"
+              export SSL_CERT_FILE="''${SSL_CERT_FILE:-${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt}"
               . scripts/setup-ld-library-path.sh
             '';
           };
