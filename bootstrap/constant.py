@@ -26,6 +26,8 @@ PROTOC_GEN_DART_VERSION = "25.0.0"
 
 NATIVE_LIB_ROOT = PROJECT_ROOT / "packages" / "eve-fit-os"
 
+GR2_TO_GLB_ROOT = PROJECT_ROOT / "tools" / "carbon-gr2-to-glb"
+
 I18N_ROOT = EFA_APP_ROOT / "l10n"
 
 DART_ROOT = EFA_APP_ROOT / "lib"

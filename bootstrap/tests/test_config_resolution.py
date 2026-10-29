@@ -15,6 +15,7 @@ def _vocabulary(**overrides: str) -> ResolutionVocabulary:
         "legacy_localization_db": "localization/localization.db",
         "localization_locales_prefix": "localization/locales/",
         "static_images_prefix": "static/images/",
+        "static_models_prefix": "static/models/",
         "locale_placeholder": "locale",
     }
     base.update(overrides)
@@ -64,10 +65,29 @@ class TestResolutionVocabularyPaths:
             _vocabulary(localization_locales_prefix=value)
 
     @pytest.mark.parametrize(
+        "value",
+        [
+            "/etc/models/",
+            "//host/share/models/",
+            "../models/",
+            "static/../models/",
+            r"..\models/",
+            r"static\..\..\models/",
+            "C:/models/",
+            "C:models/",
+            "..",
+        ],
+    )
+    def test_static_models_prefix_rejects_escaping_paths(self, value: str) -> None:
+        with pytest.raises(ValidationError):
+            _vocabulary(static_models_prefix=value)
+
+    @pytest.mark.parametrize(
         ("field", "value"),
         [
             ("legacy_localization_db", "localization/combined.db"),
             ("localization_locales_prefix", "localization/per-locale/"),
+            ("static_models_prefix", "assets/models/"),
         ],
     )
     def test_relative_paths_without_parent_segments_are_accepted(

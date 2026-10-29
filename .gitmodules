@@ -4,3 +4,6 @@
 [submodule "packages/eve-fit-os"]
 	path = packages/eve-fit-os
 	url = https://github.com/Embers-of-the-Fire/eve-fit-os
+[submodule "tools/carbon-gr2-to-glb"]
+	path = tools/carbon-gr2-to-glb
+	url = https://github.com/Embers-of-the-Fire/carbon-gr2-to-glb

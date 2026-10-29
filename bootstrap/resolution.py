@@ -72,9 +72,9 @@ class ResolutionVocabulary(BaseModel):
 
     Single source of truth for the strings the app and the data pipeline must
     agree on: resource-id scheme, the legacy combined localization database
-    path, the per-locale database prefix, the static images prefix, and the
-    resolution-context placeholder name. Generated into Dart by
-    ``bootstrap.data.codegen.resource_resolution``.
+    path, the per-locale database prefix, the static images prefix, the
+    static 3D models prefix, and the resolution-context placeholder name.
+    Generated into Dart by ``bootstrap.data.codegen.resource_resolution``.
     """
 
     model_config = ConfigDict(validate_default=True, extra="forbid")
@@ -87,10 +87,14 @@ class ResolutionVocabulary(BaseModel):
     localization_locales_prefix: str
     #: Path prefix (relative to the scheme) of the static image resources.
     static_images_prefix: str
+    #: Path prefix (relative to the scheme) of the static 3D model resources.
+    static_models_prefix: str
     #: Resolution-context placeholder embedded in resource-id patterns.
     locale_placeholder: str
 
-    @field_validator("legacy_localization_db", "localization_locales_prefix")
+    @field_validator(
+        "legacy_localization_db", "localization_locales_prefix", "static_models_prefix"
+    )
     @classmethod
     def _validate_relative_posix_path(cls, value: str) -> str:
         """Reject paths that could escape the generation output directory.
