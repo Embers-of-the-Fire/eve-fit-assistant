@@ -61,15 +61,32 @@ runs:
     # binary ("Failed to decode data using encoding 'utf-8'") before it can
     # replace it. Delete stale non-text binstubs first; activation then
     # rewrites the remaining text shims itself, so no deactivate is needed.
+    # The sweep must not delete the versioned `protoc-gen-dart-<version>.exe`
+    # that bootstrap/cli/runtime.py compiles once and reuses from this dir, or
+    # every build would recompile the plugin. Leaving it in place would trip
+    # the same UTF-8 crash, so it is moved aside for the activation and
+    # restored afterward.
     - name: Install protoc-gen-dart
       shell: pwsh
       run: | # zizmor: ignore[github-env] runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
         $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
         $pubBin = "$pubCache\bin"
+        $movedAside = @()
         if (Test-Path $pubBin) {
+          $movedAside = @(Get-ChildItem $pubBin -Filter 'protoc-gen-dart-*.exe' -File | ForEach-Object {
+            $asidePath = "$($_.FullName).ci-aside"
+            Move-Item $_.FullName $asidePath -Force
+            $asidePath
+          })
           Get-ChildItem $pubBin -Filter *.exe -File | Remove-Item -Force
         }
-        dart pub global activate protoc_plugin 25.0.0
+        try {
+          dart pub global activate protoc_plugin 25.0.0
+        } finally {
+          foreach ($asidePath in $movedAside) {
+            Move-Item $asidePath ($asidePath -replace '\.ci-aside$', '') -Force
+          }
+        }
         Add-Content $env:GITHUB_PATH $pubBin
 
     # flutter_secure_storage_windows includes <atlstr.h>, which ships with the
