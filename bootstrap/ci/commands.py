@@ -279,6 +279,24 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default="data/resources",
         help="Directory to download raw artifacts into (default: data/resources).",
     )
+    @click.option(
+        "--models-cache/--no-models-cache",
+        default=False,
+        help="Reuse unchanged ship-model GLBs via the CI build-state map "
+        "(requires [ci.storage] read and [remote.s3] read config).",
+    )
+    @click.option(
+        "--rebuild-models",
+        is_flag=True,
+        default=False,
+        help="Ignore the models build-state map and reconvert everything (rewrites the map).",
+    )
+    @click.option(
+        "--build-state-dir",
+        type=click.Path(file_okay=False, path_type=Path),
+        default="build-state",
+        help="Output directory for updated build-state maps (default: build-state).",
+    )
     def release_data_build(
         output: Path,
         hashes: Path,
@@ -286,6 +304,9 @@ def register_ci_commands(cli_group: click.Group) -> None:
         servers: str | None,
         download: bool,
         resources_dir: Path,
+        models_cache: bool,
+        rebuild_models: bool,
+        build_state_dir: Path,
     ):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
         from bootstrap.data.workspace.generate import run_generator
@@ -329,6 +350,33 @@ def register_ci_commands(cli_group: click.Group) -> None:
             ci = bootstrap.config.DEV_CONFIGURATION.ci
             raw_artifacts, storage = ci.require_raw_artifacts()
 
+        cache_clients = None
+        if models_cache or rebuild_models:
+            import bootstrap.config
+
+            from bootstrap.data.buildstate.models import ModelsCacheContext
+            from bootstrap.remote.s3client import S3Client
+
+            bootstrap.config.DeveloperConfiguration.ensure_loaded()
+            bootstrap.config.ProjectConfiguration.ensure_loaded()
+            ci_storage = bootstrap.config.DEV_CONFIGURATION.ci.require_storage()
+            s3_cfg = bootstrap.config.DEV_CONFIGURATION.remote.require_s3("release-data build")
+            cache_clients = (
+                S3Client(
+                    endpoint=ci_storage.endpoint,
+                    bucket=ci_storage.bucket,
+                    access_key=ci_storage.access_key.get_secret_value(),
+                    secret_key=ci_storage.secret_key.get_secret_value(),
+                ),
+                S3Client(
+                    endpoint=s3_cfg.endpoint,
+                    bucket=s3_cfg.bucket,
+                    access_key=s3_cfg.access_key.get_secret_value(),
+                    secret_key=s3_cfg.secret_key.get_secret_value(),
+                ),
+                bootstrap.config.CONFIGURATION.data_schema.resource_root,
+            )
+
         async def run_pipeline():
             if download:
                 assert raw_artifacts is not None
@@ -345,7 +393,22 @@ def register_ci_commands(cli_group: click.Group) -> None:
             for server_id in servers_to_build:
                 ws_descriptor = runtime.get_workspace(server_id)
                 ws_config = WorkspaceConfig.load_from_descriptor(ws_descriptor)
-                snapshot_hash = await run_generator(ws_config, set(), schema_root=schema_root)
+                cache_ctx = None
+                if cache_clients is not None:
+                    ci_client, prod_client, resource_root = cache_clients
+                    cache_ctx = ModelsCacheContext(
+                        server_id=server_id,
+                        resource_root=resource_root,
+                        ci_client=ci_client,
+                        prod_client=prod_client,
+                        rebuild=rebuild_models,
+                        map_path=(
+                            PROJECT_ROOT / build_state_dir / "models" / f"{server_id}.json"
+                        ).resolve(),
+                    )
+                snapshot_hash = await run_generator(
+                    ws_config, set(), schema_root=schema_root, models_cache=cache_ctx
+                )
                 if snapshot_hash is None:
                     raise click.ClickException(f"No snapshot produced for {server_id}")
                 hashes_data[server_id] = snapshot_hash

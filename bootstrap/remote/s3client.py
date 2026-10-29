@@ -212,6 +212,19 @@ class S3Client:
             if f.is_file():
                 self.upload_file(f, f"{base}/{f.relative_to(src_dir).as_posix()}")
 
+    def write_bytes(self, key: str, data: bytes, *, attrs: dict[str, str] | None = None) -> None:
+        """Upload in-memory bytes as one object (small files like JSON state)."""
+        extra = extra_args_from_attrs(attrs)
+        if "ContentType" not in extra:
+            guessed, encoding = mimetypes.guess_type(key)
+            if guessed is not None and encoding is None:
+                extra["ContentType"] = guessed
+        self._client.put_object(Bucket=self.bucket, Key=key, Body=data, **extra)
+
+    def delete_key(self, key: str) -> None:
+        """Delete one object; missing keys are a no-op (S3 delete semantics)."""
+        self._client.delete_object(Bucket=self.bucket, Key=key)
+
     # -- Download ----------------------------------------------------------------
 
     def read_bytes(self, key: str) -> bytes:

@@ -87,14 +87,21 @@ class _ResourceNode:
     session_factory: Callable[[], Awaitable[aiohttp.ClientSession]]
     url: str | None = None
     local_path: Path | None = None
+    file_hash: str | None = None
     children: dict[str, _ResourceNode] | None = None
 
     def recursive_construct(
-        self, path_parts: list[str], full_path: str, url: str | None, base_path: Path
+        self,
+        path_parts: list[str],
+        full_path: str,
+        url: str | None,
+        base_path: Path,
+        file_hash: str | None = None,
     ) -> _ResourceNode:
         if not path_parts:
             self.url = url
             self.local_path = base_path / self.full_path.replace(":", "")
+            self.file_hash = file_hash
             return self
 
         if self.is_file:
@@ -115,7 +122,9 @@ class _ResourceNode:
             )
 
         next_node = self.children[next_part]
-        return next_node.recursive_construct(path_parts[1:], next_node.full_path, url, base_path)
+        return next_node.recursive_construct(
+            path_parts[1:], next_node.full_path, url, base_path, file_hash
+        )
 
     def recursive_find(self, path_parts: list[str]) -> _ResourceNode | None:
         if not path_parts:
@@ -230,10 +239,11 @@ class ResourceIndex:
                     continue
                 resource_id = self.normalize_key(parts[0])
                 file_path = parts[1]
+                file_hash = parts[2] if len(parts) >= 3 else None
 
                 path_parts = resource_id.split("/")
                 self.__resource_tree.recursive_construct(
-                    path_parts, "", self.__get_url(file_path), cache_dir
+                    path_parts, "", self.__get_url(file_path), cache_dir, file_hash
                 )
             info(f"Resource index loaded {len(it)} entries.")
 

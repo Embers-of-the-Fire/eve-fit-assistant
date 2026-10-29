@@ -11,6 +11,10 @@ on:
         description: "JSON array of server IDs to rebuild (default: all)"
         type: string
         default: "[]"
+      rebuild_models:
+        description: "Ignore the models build-state cache and reconvert every ship model"
+        type: boolean
+        default: false
     secrets:
       CI_STORAGE_ENDPOINT:
         description: "CI storage S3 endpoint"
@@ -41,6 +45,11 @@ jobs:
   build:
     name: Build resource snapshots
     runs-on: ubuntu-latest
+    # production-data supplies REMOTE_STORAGE_* for the models build-state
+    # cache (prod blob HEAD checks + rehydration downloads). Test mode gets
+    # the empty ci-testing environment: the cache is then disabled and the
+    # build-state map is neither read nor written.
+    environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,7 +76,22 @@ jobs:
           CI_BUCKET: ${{ vars.CI_STORAGE_BUCKET }}
           CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
           CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+          REMOTE_ENDPOINT: ${{ secrets.REMOTE_STORAGE_ENDPOINT }}
+          REMOTE_BUCKET: ${{ vars.REMOTE_STORAGE_BUCKET }}
+          REMOTE_ACCESS_KEY: ${{ secrets.REMOTE_STORAGE_ACCESS_KEY }}
+          REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
+          TEST_MODE: ${{ inputs.test_mode }}
+          REBUILD_MODELS: ${{ inputs.rebuild_models }}
         run: |
+          # Models build-state cache: real runs only. Test mode has no
+          # production credentials and must never write the shared map.
+          MODELS_FLAGS=""
+          if [ "${TEST_MODE}" != "true" ]; then
+            MODELS_FLAGS="--models-cache"
+          fi
+          if [ "${REBUILD_MODELS}" = "true" ]; then
+            MODELS_FLAGS="--rebuild-models"
+          fi
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
             'uv run x.py \
@@ -75,11 +99,16 @@ jobs:
               --dev-env ci.storage.bucket="${CI_BUCKET}" \
               --dev-env ci.storage.access_key="${CI_ACCESS_KEY}" \
               --dev-env ci.storage.secret_key="${CI_SECRET_KEY}" \
+              --dev-env remote.s3.endpoint="${REMOTE_ENDPOINT}" \
+              --dev-env remote.s3.bucket="${REMOTE_BUCKET}" \
+              --dev-env remote.s3.access_key="${REMOTE_ACCESS_KEY}" \
+              --dev-env remote.s3.secret_key="${REMOTE_SECRET_KEY}" \
               ci release-data build \
                 --download \
                 --servers "${SERVERS_JSON}" \
                 --output cache/remote \
-                --hashes snapshot-hashes.json'
+                --hashes snapshot-hashes.json \
+                '"${MODELS_FLAGS}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -89,11 +118,71 @@ jobs:
             snapshot-hashes.json
           retention-days: 1
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.test_mode == false
+        with:
+          name: build-state-maps
+          path: build-state/
+          retention-days: 1
+
       - name: Upload diagnostics
         if: failure()
         uses: $/.github/actions/upload-diagnostics
         with:
           name: diagnostics-data-build
+          redact-values: |
+            ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+            ${{ secrets.CI_STORAGE_SECRET_KEY }}
+
+  # The build job writes updated models build-state maps locally but has no
+  # write-scoped CI-storage credentials (production-data carries only
+  # REMOTE_STORAGE_*; repo-level CI_STORAGE_* are read-only). This job commits
+  # the maps with the ci-write environment's write-scoped token. It runs
+  # independently of publish: a map entry whose blobs never got published is
+  # self-healed by the output-existence check on the next build.
+  build-state-upload:
+    name: Commit build-state maps
+    needs: build
+    if: inputs.test_mode == false
+    runs-on: ubuntu-slim
+    environment: ci-write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-state-maps
+          path: .
+
+      - name: Setup Python env
+        uses: $/.github/actions/setup-python-env
+        with:
+          init-dev-env: true
+
+      - name: Commit build-state maps to CI storage
+        env:
+          CI_ENDPOINT: ${{ secrets.CI_STORAGE_ENDPOINT }}
+          CI_BUCKET: ${{ vars.CI_STORAGE_BUCKET }}
+          CI_ACCESS_KEY: ${{ secrets.CI_STORAGE_ACCESS_KEY }}
+          CI_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
+        run: |
+          # shellcheck disable=SC2016
+          nix develop .#python --command bash -c \
+            'uv run x.py \
+              --dev-env ci.storage.endpoint="${CI_ENDPOINT}" \
+              --dev-env ci.storage.bucket="${CI_BUCKET}" \
+              --dev-env ci.storage.access_key="${CI_ACCESS_KEY}" \
+              --dev-env ci.storage.secret_key="${CI_SECRET_KEY}" \
+              ci build-state commit \
+                --from build-state'
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: $/.github/actions/upload-diagnostics
+        with:
+          name: diagnostics-build-state-upload
           redact-values: |
             ${{ secrets.CI_STORAGE_ACCESS_KEY }}
             ${{ secrets.CI_STORAGE_SECRET_KEY }}

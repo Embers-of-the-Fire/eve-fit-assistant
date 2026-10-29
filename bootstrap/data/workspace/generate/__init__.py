@@ -21,6 +21,7 @@ from .data import GeneratorDatasource
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from bootstrap.data.buildstate.models import ModelsCacheContext
     from bootstrap.data.workspace.config import WorkspaceConfig
 
 
@@ -30,6 +31,7 @@ async def run_generator(
     author: str | None = None,
     description: str | None = None,
     schema_root: Path | None = None,
+    models_cache: ModelsCacheContext | None = None,
 ) -> str | None:
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
@@ -55,7 +57,7 @@ async def run_generator(
             await images.generate(datasource, collection_cache)
 
         if "models" not in skip:
-            await models.generate(datasource)
+            await models.generate(datasource, cache=models_cache)
 
         snapshot_hash = schema_generator.generate_schema_checkout(
             config,
