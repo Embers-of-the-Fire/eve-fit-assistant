@@ -19,7 +19,7 @@ runs:
 
     - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
       with:
-        flutter-version: "3.44.4"
+        flutter-version: "3.47.4"
         channel: stable
         cache: true
 
@@ -55,11 +55,42 @@ runs:
     # Pin the plugin to the version built against the protobuf runtime locked
     # in pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin 25.0.0); protoc_plugin
     # 25.1.0 emits code that requires protobuf 6.1.0 and breaks compilation.
+    # A restored pub cache can hold a stale native `.exe` binstub from a
+    # previous activation. Pub reads every file in the bin dir as UTF-8 while
+    # refreshing binstubs (GlobalPackages._deleteBinStubs runs readTextFile on
+    # every entry, in both activate and deactivate) and crashes on the binary
+    # ("Failed to decode data using encoding 'utf-8'") before it can replace
+    # it. Delete stale non-text binstubs first; activation then rewrites the
+    # remaining text shims itself, so no deactivate is needed.
+    # The sweep must not delete the versioned `protoc-gen-dart-<version>.exe`
+    # that bootstrap/cli/runtime.py compiles once and reuses from this dir, or
+    # every build would recompile the plugin. It must leave the bin dir
+    # entirely for the activation — pub scans by directory listing, not by
+    # name, so an in-place rename is still read — hence the move to
+    # RUNNER_TEMP and back.
     - name: Install protoc-gen-dart
       shell: pwsh
-      run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
-        dart pub global activate protoc_plugin 25.0.0
-        Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
+      run: | # zizmor: ignore[github-env] runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
+        $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
+        $pubBin = "$pubCache\bin"
+        $asideDir = "$env:RUNNER_TEMP\protoc-gen-dart-aside"
+        $movedAside = @()
+        if (Test-Path $pubBin) {
+          $movedAside = @(Get-ChildItem $pubBin -Filter 'protoc-gen-dart-*.exe' -File | ForEach-Object {
+            New-Item -ItemType Directory -Force $asideDir | Out-Null
+            Move-Item $_.FullName $asideDir -Force
+            Join-Path $asideDir $_.Name
+          })
+          Get-ChildItem $pubBin -Filter *.exe -File | Remove-Item -Force
+        }
+        try {
+          dart pub global activate protoc_plugin 25.0.0
+        } finally {
+          foreach ($asidePath in $movedAside) {
+            Move-Item $asidePath (Join-Path $pubBin (Split-Path $asidePath -Leaf)) -Force
+          }
+        }
+        Add-Content $env:GITHUB_PATH $pubBin
 
     # flutter_secure_storage_windows includes <atlstr.h>, which ships with the
     # VS C++ ATL component — not preinstalled on windows-latest images.
