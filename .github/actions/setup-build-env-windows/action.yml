@@ -63,8 +63,9 @@ runs:
     # rewrites the remaining text shims itself, so no deactivate is needed.
     - name: Install protoc-gen-dart
       shell: pwsh
-      run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
-        $pubBin = "$env:LOCALAPPDATA\Pub\Cache\bin"
+      run: | # zizmor: ignore[github-env] runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
+        $pubCache = if ($env:PUB_CACHE) { $env:PUB_CACHE } else { "$env:LOCALAPPDATA\Pub\Cache" }
+        $pubBin = "$pubCache\bin"
         if (Test-Path $pubBin) {
           Get-ChildItem $pubBin -Filter *.exe -File | Remove-Item -Force
         }
