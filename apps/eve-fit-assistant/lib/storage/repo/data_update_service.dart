@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/storage/repo/assets.dart";
 import "package:eve_fit_assistant/storage/repo/channel_service.dart";
 import "package:eve_fit_assistant/storage/repo/checkout_service.dart";
 import "package:eve_fit_assistant/storage/repo/models/checkout_registry.dart";
+import "package:eve_fit_assistant/storage/repo/models/models.dart" show CheckoutRegistryEntry;
 import "package:eve_fit_assistant/storage/repo/remote_catalog.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
 import "package:fpdart/fpdart.dart";

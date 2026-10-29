@@ -23,7 +23,10 @@ if (releaseSigningConfigured in 1 until releaseSigningVars.size) {
 
 android {
     namespace = "dev.efa_tech.eve_fit_assistant"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage 11.x compiles against Android SDK 37, above the
+    // Flutter tool's default (36). Platform 37 ships in the Nix Android SDK
+    // composition (see flake.nix androidVersions).
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

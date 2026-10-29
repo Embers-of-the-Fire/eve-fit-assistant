@@ -55,9 +55,17 @@ runs:
     # Pin the plugin to the version built against the protobuf runtime locked
     # in pubspec.lock (protobuf 6.0.0 ↔ protoc_plugin 25.0.0); protoc_plugin
     # 25.1.0 emits code that requires protobuf 6.1.0 and breaks compilation.
+    # Deactivate first: when the restored pub cache already holds an activated
+    # copy, `dart pub global activate` re-reads the existing native `.exe`
+    # binstub as UTF-8 and crashes ("Failed to decode data using encoding
+    # 'utf-8'"). Deactivating removes the stale binstub so activation starts
+    # clean. Exit code 65 means "No active package" and is expected on a cold
+    # cache.
     - name: Install protoc-gen-dart
       shell: pwsh
       run: | # zizmor: ignore[github-env] fixed runner-local pub-cache bin dir; not attacker-controlled, required on PATH for later codegen steps
+        dart pub global deactivate protoc_plugin 2>&1 | Out-Host
+        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 65) { exit $LASTEXITCODE }
         dart pub global activate protoc_plugin 25.0.0
         Add-Content $env:GITHUB_PATH "$env:LOCALAPPDATA\Pub\Cache\bin"
 
