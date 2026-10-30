@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
+from configparser import ConfigParser
 from pathlib import Path
 
 import click
@@ -42,6 +43,13 @@ def _resolve_server(server: str) -> str:
     if normalized not in SERVER_IDS:
         raise click.UsageError(f"Unknown server: {server}")
     return normalized
+
+
+def _workspace_game_build(ws_config: WorkspaceConfig) -> str:
+    """Game build of the workspace, derived like snapshot metadata (start.cfg)."""
+    start_config = ConfigParser()
+    start_config.read(ws_config.metadata.start_cfg)
+    return start_config.get("main", "build", fallback="")
 
 
 def _ci_client() -> S3Client:
@@ -134,11 +142,18 @@ def register_build_state_commands(ci: click.Group) -> None:
         default="cache/remote",
         help="Locally synced schema root (run `remote sync` first).",
     )
-    def seed(server: str, channel: str, schema_root: Path):
+    @click.option(
+        "--force",
+        is_flag=True,
+        help="Seed even when the snapshot game build differs from the workspace build.",
+    )
+    def seed(server: str, channel: str, schema_root: Path, force: bool):
         """Rebuild a server's map without converting: inputs from the resource
         index, outputs from the synced channel head snapshot.
 
-        Recovery path when the map is lost but the published blobs exist.
+        Recovery path when the map is lost but the published blobs exist. The
+        snapshot's game build must match the workspace build, so outputs from
+        another game build are not marked valid for current inputs.
         """
         from bootstrap.data.workspace.generate import GeneratorDatasource
         from bootstrap.data.workspace.generate.models import gather_dna_inputs
@@ -169,7 +184,7 @@ def register_build_state_commands(ci: click.Group) -> None:
             raise click.ClickException(
                 f"Channel {resolved_channel} head has no snapshot for {server_id}."
             )
-        _metadata, index = SnapshotStore(resolved_root).load_resource_snapshot(snapshot_hash)
+        metadata, index = SnapshotStore(resolved_root).load_resource_snapshot(snapshot_hash)
         outputs = {
             entry.resource_id: entry.content_hash
             for entry in index.entries
@@ -180,8 +195,29 @@ def register_build_state_commands(ci: click.Group) -> None:
                 f"Snapshot {snapshot_hash[:16]}... carries no models resources."
             )
 
+        ws_config = WorkspaceConfig.load_from_descriptor(runtime.get_workspace(server_id))
+        workspace_build = _workspace_game_build(ws_config)
+        snapshot_build = metadata.game_build
+        if workspace_build and snapshot_build:
+            if snapshot_build != workspace_build:
+                if not force:
+                    raise click.ClickException(
+                        f"Snapshot game build {snapshot_build!r} does not match workspace "
+                        f"build {workspace_build!r}: its outputs may belong to another "
+                        "game build. Re-run with --force to seed anyway."
+                    )
+                click.echo(
+                    styled([Style.BRIGHT, Fore.YELLOW], "Warning: ")
+                    + f"Seeding from snapshot game build {snapshot_build!r} despite "
+                    f"workspace build {workspace_build!r} (--force)."
+                )
+        else:
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "Warning: ")
+                + "Game build missing on snapshot or workspace; skipping build-match check."
+            )
+
         async def gather_inputs():
-            ws_config = WorkspaceConfig.load_from_descriptor(runtime.get_workspace(server_id))
             data = GeneratorDatasource(ws_config)
             try:
                 _jobs, resolved_jobs = await resolve_ship_jobs(data)
