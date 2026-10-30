@@ -32,6 +32,8 @@ async def run_generator(
     description: str | None = None,
     schema_root: Path | None = None,
     models_cache: ModelsCacheContext | None = None,
+    models_threads: int | None = None,
+    models_batch_size: int | None = None,
 ) -> str | None:
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
@@ -57,7 +59,12 @@ async def run_generator(
             await images.generate(datasource, collection_cache)
 
         if "models" not in skip:
-            await models.generate(datasource, cache=models_cache)
+            await models.generate(
+                datasource,
+                cache=models_cache,
+                threads=models_threads,
+                batch_size=models_batch_size,
+            )
 
         snapshot_hash = schema_generator.generate_schema_checkout(
             config,
