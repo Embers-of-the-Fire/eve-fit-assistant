@@ -34,9 +34,12 @@ step accepts an optional :class:`~bootstrap.data.buildstate.models.ModelsCacheCo
 With a cache, phase 1 always runs (cheap), per-DNA input hashes are read from
 the resource index's MD5 column, and DNAs whose inputs *and* recorded output
 blob are unchanged are rehydrated from the production blob store instead of
-re-converted. Only misses pay the conversion cost. See
-``bootstrap.data.buildstate.models`` for the invalidation rules and the
-manual-invalidation contract (the map carries no converter identity).
+re-converted. Only misses pay the conversion cost. A ``full`` conversion whose
+textures did not all stage (a failed download degrades to a textureless GLB)
+is never recorded, so the DNA is reconverted on the next run instead of
+memoizing the defect. See ``bootstrap.data.buildstate.models`` for the
+invalidation rules and the manual-invalidation contract (the map carries no
+converter identity).
 """
 
 from __future__ import annotations
@@ -355,6 +358,13 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
             )
         return produced
 
+    def fully_staged_textures(dna: str) -> bool:
+        """Whether every texture of the DNA staged (no failed downloads)."""
+        return all(
+            staged.get(res_path) is not None
+            for res_path in dna_jobs[dna].get("textureResPaths", [])
+        )
+
     all_miss = {variant: set(dna_jobs) - set(hit_outputs[variant]) for variant, _ in variants}
     info("Staging model assets via the resource manager...")
     await stage_dnas(set().union(*all_miss.values()))
@@ -400,6 +410,11 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
                     if dna in converted[variant]:
                         if inputs is None:
                             continue  # un-hashable inputs stay uncached
+                        # A texture that failed to stage is silently omitted
+                        # from the FULL GLB; recording the full desired hashes
+                        # would rehydrate the degraded output forever.
+                        if variant is ShipModelVariant.FULL and not fully_staged_textures(dna):
+                            continue  # degraded output stays uncached; reconverted next run
                         model_hash, textures = inputs
                         cache.record_conversion(
                             rid,
