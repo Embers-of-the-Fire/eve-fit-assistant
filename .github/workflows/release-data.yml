@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-slim
     outputs:
       run: ${{ steps.gate.outputs.data_release }}
+      build_models: ${{ steps.gate.outputs.build_models }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -79,3 +80,6 @@ jobs:
       CI_STORAGE_SECRET_KEY: ${{ secrets.CI_STORAGE_SECRET_KEY }}
     with:
       test_mode: true
+      # PR test builds skip ship-model conversion by default; the D-CI-Build
+      # Model label re-enables it.
+      skip_models: ${{ needs.gate.outputs.build_models != 'true' }}

@@ -292,6 +292,13 @@ def register_ci_commands(cli_group: click.Group) -> None:
         help="Ignore the models build-state map and reconvert everything (rewrites the map).",
     )
     @click.option(
+        "--skip-models",
+        is_flag=True,
+        default=False,
+        help="Skip ship-model conversion entirely (test snapshot builds; "
+        "incompatible with --models-cache/--rebuild-models).",
+    )
+    @click.option(
         "--build-state-dir",
         type=click.Path(file_okay=False, path_type=Path),
         default="build-state",
@@ -318,12 +325,18 @@ def register_ci_commands(cli_group: click.Group) -> None:
         resources_dir: Path,
         models_cache: bool,
         rebuild_models: bool,
+        skip_models: bool,
         build_state_dir: Path,
         models_threads: int | None,
         models_batch_size: int | None,
     ):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
         from bootstrap.data.workspace.generate import run_generator
+
+        if skip_models and (models_cache or rebuild_models):
+            raise click.UsageError(
+                "--skip-models cannot be combined with --models-cache/--rebuild-models"
+            )
 
         if servers is not None:
             if servers.strip() == "":
@@ -423,7 +436,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
                     )
                 snapshot_hash = await run_generator(
                     ws_config,
-                    set(),
+                    {"models"} if skip_models else set(),
                     schema_root=schema_root,
                     models_cache=cache_ctx,
                     models_threads=models_threads,

@@ -15,6 +15,10 @@ on:
         description: "Ignore the models build-state cache and reconvert every ship model"
         type: boolean
         default: false
+      skip_models:
+        description: "Skip ship-model conversion entirely (test snapshot builds; ignored for real releases)"
+        type: boolean
+        default: false
     secrets:
       CI_STORAGE_ENDPOINT:
         description: "CI storage S3 endpoint"
@@ -65,6 +69,7 @@ jobs:
         run: nix develop .#codegen --command bash -c 'uv run x.py generate protobuf'
 
       - name: Install model converter dependencies
+        if: ${{ !(inputs.test_mode && inputs.skip_models) }}
         run: |
           nix develop .#python --command bash -c \
             'pnpm --dir tools/carbon-gr2-to-glb install --frozen-lockfile'
@@ -82,17 +87,21 @@ jobs:
           REMOTE_SECRET_KEY: ${{ secrets.REMOTE_STORAGE_SECRET_KEY }}
           TEST_MODE: ${{ inputs.test_mode }}
           REBUILD_MODELS: ${{ inputs.rebuild_models }}
+          SKIP_MODELS: ${{ inputs.skip_models }}
         run: |
           # Models build-state cache: real runs only, including forced
           # rebuilds. Test mode has no production credentials and must never
-          # read or write the shared map.
+          # read or write the shared map. skip_models (test snapshot builds)
+          # drops model conversion entirely; it is ignored for real releases.
           MODELS_FLAGS=""
-          if [ "${TEST_MODE}" != "true" ]; then
-            if [ "${REBUILD_MODELS}" = "true" ]; then
-              MODELS_FLAGS="--rebuild-models"
-            else
-              MODELS_FLAGS="--models-cache"
+          if [ "${TEST_MODE}" = "true" ]; then
+            if [ "${SKIP_MODELS}" = "true" ]; then
+              MODELS_FLAGS="--skip-models"
             fi
+          elif [ "${REBUILD_MODELS}" = "true" ]; then
+            MODELS_FLAGS="--rebuild-models"
+          else
+            MODELS_FLAGS="--models-cache"
           fi
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
