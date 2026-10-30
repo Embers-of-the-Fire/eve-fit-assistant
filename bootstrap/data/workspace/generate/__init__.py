@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import aiofiles
 
 from bootstrap.config import DEV_CONFIGURATION
-from bootstrap.data.schema import collections_pb2
 from bootstrap.log import info
 
 from . import agent
@@ -22,6 +21,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from bootstrap.data.buildstate.models import ModelsCacheContext
+    from bootstrap.data.schema import collections_pb2
     from bootstrap.data.workspace.config import WorkspaceConfig
 
 
@@ -33,6 +33,8 @@ async def run_generator(
     schema_root: Path | None = None,
     models_cache: ModelsCacheContext | None = None,
 ) -> str | None:
+    from bootstrap.data.schema import collections_pb2
+
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
     try:
