@@ -350,7 +350,7 @@ the converter beginning to consume new SOF fields:
   populated, e.g. via `./x ci raw-data download --server <id>`), the
   converter's Node dependencies, `[remote.s3]` write credentials and
   `[ci.storage]` write credentials in `efa.dev.toml`. The next CI data build
-  then rehydrates instead of converting.
+  then references the blobs in place instead of converting.
 
 Test-mode/PR builds never touch the map. Maps are committed by the
 `build-state-upload` job in `_release-data.yml` (environment `ci-write`);

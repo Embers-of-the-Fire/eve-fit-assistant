@@ -168,6 +168,19 @@ class S3Client:
             raise
         return True
 
+    def object_size(self, key: str) -> int | None:
+        """Content-Length of the object, or None when confirmed absent.
+
+        Same HEAD request and missing-key semantics as ``object_exists``; the
+        response's Content-Length is simply read instead of discarded.
+        """
+        try:
+            return self._client.head_object(Bucket=self.bucket, Key=key)["ContentLength"]
+        except ClientError as exc:
+            if self._is_missing(exc, head_based=True):
+                return None
+            raise
+
     def list_keys(self, prefix: str) -> list[str]:
         """All object keys under *prefix* (empty list when nothing matches)."""
         keys: list[str] = []

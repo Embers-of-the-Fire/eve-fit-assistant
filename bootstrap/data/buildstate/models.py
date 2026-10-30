@@ -199,11 +199,13 @@ class ModelsCacheContext:
     """Cache wiring passed into the models generator step.
 
     ``ci_client`` reads (and optionally writes) the build-state map in CI
-    storage; ``prod_client`` HEADs/downloads output blobs in the production
-    store. Set ``rebuild`` to treat every entry as a miss while still
-    rewriting the map (manual invalidation for converter/toolchain changes).
+    storage; ``prod_client`` HEADs output blobs in the production store
+    (existence + size — hits are referenced in place and never downloaded).
+    Set ``rebuild`` to treat every entry as a miss while still rewriting the
+    map (manual invalidation for converter/toolchain changes).
     ``upload_blobs`` additionally pushes every produced GLB to the production
     store — the local pre-build path (``./x ci build-state push-models``).
+    ``workers`` sizes the probe pool in ``partition``.
     """
 
     server_id: str
@@ -218,6 +220,7 @@ class ModelsCacheContext:
 
     _map: ModelsBuildStateMap = field(default_factory=ModelsBuildStateMap)
     _hits: dict[str, ModelArtifactEntry] = field(default_factory=dict)
+    _hit_sizes: dict[str, int] = field(default_factory=dict)
     _new_entries: dict[str, ModelArtifactEntry] = field(default_factory=dict)
 
     def load(self) -> None:
@@ -230,15 +233,20 @@ class ModelsCacheContext:
     def partition(
         self, desired: dict[str, ModelInputs]
     ) -> tuple[dict[str, ModelArtifactEntry], set[str]]:
-        """Split desired entries into (hits, misses), HEAD-checking hit outputs."""
+        """Split desired entries into (hits, misses), HEAD-checking hit outputs.
 
-        def exists(resource_id: str, output_hash: str) -> bool:
+        The HEAD also captures each hit's blob size (Content-Length), which
+        ``hit_reference`` later stamps into the resource index — hits are
+        referenced in place and never downloaded.
+        """
+
+        def stat(resource_id: str, output_hash: str) -> int | None:
             key = blob_remote_key(self.resource_root, resource_id, output_hash)
             try:
-                return self.prod_client.object_exists(key)
+                return self.prod_client.object_size(key)
             except Exception as exc:  # noqa: BLE001 - any probe failure means "miss"
                 warning(f"Models cache probe failed for {key}; reconverting: {exc}")
-                return False
+                return None
 
         candidates = (
             self._map if not self.rebuild else ModelsBuildStateMap(server_id=self.server_id)
@@ -250,27 +258,32 @@ class ModelsCacheContext:
             if (entry := candidates.entries.get(rid)) is not None and inputs_match(entry, inputs)
         }
         with ThreadPoolExecutor(max_workers=self.workers) as pool:
-            existence = list(
-                pool.map(lambda rid: exists(rid, pre_hits[rid].output), list(pre_hits))
-            )
-        hits = {rid: pre_hits[rid] for rid, ok in zip(pre_hits, existence, strict=True) if ok}
+            sizes = list(pool.map(lambda rid: stat(rid, pre_hits[rid].output), list(pre_hits)))
+        hits = {
+            rid: pre_hits[rid]
+            for rid, size in zip(pre_hits, sizes, strict=True)
+            if size is not None
+        }
         misses = set(desired) - set(hits)
         self._hits = hits
+        self._hit_sizes = {
+            rid: size for rid, size in zip(pre_hits, sizes, strict=True) if size is not None
+        }
         info(f"Models build-state: {len(hits)} hits, {len(misses)} misses.")
         return hits, misses
 
+    def hit_reference(self, resource_id: str) -> tuple[str, str, int]:
+        """``(resource_id, content_hash, size)`` index tuple for a cache hit.
+
+        The snapshot references the production blob in place — no local file
+        is materialized, and publish HEAD-checks the reference again before
+        accepting it.
+        """
+        entry = self._hits[resource_id]
+        return resource_id, entry.output, self._hit_sizes[resource_id]
+
     def blob_key(self, resource_id: str, output_hash: str) -> str:
         return blob_remote_key(self.resource_root, resource_id, output_hash)
-
-    def download_output(self, resource_id: str, output_hash: str, dest: Path) -> bool:
-        """Rehydrate a hit's GLB from the production store (rule 4 already HEADed)."""
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        key = self.blob_key(resource_id, output_hash)
-        try:
-            return self.prod_client.download_file(key, dest)
-        except Exception as exc:  # noqa: BLE001 - any download failure means "miss"
-            warning(f"Cached output {key} unavailable; reconverting: {exc}")
-            return False
 
     def record_conversion(self, resource_id: str, inputs: ModelInputs, output: Path) -> None:
         """Record a freshly converted artifact; optionally push the blob to prod."""

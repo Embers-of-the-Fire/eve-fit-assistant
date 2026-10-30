@@ -58,8 +58,9 @@ async def run_generator(
 
             await images.generate(datasource, collection_cache)
 
+        external_entries: list[tuple[str, str, int]] = []
         if "models" not in skip:
-            await models.generate(
+            external_entries = await models.generate(
                 datasource,
                 cache=models_cache,
                 threads=models_threads,
@@ -72,6 +73,7 @@ async def run_generator(
             schema_root=schema_root or DEV_CONFIGURATION.paths.schema_dir,
             author=author,
             description=description,
+            external_entries=external_entries,
         )
 
         info("Data generator finished.")

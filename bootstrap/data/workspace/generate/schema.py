@@ -29,6 +29,8 @@ from bootstrap.remote.snapshot import SnapshotStore
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from bootstrap.data.workspace.config import WorkspaceConfig
 
 
@@ -56,6 +58,7 @@ def generate_resource_snapshot(
     server_id: str | None = None,
     author: str | None = None,
     description: str | None = None,
+    external_entries: Iterable[tuple[str, str, int]] = (),
 ) -> str | None:
     """Generate a V2 resource snapshot from workspace build output.
 
@@ -74,6 +77,11 @@ def generate_resource_snapshot(
             DEV_CONFIGURATION.build.author, then "".
         description: Description for the snapshot. Falls back to
             DEV_CONFIGURATION.build.description, then "".
+        external_entries: Extra ``(resource_id, content_hash, size)`` index
+            entries whose blobs already exist in the production store. They
+            are referenced in place: no local blob is written, and publish
+            HEAD-checks each reference before accepting it. Currently used
+            only for cache-hit ship models (see ``ci release-data build``).
 
     Returns:
         The resource snapshot hash on success, or None if build_dir is empty.
@@ -150,6 +158,11 @@ def generate_resource_snapshot(
             entries.append((resource_id, chash, file_path.stat().st_size))
             file_count += 1
 
+    external_count = 0
+    for rid, chash, size in external_entries:
+        entries.append((rid, chash, size))
+        external_count += 1
+
     if not entries:
         warning("No files found in build directory")
         return None
@@ -176,13 +189,16 @@ def generate_resource_snapshot(
         marketServer=market_server,
         author=resolved_author,
         description=resolved_description,
-        resourceCount=file_count,
+        resourceCount=len(entries),
         createdAt=created_at,
     )
 
     snapshot_hash = snap_store.create_resource_snapshot(metadata, index)
 
-    info(f"Resource snapshot {snapshot_hash[:12]}... ({file_count} files, {skipped_count} skipped)")
+    info(
+        f"Resource snapshot {snapshot_hash[:12]}... "
+        f"({file_count} files, {external_count} referenced, {skipped_count} skipped)"
+    )
 
     return snapshot_hash
 
@@ -200,6 +216,7 @@ def generate_schema_checkout(
     server_id: str | None = None,
     author: str | None = None,
     description: str | None = None,
+    external_entries: Iterable[tuple[str, str, int]] = (),
 ) -> str | None:
     """Legacy wrapper — delegates to generate_resource_snapshot.
 
@@ -214,4 +231,5 @@ def generate_schema_checkout(
         server_id=server_id,
         author=author,
         description=description,
+        external_entries=external_entries,
     )

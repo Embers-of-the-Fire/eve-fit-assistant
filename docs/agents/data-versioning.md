@@ -50,8 +50,9 @@ reused only when (1) all input hashes match, (2) the texture key set is unchange
 (3) the DNA and SOF fingerprint match (the fingerprint covers exactly the values the
 converter derives from `data.black`, so catalog changes that leave a DNA's resolved
 values untouched — e.g. a new unrelated hull — do not invalidate it), and
-(4) the recorded output blob still exists in the production store; hits are rehydrated
-(downloaded) from production instead of re-converted. Everything fails open: a missing,
+(4) the recorded output blob still exists in the production store; hits are referenced
+in place (the snapshot index points at the production blob — the HEAD that checks rule 4
+also captures the blob's size, and nothing is downloaded) instead of re-converted. Everything fails open: a missing,
 corrupt, or schema-mismatched map — or any un-hashable input — means "reconvert."
 
 The map carries no converter identity: when the converter submodule or the encoder

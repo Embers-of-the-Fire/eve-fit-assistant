@@ -103,7 +103,8 @@ entry for data snapshot releases, plus the PR test via `D-CI-Data Release`), and
 `update-raw-data.yml` (daily cron, dispatch, and PR test via `D-CI-Data Update`; cron runs
 call `_release-data.yml` directly when servers changed, without nesting through
 `release-data.yml`). All PR label gates — including
-`web-preview.yml`'s `D-CI-Page Preview` — are evaluated by the shared composite action
+`web-preview.yml`'s `D-CI-Page Preview` and the `D-CI-Build Model` modifier — are evaluated
+by the shared composite action
 `.github/actions/pr-gate`, which also applies the upstream-repository and non-fork-head
 guards; fork PRs never run these jobs.
 
@@ -112,7 +113,11 @@ guards; fork PRs never run these jobs.
 `_release-data.yml` is organized as:
 
 1. `build` — builds per-server snapshots and `snapshot-hashes.json`, uploaded as the
-   `v2-snapshots` artifact.
+   `v2-snapshots` artifact. Test-mode (`test_mode: true`) PR builds skip ship-model
+   conversion by default (`skip_models: true`, mapped to `--skip-models` on
+   `ci release-data build`); adding the `D-CI-Build Model` label to the PR re-enables it.
+   The label is a modifier only — it never triggers a run by itself, and real releases
+   always build models.
 2. `publish` — runs the session → commit → publish → sync/verify cycle against the remote
    `testing` channel.
 3. `d1-sync` — registers snapshot engine data into the platform D1 through the data-sync

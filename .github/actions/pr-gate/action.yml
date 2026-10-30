@@ -29,6 +29,12 @@ outputs:
   app_release:
     description: "D-Full CI or D-CI-App Release on an upstream branch PR"
     value: ${{ steps.gate.outputs.app_release }}
+  build_models:
+    description: >-
+      D-CI-Build Model on an upstream branch PR. Modifier only: re-enables
+      ship-model conversion in data snapshot test builds; it never triggers a
+      workflow run by itself.
+    value: ${{ steps.gate.outputs.build_models }}
   full_release_test:
     description: "V-Release and V-Test on an upstream branch PR"
     value: ${{ steps.gate.outputs.full_release_test }}
@@ -56,6 +62,7 @@ runs:
         raw_data_update=false
         data_release=false
         app_release=false
+        build_models=false
         full_release_test=false
         web_preview=false
 
@@ -63,6 +70,7 @@ runs:
           if has "D-Full CI" || has "D-CI-Data Update"; then raw_data_update=true; fi
           if has "D-Full CI" || has "D-CI-Data Release"; then data_release=true; fi
           if has "D-Full CI" || has "D-CI-App Release"; then app_release=true; fi
+          if has "D-CI-Build Model"; then build_models=true; fi
           if has "V-Release" && has "V-Test"; then full_release_test=true; fi
           # Release PRs (V-Release) get their web bundle built and deployed by
           # release-test.yml's site/site-deploy jobs instead.
@@ -74,5 +82,6 @@ runs:
         out raw_data_update "$raw_data_update"
         out data_release "$data_release"
         out app_release "$app_release"
+        out build_models "$build_models"
         out full_release_test "$full_release_test"
         out web_preview "$web_preview"

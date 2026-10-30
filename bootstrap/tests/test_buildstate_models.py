@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-from typing import TYPE_CHECKING
-
 import pytest
 
 from bootstrap.data.buildstate import models as buildstate_models
@@ -20,10 +18,6 @@ from bootstrap.data.buildstate.models import load_map
 from bootstrap.data.buildstate.models import map_remote_key
 from bootstrap.data.buildstate.models import partition_entries
 from bootstrap.data.buildstate.models import ship_resource_id
-
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 RID = "resource://static/models/ships/587.full.glb"
@@ -145,11 +139,47 @@ class _FakeClient:
 
 
 class _FailingProdClient:
-    def object_exists(self, key: str) -> bool:
+    def object_size(self, key: str) -> int | None:
         raise RuntimeError(f"cannot probe {key}")
 
-    def download_file(self, key: str, dest) -> bool:
-        raise RuntimeError(f"cannot download {key}")
+
+class _StatProdClient:
+    """Prod client stub: HEAD returns a fixed size, or None for a missing blob."""
+
+    def __init__(self, size: int | None):
+        self.size = size
+
+    def object_size(self, key: str) -> int | None:
+        return self.size
+
+
+class TestHitReference:
+    def _context(self, prod_client) -> ModelsCacheContext:
+        state_map = ModelsBuildStateMap(server_id="tranquility", entries={RID: _entry()})
+        cache = ModelsCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(state_map.to_json()),  # type: ignore[arg-type]
+            prod_client=prod_client,
+        )
+        cache.load()
+        return cache
+
+    def test_hit_captures_size_from_head(self):
+        cache = self._context(_StatProdClient(size=4321))
+        hits, misses = cache.partition({RID: _inputs()})
+        assert set(hits) == {RID}
+        assert misses == set()
+        assert cache.hit_reference(RID) == (RID, "o1", 4321)
+
+    def test_missing_output_is_a_miss_without_warning(self, monkeypatch: pytest.MonkeyPatch):
+        """Rule 4: a recorded output that no longer exists invalidates."""
+        warnings = []
+        monkeypatch.setattr(buildstate_models, "warning", warnings.append)
+        hits, misses = self._context(_StatProdClient(size=None)).partition({RID: _inputs()})
+        assert hits == {}
+        assert misses == {RID}
+        assert warnings == []
 
 
 class TestCacheFailOpen:
@@ -172,15 +202,6 @@ class TestCacheFailOpen:
         assert misses == {RID}
         assert len(warnings) == 1
         assert "Models cache probe failed" in warnings[0]
-
-    def test_download_failure_is_a_miss(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-        warnings = []
-        monkeypatch.setattr(buildstate_models, "warning", warnings.append)
-        dest = tmp_path / "model.glb"
-        assert not self._context().download_output(RID, "o1", dest)
-        assert not dest.exists()
-        assert len(warnings) == 1
-        assert "Cached output" in warnings[0]
 
 
 class TestLoadMap:

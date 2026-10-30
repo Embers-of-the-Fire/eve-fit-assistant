@@ -292,6 +292,13 @@ def register_ci_commands(cli_group: click.Group) -> None:
         help="Ignore the models build-state map and reconvert everything (rewrites the map).",
     )
     @click.option(
+        "--skip-models",
+        is_flag=True,
+        default=False,
+        help="Skip ship-model conversion entirely (test snapshot builds; "
+        "incompatible with --models-cache/--rebuild-models).",
+    )
+    @click.option(
         "--build-state-dir",
         type=click.Path(file_okay=False, path_type=Path),
         default="build-state",
@@ -318,12 +325,18 @@ def register_ci_commands(cli_group: click.Group) -> None:
         resources_dir: Path,
         models_cache: bool,
         rebuild_models: bool,
+        skip_models: bool,
         build_state_dir: Path,
         models_threads: int | None,
         models_batch_size: int | None,
     ):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
         from bootstrap.data.workspace.generate import run_generator
+
+        if skip_models and (models_cache or rebuild_models):
+            raise click.UsageError(
+                "--skip-models cannot be combined with --models-cache/--rebuild-models"
+            )
 
         if servers is not None:
             if servers.strip() == "":
@@ -419,10 +432,11 @@ def register_ci_commands(cli_group: click.Group) -> None:
                         map_path=(
                             PROJECT_ROOT / build_state_dir / "models" / f"{server_id}.json"
                         ).resolve(),
+                        workers=s3_cfg.verify_workers,
                     )
                 snapshot_hash = await run_generator(
                     ws_config,
-                    set(),
+                    {"models"} if skip_models else set(),
                     schema_root=schema_root,
                     models_cache=cache_ctx,
                     models_threads=models_threads,
@@ -580,12 +594,31 @@ def register_ci_commands(cli_group: click.Group) -> None:
             click.echo(f"Staged {server_id} snapshot: {hash_value[:16]}...")
 
         ctx.invoke(diff_cmd, as_json=True, schema_root=resolved_root)
-        ctx.invoke(verify_cmd, repair=False, schema_root=resolved_root)
+        # Snapshots built with a model cache hit contain reference-only index
+        # entries (no local blob); verify/commit must HEAD-check those against
+        # the remote store per entry. Test mode stays fully local, so there is
+        # no remote to validate references against.
+        reference_target = None if test_mode else target
+        ctx.invoke(
+            verify_cmd,
+            repair=False,
+            target=reference_target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            schema_root=resolved_root,
+        )
         ctx.invoke(
             commit_cmd,
             no_push=test_mode,
             force=False,
             allow_empty_release_pointer=allow_missing_head,
+            target=reference_target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
             schema_root=resolved_root,
         )
 

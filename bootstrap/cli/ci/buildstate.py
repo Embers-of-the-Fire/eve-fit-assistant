@@ -295,7 +295,7 @@ def register_build_state_commands(ci: click.Group) -> None:
         Runs the full models conversion on this machine, uploads every produced
         GLB blob to the production remote store (skipping blobs already
         present), and commits the updated build-state map to CI storage. The
-        next CI build then rehydrates instead of converting.
+        next CI build then references the blobs in place instead of converting.
         """
         from bootstrap.data.workspace.generate import GeneratorDatasource
 
