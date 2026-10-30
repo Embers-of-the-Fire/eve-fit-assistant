@@ -20,7 +20,10 @@ converter):
 1. ``--batch-resolve`` maps each ship DNA to its authoritative ``res:/``
    geometry/texture paths against ``data.black`` (loaded once per run).
 2. The reported files are downloaded/staged through the ``ResourceManager``
-   cache, then ``--batch`` converts everything offline (once per variant).
+   cache, then ``--batch`` converts everything offline (once per variant),
+   sharded across parallel converter processes — ``threads`` workers (default:
+   CPU count) converting shards of ``batch_size`` jobs (default: derived from
+   the worker count for load balancing).
 
 Skins (material sets) are intentionally not baked yet; the manifest schema
 carries per-job DNA strings, so skin jobs can be added without converter
@@ -49,6 +52,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 
 from typing import TYPE_CHECKING
@@ -116,8 +120,34 @@ def _ensure_converter_installed() -> None:
     )
 
 
-def _run_converter(args: list[str], title: str) -> None:
-    execute_command([get_command("node"), str(GR2_TO_GLB_ROOT / "cli.js"), *args], title)
+def _run_converter(args: list[str], title: str, env: dict[str, str] | None = None) -> None:
+    kwargs = {}
+    if env is not None:
+        kwargs["env"] = env
+    execute_command([get_command("node"), str(GR2_TO_GLB_ROOT / "cli.js"), *args], title, **kwargs)
+
+
+#: Shard granularity relative to the worker count: shards are finer than the
+#: worker count so slow ships rebalance across workers instead of leaving a
+#: worker idle on the tail of one large shard.
+_SHARDS_PER_WORKER = 4
+
+
+def chunk_convert_jobs(jobs: list[dict], threads: int, batch_size: int | None) -> list[list[dict]]:
+    """Split convert jobs into shard manifests of ``batch_size`` jobs each.
+
+    ``batch_size=None`` derives the shard size from the worker count
+    (``_SHARDS_PER_WORKER`` times finer than an even split, min 1) so slow
+    ships rebalance across workers. Shard contents keep the input order.
+    """
+    if not jobs:
+        return []
+    size = (
+        batch_size
+        if batch_size and batch_size > 0
+        else max(1, -(-len(jobs) // (max(1, threads) * _SHARDS_PER_WORKER)))
+    )
+    return [jobs[i : i + size] for i in range(0, len(jobs), size)]
 
 
 async def __stage_resource(data: GeneratorDatasource, res_path: str, semaphore: asyncio.Semaphore):
@@ -244,7 +274,12 @@ def tex_path_normalize(res_path: str) -> str:
     return res_path.replace("\\", "/").lower()
 
 
-async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None = None):
+async def generate(
+    data: GeneratorDatasource,
+    cache: ModelsCacheContext | None = None,
+    threads: int | None = None,
+    batch_size: int | None = None,
+):
     info("Generating ship models...")
 
     jobs, resolved_jobs = await resolve_ship_jobs(data)
@@ -256,6 +291,15 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
     if not dna_jobs:
         warning("No resolvable ship model jobs; skipping model generation.")
         return
+
+    n_threads = max(1, threads) if threads is not None else (os.cpu_count() or 4)
+    # libvips (sharp) defaults to one thread per core *per converter process*;
+    # cap it so shard processes do not oversubscribe the machine.
+    cpu_count = os.cpu_count() or 4
+    converter_env = {
+        **os.environ,
+        "GR2_TO_GLB_SHARP_THREADS": str(max(1, cpu_count // n_threads)),
+    }
 
     work_dir = data.config.paths.cache / "models"
     data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
@@ -337,26 +381,42 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
             )
         if not convert_jobs:
             return set()
-        convert_manifest = work_dir / f"manifest_convert_{variant}_{tag}.json"
-        convert_manifest.write_text(
-            json.dumps(
-                {
-                    "dataBlack": str(data_black.local_path),
-                    "texture": texture,
-                    "geometry": "meshopt",
-                    "jobs": [
-                        {
-                            **job,
-                            "out": str(data.paths.get_ship_model_path(int(job["id"]), variant)),
-                        }
-                        for job in convert_jobs
-                    ],
-                }
-            ),
-            encoding="utf-8",
+
+        shards = chunk_convert_jobs(convert_jobs, n_threads, batch_size)
+        info(
+            f"Converting {len(convert_jobs)} ship models ({variant}, phase 2: "
+            f"{len(shards)} shard(s) on {n_threads} worker(s))..."
         )
-        info(f"Converting {len(convert_jobs)} ship models ({variant}, phase 2: batch)...")
-        _run_converter(["--batch", str(convert_manifest)], f"MODEL CONVERT ({variant})")
+        semaphore = asyncio.Semaphore(n_threads)
+
+        async def run_shard(index: int, shard: list[dict]) -> None:
+            convert_manifest = work_dir / f"manifest_convert_{variant}_{tag}_{index}.json"
+            convert_manifest.write_text(
+                json.dumps(
+                    {
+                        "dataBlack": str(data_black.local_path),
+                        "texture": texture,
+                        "geometry": "meshopt",
+                        "jobs": [
+                            {
+                                **job,
+                                "out": str(data.paths.get_ship_model_path(int(job["id"]), variant)),
+                            }
+                            for job in shard
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            async with semaphore:
+                await asyncio.to_thread(
+                    _run_converter,
+                    ["--batch", str(convert_manifest)],
+                    f"MODEL CONVERT ({variant} #{index})",
+                    converter_env,
+                )
+
+        await asyncio.gather(*(run_shard(i, shard) for i, shard in enumerate(shards, 1)))
 
         produced = set()
         failures = []

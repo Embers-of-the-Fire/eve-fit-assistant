@@ -297,6 +297,18 @@ def register_ci_commands(cli_group: click.Group) -> None:
         default="build-state",
         help="Output directory for updated build-state maps (default: build-state).",
     )
+    @click.option(
+        "--models-threads",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Parallel converter processes for ship-model conversion (default: CPU count).",
+    )
+    @click.option(
+        "--models-batch-size",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Jobs per converter shard (default: derived from the thread count).",
+    )
     def release_data_build(
         output: Path,
         hashes: Path,
@@ -307,6 +319,8 @@ def register_ci_commands(cli_group: click.Group) -> None:
         models_cache: bool,
         rebuild_models: bool,
         build_state_dir: Path,
+        models_threads: int | None,
+        models_batch_size: int | None,
     ):
         """Build resource snapshots for all servers and emit snapshot-hashes.json."""
         from bootstrap.data.workspace.generate import run_generator
@@ -407,7 +421,12 @@ def register_ci_commands(cli_group: click.Group) -> None:
                         ).resolve(),
                     )
                 snapshot_hash = await run_generator(
-                    ws_config, set(), schema_root=schema_root, models_cache=cache_ctx
+                    ws_config,
+                    set(),
+                    schema_root=schema_root,
+                    models_cache=cache_ctx,
+                    models_threads=models_threads,
+                    models_batch_size=models_batch_size,
                 )
                 if snapshot_hash is None:
                     raise click.ClickException(f"No snapshot produced for {server_id}")

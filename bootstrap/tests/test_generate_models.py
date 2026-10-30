@@ -1,63 +1,48 @@
-"""Tests for the ship-model generator's job construction."""
+"""Tests for the models generator step helpers (bootstrap.data.workspace.generate.models)."""
 
 from __future__ import annotations
 
 import pytest
 
-from bootstrap.data.workspace.generate.models import SHIP_CATEGORY_ID
-from bootstrap.data.workspace.generate.models import build_ship_jobs
+from bootstrap.data.workspace.generate.models import chunk_convert_jobs
 
 
-def _groups() -> dict:
-    return {
-        25: {"categoryID": SHIP_CATEGORY_ID},  # Frigate
-        26: {"categoryID": SHIP_CATEGORY_ID},  # Cruiser
-        358: {"categoryID": 16},  # Large Projectile Ammo (not a ship)
-    }
+def _jobs(n: int) -> list[dict]:
+    return [{"id": str(i), "dna": f"hull:faction:race{i}"} for i in range(n)]
 
 
-def _types() -> dict:
-    return {
-        587: {"groupID": 25, "graphicID": 46},  # Rifter
-        588: {"groupID": 25, "graphicID": 47},
-        590: {"groupID": 358, "graphicID": 100},  # ammo: excluded
-        591: {"groupID": 25, "graphicID": 999},  # unknown graphic: excluded
-        592: {"groupID": 25, "graphicID": 200},  # legacy graphicFile: excluded
-        593: {"groupID": 25},  # no graphicID: excluded
-    }
+class TestChunkConvertJobs:
+    def test_empty(self):
+        assert chunk_convert_jobs([], 4, None) == []
 
+    def test_derived_batch_size_is_four_times_finer_than_workers(self):
+        # 64 jobs on 4 workers -> shard size 4 -> 16 shards.
+        shards = chunk_convert_jobs(_jobs(64), 4, None)
+        assert [len(shard) for shard in shards] == [4] * 16
 
-def _graphicids() -> dict:
-    return {
-        46: {
-            "sofHullName": "mf4_t1",
-            "sofFactionName": "minmatarbase",
-            "sofRaceName": "minmatar",
-        },
-        47: {
-            "sofHullName": "af1_t1",
-            "sofFactionName": "amarrbase",
-            "sofRaceName": "amarr",
-        },
-        200: {"graphicFile": "res:/legacy.red"},
-    }
+    def test_derived_batch_size_minimum_one(self):
+        shards = chunk_convert_jobs(_jobs(3), 8, None)
+        assert [len(shard) for shard in shards] == [1, 1, 1]
 
+    def test_explicit_batch_size(self):
+        shards = chunk_convert_jobs(_jobs(7), 4, 3)
+        assert [len(shard) for shard in shards] == [3, 3, 1]
 
-class TestBuildShipJobs:
-    def test_selects_sof_backed_ships_only(self) -> None:
-        jobs = build_ship_jobs(_types(), _groups(), _graphicids())
-        assert jobs == {
-            587: "mf4_t1:minmatarbase:minmatar",
-            588: "af1_t1:amarrbase:amarr",
-        }
+    def test_single_shard_when_batch_covers_all(self):
+        assert len(chunk_convert_jobs(_jobs(5), 4, 10)) == 1
 
-    def test_empty_tables_produce_no_jobs(self) -> None:
-        assert build_ship_jobs({}, {}, {}) == {}
+    def test_order_and_content_preserved(self):
+        jobs = _jobs(10)
+        shards = chunk_convert_jobs(jobs, 2, None)
+        assert [job for shard in shards for job in shard] == jobs
 
-    def test_missing_group_excludes_type(self) -> None:
-        types = {1: {"groupID": 9999, "graphicID": 46}}
-        assert build_ship_jobs(types, _groups(), _graphicids()) == {}
+    @pytest.mark.parametrize("batch_size", [None, 1, 7])
+    def test_no_job_is_duplicated_or_dropped(self, batch_size: int | None):
+        jobs = _jobs(23)
+        shards = chunk_convert_jobs(jobs, 3, batch_size)
+        flattened = [job["id"] for shard in shards for job in shard]
+        assert sorted(flattened, key=int) == [job["id"] for job in jobs]
 
 
 if __name__ == "__main__":
-    raise SystemExit(pytest.main([__file__, "-v"]))
+    raise SystemExit(pytest.main([__file__]))

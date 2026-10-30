@@ -344,12 +344,26 @@ def register_build_commands(cli_group: click.Group) -> None:
         default=None,
         help="Write the generated snapshot hash to this file.",
     )
+    @click.option(
+        "--models-threads",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Parallel converter processes for ship-model conversion (default: CPU count).",
+    )
+    @click.option(
+        "--models-batch-size",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Jobs per converter shard (default: derived from the thread count).",
+    )
     def data_cmd(
         skip: list[str],
         author: str | None,
         description: str | None,
         schema_root: Path | None,
         output_snapshot_hash: Path | None,
+        models_threads: int | None,
+        models_batch_size: int | None,
     ):
         """Build data files."""
         from bootstrap.data.workspace.generate import run_generator
@@ -373,6 +387,8 @@ def register_build_commands(cli_group: click.Group) -> None:
                 author=author,
                 description=description,
                 schema_root=schema_root,
+                models_threads=models_threads,
+                models_batch_size=models_batch_size,
             )
         )
 

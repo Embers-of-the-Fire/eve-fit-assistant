@@ -22,7 +22,9 @@ Generated data depends on external EVE FSD/resource files described by
 `./x build data` runs the generators in `bootstrap/data/workspace/generate/` in order:
 `static`, `native`, `localization`, `agent`, `images`, `models` (skippable via
 `--skip <name>`). The `models` step bakes per-ship GLB models with the
-`tools/carbon-gr2-to-glb` submodule (Node.js): it resolves ship DNAs from the FSD tables,
+`tools/carbon-gr2-to-glb` submodule (Node.js), converting shards across parallel
+converter processes (`--models-threads`, default: CPU count; `--models-batch-size`
+jobs per shard, default derived from the thread count): it resolves ship DNAs from the FSD tables,
 stages `data.black`/GR2/DDS assets through the workspace `ResourceManager` (the converter
 never touches the network), and emits meshopt-compressed GLBs under
 `static/models/ships/<typeID>.<variant>.glb` — two variants per ship: `full` (baked WebP

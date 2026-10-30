@@ -277,7 +277,19 @@ def register_build_state_commands(ci: click.Group) -> None:
 
     @build_state.command("push-models")
     @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
-    def push_models(server: str):
+    @click.option(
+        "--models-threads",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Parallel converter processes for ship-model conversion (default: CPU count).",
+    )
+    @click.option(
+        "--models-batch-size",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Jobs per converter shard (default: derived from the thread count).",
+    )
+    def push_models(server: str, models_threads: int | None, models_batch_size: int | None):
         """Pre-build ship models locally and push outputs to the production store.
 
         Runs the full models conversion on this machine, uploads every produced
@@ -309,7 +321,9 @@ def register_build_state_commands(ci: click.Group) -> None:
             ws_config = WorkspaceConfig.load_from_descriptor(runtime.get_workspace(server_id))
             data = GeneratorDatasource(ws_config)
             try:
-                await models_step.generate(data, cache=cache)
+                await models_step.generate(
+                    data, cache=cache, threads=models_threads, batch_size=models_batch_size
+                )
             finally:
                 await data.aclose()
 
