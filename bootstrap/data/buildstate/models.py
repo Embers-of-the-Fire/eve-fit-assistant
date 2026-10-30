@@ -196,9 +196,12 @@ class ModelsCacheContext:
         """Split desired entries into (hits, misses), HEAD-checking hit outputs."""
 
         def exists(resource_id: str, output_hash: str) -> bool:
-            return self.prod_client.object_exists(
-                blob_remote_key(self.resource_root, resource_id, output_hash)
-            )
+            key = blob_remote_key(self.resource_root, resource_id, output_hash)
+            try:
+                return self.prod_client.object_exists(key)
+            except Exception as exc:  # noqa: BLE001 - any probe failure means "miss"
+                warning(f"Models cache probe failed for {key}; reconverting: {exc}")
+                return False
 
         candidates = (
             self._map if not self.rebuild else ModelsBuildStateMap(server_id=self.server_id)
@@ -226,7 +229,12 @@ class ModelsCacheContext:
     def download_output(self, resource_id: str, output_hash: str, dest: Path) -> bool:
         """Rehydrate a hit's GLB from the production store (rule 3 already HEADed)."""
         dest.parent.mkdir(parents=True, exist_ok=True)
-        return self.prod_client.download_file(self.blob_key(resource_id, output_hash), dest)
+        key = self.blob_key(resource_id, output_hash)
+        try:
+            return self.prod_client.download_file(key, dest)
+        except Exception as exc:  # noqa: BLE001 - any download failure means "miss"
+            warning(f"Cached output {key} unavailable; reconverting: {exc}")
+            return False
 
     def record_conversion(
         self, resource_id: str, model_hash: str, textures: dict[str, str], output: Path

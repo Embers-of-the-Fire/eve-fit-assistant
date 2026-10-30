@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import json
 
+from typing import TYPE_CHECKING
+
 import pytest
 
+from bootstrap.data.buildstate import models as buildstate_models
 from bootstrap.data.buildstate.models import MAP_SCHEMA_VERSION
 from bootstrap.data.buildstate.models import ModelArtifactEntry
 from bootstrap.data.buildstate.models import ModelsBuildStateMap
+from bootstrap.data.buildstate.models import ModelsCacheContext
 from bootstrap.data.buildstate.models import blob_remote_key
 from bootstrap.data.buildstate.models import inputs_match
 from bootstrap.data.buildstate.models import load_map
 from bootstrap.data.buildstate.models import map_remote_key
 from bootstrap.data.buildstate.models import partition_entries
 from bootstrap.data.buildstate.models import ship_resource_id
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 RID = "resource://static/models/ships/587.full.glb"
@@ -103,6 +111,45 @@ class _FakeClient:
         if self.payload is None:
             raise FileNotFoundError(key)
         return self.payload
+
+
+class _FailingProdClient:
+    def object_exists(self, key: str) -> bool:
+        raise RuntimeError(f"cannot probe {key}")
+
+    def download_file(self, key: str, dest) -> bool:
+        raise RuntimeError(f"cannot download {key}")
+
+
+class TestCacheFailOpen:
+    def _context(self) -> ModelsCacheContext:
+        state_map = ModelsBuildStateMap(server_id="tranquility", entries={RID: _entry()})
+        cache = ModelsCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(state_map.to_json()),  # type: ignore[arg-type]
+            prod_client=_FailingProdClient(),  # type: ignore[arg-type]
+        )
+        cache.load()
+        return cache
+
+    def test_probe_failure_is_a_miss(self, monkeypatch: pytest.MonkeyPatch):
+        warnings = []
+        monkeypatch.setattr(buildstate_models, "warning", warnings.append)
+        hits, misses = self._context().partition({RID: ("m1", {})})
+        assert hits == {}
+        assert misses == {RID}
+        assert len(warnings) == 1
+        assert "Models cache probe failed" in warnings[0]
+
+    def test_download_failure_is_a_miss(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        warnings = []
+        monkeypatch.setattr(buildstate_models, "warning", warnings.append)
+        dest = tmp_path / "model.glb"
+        assert not self._context().download_output(RID, "o1", dest)
+        assert not dest.exists()
+        assert len(warnings) == 1
+        assert "Cached output" in warnings[0]
 
 
 class TestLoadMap:
