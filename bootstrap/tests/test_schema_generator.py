@@ -238,3 +238,48 @@ class TestGenerateSchemaCheckout:
                 config, build_dir=tmp / "nonexistent", schema_root=tmp / "out"
             )
             assert result is None
+
+
+class TestExternalEntries:
+    def test_referenced_in_index_without_local_blob(self):
+        """External entries land in the index; no blob bytes are materialized."""
+        import json
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            start_ini = _make_start_ini(tmp)
+
+            build_dir = tmp / "build"
+            build_dir.mkdir()
+            (build_dir / "file.txt").write_text("walked content")
+
+            rid = "resource://static/models/ships/587.full.glb"
+            ext_hash = "ab" * 32
+            schema_root = tmp / "out"
+            config = _make_workspace_config(start_ini)
+            snapshot_hash = generate_schema_checkout(
+                config,
+                build_dir=build_dir,
+                schema_root=schema_root,
+                external_entries=[(rid, ext_hash, 4321)],
+            )
+            assert snapshot_hash is not None
+
+            snap_dir = schema_root / "assets" / "resources" / snapshot_hash
+            index = read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+            by_rid = {entry.resource_id: entry for entry in index.entries}
+            assert rid in by_rid
+            assert by_rid[rid].content_hash == ext_hash
+            assert by_rid[rid].size == 4321
+
+            # Referenced in place: no local blob is written for the entry.
+            ihash = ident_hash(rid)
+            blob = schema_root / "assets" / "blobs" / ihash[:2] / ihash / ext_hash
+            assert not blob.exists()
+
+            # resourceCount covers walked files plus external references.
+            metadata = json.loads((snap_dir / "metadata.json").read_text())
+            assert metadata["resourceCount"] == 2

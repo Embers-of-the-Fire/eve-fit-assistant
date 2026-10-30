@@ -77,6 +77,37 @@ class TestObjectExists:
         stubber.assert_no_pending_responses()
 
 
+class TestObjectSize:
+    def test_existing_object_returns_content_length(self) -> None:
+        client, stubber = _make_client()
+        stubber.add_response("head_object", {"ContentLength": 4321})
+        assert client.object_size("some/key") == 4321
+        stubber.assert_no_pending_responses()
+
+    def test_missing_key_returns_none(self) -> None:
+        """Bare HEAD 404 + existing bucket: the key is genuinely absent."""
+        client, stubber = _make_client()
+        stubber.add_client_error("head_object", service_error_code="404")
+        stubber.add_response("head_bucket", {})
+        assert client.object_size("some/key") is None
+        stubber.assert_no_pending_responses()
+
+    def test_missing_bucket_raises(self) -> None:
+        client, stubber = _make_client()
+        stubber.add_client_error("head_object", service_error_code="404")
+        stubber.add_client_error("head_bucket", service_error_code="404")
+        with pytest.raises(ClientError, match="NoSuchBucket"):
+            client.object_size("some/key")
+        stubber.assert_no_pending_responses()
+
+    def test_non_404_head_error_raises(self) -> None:
+        client, stubber = _make_client()
+        stubber.add_client_error("head_object", service_error_code="403")
+        with pytest.raises(ClientError, match="403"):
+            client.object_size("some/key")
+        stubber.assert_no_pending_responses()
+
+
 class TestUploadFile:
     def test_content_type_guessed_from_key(self, tmp_path: Path) -> None:
         """Without explicit attrs, Content-Type defaults to the key's guess."""

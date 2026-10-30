@@ -46,7 +46,7 @@ jobs:
     name: Build resource snapshots
     runs-on: ubuntu-latest
     # production-data supplies REMOTE_STORAGE_* for the models build-state
-    # cache (prod blob HEAD checks + rehydration downloads). Test mode gets
+    # cache (prod blob HEAD checks for in-place references). Test mode gets
     # the empty ci-testing environment: the cache is then disabled and the
     # build-state map is neither read nor written.
     environment: ${{ inputs.test_mode && 'ci-testing' || 'production-data' }}

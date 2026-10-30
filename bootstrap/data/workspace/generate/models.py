@@ -39,7 +39,8 @@ the resource index's MD5 column (GR2/texture hashes) with the DNA itself and
 the phase-1 ``sofHash`` — a sha256 over the DNA's resolved SOF values
 (materials/shaders/glow/areas, exactly what the converter derives from
 data.black) — and DNAs whose inputs *and* recorded output blob are unchanged
-are rehydrated from the production blob store instead of re-converted. Only
+are referenced in place (the snapshot index points at the existing production
+blob; nothing is downloaded) instead of re-converted. Only
 misses pay the conversion cost. A ``full`` conversion whose
 textures did not all stage (a failed download degrades to a textureless GLB)
 is never recorded, so the DNA is reconverted on the next run instead of
@@ -279,18 +280,26 @@ async def generate(
     cache: ModelsCacheContext | None = None,
     threads: int | None = None,
     batch_size: int | None = None,
-):
+) -> list[tuple[str, str, int]]:
+    """Generate ship GLBs; return external blob references for cache hits.
+
+    The returned ``(resource_id, content_hash, size)`` tuples address cache-hit
+    models whose blobs already exist in the production store: they belong in
+    the resource snapshot's index but have no local file (nothing is
+    downloaded). Converted models appear as regular files in the build output
+    instead.
+    """
     info("Generating ship models...")
 
     jobs, resolved_jobs = await resolve_ship_jobs(data)
     if not jobs:
         warning("No ship types with SOF-backed graphics found; skipping model generation.")
-        return
+        return []
 
     dna_aliases, dna_jobs, dna_inputs = gather_dna_inputs(data, resolved_jobs)
     if not dna_jobs:
         warning("No resolvable ship model jobs; skipping model generation.")
-        return
+        return []
 
     n_threads = max(1, threads) if threads is not None else (os.cpu_count() or 4)
     # libvips (sharp) defaults to one thread per core *per converter process*;
@@ -311,7 +320,7 @@ async def generate(
 
     # Partition DNAs into cache hits / misses per variant. A DNA hits only when
     # every alias of it hits (entries are per resource id; aliases share bytes).
-    hit_outputs: dict[ShipModelVariant, dict[str, str]] = {variant: {} for variant, _ in variants}
+    hit_dnas: dict[ShipModelVariant, set[str]] = {variant: set() for variant, _ in variants}
     if cache is not None:
         cache.load()
         desired: dict[str, ModelInputs] = {}
@@ -329,7 +338,7 @@ async def generate(
             for dna, aliases in dna_aliases.items():
                 rids = [ship_resource_id(alias, variant) for alias in aliases]
                 if rids and all(rid in hits for rid in rids):
-                    hit_outputs[variant][dna] = hits[rids[0]].output
+                    hit_dnas[variant].add(dna)
 
     semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
     stage_tasks: dict[str, asyncio.Task] = {}
@@ -439,46 +448,37 @@ async def generate(
             for res_path in dna_jobs[dna].get("textureResPaths", [])
         )
 
-    all_miss = {variant: set(dna_jobs) - set(hit_outputs[variant]) for variant, _ in variants}
+    all_miss = {variant: set(dna_jobs) - hit_dnas[variant] for variant, _ in variants}
     info("Staging model assets via the resource manager...")
     await stage_dnas(set().union(*all_miss.values()))
     n_failed_stage = sum(1 for local in staged.values() if local is None)
     info(f"Staged {len(staged) - n_failed_stage}/{len(staged)} assets.")
 
+    # Cache hits are referenced in place: no GLB is downloaded or written
+    # locally. The snapshot index points at the existing production blob, and
+    # publish HEAD-checks each reference again before accepting it.
+    external_entries: list[tuple[str, str, int]] = []
+    if cache is not None:
+        for variant, _tex in variants:
+            for dna in sorted(hit_dnas[variant]):
+                for alias in dna_aliases[dna]:
+                    external_entries.append(cache.hit_reference(ship_resource_id(alias, variant)))
+        if external_entries:
+            info(f"Referenced {len(external_entries)} cached models in place (no download).")
+
     produced: dict[ShipModelVariant, set[str]] = {}
     converted: dict[ShipModelVariant, set[str]] = {}
-    rehydrated: dict[ShipModelVariant, set[str]] = {variant: set() for variant, _ in variants}
-    demoted: dict[ShipModelVariant, set[str]] = {variant: set() for variant, _ in variants}
-    if cache is not None:
-        # Rehydrate every hit across both variants in one pooled pass: the
-        # downloads are I/O-bound and silent per file, so a serial loop both
-        # crawls and looks hung. Failures demote to reconversion below.
-        jobs: dict[str, tuple[str, Path]] = {}
-        rid_dna: dict[str, tuple[ShipModelVariant, str]] = {}
-        for variant, _tex in variants:
-            for dna, output_hash in sorted(hit_outputs[variant].items()):
-                canonical = dna_aliases[dna][0]
-                rid = ship_resource_id(canonical, variant)
-                jobs[rid] = (output_hash, data.paths.get_ship_model_path(canonical, variant))
-                rid_dna[rid] = (variant, dna)
-        failed = await asyncio.to_thread(cache.download_outputs, jobs)
-        for rid, (variant, dna) in rid_dna.items():
-            (demoted if rid in failed else rehydrated)[variant].add(dna)
-
     for variant, texture in variants:
-        converted_v = await convert_dnas(
-            variant, texture, all_miss[variant] | demoted[variant], "main"
-        )
-        produced_v = converted_v | rehydrated[variant]
+        converted_v = await convert_dnas(variant, texture, all_miss[variant], "main")
 
         # Types sharing one DNA produce byte-identical GLBs; copy to aliases.
-        for dna in produced_v:
+        for dna in converted_v:
             aliases = dna_aliases[dna]
             source = data.paths.get_ship_model_path(aliases[0], variant)
             for alias_id in aliases[1:]:
                 shutil.copy2(source, data.paths.get_ship_model_path(alias_id, variant))
 
-        produced[variant] = produced_v
+        produced[variant] = converted_v | hit_dnas[variant]
         converted[variant] = converted_v
 
     if cache is not None:
@@ -492,7 +492,7 @@ async def generate(
                             continue  # un-hashable inputs stay uncached
                         # A texture that failed to stage is silently omitted
                         # from the FULL GLB; recording the full desired hashes
-                        # would rehydrate the degraded output forever.
+                        # would reference the degraded output forever.
                         if variant is ShipModelVariant.FULL and not fully_staged_textures(dna):
                             continue  # degraded output stays uncached; reconverted next run
                         cache.record_conversion(
@@ -508,3 +508,4 @@ async def generate(
 
     total_ships = sum(len(aliases) for aliases in dna_aliases.values())
     info(f"Generated {total_ships} ship models x2 variants ({len(dna_jobs)} unique DNAs).")
+    return external_entries

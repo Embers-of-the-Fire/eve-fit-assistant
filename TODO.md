@@ -1,5 +1,14 @@
 # TODO
 
+## Data pipeline
+
+- [ ] Expand reference-only (in-place) blob entries beyond ship models. The
+  `external_entries` mechanism in `generate_resource_snapshot` lets the
+  snapshot index point at blobs that already exist in the production store
+  without downloading them, but it is currently wired for cache-hit ship
+  models only (`ModelsCacheContext.hit_reference`). Generalize it to other
+  generated assets once another producer gains a build-state cache.
+
 ## Dependencies
 
 - [ ] Adapt `efa-chat` to rig once rig provides a stable version. Since v0.41
