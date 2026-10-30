@@ -39,12 +39,15 @@ eager).
 Model conversion dominates data-build time (~2 s per ship per variant), so the `models`
 step memoizes per-artifact results. A per-server JSON map in CI storage
 (`build-state/models/<server>.json`) records each output resource id's input identity
-(GR2 MD5 plus texture MD5s from the `resfileindex.txt` hash column, the SOF DNA, and the
-`data.black` MD5 as SOF fingerprint) and output blob hash;
+(GR2 MD5 plus texture MD5s from the `resfileindex.txt` hash column, the SOF DNA, and a
+per-DNA SOF fingerprint: the converter resolve phase's sha256 over the resolved SOF
+values — geometry path, per-area shaders, texture paths, material constants, and glow
+colors) and output blob hash;
 output blobs live only in the production store, referenced in place. A cache entry is
 reused only when (1) all input hashes match, (2) the texture key set is unchanged,
-(3) the DNA and SOF fingerprint match (the converter derives materials, shaders, glow
-values, and area mappings from the DNA against `data.black`), and
+(3) the DNA and SOF fingerprint match (the fingerprint covers exactly the values the
+converter derives from `data.black`, so catalog changes that leave a DNA's resolved
+values untouched — e.g. a new unrelated hull — do not invalidate it), and
 (4) the recorded output blob still exists in the production store; hits are rehydrated
 (downloaded) from production instead of re-converted. Everything fails open: a missing,
 corrupt, or schema-mismatched map — or any un-hashable input — means "reconvert."

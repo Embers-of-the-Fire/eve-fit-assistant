@@ -193,10 +193,12 @@ class TestLoadMap:
         state_map = load_map(_FakeClient(b"not json"), "tranquility")  # type: ignore[arg-type]
         assert state_map.entries == {}
 
-    def test_schema_mismatch_reads_empty(self):
+    @pytest.mark.parametrize("version", [2, 999])
+    def test_schema_mismatch_reads_empty(self, version: int):
+        """Old (2) and unknown (999) schemas fail open against the new semantics."""
         raw = json.dumps(
             {
-                "schema_version": 999,
+                "schema_version": version,
                 "server_id": "tranquility",
                 "entries": {
                     RID: {"model": "m1", "texture": {}, "dna": DNA, "sof": SOF, "output": "o1"}

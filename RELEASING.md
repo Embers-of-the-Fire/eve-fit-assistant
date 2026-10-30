@@ -308,10 +308,13 @@ development line:
 Data builds memoize ship-model conversion via a per-server map in CI storage
 (`build-state/models/<server>.json`); output blobs are referenced in place in
 the production store. A map entry is reused only when the GR2/texture input
-hashes match, the texture set is unchanged, and the output blob still exists
-in production — otherwise that model is reconverted. The map intentionally
-does **not** track the converter or toolchain version, so tool changes are a
-manual gate:
+hashes match, the texture set is unchanged, the DNA and its SOF fingerprint
+(the converter resolve phase's hash over the resolved SOF values, so unrelated
+`data.black` changes keep the entry valid) match, and the output blob still
+exists in production — otherwise that model is reconverted. The map
+intentionally does **not** track the converter or toolchain version, so tool
+changes are a manual gate; with per-DNA SOF fingerprints this gate also covers
+the converter beginning to consume new SOF fields:
 
 - **Invalidate all models for a server** (converter submodule bump, encoder or
   Nix toolchain change, suspected stale models):
