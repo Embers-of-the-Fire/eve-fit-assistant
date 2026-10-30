@@ -7,14 +7,14 @@ in CI storage records, per output resource id, the input hashes and the output
 blob hash::
 
     {
-      "schema_version": 2,
+      "schema_version": 3,
       "server_id": "tranquility",
       "entries": {
         "resource://static/models/ships/587.full.glb": {
           "model": "<md5 of the GR2, from resfileindex.txt>",
           "texture": {"res:/.../albedo.dds": "<md5>", ...},
           "dna": "mf4_t1:minmatarbase:minmatar",
-          "sof": "<md5 of data.black, from resfileindex.txt>",
+          "sof": "<sha256 of the DNA's resolved SOF values, from converter phase 1>",
           "output": "<sha256 of the GLB blob>"
         },
         ...
@@ -30,10 +30,11 @@ Invalidation rules, all fail-open (any doubt converts):
 1. The GR2 hash or any texture hash differs from the recorded entry.
 2. The texture key set differs (a texture was added or removed).
    (Rules 1 and 2 both fold into ``entry != computed inputs``.)
-3. The DNA or SOF fingerprint differs. The converter derives materials,
-   shaders, glow values, and area mappings from the DNA against data.black, so
-   a DNA/SOF change with unchanged resource hashes must reconvert, not
-   rehydrate the previous GLB.
+3. The DNA or SOF fingerprint differs. The fingerprint (the converter's
+   ``sofHash``) hashes exactly the values the converter derives from the DNA
+   against data.black — materials, shaders, glow values, and area mappings —
+   so catalog changes that leave a DNA's resolved values untouched (e.g. a
+   new unrelated hull) do not invalidate the entry.
 4. The recorded output blob does not exist in the production store.
 
 The map deliberately carries no converter identity: the converter submodule or
@@ -70,8 +71,9 @@ if TYPE_CHECKING:
 
     from bootstrap.remote.s3client import S3Client
 
-#: Bump when the map layout changes; mismatched maps are discarded (fail-open).
-MAP_SCHEMA_VERSION = 2
+#: Bump when the map layout or a field's semantics change; mismatched maps are
+#: discarded (fail-open).
+MAP_SCHEMA_VERSION = 3
 
 
 def map_remote_key(server_id: str) -> str:
@@ -95,9 +97,11 @@ class ModelInputs:
     """Full converter input identity for one DNA/variant.
 
     ``model``/``texture`` are the staged asset hashes from the resource index;
-    ``dna`` and ``sof`` pin the SOF resolution. The converter derives
-    materials, shaders, glow values, and area mappings from the DNA against
-    data.black, so resource hashes alone do not identify the output.
+    ``dna`` and ``sof`` pin the SOF resolution. ``sof`` is the converter
+    resolve phase's ``sofHash``: a sha256 over the resolved SOF values
+    (materials, shaders, glow values, area mappings) — the converter's only
+    catalog input — so catalog changes that do not alter a DNA's resolved
+    values keep the fingerprint (and the cache entry) valid.
     """
 
     model: str

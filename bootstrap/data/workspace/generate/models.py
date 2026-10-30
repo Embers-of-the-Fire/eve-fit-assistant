@@ -31,10 +31,11 @@ Build-state memoization
 
 Conversion is the dominant cost of a data build (~2 s/ship/variant), so the
 step accepts an optional :class:`~bootstrap.data.buildstate.models.ModelsCacheContext`.
-With a cache, phase 1 always runs (cheap), per-DNA input identities are read
-from the resource index's MD5 column (GR2/texture hashes plus the data.black
-SOF fingerprint and the DNA itself, which drives materials/shaders/glow at
-convert time), and DNAs whose inputs *and* recorded output blob are unchanged
+With a cache, phase 1 always runs (cheap), per-DNA input identities combine
+the resource index's MD5 column (GR2/texture hashes) with the DNA itself and
+the phase-1 ``sofHash`` — a sha256 over the DNA's resolved SOF values
+(materials/shaders/glow/areas, exactly what the converter derives from
+data.black) — and DNAs whose inputs *and* recorded output blob are unchanged
 are rehydrated from the production blob store instead of re-converted. Only
 misses pay the conversion cost. A ``full`` conversion whose
 textures did not all stage (a failed download degrades to a textureless GLB)
@@ -138,7 +139,9 @@ async def resolve_ship_jobs(data: GeneratorDatasource) -> tuple[dict[int, str], 
 
     Shared by the models step and the build-state seed/push-models commands.
     Returns ``(type_id -> dna, resolved job dicts)``; ``({}, [])`` when no
-    ship types have SOF-backed graphics.
+    ship types have SOF-backed graphics. Resolved job dicts carry
+    ``geometryResPath``/``textureResPaths`` plus ``sof`` (the resolved SOF
+    values the convert phase consumes) and ``sofHash`` (its fingerprint).
     """
     types = await data.resources.fsd.get("types")
     groups = await data.resources.fsd.get("groups")
@@ -195,9 +198,10 @@ def gather_dna_inputs(
     - ``dna_aliases``: DNA -> type ids sharing it (identical GLBs; convert once).
     - ``dna_jobs``: DNA -> the representative resolved job dict.
     - ``dna_inputs``: DNA -> the ``full``-variant :class:`ModelInputs` (GR2 md5,
-      texture md5s, the DNA itself, and the data.black SOF fingerprint), or
-      ``None`` when any source is missing from the index or carries no hash.
-      ``None`` inputs are un-cacheable: the DNA is always a miss (fail-open).
+      texture md5s, the DNA itself, and the phase-1 ``sofHash`` fingerprint of
+      the resolved SOF values), or ``None`` when any source is missing from the
+      index or carries no hash. ``None`` inputs are un-cacheable: the DNA is
+      always a miss (fail-open).
     """
     dna_aliases: dict[str, list[int]] = {}
     dna_jobs: dict[str, dict] = {}
@@ -208,12 +212,10 @@ def gather_dna_inputs(
         dna_aliases.setdefault(dna, []).append(int(job["id"]))
         dna_jobs.setdefault(dna, job)
 
-    data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
-    sof_hash = data_black.file_hash if data_black is not None else None
-
     dna_inputs: dict[str, ModelInputs | None] = {}
     for dna, job in dna_jobs.items():
         geometry = job.get("geometryResPath")
+        sof_hash = job.get("sofHash")
         if not geometry or not sof_hash:
             dna_inputs[dna] = None
             continue
@@ -322,6 +324,9 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
                 {
                     "id": job["id"],
                     "dna": dna,
+                    # Pre-resolved SOF values: the converter converts from
+                    # exactly the object the cache fingerprinted (sofHash).
+                    "sof": job.get("sof"),
                     "gr2": str(staged[geometry]),
                     "textures": {
                         res_path: str(staged[res_path])
