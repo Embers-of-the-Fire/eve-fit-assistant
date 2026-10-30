@@ -145,7 +145,8 @@ def register_build_state_commands(ci: click.Group) -> None:
     @click.option(
         "--force",
         is_flag=True,
-        help="Seed even when the snapshot game build differs from the workspace build.",
+        help="Seed even when the snapshot game build differs from the workspace "
+        "build, or when either side lacks game-build metadata.",
     )
     def seed(server: str, channel: str, schema_root: Path, force: bool):
         """Rebuild a server's map without converting: inputs from the resource
@@ -153,7 +154,9 @@ def register_build_state_commands(ci: click.Group) -> None:
 
         Recovery path when the map is lost but the published blobs exist. The
         snapshot's game build must match the workspace build, so outputs from
-        another game build are not marked valid for current inputs.
+        another game build are not marked valid for current inputs. Missing
+        game-build metadata on either side also requires --force, since the map
+        carries no game-build field to re-check the pairing later.
         """
         from bootstrap.data.workspace.generate import GeneratorDatasource
         from bootstrap.data.workspace.generate.models import gather_dna_inputs
@@ -211,10 +214,23 @@ def register_build_state_commands(ci: click.Group) -> None:
                     + f"Seeding from snapshot game build {snapshot_build!r} despite "
                     f"workspace build {workspace_build!r} (--force)."
                 )
+        elif not force:
+            missing = []
+            if not snapshot_build:
+                missing.append(f"snapshot {snapshot_hash[:16]}...")
+            if not workspace_build:
+                missing.append("workspace (start.cfg)")
+            raise click.ClickException(
+                f"Game build metadata missing on {' and '.join(missing)}; the "
+                "snapshot's outputs may belong to another game build and would be "
+                "marked valid for current inputs without a way to detect it later. "
+                "Re-run with --force to seed anyway."
+            )
         else:
             click.echo(
                 styled([Style.BRIGHT, Fore.YELLOW], "Warning: ")
-                + "Game build missing on snapshot or workspace; skipping build-match check."
+                + "Seeding despite missing game build metadata on snapshot or "
+                "workspace (--force)."
             )
 
         async def gather_inputs():
