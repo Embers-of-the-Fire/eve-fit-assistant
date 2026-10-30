@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
@@ -12,6 +13,7 @@ from colorama import Style
 from bootstrap.cli import runtime
 from bootstrap.cli.remote.helpers import validate_remote_channel
 from bootstrap.color import styled
+from bootstrap.log import info
 from bootstrap.log import warning
 from bootstrap.remote import SessionManager
 from bootstrap.remote import SessionManagerCommittedError
@@ -20,6 +22,10 @@ from bootstrap.remote.session_model import Session
 from bootstrap.remote.session_model import SessionExistsError
 from bootstrap.remote.session_model import SessionStore
 from bootstrap.remote.verify import Verifier
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _require_session(store: SessionStore, operation: str) -> Session:
@@ -476,8 +482,21 @@ def _compute_diff(root: Path, session: Session) -> dict:
     return result
 
 
-def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> None:
-    """Verify all blobs referenced by a staged resource snapshot exist."""
+def _check_staged_resource_blobs(
+    root: Path,
+    hash_value: str,
+    issues: list,
+    *,
+    remote_exists: Callable[[str, str], bool] | None = None,
+    remote_workers: int = 8,
+) -> None:
+    """Verify all blobs referenced by a staged resource snapshot exist.
+
+    Entries without a local blob are reference-only (e.g. cache-hit ship
+    models): when *remote_exists* is given, each is validated against the
+    remote store per entry — accepted when the remote HEAD-check succeeds,
+    an error otherwise. Without *remote_exists* they remain errors.
+    """
     from bootstrap.remote.hash import content_hash as _content_hash
     from bootstrap.remote.hash import ident_hash as _ident_hash
     from bootstrap.remote.models import ResourceIndex
@@ -500,18 +519,12 @@ def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> N
         )
         return
 
+    missing: list = []
     for entry in index.entries:
         ihash = _ident_hash(entry.resource_id)
         bpath = blob_path(root, ihash, entry.content_hash)
         if not bpath.is_file():
-            issues.append(
-                Issue(
-                    entity=entry.resource_id,
-                    entity_type="blob",
-                    severity="error",
-                    message=f"Missing blob: {bpath}",
-                )
-            )
+            missing.append((entry, bpath, ihash))
             continue
 
         try:
@@ -538,6 +551,86 @@ def _check_staged_resource_blobs(root: Path, hash_value: str, issues: list) -> N
                     message=str(exc),
                 )
             )
+
+    if missing:
+        _resolve_reference_only_blobs(
+            missing,
+            issues,
+            remote_exists=remote_exists,
+            remote_workers=remote_workers,
+            snap_hash=hash_value,
+        )
+
+
+def _resolve_reference_only_blobs(
+    missing: list,
+    issues: list,
+    *,
+    remote_exists: Callable[[str, str], bool] | None,
+    remote_workers: int,
+    snap_hash: str,
+) -> None:
+    """Handle index entries whose blob is absent locally.
+
+    Per-entry handling, not a per-snapshot exemption: every missing blob is
+    HEAD-checked against the remote store on its own, so a snapshot mixing
+    local and reference-only entries is validated entry by entry.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from bootstrap.remote.verify import Issue
+
+    if remote_exists is None:
+        for entry, bpath, _ihash in missing:
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=f"Missing blob: {bpath}",
+                )
+            )
+        return
+
+    def _probe(item) -> tuple[bool, Exception | None]:
+        entry, _bpath, ihash = item
+        try:
+            return remote_exists(ihash, entry.content_hash), None
+        except Exception as exc:  # noqa: BLE001
+            return False, exc
+
+    with ThreadPoolExecutor(max_workers=remote_workers) as pool:
+        probes = list(pool.map(_probe, missing))
+
+    validated = 0
+    for (entry, bpath, _ihash), (ok, exc) in zip(missing, probes, strict=True):
+        if ok:
+            validated += 1
+            continue
+        if exc is not None:
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=f"Remote reference check failed: {exc}",
+                )
+            )
+        else:
+            issues.append(
+                Issue(
+                    entity=entry.resource_id,
+                    entity_type="blob",
+                    severity="error",
+                    message=f"Missing blob: {bpath} (absent on remote store)",
+                )
+            )
+    if validated:
+        info(
+            "Validated %d reference-only blob(s) for snapshot %s against the remote store.",
+            validated,
+            snap_hash[:12] + "...",
+        )
 
 
 def _check_duplicate_server_ids(root: Path, session: Session, issues: list) -> None:
@@ -596,7 +689,58 @@ def _head_resource_snapshot_hashes(root: Path, channel: str) -> set[str]:
     return {entry.snapshot_hash for entry in gen.resources.entries if entry.snapshot_hash}
 
 
-def _verify_staged(root: Path, session: Session) -> list:
+def _make_remote_blob_checker(
+    root: Path,
+    target: str | None,
+    endpoint: str | None,
+    bucket: str | None,
+    access_key: str | None,
+    secret_key: str | None,
+) -> Callable[[str, str], bool] | None:
+    """Build a remote HEAD-check for reference-only blobs, or None.
+
+    Returns None when no ``--target`` is given (verification stays fully
+    local and reference-only entries remain errors). Otherwise resolves the
+    target exactly like ``remote publish`` and HEAD-checks the same remote
+    blob path the publisher would upload to, so a reference accepted here
+    is accepted by the publisher.
+    """
+    if target is None:
+        return None
+
+    from bootstrap.cli.remote.lifecycle import _resolve_remote_target
+    from bootstrap.remote.publish import Publisher
+
+    (
+        resolved_endpoint,
+        resolved_bucket,
+        resolved_access_key,
+        resolved_secret_key,
+    ) = _resolve_remote_target(target, endpoint, bucket, access_key, secret_key, "session verify")
+
+    pub = Publisher(
+        local_root=root,
+        endpoint=resolved_endpoint,
+        bucket=resolved_bucket,
+        access_key=resolved_access_key,
+        secret_key=resolved_secret_key,
+    )
+    pub._ensure_client()
+    prefix = pub._gen_remote_prefix()
+
+    def remote_exists(ident: str, chash: str) -> bool:
+        remote = f"{prefix}assets/blobs/{ident[:2]}/{ident}/{chash}"
+        return pub._remote_exists(remote)
+
+    return remote_exists
+
+
+def _verify_staged(
+    root: Path,
+    session: Session,
+    *,
+    remote_exists: Callable[[str, str], bool] | None = None,
+) -> list:
     """Validate staged snapshots across all four verification phases."""
     from bootstrap.remote.hash import verify_snapshot_hash as _verify_snapshot_hash
     from bootstrap.remote.paths import release_snapshot_dir
@@ -691,7 +835,7 @@ def _verify_staged(root: Path, session: Session) -> list:
                     continue
                 snap_dir = dir_for_type[snap_type](root, h)
                 if snap_dir.is_dir() and (snap_dir / proto_name).is_file():
-                    _check_staged_resource_blobs(root, h, issues)
+                    _check_staged_resource_blobs(root, h, issues, remote_exists=remote_exists)
 
             _check_duplicate_server_ids(root, session, issues)
 
@@ -838,6 +982,26 @@ _SCHEMA_ROOT_OPTION = click.option(
     default=None,
     help="Schema V2 storage root (default from dev config).",
 )
+
+
+def _remote_reference_options(func):
+    """Options for validating reference-only blobs against a remote store."""
+    options = [
+        click.option(
+            "--target",
+            type=click.Choice(["mock", "s3"], case_sensitive=False),
+            default=None,
+            help="Validate reference-only blobs (no local copy, e.g. cache-hit "
+            "models) against this remote store (reads defaults from efa.dev.toml).",
+        ),
+        click.option("--endpoint", default=None, help="Override remote endpoint URL."),
+        click.option("--bucket", default=None, help="Override remote bucket name."),
+        click.option("--access-key", default=None, help="Override remote access key."),
+        click.option("--secret-key", default=None, help="Override remote secret key."),
+    ]
+    for option in reversed(options):
+        func = option(func)
+    return func
 
 
 def register_remote_session(remote: click.Group) -> None:
@@ -1113,8 +1277,17 @@ def register_remote_session(remote: click.Group) -> None:
 
     @remote_session.command("verify")
     @click.option("--repair", is_flag=True, default=False, help="Attempt automatic repairs.")
+    @_remote_reference_options
     @_SCHEMA_ROOT_OPTION
-    def remote_session_verify(repair: bool, schema_root: Path | None):
+    def remote_session_verify(
+        repair: bool,
+        target: str | None,
+        endpoint: str | None,
+        bucket: str | None,
+        access_key: str | None,
+        secret_key: str | None,
+        schema_root: Path | None,
+    ):
         """Validate the staged generation integrity."""
         root = runtime.resolve_schema_root(schema_root)
         store = SessionStore(root)
@@ -1130,7 +1303,10 @@ def register_remote_session(remote: click.Group) -> None:
                 click.echo("No entities needed repair.")
             return
 
-        issues = _verify_staged(root, session)
+        remote_exists = _make_remote_blob_checker(
+            root, target, endpoint, bucket, access_key, secret_key
+        )
+        issues = _verify_staged(root, session, remote_exists=remote_exists)
         error_count = sum(1 for i in issues if i.severity == "error")
 
         staged_counts = {
@@ -1180,12 +1356,18 @@ def register_remote_session(remote: click.Group) -> None:
         help="Allow committing a root generation without a staged release "
         "(first commit to a channel with no app release).",
     )
+    @_remote_reference_options
     @_SCHEMA_ROOT_OPTION
     def remote_session_commit(
         no_push: bool,
         force: bool,
         as_json: bool,
         allow_empty_release_pointer: bool,
+        target: str | None,
+        endpoint: str | None,
+        bucket: str | None,
+        access_key: str | None,
+        secret_key: str | None,
         schema_root: Path | None,
     ):
         """Assemble a generation from staged snapshots and advance the channel head."""
@@ -1205,7 +1387,10 @@ def register_remote_session(remote: click.Group) -> None:
             )
 
         if not force:
-            issues = _verify_staged(root, session)
+            remote_exists = _make_remote_blob_checker(
+                root, target, endpoint, bucket, access_key, secret_key
+            )
+            issues = _verify_staged(root, session, remote_exists=remote_exists)
             error_count = sum(1 for i in issues if i.severity == "error")
             if error_count:
                 click.echo()

@@ -594,12 +594,31 @@ def register_ci_commands(cli_group: click.Group) -> None:
             click.echo(f"Staged {server_id} snapshot: {hash_value[:16]}...")
 
         ctx.invoke(diff_cmd, as_json=True, schema_root=resolved_root)
-        ctx.invoke(verify_cmd, repair=False, schema_root=resolved_root)
+        # Snapshots built with a model cache hit contain reference-only index
+        # entries (no local blob); verify/commit must HEAD-check those against
+        # the remote store per entry. Test mode stays fully local, so there is
+        # no remote to validate references against.
+        reference_target = None if test_mode else target
+        ctx.invoke(
+            verify_cmd,
+            repair=False,
+            target=reference_target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
+            schema_root=resolved_root,
+        )
         ctx.invoke(
             commit_cmd,
             no_push=test_mode,
             force=False,
             allow_empty_release_pointer=allow_missing_head,
+            target=reference_target,
+            endpoint=endpoint,
+            bucket=bucket,
+            access_key=access_key,
+            secret_key=secret_key,
             schema_root=resolved_root,
         )
 

@@ -847,6 +847,117 @@ class TestSessionVerify:
         missing_blobs = [i for i in issues if "Missing blob" in i.message]
         assert len(missing_blobs) >= 1
 
+    def test_verify_reference_only_blob_accepted_by_remote_check(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """A blob with no local copy passes when the remote store has it."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, res_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        entry = index.entries[0]
+        blob_path(tmp_root, ident_hash(entry.resource_id), entry.content_hash).unlink()
+
+        issues = _verify_staged(tmp_root, store.load(), remote_exists=lambda _i, _c: True)
+        errors = [i for i in issues if i.severity == "error"]
+        assert len(errors) == 0, f"Unexpected errors: {errors}"
+
+    def test_verify_reference_only_blob_rejected_when_absent_remotely(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """A reference-only entry whose blob is also absent remotely is an error."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, res_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        entry = index.entries[0]
+        blob_path(tmp_root, ident_hash(entry.resource_id), entry.content_hash).unlink()
+
+        issues = _verify_staged(tmp_root, store.load(), remote_exists=lambda _i, _c: False)
+        missing = [i for i in issues if "absent on remote store" in i.message]
+        assert len(missing) == 1
+        assert missing[0].severity == "error"
+        assert missing[0].entity == entry.resource_id
+
+    def test_verify_reference_only_blob_remote_check_failure(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """A failed remote HEAD-check surfaces as a per-entry error."""
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, res_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        entry = index.entries[0]
+        blob_path(tmp_root, ident_hash(entry.resource_id), entry.content_hash).unlink()
+
+        def _failing_remote(_ident: str, _chash: str) -> bool:
+            raise RuntimeError("connection refused")
+
+        issues = _verify_staged(tmp_root, store.load(), remote_exists=_failing_remote)
+        failed = [i for i in issues if "Remote reference check failed" in i.message]
+        assert len(failed) == 1
+        assert failed[0].severity == "error"
+        assert failed[0].entity == entry.resource_id
+
+    def test_verify_mixed_local_and_reference_only_entries(
+        self, store: SessionStore, tmp_root: Path
+    ) -> None:
+        """Per-entry handling: only entries without a local blob hit the remote.
+
+        The ``_head_resource_snapshot_hashes`` exemption skips whole snapshots
+        at the channel head; it must not mask a new snapshot mixing local and
+        reference-only entries.
+        """
+        _init_session(store)
+        res_hash = _make_resource_snapshot(tmp_root)
+        store.add_snapshot("resource", res_hash)
+
+        from bootstrap.remote.models import ResourceIndex
+        from bootstrap.remote.models import read_pb2 as _read_pb2
+        from bootstrap.remote.paths import resource_snapshot_dir as _rdir
+
+        snap_dir = _rdir(tmp_root, res_hash)
+        index = _read_pb2(snap_dir / "resources.pb2", ResourceIndex)
+        assert len(index.entries) >= 2
+        reference_entry = index.entries[0]
+        reference_ident = ident_hash(reference_entry.resource_id)
+        blob_path(tmp_root, reference_ident, reference_entry.content_hash).unlink()
+
+        probed: list[str] = []
+
+        def _remote_exists(ident: str, _chash: str) -> bool:
+            probed.append(ident)
+            return True
+
+        issues = _verify_staged(tmp_root, store.load(), remote_exists=_remote_exists)
+        errors = [i for i in issues if i.severity == "error"]
+        assert len(errors) == 0, f"Unexpected errors: {errors}"
+        assert probed == [reference_ident]
+
+    def test_make_remote_blob_checker_none_without_target(self, tmp_root: Path) -> None:
+        """Without --target, verification stays fully local (no checker)."""
+        from bootstrap.cli.remote.session import _make_remote_blob_checker
+
+        assert _make_remote_blob_checker(tmp_root, None, None, None, None, None) is None
+
 
 # ===========================================================================
 # 8. session commit
