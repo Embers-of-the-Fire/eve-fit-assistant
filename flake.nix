@@ -200,7 +200,7 @@ SHIM
       appimagetoolAppImage = pkgs.fetchurl {
         name = "appimagetool-x86_64.AppImage";
         url = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage";
-        hash = "sha256-lcvnzOlxf86QxITjQFLufH8ddjWzPBJSW0d2gmp9KbY=";
+        hash = "sha256-eT/KDOS8wwncZdP2Zmn1jjdVZD5Nrb4Dky57Q2EoSU8=";
       };
 
       appimagetool = pkgs.runCommand "appimagetool" { nativeBuildInputs = [ pkgs.squashfsTools ]; } ''
