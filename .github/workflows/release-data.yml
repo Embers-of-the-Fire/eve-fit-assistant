@@ -17,6 +17,10 @@ on:
         description: "JSON array of server IDs to rebuild (default: all)"
         type: string
         default: "[]"
+      rebuild_models:
+        description: "Force-rebuild all ship models, ignoring the build-state cache"
+        type: boolean
+        default: false
   pull_request:
     types: [opened, synchronize, reopened, labeled]
     branches: [dev]
@@ -62,6 +66,7 @@ jobs:
     with:
       test_mode: ${{ inputs.test_mode || false }}
       servers: ${{ inputs.servers || '[]' }}
+      rebuild_models: ${{ inputs.rebuild_models || false }}
 
   release-test:
     name: Build and test publish

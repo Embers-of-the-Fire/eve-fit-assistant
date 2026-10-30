@@ -25,6 +25,23 @@ converter):
 Skins (material sets) are intentionally not baked yet; the manifest schema
 carries per-job DNA strings, so skin jobs can be added without converter
 changes.
+
+Build-state memoization
+-----------------------
+
+Conversion is the dominant cost of a data build (~2 s/ship/variant), so the
+step accepts an optional :class:`~bootstrap.data.buildstate.models.ModelsCacheContext`.
+With a cache, phase 1 always runs (cheap), per-DNA input identities are read
+from the resource index's MD5 column (GR2/texture hashes plus the data.black
+SOF fingerprint and the DNA itself, which drives materials/shaders/glow at
+convert time), and DNAs whose inputs *and* recorded output blob are unchanged
+are rehydrated from the production blob store instead of re-converted. Only
+misses pay the conversion cost. A ``full`` conversion whose
+textures did not all stage (a failed download degrades to a textureless GLB)
+is never recorded, so the DNA is reconverted on the next run instead of
+memoizing the defect. See ``bootstrap.data.buildstate.models`` for the
+invalidation rules and the manual-invalidation contract (the map carries no
+converter identity).
 """
 
 from __future__ import annotations
@@ -36,6 +53,9 @@ import shutil
 from typing import TYPE_CHECKING
 
 from bootstrap.constant import GR2_TO_GLB_ROOT
+from bootstrap.data.buildstate.models import ModelInputs
+from bootstrap.data.buildstate.models import ModelsCacheContext
+from bootstrap.data.buildstate.models import ship_resource_id
 from bootstrap.data.workspace.generate.paths import ShipModelVariant
 from bootstrap.log import error
 from bootstrap.log import info
@@ -45,6 +65,9 @@ from bootstrap.utils import get_command
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
     from bootstrap.data.workspace.generate import GeneratorDatasource
 
 
@@ -110,16 +133,19 @@ async def __stage_resource(data: GeneratorDatasource, res_path: str, semaphore: 
     return node.local_path
 
 
-async def generate(data: GeneratorDatasource):
-    info("Generating ship models...")
+async def resolve_ship_jobs(data: GeneratorDatasource) -> tuple[dict[int, str], list[dict]]:
+    """Build ship DNA jobs and resolve their assets (converter phase 1).
 
+    Shared by the models step and the build-state seed/push-models commands.
+    Returns ``(type_id -> dna, resolved job dicts)``; ``({}, [])`` when no
+    ship types have SOF-backed graphics.
+    """
     types = await data.resources.fsd.get("types")
     groups = await data.resources.fsd.get("groups")
     graphicids = await data.resources.fsd.get("graphicids")
     jobs = build_ship_jobs(types, groups, graphicids)
     if not jobs:
-        warning("No ship types with SOF-backed graphics found; skipping model generation.")
-        return
+        return {}, []
     info(f"Resolved {len(jobs)} ship DNAs.")
 
     data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
@@ -156,63 +182,157 @@ async def generate(data: GeneratorDatasource):
     for job in failed_resolve:
         warning(f"DNA resolution failed for job {job['id']} ({job['dna']}): {job['error']}")
 
-    semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
-    stage_tasks: dict[str, asyncio.Task] = {}
+    return jobs, resolved["jobs"]
 
-    def stage(res_path: str) -> asyncio.Task:
-        if res_path not in stage_tasks:
-            stage_tasks[res_path] = asyncio.create_task(__stage_resource(data, res_path, semaphore))
-        return stage_tasks[res_path]
 
-    info("Staging model assets via the resource manager...")
-    for job in resolved["jobs"]:
-        if job.get("error"):
-            continue
-        if job.get("geometryResPath"):
-            stage(job["geometryResPath"])
-        for texture_path in job.get("textureResPaths", []):
-            stage(texture_path)
-    staged = {res_path: await task for res_path, task in stage_tasks.items()}
-    missing = [res_path for res_path, local in staged.items() if local is None]
-    if missing:
-        for res_path in missing:
-            warning(f"Asset {res_path} could not be staged; dependent jobs will fail.")
-    info(f"Staged {len(staged) - len(missing)}/{len(staged)} assets.")
+def gather_dna_inputs(
+    data: GeneratorDatasource, resolved_jobs: list[dict]
+) -> tuple[dict[str, list[int]], dict[str, dict], dict[str, ModelInputs | None]]:
+    """Group resolved jobs by DNA and hash their inputs from the resource index.
 
-    convert_jobs = []
+    Returns ``(dna_aliases, dna_jobs, dna_inputs)``:
+
+    - ``dna_aliases``: DNA -> type ids sharing it (identical GLBs; convert once).
+    - ``dna_jobs``: DNA -> the representative resolved job dict.
+    - ``dna_inputs``: DNA -> the ``full``-variant :class:`ModelInputs` (GR2 md5,
+      texture md5s, the DNA itself, and the data.black SOF fingerprint), or
+      ``None`` when any source is missing from the index or carries no hash.
+      ``None`` inputs are un-cacheable: the DNA is always a miss (fail-open).
+    """
     dna_aliases: dict[str, list[int]] = {}
-    for job in resolved["jobs"]:
+    dna_jobs: dict[str, dict] = {}
+    for job in resolved_jobs:
         if job.get("error"):
             continue
-        geometry = job.get("geometryResPath")
-        if not geometry or staged.get(geometry) is None:
-            warning(f"Skipping job {job['id']}: geometry could not be staged.")
-            continue
-        textures = {
-            res_path: str(staged[res_path])
-            for res_path in job.get("textureResPaths", [])
-            if staged.get(res_path) is not None
-        }
-        type_id = int(job["id"])
-        # Types sharing one DNA produce byte-identical GLBs; convert once.
-        if job["dna"] in dna_aliases:
-            dna_aliases[job["dna"]].append(type_id)
-            continue
-        dna_aliases[job["dna"]] = [type_id]
-        convert_jobs.append(
-            {
-                "id": job["id"],
-                "dna": job["dna"],
-                "gr2": str(staged[geometry]),
-                "textures": textures,
-            }
-        )
+        dna = job["dna"]
+        dna_aliases.setdefault(dna, []).append(int(job["id"]))
+        dna_jobs.setdefault(dna, job)
 
-    for variant, texture in (
+    data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
+    sof_hash = data_black.file_hash if data_black is not None else None
+
+    dna_inputs: dict[str, ModelInputs | None] = {}
+    for dna, job in dna_jobs.items():
+        geometry = job.get("geometryResPath")
+        if not geometry or not sof_hash:
+            dna_inputs[dna] = None
+            continue
+        geo_node = data.resources.res.get_resource(geometry)
+        if geo_node is None or not geo_node.file_hash:
+            dna_inputs[dna] = None
+            continue
+        textures: dict[str, str] = {}
+        hashable = True
+        for tex_path in job.get("textureResPaths", []):
+            tex_node = data.resources.res.get_resource(tex_path)
+            if tex_node is None or not tex_node.file_hash:
+                hashable = False
+                break
+            textures[tex_path_normalize(tex_path)] = tex_node.file_hash
+        dna_inputs[dna] = (
+            ModelInputs(model=geo_node.file_hash, texture=textures, dna=dna, sof=sof_hash)
+            if hashable
+            else None
+        )
+    return dna_aliases, dna_jobs, dna_inputs
+
+
+def tex_path_normalize(res_path: str) -> str:
+    """Normalize a resolved res path for stable map keys (index keys are lowercase)."""
+    return res_path.replace("\\", "/").lower()
+
+
+async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None = None):
+    info("Generating ship models...")
+
+    jobs, resolved_jobs = await resolve_ship_jobs(data)
+    if not jobs:
+        warning("No ship types with SOF-backed graphics found; skipping model generation.")
+        return
+
+    dna_aliases, dna_jobs, dna_inputs = gather_dna_inputs(data, resolved_jobs)
+    if not dna_jobs:
+        warning("No resolvable ship model jobs; skipping model generation.")
+        return
+
+    work_dir = data.config.paths.cache / "models"
+    data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
+
+    variants: tuple[tuple[ShipModelVariant, dict[str, str]], ...] = (
         (ShipModelVariant.FULL, {"format": "webp"}),
         (ShipModelVariant.BASE, {"format": "none"}),
-    ):
-        convert_manifest = work_dir / f"manifest_convert_{variant}.json"
+    )
+
+    # Partition DNAs into cache hits / misses per variant. A DNA hits only when
+    # every alias of it hits (entries are per resource id; aliases share bytes).
+    hit_outputs: dict[ShipModelVariant, dict[str, str]] = {variant: {} for variant, _ in variants}
+    if cache is not None:
+        cache.load()
+        desired: dict[str, ModelInputs] = {}
+        for dna, aliases in dna_aliases.items():
+            inputs = dna_inputs[dna]
+            if inputs is None:
+                continue  # un-hashable inputs: implicit miss (fail-open)
+            for alias in aliases:
+                for variant, _tex in variants:
+                    desired[ship_resource_id(alias, variant)] = (
+                        inputs if variant is ShipModelVariant.FULL else inputs.without_textures()
+                    )
+        hits, _misses = cache.partition(desired)
+        for variant, _tex in variants:
+            for dna, aliases in dna_aliases.items():
+                rids = [ship_resource_id(alias, variant) for alias in aliases]
+                if rids and all(rid in hits for rid in rids):
+                    hit_outputs[variant][dna] = hits[rids[0]].output
+
+    semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
+    stage_tasks: dict[str, asyncio.Task] = {}
+    staged: dict[str, Path | None] = {}
+
+    async def stage_dnas(dnas: Iterable[str]) -> None:
+        pending: list[tuple[str, asyncio.Task]] = []
+        for dna in dnas:
+            job = dna_jobs[dna]
+            for res_path in filter(
+                None, [job.get("geometryResPath"), *job.get("textureResPaths", [])]
+            ):
+                if res_path not in stage_tasks:
+                    stage_tasks[res_path] = asyncio.create_task(
+                        __stage_resource(data, res_path, semaphore)
+                    )
+                pending.append((res_path, stage_tasks[res_path]))
+        for res_path, task in pending:
+            staged[res_path] = await task
+
+    async def convert_dnas(
+        variant: ShipModelVariant, texture: dict[str, str], dnas: set[str], tag: str
+    ) -> set[str]:
+        """Stage + batch-convert the given DNAs; return the DNAs actually produced."""
+        if not dnas:
+            return set()
+        await stage_dnas(dnas)
+        convert_jobs = []
+        for dna in sorted(dnas):
+            job = dna_jobs[dna]
+            geometry = job.get("geometryResPath")
+            if not geometry or staged.get(geometry) is None:
+                warning(f"Skipping job {job['id']}: geometry could not be staged.")
+                continue
+            convert_jobs.append(
+                {
+                    "id": job["id"],
+                    "dna": dna,
+                    "gr2": str(staged[geometry]),
+                    "textures": {
+                        res_path: str(staged[res_path])
+                        for res_path in job.get("textureResPaths", [])
+                        if staged.get(res_path) is not None
+                    },
+                }
+            )
+        if not convert_jobs:
+            return set()
+        convert_manifest = work_dir / f"manifest_convert_{variant}_{tag}.json"
         convert_manifest.write_text(
             json.dumps(
                 {
@@ -233,25 +353,87 @@ async def generate(data: GeneratorDatasource):
         info(f"Converting {len(convert_jobs)} ship models ({variant}, phase 2: batch)...")
         _run_converter(["--batch", str(convert_manifest)], f"MODEL CONVERT ({variant})")
 
-        failures = {
-            int(job["id"])
-            for job in convert_jobs
-            if not data.paths.get_ship_model_path(int(job["id"]), variant).is_file()
-        }
+        produced = set()
+        failures = []
+        for job in convert_jobs:
+            if data.paths.get_ship_model_path(int(job["id"]), variant).is_file():
+                produced.add(job["dna"])
+            else:
+                failures.append(int(job["id"]))
         if failures:
             warning(
                 f"Model conversion ({variant}) failed for "
                 f"{len(failures)} type(s): {', '.join(str(t) for t in sorted(failures))}"
             )
-            convert_jobs = [job for job in convert_jobs if int(job["id"]) not in failures]
-            for dna, aliases in dna_aliases.items():
-                dna_aliases[dna] = [alias for alias in aliases if alias not in failures]
+        return produced
 
-    for job in convert_jobs:
-        aliases = dna_aliases[job["dna"]]
-        for variant in ShipModelVariant:
+    def fully_staged_textures(dna: str) -> bool:
+        """Whether every texture of the DNA staged (no failed downloads)."""
+        return all(
+            staged.get(res_path) is not None
+            for res_path in dna_jobs[dna].get("textureResPaths", [])
+        )
+
+    all_miss = {variant: set(dna_jobs) - set(hit_outputs[variant]) for variant, _ in variants}
+    info("Staging model assets via the resource manager...")
+    await stage_dnas(set().union(*all_miss.values()))
+    n_failed_stage = sum(1 for local in staged.values() if local is None)
+    info(f"Staged {len(staged) - n_failed_stage}/{len(staged)} assets.")
+
+    produced: dict[ShipModelVariant, set[str]] = {}
+    converted: dict[ShipModelVariant, set[str]] = {}
+    for variant, texture in variants:
+        converted_v = await convert_dnas(variant, texture, all_miss[variant], "main")
+        rehydrated_v: set[str] = set()
+        if cache is not None and hit_outputs[variant]:
+            demoted: set[str] = set()
+            for dna, output_hash in sorted(hit_outputs[variant].items()):
+                canonical = dna_aliases[dna][0]
+                rid = ship_resource_id(canonical, variant)
+                dest = data.paths.get_ship_model_path(canonical, variant)
+                if cache.download_output(rid, output_hash, dest):
+                    rehydrated_v.add(dna)
+                else:
+                    warning(f"Cached output {rid} unavailable; reconverting.")
+                    demoted.add(dna)
+            if demoted:
+                converted_v |= await convert_dnas(variant, texture, demoted, "retry")
+        produced_v = converted_v | rehydrated_v
+
+        # Types sharing one DNA produce byte-identical GLBs; copy to aliases.
+        for dna in produced_v:
+            aliases = dna_aliases[dna]
             source = data.paths.get_ship_model_path(aliases[0], variant)
             for alias_id in aliases[1:]:
                 shutil.copy2(source, data.paths.get_ship_model_path(alias_id, variant))
 
-    info(f"Generated {len(jobs)} ship models x2 variants ({len(convert_jobs)} unique DNAs).")
+        produced[variant] = produced_v
+        converted[variant] = converted_v
+
+    if cache is not None:
+        for variant, _tex in variants:
+            for dna in produced[variant]:
+                inputs = dna_inputs[dna]
+                for alias in dna_aliases[dna]:
+                    rid = ship_resource_id(alias, variant)
+                    if dna in converted[variant]:
+                        if inputs is None:
+                            continue  # un-hashable inputs stay uncached
+                        # A texture that failed to stage is silently omitted
+                        # from the FULL GLB; recording the full desired hashes
+                        # would rehydrate the degraded output forever.
+                        if variant is ShipModelVariant.FULL and not fully_staged_textures(dna):
+                            continue  # degraded output stays uncached; reconverted next run
+                        cache.record_conversion(
+                            rid,
+                            inputs
+                            if variant is ShipModelVariant.FULL
+                            else inputs.without_textures(),
+                            data.paths.get_ship_model_path(alias, variant),
+                        )
+                    else:
+                        cache.record_hit(rid)
+        cache.save()
+
+    total_ships = sum(len(aliases) for aliases in dna_aliases.values())
+    info(f"Generated {total_ships} ship models x2 variants ({len(dna_jobs)} unique DNAs).")

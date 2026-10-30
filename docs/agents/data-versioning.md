@@ -34,6 +34,27 @@ snapshots carrying them stamp resource index `format_version` 3, which format-2 
 reject through the app-update gate (RRS v1 would otherwise classify the unknown prefix as
 eager).
 
+### Models build-state cache
+
+Model conversion dominates data-build time (~2 s per ship per variant), so the `models`
+step memoizes per-artifact results. A per-server JSON map in CI storage
+(`build-state/models/<server>.json`) records each output resource id's input identity
+(GR2 MD5 plus texture MD5s from the `resfileindex.txt` hash column, the SOF DNA, and the
+`data.black` MD5 as SOF fingerprint) and output blob hash;
+output blobs live only in the production store, referenced in place. A cache entry is
+reused only when (1) all input hashes match, (2) the texture key set is unchanged,
+(3) the DNA and SOF fingerprint match (the converter derives materials, shaders, glow
+values, and area mappings from the DNA against `data.black`), and
+(4) the recorded output blob still exists in the production store; hits are rehydrated
+(downloaded) from production instead of re-converted. Everything fails open: a missing,
+corrupt, or schema-mismatched map — or any un-hashable input — means "reconvert."
+
+The map carries no converter identity: when the converter submodule or the encoder
+toolchain changes, invalidate manually (see RELEASING.md). Test-mode/PR builds never
+read or write the map (they publish to a mock, so their outputs do not exist in the
+production store). Operators manage the map with `./x ci build-state ...`
+(`invalidate`, `seed`, `push-models`, `commit`).
+
 ## Canonical Version
 
 The canonical application version lives in `efa.config.toml`: shared fields under

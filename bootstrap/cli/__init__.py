@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 def register_all_commands(cli_group: click.Group) -> None:
     """Attach every command group to the root CLI group."""
     from bootstrap.ci import register_ci_commands
+    from bootstrap.cli.ci.buildstate import register_build_state_commands
     from bootstrap.cli.ci.updater import register_raw_data_commands
 
     register_lint_commands(cli_group)
@@ -33,6 +34,7 @@ def register_all_commands(cli_group: click.Group) -> None:
     register_test_commands(cli_group)
     register_ci_commands(cli_group)
     register_raw_data_commands(cli_group.commands["ci"])
+    register_build_state_commands(cli_group.commands["ci"])
 
 
 __all__ = ["register_all_commands"]

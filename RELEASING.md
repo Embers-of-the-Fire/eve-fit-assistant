@@ -303,6 +303,56 @@ development line:
   stable `0.21.0`, `build` continuing at 35. The next testing release bumps
   `num` to 1 and `build` to 36; the first ship promotes `1.0.0` to stable.
 
+## Models build-state cache (operations)
+
+Data builds memoize ship-model conversion via a per-server map in CI storage
+(`build-state/models/<server>.json`); output blobs are referenced in place in
+the production store. A map entry is reused only when the GR2/texture input
+hashes match, the texture set is unchanged, and the output blob still exists
+in production — otherwise that model is reconverted. The map intentionally
+does **not** track the converter or toolchain version, so tool changes are a
+manual gate:
+
+- **Invalidate all models for a server** (converter submodule bump, encoder or
+  Nix toolchain change, suspected stale models):
+
+  ```sh
+  ./x ci build-state invalidate --server tranquility
+  ```
+
+  The next data build reconverts everything and rewrites the map. For a
+  one-shot forced rebuild without deleting the map first, dispatch
+  `release-data.yml` with `rebuild_models: true`.
+- **Recreate a lost map without rebuilding** (map deleted or CI bucket wiped,
+  but the published blobs still exist):
+
+  ```sh
+  ./x remote sync --target s3 --channel testing --schema-root cache/remote
+  ./x ci build-state seed --server tranquility
+  ```
+
+  `seed` recomputes input hashes from the server's resource index and pairs
+  them with the output blob hashes recorded in the synced channel head
+  snapshot; no conversion runs.
+- **Pre-build models on a powerful local machine**: run the full conversion
+  locally, upload the produced GLB blobs straight to the production store
+  (blobs already present are skipped; unreferenced blobs are inert), and
+  commit the updated map to CI storage:
+
+  ```sh
+  ./x ci build-state push-models --server tranquility
+  ```
+
+  Requires a hydrated workspace for the server (`data/resources/<server>/`
+  populated, e.g. via `./x ci raw-data download --server <id>`), the
+  converter's Node dependencies, `[remote.s3]` write credentials and
+  `[ci.storage]` write credentials in `efa.dev.toml`. The next CI data build
+  then rehydrates instead of converting.
+
+Test-mode/PR builds never touch the map. Maps are committed by the
+`build-state-upload` job in `_release-data.yml` (environment `ci-write`);
+builds read production blobs via the `production-data` environment.
+
 ## App update semantics
 
 The release index entries carry an optional `build` field (absent in legacy
@@ -323,8 +373,8 @@ environment protection rules gate which refs may do so.
 | Environment | Protection | Contents | Consumed by |
 |-------------|------------|----------|-------------|
 | `production-app` | Required reviewers + `dev` branch only | Secrets: `REMOTE_STORAGE_ENDPOINT`, `REMOTE_STORAGE_ACCESS_KEY`, `REMOTE_STORAGE_SECRET_KEY`; signing secrets `APP_KEYSTORE` (base64-encoded keystore), `APP_KEYSTORE_PASSWORD`, `APP_KEY_ALIAS`, `APP_KEY_PASSWORD`; web deploy secrets `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`; announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `APP_KEY_SHA256` (release-key certificate fingerprint) | `_release.yml` (real app releases, including `site-deploy` to the `efa-app` Pages project) |
-| `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three); announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` publish, d1-sync, and notify-qqbot jobs (real data releases); `release-data-promote.yml` promote and notify-qqbot jobs |
-| `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `update-raw-data.yml` upload job |
+| `production-data` | `dev` branch only (unattended cron) | Secrets: `REMOTE_STORAGE_*` (same three); announcement secret `QQBOT_EVENT_SECRET` (bearer token for the bofa-qqbot event endpoint). Variables: `REMOTE_STORAGE_BUCKET`, `CI_STORAGE_BUCKET` | `_release-data.yml` build (models build-state cache reads), publish, d1-sync, and notify-qqbot jobs (real data releases); `release-data-promote.yml` promote and notify-qqbot jobs |
+| `ci-write` | `dev` branch only | Secrets: `CI_STORAGE_ENDPOINT`, `CI_STORAGE_ACCESS_KEY`, `CI_STORAGE_SECRET_KEY` (write-scoped token). Variable: `CI_STORAGE_BUCKET` | `update-raw-data.yml` upload job; `_release-data.yml` build-state-upload job |
 | `ci-testing` | None (empty environment) | Nothing — no secrets, no variables | `_release.yml` and `_release-data.yml` in `test_mode` (`V-Test`, `D-*` runs) |
 | `ci-testing-web` | None | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `web-preview.yml` (PR branch previews) and `_release.yml` `site-deploy` in `test_mode` — both targeting the `efa-app-nightly` Pages project |
 | `nightly-web` | `dev` branch only | Secrets: `CLOUDFLARE_API_TOKEN` (Pages:Edit), `CLOUDFLARE_ACCOUNT_ID` | `site-nightly.yml` (targeting the `efa-app-nightly` Pages project) |
