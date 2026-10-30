@@ -31,10 +31,6 @@ from bootstrap.data.buildstate.models import ship_resource_id
 from bootstrap.data.updater.server import SERVER_ALIASES
 from bootstrap.data.updater.server import SERVER_IDS
 from bootstrap.data.workspace.config import WorkspaceConfig
-from bootstrap.data.workspace.generate import GeneratorDatasource
-from bootstrap.data.workspace.generate.models import gather_dna_inputs
-from bootstrap.data.workspace.generate.models import resolve_ship_jobs
-from bootstrap.data.workspace.generate.paths import ShipModelVariant
 from bootstrap.remote.s3client import S3Client
 
 
@@ -144,6 +140,11 @@ def register_build_state_commands(ci: click.Group) -> None:
 
         Recovery path when the map is lost but the published blobs exist.
         """
+        from bootstrap.data.workspace.generate import GeneratorDatasource
+        from bootstrap.data.workspace.generate.models import gather_dna_inputs
+        from bootstrap.data.workspace.generate.models import resolve_ship_jobs
+        from bootstrap.data.workspace.generate.paths import ShipModelVariant
+
         server_id = _resolve_server(server)
         resolved_channel = validate_remote_channel(channel).value
         resolved_root = (PROJECT_ROOT / schema_root).resolve()
@@ -228,6 +229,8 @@ def register_build_state_commands(ci: click.Group) -> None:
         present), and commits the updated build-state map to CI storage. The
         next CI build then rehydrates instead of converting.
         """
+        from bootstrap.data.workspace.generate import GeneratorDatasource
+
         server_id = _resolve_server(server)
 
         bootstrap.config.ProjectConfiguration.ensure_loaded()
