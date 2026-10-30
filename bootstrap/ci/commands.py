@@ -419,6 +419,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
                         map_path=(
                             PROJECT_ROOT / build_state_dir / "models" / f"{server_id}.json"
                         ).resolve(),
+                        workers=s3_cfg.verify_workers,
                     )
                 snapshot_hash = await run_generator(
                     ws_config,

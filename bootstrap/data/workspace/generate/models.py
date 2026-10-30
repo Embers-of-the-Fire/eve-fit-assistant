@@ -447,23 +447,29 @@ async def generate(
 
     produced: dict[ShipModelVariant, set[str]] = {}
     converted: dict[ShipModelVariant, set[str]] = {}
-    for variant, texture in variants:
-        converted_v = await convert_dnas(variant, texture, all_miss[variant], "main")
-        rehydrated_v: set[str] = set()
-        if cache is not None and hit_outputs[variant]:
-            demoted: set[str] = set()
+    rehydrated: dict[ShipModelVariant, set[str]] = {variant: set() for variant, _ in variants}
+    demoted: dict[ShipModelVariant, set[str]] = {variant: set() for variant, _ in variants}
+    if cache is not None:
+        # Rehydrate every hit across both variants in one pooled pass: the
+        # downloads are I/O-bound and silent per file, so a serial loop both
+        # crawls and looks hung. Failures demote to reconversion below.
+        jobs: dict[str, tuple[str, Path]] = {}
+        rid_dna: dict[str, tuple[ShipModelVariant, str]] = {}
+        for variant, _tex in variants:
             for dna, output_hash in sorted(hit_outputs[variant].items()):
                 canonical = dna_aliases[dna][0]
                 rid = ship_resource_id(canonical, variant)
-                dest = data.paths.get_ship_model_path(canonical, variant)
-                if cache.download_output(rid, output_hash, dest):
-                    rehydrated_v.add(dna)
-                else:
-                    warning(f"Cached output {rid} unavailable; reconverting.")
-                    demoted.add(dna)
-            if demoted:
-                converted_v |= await convert_dnas(variant, texture, demoted, "retry")
-        produced_v = converted_v | rehydrated_v
+                jobs[rid] = (output_hash, data.paths.get_ship_model_path(canonical, variant))
+                rid_dna[rid] = (variant, dna)
+        failed = await asyncio.to_thread(cache.download_outputs, jobs)
+        for rid, (variant, dna) in rid_dna.items():
+            (demoted if rid in failed else rehydrated)[variant].add(dna)
+
+    for variant, texture in variants:
+        converted_v = await convert_dnas(
+            variant, texture, all_miss[variant] | demoted[variant], "main"
+        )
+        produced_v = converted_v | rehydrated[variant]
 
         # Types sharing one DNA produce byte-identical GLBs; copy to aliases.
         for dna in produced_v:

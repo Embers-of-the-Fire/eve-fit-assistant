@@ -152,6 +152,82 @@ class _FailingProdClient:
         raise RuntimeError(f"cannot download {key}")
 
 
+class _RecordingProdClient:
+    """Prod client stub: downloads succeed unless the key contains a fail token."""
+
+    def __init__(self, fail_tokens: set[str] | None = None):
+        self.fail_tokens = fail_tokens or set()
+
+    def download_file(self, key: str, dest) -> bool:
+        if any(token in key for token in self.fail_tokens):
+            raise RuntimeError(f"cannot download {key}")
+        dest.write_bytes(b"glb")
+        return True
+
+
+class TestDownloadOutputs:
+    def _context(self, prod_client) -> ModelsCacheContext:
+        return ModelsCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(),  # type: ignore[arg-type]
+            prod_client=prod_client,
+        )
+
+    def _jobs(self, tmp_path: Path, rids: list[str]) -> dict[str, tuple[str, Path]]:
+        return {rid: ("ab" * 32, tmp_path / f"{index}.glb") for index, rid in enumerate(rids)}
+
+    def test_empty_jobs_is_a_noop(self, monkeypatch: pytest.MonkeyPatch):
+        logs = []
+        monkeypatch.setattr(buildstate_models, "info", logs.append)
+        assert self._context(_RecordingProdClient()).download_outputs({}) == set()
+        assert logs == []
+
+    def test_all_succeed(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        logs = []
+        monkeypatch.setattr(buildstate_models, "info", logs.append)
+        rids = [RID, "resource://static/models/ships/587.base.glb"]
+        failed = self._context(_RecordingProdClient()).download_outputs(self._jobs(tmp_path, rids))
+        assert failed == set()
+        assert all(dest.is_file() for dest in (tmp_path / "0.glb", tmp_path / "1.glb"))
+        assert any("Rehydrating 2 cached models" in line for line in logs)
+        assert any("Rehydrated 2/2 cached models (0 failed)." in line for line in logs)
+
+    def test_failure_returns_rid_and_stays_fail_open(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        warnings = []
+        monkeypatch.setattr(buildstate_models, "warning", warnings.append)
+        # The output hash is part of the blob key, so a distinctive hash
+        # selects which download fails.
+        jobs = self._jobs(tmp_path, [RID, "resource://static/models/ships/588.full.glb"])
+        jobs[RID] = ("deadbeef" * 8, jobs[RID][1])
+        failed = self._context(_RecordingProdClient(fail_tokens={"deadbeef"})).download_outputs(
+            jobs
+        )
+        assert failed == {RID}
+        assert not jobs[RID][1].exists()
+        other = jobs["resource://static/models/ships/588.full.glb"][1]
+        assert other.is_file()
+        assert any("Cached output" in line for line in warnings)
+
+    def test_progress_logged_at_interval(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        logs = []
+        monkeypatch.setattr(buildstate_models, "info", logs.append)
+        monkeypatch.setattr(buildstate_models, "_REHYDRATE_LOG_INTERVAL", 2)
+        rids = [f"resource://static/models/ships/{600 + index}.full.glb" for index in range(5)]
+        assert (
+            self._context(_RecordingProdClient()).download_outputs(self._jobs(tmp_path, rids))
+            == set()
+        )
+        progress = [line for line in logs if line.startswith("Rehydrated ")]
+        assert progress == [
+            "Rehydrated 2/5 cached models (0 failed).",
+            "Rehydrated 4/5 cached models (0 failed).",
+            "Rehydrated 5/5 cached models (0 failed).",
+        ]
+
+
 class TestCacheFailOpen:
     def _context(self) -> ModelsCacheContext:
         state_map = ModelsBuildStateMap(server_id="tranquility", entries={RID: _entry()})

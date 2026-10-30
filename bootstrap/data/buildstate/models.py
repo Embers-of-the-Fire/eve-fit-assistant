@@ -53,6 +53,7 @@ import hashlib
 import json
 
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from dataclasses import dataclass
 from dataclasses import field
 from typing import TYPE_CHECKING
@@ -74,6 +75,9 @@ if TYPE_CHECKING:
 #: Bump when the map layout or a field's semantics change; mismatched maps are
 #: discarded (fail-open).
 MAP_SCHEMA_VERSION = 3
+
+#: Progress log cadence (in downloaded files) for pooled rehydration.
+_REHYDRATE_LOG_INTERVAL = 50
 
 
 def map_remote_key(server_id: str) -> str:
@@ -204,6 +208,8 @@ class ModelsCacheContext:
     rewriting the map (manual invalidation for converter/toolchain changes).
     ``upload_blobs`` additionally pushes every produced GLB to the production
     store — the local pre-build path (``./x ci build-state push-models``).
+    ``workers`` sizes both the probe pool in ``partition`` and the download
+    pool in ``download_outputs``.
     """
 
     server_id: str
@@ -271,6 +277,37 @@ class ModelsCacheContext:
         except Exception as exc:  # noqa: BLE001 - any download failure means "miss"
             warning(f"Cached output {key} unavailable; reconverting: {exc}")
             return False
+
+    def download_outputs(self, jobs: dict[str, tuple[str, Path]]) -> set[str]:
+        """Rehydrate cached outputs on a thread pool; return the ids that failed.
+
+        ``jobs`` maps each resource id to ``(output_hash, dest)``. Per-item
+        failures stay fail-open (``download_output`` warns and returns False);
+        the caller reconverts whatever comes back. Progress is logged every
+        ``_REHYDRATE_LOG_INTERVAL`` downloads so a large all-hits run does not
+        sit silent.
+        """
+        if not jobs:
+            return set()
+        total = len(jobs)
+        info(
+            f"Rehydrating {total} cached models from the production store "
+            f"({self.workers} workers)..."
+        )
+        failed: set[str] = set()
+        done = 0
+        with ThreadPoolExecutor(max_workers=self.workers) as pool:
+            futures = {
+                pool.submit(self.download_output, rid, output_hash, dest): rid
+                for rid, (output_hash, dest) in jobs.items()
+            }
+            for future in as_completed(futures):
+                if not future.result():
+                    failed.add(futures[future])
+                done += 1
+                if done % _REHYDRATE_LOG_INTERVAL == 0 or done == total:
+                    info(f"Rehydrated {done}/{total} cached models ({len(failed)} failed).")
+        return failed
 
     def record_conversion(self, resource_id: str, inputs: ModelInputs, output: Path) -> None:
         """Record a freshly converted artifact; optionally push the blob to prod."""
