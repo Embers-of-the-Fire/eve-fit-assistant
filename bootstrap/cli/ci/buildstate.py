@@ -248,16 +248,20 @@ def register_build_state_commands(ci: click.Group) -> None:
             inputs = dna_inputs[dna]
             if inputs is None:
                 continue
-            model_hash, textures = inputs
             for alias in aliases:
                 for variant in ShipModelVariant:
                     rid = ship_resource_id(alias, variant)
                     output = outputs.get(rid)
                     if output is None:
                         continue
+                    variant_inputs = (
+                        inputs if variant is ShipModelVariant.FULL else inputs.without_textures()
+                    )
                     entries[rid] = ModelArtifactEntry(
-                        model=model_hash,
-                        texture=textures if variant is ShipModelVariant.FULL else {},
+                        model=variant_inputs.model,
+                        texture=variant_inputs.texture,
+                        dna=variant_inputs.dna,
+                        sof=variant_inputs.sof,
                         output=output,
                     )
 

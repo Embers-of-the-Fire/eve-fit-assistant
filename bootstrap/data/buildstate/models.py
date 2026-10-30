@@ -7,12 +7,14 @@ in CI storage records, per output resource id, the input hashes and the output
 blob hash::
 
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "server_id": "tranquility",
       "entries": {
         "resource://static/models/ships/587.full.glb": {
           "model": "<md5 of the GR2, from resfileindex.txt>",
           "texture": {"res:/.../albedo.dds": "<md5>", ...},
+          "dna": "mf4_t1:minmatarbase:minmatar",
+          "sof": "<md5 of data.black, from resfileindex.txt>",
           "output": "<sha256 of the GLB blob>"
         },
         ...
@@ -28,7 +30,11 @@ Invalidation rules, all fail-open (any doubt converts):
 1. The GR2 hash or any texture hash differs from the recorded entry.
 2. The texture key set differs (a texture was added or removed).
    (Rules 1 and 2 both fold into ``entry != computed inputs``.)
-3. The recorded output blob does not exist in the production store.
+3. The DNA or SOF fingerprint differs. The converter derives materials,
+   shaders, glow values, and area mappings from the DNA against data.black, so
+   a DNA/SOF change with unchanged resource hashes must reconvert, not
+   rehydrate the previous GLB.
+4. The recorded output blob does not exist in the production store.
 
 The map deliberately carries no converter identity: the converter submodule or
 encoder environment changing output bytes with unchanged inputs is the accepted
@@ -65,7 +71,7 @@ if TYPE_CHECKING:
     from bootstrap.remote.s3client import S3Client
 
 #: Bump when the map layout changes; mismatched maps are discarded (fail-open).
-MAP_SCHEMA_VERSION = 1
+MAP_SCHEMA_VERSION = 2
 
 
 def map_remote_key(server_id: str) -> str:
@@ -84,11 +90,33 @@ def blob_remote_key(resource_root: str, resource_id: str, content_hash: str) -> 
     return f"{resource_root}/assets/blobs/{ident[:2]}/{ident}/{content_hash}"
 
 
+@dataclass(frozen=True)
+class ModelInputs:
+    """Full converter input identity for one DNA/variant.
+
+    ``model``/``texture`` are the staged asset hashes from the resource index;
+    ``dna`` and ``sof`` pin the SOF resolution. The converter derives
+    materials, shaders, glow values, and area mappings from the DNA against
+    data.black, so resource hashes alone do not identify the output.
+    """
+
+    model: str
+    texture: dict[str, str]
+    dna: str
+    sof: str
+
+    def without_textures(self) -> ModelInputs:
+        """Geometry-only (``base``) variant identity: same mesh/SOF, no textures."""
+        return ModelInputs(model=self.model, texture={}, dna=self.dna, sof=self.sof)
+
+
 class ModelArtifactEntry(BaseModel):
-    """One memoized artifact: input hashes plus the output blob reference."""
+    """One memoized artifact: input identity plus the output blob reference."""
 
     model: str
     texture: dict[str, str] = Field(default_factory=dict)
+    dna: str
+    sof: str
     output: str
 
 
@@ -107,27 +135,32 @@ class ModelsBuildStateMap(BaseModel):
         return ModelsBuildStateMap.model_validate(json.loads(raw.decode("utf-8")))
 
 
-def inputs_match(entry: ModelArtifactEntry, model_hash: str, textures: dict[str, str]) -> bool:
-    """Invalidation rules 1+2: input hashes and texture key set unchanged."""
-    return entry.model == model_hash and entry.texture == textures
+def inputs_match(entry: ModelArtifactEntry, inputs: ModelInputs) -> bool:
+    """Invalidation rules 1-3: hashes, texture key set, and SOF identity unchanged."""
+    return (
+        entry.model == inputs.model
+        and entry.texture == inputs.texture
+        and entry.dna == inputs.dna
+        and entry.sof == inputs.sof
+    )
 
 
 def partition_entries(
-    desired: dict[str, tuple[str, dict[str, str]]],
+    desired: dict[str, ModelInputs],
     existing: ModelsBuildStateMap,
     output_exists: Callable[[str, str], bool],
 ) -> tuple[dict[str, ModelArtifactEntry], set[str]]:
-    """Split ``desired`` (resource id -> (model hash, textures)) into (hits, misses).
+    """Split ``desired`` (resource id -> inputs) into (hits, misses).
 
     A resource id is a hit only when the map has an entry with matching inputs
-    (rules 1+2) *and* the recorded output blob still exists (rule 3, via the
+    (rules 1-3) *and* the recorded output blob still exists (rule 4, via the
     ``output_exists`` callback). Everything else is a miss.
     """
     hits: dict[str, ModelArtifactEntry] = {}
     misses: set[str] = set()
-    for resource_id, (model_hash, textures) in desired.items():
+    for resource_id, inputs in desired.items():
         entry = existing.entries.get(resource_id)
-        if entry is None or not inputs_match(entry, model_hash, textures):
+        if entry is None or not inputs_match(entry, inputs):
             misses.add(resource_id)
             continue
         if not output_exists(resource_id, entry.output):
@@ -191,7 +224,7 @@ class ModelsCacheContext:
         )
 
     def partition(
-        self, desired: dict[str, tuple[str, dict[str, str]]]
+        self, desired: dict[str, ModelInputs]
     ) -> tuple[dict[str, ModelArtifactEntry], set[str]]:
         """Split desired entries into (hits, misses), HEAD-checking hit outputs."""
 
@@ -209,9 +242,8 @@ class ModelsCacheContext:
         # Cheap pre-filter on inputs so HEAD checks only run for candidate hits.
         pre_hits = {
             rid: entry
-            for rid, (model_hash, textures) in desired.items()
-            if (entry := candidates.entries.get(rid)) is not None
-            and inputs_match(entry, model_hash, textures)
+            for rid, inputs in desired.items()
+            if (entry := candidates.entries.get(rid)) is not None and inputs_match(entry, inputs)
         }
         with ThreadPoolExecutor(max_workers=self.workers) as pool:
             existence = list(
@@ -227,7 +259,7 @@ class ModelsCacheContext:
         return blob_remote_key(self.resource_root, resource_id, output_hash)
 
     def download_output(self, resource_id: str, output_hash: str, dest: Path) -> bool:
-        """Rehydrate a hit's GLB from the production store (rule 3 already HEADed)."""
+        """Rehydrate a hit's GLB from the production store (rule 4 already HEADed)."""
         dest.parent.mkdir(parents=True, exist_ok=True)
         key = self.blob_key(resource_id, output_hash)
         try:
@@ -236,9 +268,7 @@ class ModelsCacheContext:
             warning(f"Cached output {key} unavailable; reconverting: {exc}")
             return False
 
-    def record_conversion(
-        self, resource_id: str, model_hash: str, textures: dict[str, str], output: Path
-    ) -> None:
+    def record_conversion(self, resource_id: str, inputs: ModelInputs, output: Path) -> None:
         """Record a freshly converted artifact; optionally push the blob to prod."""
         output_hash = hashlib.sha256(output.read_bytes()).hexdigest()
         if self.upload_blobs:
@@ -246,7 +276,11 @@ class ModelsCacheContext:
             if not self.prod_client.object_exists(key):
                 self.prod_client.upload_file(output, key)
         self._new_entries[resource_id] = ModelArtifactEntry(
-            model=model_hash, texture=dict(textures), output=output_hash
+            model=inputs.model,
+            texture=dict(inputs.texture),
+            dna=inputs.dna,
+            sof=inputs.sof,
+            output=output_hash,
         )
 
     def record_hit(self, resource_id: str) -> None:

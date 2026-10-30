@@ -11,6 +11,7 @@ import pytest
 from bootstrap.data.buildstate import models as buildstate_models
 from bootstrap.data.buildstate.models import MAP_SCHEMA_VERSION
 from bootstrap.data.buildstate.models import ModelArtifactEntry
+from bootstrap.data.buildstate.models import ModelInputs
 from bootstrap.data.buildstate.models import ModelsBuildStateMap
 from bootstrap.data.buildstate.models import ModelsCacheContext
 from bootstrap.data.buildstate.models import blob_remote_key
@@ -27,26 +28,50 @@ if TYPE_CHECKING:
 
 RID = "resource://static/models/ships/587.full.glb"
 
+DNA = "mf4_t1:minmatarbase:minmatar"
+SOF = "sof1"
 
-def _entry(model: str = "m1", texture: dict[str, str] | None = None, output: str = "o1"):
-    return ModelArtifactEntry(model=model, texture=texture or {}, output=output)
+
+def _entry(
+    model: str = "m1",
+    texture: dict[str, str] | None = None,
+    dna: str = DNA,
+    sof: str = SOF,
+    output: str = "o1",
+):
+    return ModelArtifactEntry(model=model, texture=texture or {}, dna=dna, sof=sof, output=output)
+
+
+def _inputs(
+    model: str = "m1",
+    texture: dict[str, str] | None = None,
+    dna: str = DNA,
+    sof: str = SOF,
+) -> ModelInputs:
+    return ModelInputs(model=model, texture=texture or {}, dna=dna, sof=sof)
 
 
 class TestInputsMatch:
     def test_identical_inputs_match(self):
-        assert inputs_match(_entry(texture={"a": "1"}), "m1", {"a": "1"})
+        assert inputs_match(_entry(texture={"a": "1"}), _inputs(texture={"a": "1"}))
 
     def test_model_hash_change_invalidates(self):
-        assert not inputs_match(_entry(), "m2", {})
+        assert not inputs_match(_entry(), _inputs(model="m2"))
 
     def test_texture_value_change_invalidates(self):
-        assert not inputs_match(_entry(texture={"a": "1"}), "m1", {"a": "2"})
+        assert not inputs_match(_entry(texture={"a": "1"}), _inputs(texture={"a": "2"}))
 
     def test_texture_key_added_invalidates(self):
-        assert not inputs_match(_entry(texture={"a": "1"}), "m1", {"a": "1", "b": "2"})
+        assert not inputs_match(_entry(texture={"a": "1"}), _inputs(texture={"a": "1", "b": "2"}))
 
     def test_texture_key_removed_invalidates(self):
-        assert not inputs_match(_entry(texture={"a": "1", "b": "2"}), "m1", {"a": "1"})
+        assert not inputs_match(_entry(texture={"a": "1", "b": "2"}), _inputs(texture={"a": "1"}))
+
+    def test_dna_change_invalidates(self):
+        assert not inputs_match(_entry(), _inputs(dna="mf4_t2:minmatarbase:minmatar"))
+
+    def test_sof_fingerprint_change_invalidates(self):
+        assert not inputs_match(_entry(), _inputs(sof="sof2"))
 
 
 class TestPartitionEntries:
@@ -55,33 +80,33 @@ class TestPartitionEntries:
 
     def test_hit_when_inputs_match_and_output_exists(self):
         state_map = self._map({RID: _entry(texture={"a": "1"})})
-        desired = {RID: ("m1", {"a": "1"})}
+        desired = {RID: _inputs(texture={"a": "1"})}
         hits, misses = partition_entries(desired, state_map, lambda _rid, _out: True)
         assert set(hits) == {RID}
         assert misses == set()
 
     def test_miss_when_entry_absent(self):
-        hits, misses = partition_entries({RID: ("m1", {})}, self._map({}), lambda _r, _o: True)
+        hits, misses = partition_entries({RID: _inputs()}, self._map({}), lambda _r, _o: True)
         assert hits == {}
         assert misses == {RID}
 
     def test_miss_when_inputs_differ(self):
         state_map = self._map({RID: _entry()})
-        hits, misses = partition_entries({RID: ("m2", {})}, state_map, lambda _r, _o: True)
+        hits, misses = partition_entries({RID: _inputs(model="m2")}, state_map, lambda _r, _o: True)
         assert hits == {}
         assert misses == {RID}
 
     def test_miss_when_output_missing(self):
-        """Rule 3: a recorded output that no longer exists invalidates."""
+        """Rule 4: a recorded output that no longer exists invalidates."""
         state_map = self._map({RID: _entry()})
-        hits, misses = partition_entries({RID: ("m1", {})}, state_map, lambda _r, _o: False)
+        hits, misses = partition_entries({RID: _inputs()}, state_map, lambda _r, _o: False)
         assert hits == {}
         assert misses == {RID}
 
     def test_mixed_partition(self):
         other = "resource://static/models/ships/588.base.glb"
         state_map = self._map({RID: _entry(), other: _entry(model="old")})
-        desired = {RID: ("m1", {}), other: ("new", {})}
+        desired = {RID: _inputs(), other: _inputs(model="new")}
         hits, misses = partition_entries(desired, state_map, lambda _r, _o: True)
         assert set(hits) == {RID}
         assert misses == {other}
@@ -100,7 +125,13 @@ class TestMapSerialization:
         raw = json.loads(ModelsBuildStateMap(server_id="s", entries={RID: _entry()}).to_json())
         assert raw["schema_version"] == MAP_SCHEMA_VERSION
         assert raw["server_id"] == "s"
-        assert raw["entries"][RID] == {"model": "m1", "texture": {}, "output": "o1"}
+        assert raw["entries"][RID] == {
+            "model": "m1",
+            "texture": {},
+            "dna": DNA,
+            "sof": SOF,
+            "output": "o1",
+        }
 
 
 class _FakeClient:
@@ -136,7 +167,7 @@ class TestCacheFailOpen:
     def test_probe_failure_is_a_miss(self, monkeypatch: pytest.MonkeyPatch):
         warnings = []
         monkeypatch.setattr(buildstate_models, "warning", warnings.append)
-        hits, misses = self._context().partition({RID: ("m1", {})})
+        hits, misses = self._context().partition({RID: _inputs()})
         assert hits == {}
         assert misses == {RID}
         assert len(warnings) == 1
@@ -166,6 +197,20 @@ class TestLoadMap:
         raw = json.dumps(
             {
                 "schema_version": 999,
+                "server_id": "tranquility",
+                "entries": {
+                    RID: {"model": "m1", "texture": {}, "dna": DNA, "sof": SOF, "output": "o1"}
+                },
+            }
+        ).encode()
+        state_map = load_map(_FakeClient(raw), "tranquility")  # type: ignore[arg-type]
+        assert state_map.entries == {}
+
+    def test_pre_sof_map_reads_empty(self):
+        """Schema-1 entries (no dna/sof fields) fail validation: fail-open."""
+        raw = json.dumps(
+            {
+                "schema_version": 1,
                 "server_id": "tranquility",
                 "entries": {RID: {"model": "m1", "texture": {}, "output": "o1"}},
             }

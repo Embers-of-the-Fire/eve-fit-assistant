@@ -31,10 +31,12 @@ Build-state memoization
 
 Conversion is the dominant cost of a data build (~2 s/ship/variant), so the
 step accepts an optional :class:`~bootstrap.data.buildstate.models.ModelsCacheContext`.
-With a cache, phase 1 always runs (cheap), per-DNA input hashes are read from
-the resource index's MD5 column, and DNAs whose inputs *and* recorded output
-blob are unchanged are rehydrated from the production blob store instead of
-re-converted. Only misses pay the conversion cost. A ``full`` conversion whose
+With a cache, phase 1 always runs (cheap), per-DNA input identities are read
+from the resource index's MD5 column (GR2/texture hashes plus the data.black
+SOF fingerprint and the DNA itself, which drives materials/shaders/glow at
+convert time), and DNAs whose inputs *and* recorded output blob are unchanged
+are rehydrated from the production blob store instead of re-converted. Only
+misses pay the conversion cost. A ``full`` conversion whose
 textures did not all stage (a failed download degrades to a textureless GLB)
 is never recorded, so the DNA is reconverted on the next run instead of
 memoizing the defect. See ``bootstrap.data.buildstate.models`` for the
@@ -51,6 +53,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from bootstrap.constant import GR2_TO_GLB_ROOT
+from bootstrap.data.buildstate.models import ModelInputs
 from bootstrap.data.buildstate.models import ModelsCacheContext
 from bootstrap.data.buildstate.models import ship_resource_id
 from bootstrap.data.workspace.generate.paths import ShipModelVariant
@@ -184,16 +187,17 @@ async def resolve_ship_jobs(data: GeneratorDatasource) -> tuple[dict[int, str], 
 
 def gather_dna_inputs(
     data: GeneratorDatasource, resolved_jobs: list[dict]
-) -> tuple[dict[str, list[int]], dict[str, dict], dict[str, tuple[str, dict[str, str]] | None]]:
+) -> tuple[dict[str, list[int]], dict[str, dict], dict[str, ModelInputs | None]]:
     """Group resolved jobs by DNA and hash their inputs from the resource index.
 
     Returns ``(dna_aliases, dna_jobs, dna_inputs)``:
 
     - ``dna_aliases``: DNA -> type ids sharing it (identical GLBs; convert once).
     - ``dna_jobs``: DNA -> the representative resolved job dict.
-    - ``dna_inputs``: DNA -> ``(gr2 md5, {texture res path: md5})``, or ``None``
-      when any source is missing from the index or carries no hash. ``None``
-      inputs are un-cacheable: the DNA is always a miss (fail-open).
+    - ``dna_inputs``: DNA -> the ``full``-variant :class:`ModelInputs` (GR2 md5,
+      texture md5s, the DNA itself, and the data.black SOF fingerprint), or
+      ``None`` when any source is missing from the index or carries no hash.
+      ``None`` inputs are un-cacheable: the DNA is always a miss (fail-open).
     """
     dna_aliases: dict[str, list[int]] = {}
     dna_jobs: dict[str, dict] = {}
@@ -204,10 +208,13 @@ def gather_dna_inputs(
         dna_aliases.setdefault(dna, []).append(int(job["id"]))
         dna_jobs.setdefault(dna, job)
 
-    dna_inputs: dict[str, tuple[str, dict[str, str]] | None] = {}
+    data_black = data.resources.res.get_resource(DATA_BLACK_RESOURCE_ID)
+    sof_hash = data_black.file_hash if data_black is not None else None
+
+    dna_inputs: dict[str, ModelInputs | None] = {}
     for dna, job in dna_jobs.items():
         geometry = job.get("geometryResPath")
-        if not geometry:
+        if not geometry or not sof_hash:
             dna_inputs[dna] = None
             continue
         geo_node = data.resources.res.get_resource(geometry)
@@ -222,7 +229,11 @@ def gather_dna_inputs(
                 hashable = False
                 break
             textures[tex_path_normalize(tex_path)] = tex_node.file_hash
-        dna_inputs[dna] = (geo_node.file_hash, textures) if hashable else None
+        dna_inputs[dna] = (
+            ModelInputs(model=geo_node.file_hash, texture=textures, dna=dna, sof=sof_hash)
+            if hashable
+            else None
+        )
     return dna_aliases, dna_jobs, dna_inputs
 
 
@@ -257,17 +268,15 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
     hit_outputs: dict[ShipModelVariant, dict[str, str]] = {variant: {} for variant, _ in variants}
     if cache is not None:
         cache.load()
-        desired: dict[str, tuple[str, dict[str, str]]] = {}
+        desired: dict[str, ModelInputs] = {}
         for dna, aliases in dna_aliases.items():
             inputs = dna_inputs[dna]
             if inputs is None:
                 continue  # un-hashable inputs: implicit miss (fail-open)
-            model_hash, textures = inputs
             for alias in aliases:
                 for variant, _tex in variants:
                     desired[ship_resource_id(alias, variant)] = (
-                        model_hash,
-                        textures if variant is ShipModelVariant.FULL else {},
+                        inputs if variant is ShipModelVariant.FULL else inputs.without_textures()
                     )
         hits, _misses = cache.partition(desired)
         for variant, _tex in variants:
@@ -415,11 +424,11 @@ async def generate(data: GeneratorDatasource, cache: ModelsCacheContext | None =
                         # would rehydrate the degraded output forever.
                         if variant is ShipModelVariant.FULL and not fully_staged_textures(dna):
                             continue  # degraded output stays uncached; reconverted next run
-                        model_hash, textures = inputs
                         cache.record_conversion(
                             rid,
-                            model_hash,
-                            textures if variant is ShipModelVariant.FULL else {},
+                            inputs
+                            if variant is ShipModelVariant.FULL
+                            else inputs.without_textures(),
                             data.paths.get_ship_model_path(alias, variant),
                         )
                     else:
