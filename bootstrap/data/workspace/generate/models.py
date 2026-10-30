@@ -463,6 +463,13 @@ async def generate(
             for dna in sorted(hit_dnas[variant]):
                 for alias in dna_aliases[dna]:
                     external_entries.append(cache.hit_reference(ship_resource_id(alias, variant)))
+                    # Drop any stale local GLB at the same path: the output
+                    # directory is not cleared between runs, so an earlier
+                    # conversion may have left one behind. The snapshot walk
+                    # would index it alongside the external reference, making
+                    # the resource id appear twice with different content
+                    # hashes.
+                    data.paths.get_ship_model_path(alias, variant).unlink(missing_ok=True)
         if external_entries:
             info(f"Referenced {len(external_entries)} cached models in place (no download).")
 
