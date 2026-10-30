@@ -83,14 +83,16 @@ jobs:
           TEST_MODE: ${{ inputs.test_mode }}
           REBUILD_MODELS: ${{ inputs.rebuild_models }}
         run: |
-          # Models build-state cache: real runs only. Test mode has no
-          # production credentials and must never write the shared map.
+          # Models build-state cache: real runs only, including forced
+          # rebuilds. Test mode has no production credentials and must never
+          # read or write the shared map.
           MODELS_FLAGS=""
           if [ "${TEST_MODE}" != "true" ]; then
-            MODELS_FLAGS="--models-cache"
-          fi
-          if [ "${REBUILD_MODELS}" = "true" ]; then
-            MODELS_FLAGS="--rebuild-models"
+            if [ "${REBUILD_MODELS}" = "true" ]; then
+              MODELS_FLAGS="--rebuild-models"
+            else
+              MODELS_FLAGS="--models-cache"
+            fi
           fi
           # shellcheck disable=SC2016
           nix develop .#python --command bash -c \
