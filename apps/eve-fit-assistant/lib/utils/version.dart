@@ -1,20 +1,10 @@
-int compareVersions(String a, String b) {
-  final aParts = a.split(".").map(int.tryParse).toList();
-  final bParts = b.split(".").map(int.tryParse).toList();
-
-  final length = aParts.length > bParts.length ? aParts.length : bParts.length;
-
-  for (var i = 0; i < length; i++) {
-    final aVal = i < aParts.length ? (aParts[i] ?? 0) : 0;
-    final bVal = i < bParts.length ? (bParts[i] ?? 0) : 0;
-    final cmp = aVal.compareTo(bVal);
-    if (cmp != 0) {
-      return cmp;
-    }
-  }
-
-  return 0;
-}
+/// Compares two version strings by semver precedence: numeric core segments
+/// first, then the prerelease — a release outranks each of its prereleases,
+/// prerelease labels compare lexically, and a trailing prerelease counter
+/// compares numerically. Build metadata (`+...`) is ignored. Unparseable core
+/// segments count as 0 and a shorter core pads with zeros, so tolerant forms
+/// like `1.2` still compare.
+int compareVersions(String a, String b) => compareAppVersions(a, b);
 
 bool isAppVersionBelow(String current, String required) {
   if (current.isEmpty || required.isEmpty) {
@@ -92,7 +82,25 @@ int compareAppVersions(String a, String b) {
   return (core: version.substring(0, dashIndex), pre: version.substring(dashIndex + 1));
 }
 
-int _compareDotSeparatedInts(String a, String b) => compareVersions(a, b);
+/// Dot-separated numeric core comparison. Unparseable segments count as 0 and
+/// a shorter segment list pads with zeros (`1.2` equals `1.2.0`).
+int _compareDotSeparatedInts(String a, String b) {
+  final aParts = a.split(".").map(int.tryParse).toList();
+  final bParts = b.split(".").map(int.tryParse).toList();
+
+  final length = aParts.length > bParts.length ? aParts.length : bParts.length;
+
+  for (var i = 0; i < length; i++) {
+    final aVal = i < aParts.length ? (aParts[i] ?? 0) : 0;
+    final bVal = i < bParts.length ? (bParts[i] ?? 0) : 0;
+    final cmp = aVal.compareTo(bVal);
+    if (cmp != 0) {
+      return cmp;
+    }
+  }
+
+  return 0;
+}
 
 ({String label, int num}) _parsePreRelease(String pre) {
   final lastDot = pre.lastIndexOf(".");

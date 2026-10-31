@@ -367,6 +367,18 @@ app's release track follows the data-channel setting (`testing`/`stable`);
 fresh installs default to the channel matching their build flavor (debug →
 testing, release → stable).
 
+Every shipped APK variant's manifest `versionCode` equals `build` exactly.
+Flutter's `--split-per-abi` would otherwise override it with a per-ABI offset
+(armv7 = 1000 + build, arm64 = 2000 + build, x64 = 4000 + build), which desyncs
+the installed versionCode from the release index's `build` and makes
+cross-variant installs count as downgrades; the offset is disabled via
+`force-version-code-ignoring-abi` in the app's `android/gradle.properties`, and
+`./x build apk` verifies each artifact's versionCode against `build`. Releases
+up to `1.0.0-beta.2` still carry the legacy offset (effective codes up to
+4037), which is why `build` jumped from 37 to 5000 at `1.0.0-beta.3`: every
+new artifact must stay strictly ahead of every legacy one. Never re-enable the
+offset or lower `build`.
+
 ## Secrets and environments
 
 Publishing credentials are scoped to GitHub Environments instead of repository
