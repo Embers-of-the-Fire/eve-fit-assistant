@@ -9,12 +9,7 @@ zh = "简体中文"
 [version]
 # Shared build number (Flutter/Android versionCode); strictly increases
 # across every release-triggering merge on both tracks.
-# Jumped 37 -> 5000 at 1.0.0-beta.3: pre-beta.3 ABI-split APKs carried Flutter's
-# per-ABI versionCode offset (armv7=1xxx, arm64=2xxx, x64=4xxx), so builds up to
-# beta.2 sit at effective codes up to 4037. The jump keeps every new artifact
-# strictly ahead of every legacy one; the offset itself is disabled via
-# force-version-code-ignoring-abi in android/gradle.properties.
-build = 5000
+build = 5001
 data_schema = 2
 
 [version.testing]
@@ -23,7 +18,7 @@ data_schema = 2
 major = 1
 minor = 0
 patch = 0
-num = 2
+num = 3
 
 [version.stable]
 # Stable track renders as major.minor.patch+build.
