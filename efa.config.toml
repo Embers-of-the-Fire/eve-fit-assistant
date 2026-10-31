@@ -23,7 +23,7 @@ data_schema = 2
 major = 1
 minor = 0
 patch = 0
-num = 3
+num = 2
 
 [version.stable]
 # Stable track renders as major.minor.patch+build.
