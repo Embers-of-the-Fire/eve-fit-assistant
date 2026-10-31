@@ -2,6 +2,52 @@ import "package:eve_fit_assistant/utils/version.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
+  group("compareVersions", () {
+    test("orders plain release triplets", () {
+      expect(compareVersions("1.2.3", "1.2.4"), isNegative);
+      expect(compareVersions("1.2.4", "1.2.3"), isPositive);
+      expect(compareVersions("1.2.3", "1.2.3"), isZero);
+    });
+
+    test("prerelease sorts below its release", () {
+      expect(compareVersions("1.0.0-beta.1", "1.0.0"), isNegative);
+      expect(compareVersions("1.0.0", "1.0.0-beta.2"), isPositive);
+    });
+
+    test("prerelease counter compares numerically", () {
+      expect(compareVersions("1.0.0-beta.2", "1.0.0-beta.1"), isPositive);
+      expect(compareVersions("1.0.0-beta.10", "1.0.0-beta.9"), isPositive);
+    });
+
+    test("prerelease labels compare lexically", () {
+      expect(compareVersions("1.0.0-rc.1", "1.0.0-beta.2"), isPositive);
+      expect(compareVersions("1.0.0-alpha.1", "1.0.0-beta.1"), isNegative);
+    });
+
+    test("build metadata is ignored", () {
+      expect(compareVersions("1.0.0-beta.2+5000", "1.0.0-beta.2+37"), isZero);
+      expect(compareVersions("1.0.0-beta.2+5000", "1.0.0-beta.1+37"), isPositive);
+    });
+
+    test("missing segments default to zero", () {
+      expect(compareVersions("1.2", "1.2.1"), isNegative);
+      expect(compareVersions("1.2", "1.2.0"), isZero);
+    });
+  });
+
+  group("isAppVersionBelow", () {
+    test("prerelease is below the stable release", () {
+      expect(isAppVersionBelow("1.0.0-beta.2", "1.0.0"), isTrue);
+      expect(isAppVersionBelow("1.0.0", "1.0.0-beta.2"), isFalse);
+      expect(isAppVersionBelow("1.0.0-beta.1", "1.0.0-beta.2"), isTrue);
+    });
+
+    test("empty versions never count as below", () {
+      expect(isAppVersionBelow("", "1.0.0"), isFalse);
+      expect(isAppVersionBelow("1.0.0", ""), isFalse);
+    });
+  });
+
   group("isBugfixOnlyUpgrade", () {
     group("0.x versions (patch is the bugfix component)", () {
       test("patch bump is bugfix-only", () {

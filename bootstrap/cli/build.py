@@ -76,6 +76,54 @@ def _build_apk_copy_and_verify(src_apk: Path, src_sha1: Path, dst_apk: Path, dst
         )
 
 
+def _find_apkanalyzer() -> str:
+    """Locate the apkanalyzer executable on PATH."""
+    from bootstrap.utils import get_command
+
+    try:
+        return get_command("apkanalyzer")
+    except FileNotFoundError as exc:
+        raise click.ClickException(
+            "apkanalyzer not found on PATH: run inside the Nix Android dev shell "
+            "or install the Android SDK cmdline-tools"
+        ) from exc
+
+
+def _apk_version_code(apkanalyzer: str, apk: Path) -> int:
+    """Read the manifest versionCode of [apk] via apkanalyzer."""
+    output = runtime.execute(
+        [apkanalyzer, "manifest", "version-code", str(apk)],
+        "APKANALYZER VERSION-CODE",
+        capture_stdout=True,
+    )
+    try:
+        return int(output.strip())
+    except ValueError as exc:
+        raise click.ClickException(
+            f"Cannot parse versionCode from apkanalyzer output for {apk}: {output.strip()!r}"
+        ) from exc
+
+
+def _verify_apk_version_code(apkanalyzer: str, apk: Path, expected_build: int) -> None:
+    """Fail when [apk]'s manifest versionCode diverges from the release build number.
+
+    Every shipped variant must carry the raw build number: Flutter's
+    --split-per-abi otherwise applies a per-ABI offset (armv7=1xxx, arm64=2xxx,
+    x64=4xxx), which desyncs the installed versionCode from the release index's
+    `build` and makes cross-variant installs count as downgrades. The offset is
+    disabled via force-version-code-ignoring-abi in android/gradle.properties.
+    """
+    if runtime.is_dry_run():
+        return
+    actual = _apk_version_code(apkanalyzer, apk)
+    if actual != expected_build:
+        raise click.ClickException(
+            f"{apk}: versionCode {actual} does not match the release build {expected_build} "
+            "(expected every variant to carry the raw build number; check "
+            "force-version-code-ignoring-abi in android/gradle.properties)"
+        )
+
+
 def _utcnow_iso() -> str:
     from datetime import UTC
     from datetime import datetime
@@ -568,6 +616,8 @@ def register_build_commands(cli_group: click.Group) -> None:
         if clean:
             runtime.run_melos("app:clean", "CLEANING BUILD ARTIFACTS")
 
+        apkanalyzer = _find_apkanalyzer()
+
         runtime.run_melos("app:build:apk", "BUILDING GENERAL APK", args=flavor_args)
         src_apk = apk_source / (f"app-{flavor}-release.apk" if flavor else "app-release.apk")
         src_sha1 = apk_source / (
@@ -578,6 +628,7 @@ def register_build_commands(cli_group: click.Group) -> None:
         dst_apk = output_dir / f"{ver}-android.apk"
         dst_sha1 = output_dir / f"{ver}-android.apk.sha1"
         _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+        _verify_apk_version_code(apkanalyzer, dst_apk, rel.build)
 
         runtime.run_melos(
             "app:build:apk", "BUILDING SPLIT ABI APKS", args=["--split-per-abi", *flavor_args]
@@ -598,6 +649,7 @@ def register_build_commands(cli_group: click.Group) -> None:
             dst_apk = output_dir / f"{ver}-android-{apk_suffix}.apk"
             dst_sha1 = output_dir / f"{ver}-android-{apk_suffix}.apk.sha1"
             _build_apk_copy_and_verify(src_apk, src_sha1, dst_apk, dst_sha1)
+            _verify_apk_version_code(apkanalyzer, dst_apk, rel.build)
 
         click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Build complete. Output: {output_dir}"))
         for f in sorted(output_dir.iterdir()):
