@@ -113,6 +113,8 @@ def _verify_apk_version_code(apkanalyzer: str, apk: Path, expected_build: int) -
     `build` and makes cross-variant installs count as downgrades. The offset is
     disabled via force-version-code-ignoring-abi in android/gradle.properties.
     """
+    if runtime.is_dry_run():
+        return
     actual = _apk_version_code(apkanalyzer, apk)
     if actual != expected_build:
         raise click.ClickException(
