@@ -32,7 +32,7 @@ pub struct FitPayload {
 pub struct FitDto {
     pub ship_type_id: i32,
     pub damage_profile: DamageProfileDto,
-    /// Pilot security status (-10.0..=10.0); defaults to 0 (no bonus).
+    /// Pilot security status (-10.0..=5.0); defaults to 0 (no bonus).
     #[serde(default)]
     pub security_status: f64,
     #[serde(default)]

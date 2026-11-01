@@ -69,8 +69,9 @@ message FitState {
 
   optional FitCharacter character = 13;
 
-  /// The pilot's security status (-10..10), scaling CONCORD/AT hull bonuses
-  /// on the engine side. Absent means 0 (no bonus).
+  /// The pilot's security status (-10..5, the effective in-game range),
+  /// scaling CONCORD/AT hull bonuses on the engine side. Absent means 0
+  /// (no bonus).
   optional double security_status = 14;
 }
 

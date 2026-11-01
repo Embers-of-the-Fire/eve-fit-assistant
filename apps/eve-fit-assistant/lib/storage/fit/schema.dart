@@ -95,7 +95,7 @@ abstract class FitStorageBody with _$FitStorageBody {
     /// system effects or weather) applied to the whole fit.
     @Default(IList<FitSystemBuff>.empty()) IList<FitSystemBuff> systemBuffs,
 
-    /// The pilot's security status (-10.0..=10.0); scales CONCORD/AT hull
+    /// The pilot's security status (-10.0..=5.0); scales CONCORD/AT hull
     /// bonuses. Defaults to 0 (no bonus).
     @Default(0.0) double securityStatus,
   }) = _FitStorageBody;

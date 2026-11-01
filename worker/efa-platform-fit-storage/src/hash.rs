@@ -256,7 +256,7 @@ mod tests {
         );
     }
 
-    /// Security status is part of the fit identity: a Marshal at +10 must
+    /// Security status is part of the fit identity: a Marshal at +5 must
     /// not share a hash with the same fit at 0.
     #[test]
     fn canonical_bytes_change_with_security_status() {

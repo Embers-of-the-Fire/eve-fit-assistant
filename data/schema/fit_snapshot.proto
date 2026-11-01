@@ -58,9 +58,10 @@ message FitSnapshot {
   /// producers may ship layout-only snapshots; the full app always fills it.
   optional SnapshotStatistics statistics = 17;
 
-  /// The pilot's security status (-10..10), scaling CONCORD/AT hull bonuses
-  /// on the engine side. Optional so snapshots created before this field
-  /// still decode; absent means 0 (no bonus).
+  /// The pilot's security status (-10..5, the effective in-game range),
+  /// scaling CONCORD/AT hull bonuses on the engine side. Optional so
+  /// snapshots created before this field still decode; absent means 0 (no
+  /// bonus).
   optional double security_status = 18;
 }
 

@@ -283,8 +283,9 @@ class FitSnapshotBuilder {
   final SnapshotCharacterData character;
   final SnapshotDamageProfile damageProfile;
 
-  /// The pilot's security status (-10..10), scaling CONCORD/AT hull bonuses.
-  /// Zero is omitted from the wire (proto default).
+  /// The pilot's security status (-10..5, the effective in-game range),
+  /// scaling CONCORD/AT hull bonuses. Zero is omitted from the wire (proto
+  /// default).
   final double securityStatus;
   final DateTime lastModified;
   final String? description;

@@ -400,7 +400,7 @@
   "fitEnvironmentEditBuffValue": "Edit Buff Strength",
   "fitEnvironmentEngineUnavailable": "Engine data is unavailable; effects from the active snapshot cannot be resolved.",
   "fitEnvironmentSecurityStatus": "Security Status",
-  "fitEnvironmentSecurityStatusHint": "Scales security-status-based hull bonuses (CONCORD/AT ships), -10 to +10",
+  "fitEnvironmentSecurityStatusHint": "Scales security-status-based hull bonuses (CONCORD/AT ships), -10 to +5",
   "fitEnvironmentEditSecurityStatus": "Edit Security Status",
   "fitSkillPolicyPresetTitle": "Skill profile: {profileName}",
   "fitSkillPolicyPresetDescription": "This build uses preset skill profiles instead of real character data.",

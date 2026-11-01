@@ -95,7 +95,7 @@ pub struct SystemBuff {
 pub struct Fit {
     pub ship_type_id: i32,
     pub damage_profile: DamageProfile,
-    /// The pilot's security status (-10.0..=10.0); scales CONCORD/AT hull
+    /// The pilot's security status (-10.0..=5.0); scales CONCORD/AT hull
     /// bonuses. `0.0` means no bonus.
     pub security_status: f64,
     pub modules: Vec<Module>,

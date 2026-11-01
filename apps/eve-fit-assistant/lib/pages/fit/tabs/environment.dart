@@ -617,7 +617,7 @@ class _EditSystemBuffValueDialogState extends State<_EditSystemBuffValueDialog> 
 }
 
 /// Numeric input dialog for the pilot security status; the submitted value
-/// is clamped to the in-game -10.0..=10.0 range.
+/// is clamped to the effective in-game -10.0..=5.0 range.
 class _EditSecurityStatusDialog extends StatefulWidget {
   const _EditSecurityStatusDialog({required this.initialValue});
 
@@ -668,6 +668,6 @@ class _EditSecurityStatusDialogState extends State<_EditSecurityStatusDialog> {
   void _submit(String text) {
     final value = double.tryParse(text.trim());
     if (value == null || !value.isFinite) return;
-    Navigator.of(context).pop(value.clamp(-10.0, 10.0));
+    Navigator.of(context).pop(value.clamp(-10.0, 5.0));
   }
 }
