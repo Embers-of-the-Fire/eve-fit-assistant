@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+import yaml
 
 from colorama import Fore
 from colorama import Style
@@ -13,6 +14,7 @@ from bootstrap.cli import runtime
 from bootstrap.color import styled
 from bootstrap.release.relnote import create_raw_release_note
 from bootstrap.release.relnote import parse_release_version
+from bootstrap.release.relnote import plan_raw_release_note
 from bootstrap.release.relnote import split_csv
 from bootstrap.release.version_image import DEFAULT_BASE_IMAGE
 from bootstrap.release.version_image import DEFAULT_FONT
@@ -120,6 +122,83 @@ def register_release_commands(cli_group: click.Group) -> None:
             styled([Style.BRIGHT, Fore.GREEN], "Created raw release note: ") + str(directory)
         )
         click.echo(f"  entry id: {entry_id}")
+
+    @release.command("preview")
+    @click.option(
+        "--version",
+        "version_override",
+        default=None,
+        help="Override the app version (semver, e.g. 0.1.0-beta.7).",
+    )
+    @click.option(
+        "--track",
+        type=click.Choice(["testing", "stable"]),
+        default="testing",
+        help="Release track to render the configured version for (ignored when --version is given).",
+    )
+    @click.option(
+        "--published-at",
+        default=None,
+        help="Override publishedAt timestamp (ISO-8601, default: now).",
+    )
+    @click.option(
+        "--channels",
+        default=None,
+        help="Comma-separated channel list (default: testing).",
+    )
+    @click.option(
+        "--platforms",
+        default=None,
+        help="Comma-separated platform list (default: all platforms).",
+    )
+    @click.option(
+        "--from-ref",
+        default=None,
+        help="Base git ref (tag or commit hash) to compare against. "
+        "If omitted, uses the last tag matching version pattern.",
+    )
+    def release_preview(
+        version_override: str | None,
+        track: str,
+        published_at: str | None,
+        channels: str | None,
+        platforms: str | None,
+        from_ref: str | None,
+    ):
+        """Preview the release note that relnote would generate.
+
+        Prints the spec.yaml and changelog.md contents to stdout without
+        writing any files. Accepts the same version and metadata options
+        as 'release relnote'.
+        """
+        if version_override is not None:
+            version = parse_release_version(version_override)
+        else:
+            bootstrap.config.ProjectConfiguration.ensure_loaded()
+            version = bootstrap.config.CONFIGURATION.version.release(Channel(track))
+
+        directory, entry_id, spec, changelog_body = plan_raw_release_note(
+            version,
+            published_at=published_at,
+            channels=split_csv(channels),
+            platforms=split_csv(platforms),
+            from_ref=from_ref,
+        )
+
+        if directory.exists() and any(directory.iterdir()):
+            click.echo(
+                styled([Style.BRIGHT, Fore.YELLOW], "[NOTE] ")
+                + f"Entry already exists at {directory} (id: {entry_id}); "
+                "this previews a regeneration.",
+                err=True,
+            )
+
+        spec_path = directory / "spec.yaml"
+        changelog_path = directory / "changelog.md"
+        click.echo(f"=== {spec_path} (would be written) ===")
+        click.echo(yaml.safe_dump(spec, allow_unicode=True, sort_keys=False), nl=False)
+        click.echo(f"=== {changelog_path} (would be written) ===")
+        click.echo(changelog_body, nl=False)
 
     @release.command("version-image")
     @click.option(
