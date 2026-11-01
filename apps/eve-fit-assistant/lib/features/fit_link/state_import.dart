@@ -70,6 +70,8 @@ FitStateConversion fitStateToStorage(FitState state, {required String characterI
         kinetic: state.damageProfile.kinetic,
         thermal: state.damageProfile.thermal,
       ),
+      // Absent on the wire (proto2 optional) means 0, the no-bonus default.
+      securityStatus: state.securityStatus,
       slots: FitStorageSlots(
         high: buildRack(SlotType.HIGH, state.layout.highSlots),
         medium: buildRack(SlotType.MEDIUM, state.layout.mediumSlots),

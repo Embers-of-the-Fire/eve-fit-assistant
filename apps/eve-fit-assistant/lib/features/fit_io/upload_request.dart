@@ -356,6 +356,8 @@ FitUploadRequest buildFitUploadRequest({
         kinetic: fit.body.damageProfile.kinetic,
         explosive: fit.body.damageProfile.explosive,
       ),
+      // Zero (no bonus) is the proto default; omit it from the wire.
+      securityStatus: fit.body.securityStatus == 0.0 ? null : fit.body.securityStatus,
       dynamicItems: [
         for (final entry in fit.dynamicRegistry.dynamicItems.entries)
           if (referencedDynamicIds.contains(entry.key))

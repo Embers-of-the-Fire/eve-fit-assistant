@@ -18,6 +18,7 @@ FitStorage _makeFit({
   String name = "Test Fit",
   String description = "A test fit",
   String characterId = "char-1",
+  double securityStatus = 0.0,
 }) => FitStorage(
   metadata: FitMetadata(
     fitId: "test-fit-1",
@@ -31,6 +32,7 @@ FitStorage _makeFit({
     shipTypeId: 12017,
     characterId: characterId,
     damageProfile: const FitDamageProfile(em: 0.5, explosive: 0.1, kinetic: 0.2, thermal: 0.2),
+    securityStatus: securityStatus,
     slots: FitStorageSlots(
       high: IList([
         Some(
@@ -219,6 +221,11 @@ void main() {
       expect(profile.thermal, 0.2);
       expect(profile.kinetic, 0.2);
       expect(profile.explosive, 0.1);
+    });
+
+    test("maps the pilot security status, omitting the zero default", () {
+      expect(_build(_makeFit()).fit.hasSecurityStatus(), isFalse);
+      expect(_build(_makeFit(securityStatus: 10.0)).fit.securityStatus, 10.0);
     });
 
     test("includes only referenced dynamic items", () {

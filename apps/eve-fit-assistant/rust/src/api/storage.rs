@@ -95,6 +95,9 @@ pub struct SystemBuff {
 pub struct Fit {
     pub ship_type_id: i32,
     pub damage_profile: DamageProfile,
+    /// The pilot's security status (-10.0..=5.0); scales CONCORD/AT hull
+    /// bonuses. `0.0` means no bonus.
+    pub security_status: f64,
     pub modules: Vec<Module>,
     pub drones: Vec<Drone>,
     pub fighters: Vec<Fighter>,
@@ -272,6 +275,7 @@ impl Fit {
         ItemFit {
             ship_type_id: self.ship_type_id,
             damage_profile: self.damage_profile.into_native(),
+            security_status: self.security_status,
             modules: self.modules.into_iter().map(|m| m.into_native()).collect(),
             drones: self.drones.into_iter().map(|d| d.into_native()).collect(),
             fighters: self.fighters.into_iter().map(|f| f.into_native()).collect(),

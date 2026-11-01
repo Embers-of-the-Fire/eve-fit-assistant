@@ -94,6 +94,10 @@ abstract class FitStorageBody with _$FitStorageBody {
     /// System-wide warfare buffs (environmental effects such as wormhole
     /// system effects or weather) applied to the whole fit.
     @Default(IList<FitSystemBuff>.empty()) IList<FitSystemBuff> systemBuffs,
+
+    /// The pilot's security status (-10.0..=5.0); scales CONCORD/AT hull
+    /// bonuses. Defaults to 0 (no bonus).
+    @Default(0.0) double securityStatus,
   }) = _FitStorageBody;
 
   factory FitStorageBody.fromJson(Map<String, dynamic> json) => _$FitStorageBodyFromJson(json);
@@ -536,6 +540,7 @@ native.Fit convertFitBodyToNative(FitStorage fitStorage, {required Map<int, int>
       kinetic: fitStorage.body.damageProfile.kinetic,
       thermal: fitStorage.body.damageProfile.thermal,
     ),
+    securityStatus: fitStorage.body.securityStatus,
     modules: [
       ...modules,
       if (fitStorage.body.slots.tacticalMode case Some(:final value))

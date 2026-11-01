@@ -314,6 +314,16 @@ class FitWrapper {
   Future<void> clearSystemBuffs() =>
       wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(systemBuffs: IList())));
 
+  // ---- Pilot security status ----
+
+  /// Sets the pilot security status driving security-status-scaling hull
+  /// bonuses (CONCORD/AT ships); clamped to the effective in-game
+  /// -10.0..=5.0 range (+5 is the maximum reachable security status).
+  Future<void> setSecurityStatus(double value) => wrapped.update((fit) {
+    final clamped = value.clamp(-10.0, 5.0);
+    return fit.copyWith(body: fit.body.copyWith(securityStatus: clamped));
+  });
+
   int? findImplantStorageIndex(FitStorage fit, int slotId, WidgetRef ref) {
     final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
     if (slotsInfo == null) return null;

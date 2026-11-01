@@ -34,6 +34,7 @@ fn test_fit() -> FitContainer {
     let fit = ItemFit {
         fighters: vec![],
         damage_profile: DamageProfile::default(),
+        security_status: 0.0,
         ship_type_id: 628,
         modules: (0..3)
             .map(|index| ItemModule {
@@ -853,6 +854,7 @@ fn apply_edit_subsystems_redefine_slot_capacity() {
         ItemFit {
             ship_type_id: 29984,
             damage_profile: DamageProfile::default(),
+            security_status: 0.0,
             modules: vec![],
             drones: vec![],
             fighters: vec![],

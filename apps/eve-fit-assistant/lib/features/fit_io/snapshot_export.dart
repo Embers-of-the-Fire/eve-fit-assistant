@@ -172,6 +172,7 @@ class FitSnapshotExporter {
         kinetic: fit.body.damageProfile.kinetic,
         explosive: fit.body.damageProfile.explosive,
       ),
+      securityStatus: fit.body.securityStatus,
       lastModified: DateTime.fromMillisecondsSinceEpoch(fit.metadata.lastModified),
       generator: "eve-fit-assistant/$appVersion",
       checkoutId: fit.metadata.checkoutRef.checkoutId,

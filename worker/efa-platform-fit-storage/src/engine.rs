@@ -372,6 +372,7 @@ pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
         ef::ItemFit {
             ship_type_id: state.ship_type_id as i32,
             damage_profile,
+            security_status: state.security_status.unwrap_or(0.0),
             modules,
             drones,
             fighters,

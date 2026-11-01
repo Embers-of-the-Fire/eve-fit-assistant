@@ -130,9 +130,10 @@ void main() {
 
       final migratedFixture = _roundTripJson(fixture);
       migratedFixture["version"] = 4;
-      ((migratedFixture["fit"] as Map<String, dynamic>)["body"]
-              as Map<String, dynamic>)["systemBuffs"] =
-          <dynamic>[];
+      final migratedBody =
+          (migratedFixture["fit"] as Map<String, dynamic>)["body"] as Map<String, dynamic>;
+      migratedBody["systemBuffs"] = <dynamic>[];
+      migratedBody["securityStatus"] = 0.0;
       expect(reEncoded, migratedFixture);
     });
   });

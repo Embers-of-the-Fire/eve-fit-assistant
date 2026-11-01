@@ -12,22 +12,24 @@ const _layout = SnapshotShipLayoutData(
   launcherHardpoints: 1,
 );
 
-FitSnapshotBuilder _builder({DateTime Function()? clock}) => FitSnapshotBuilder(
-  fitName: "Brawler Vexor",
-  ship: _ship,
-  layout: _layout,
-  character: const SnapshotCharacterData.builtin(
-    SnapshotBuiltinCharacter.all5,
-    names: {"en": "All 5", "zh": "全 5"},
-  ),
-  damageProfile: const SnapshotDamageProfile.uniform(),
-  lastModified: DateTime.fromMillisecondsSinceEpoch(1755201600000),
-  description: "Dual-rep brawler.",
-  generator: "eve-fit-assistant/0.6.0",
-  checkoutId: "a1b2c3d4",
-  serverId: "tranquility",
-  clock: clock ?? () => DateTime.fromMillisecondsSinceEpoch(1755300000000),
-);
+FitSnapshotBuilder _builder({DateTime Function()? clock, double securityStatus = 0.0}) =>
+    FitSnapshotBuilder(
+      fitName: "Brawler Vexor",
+      ship: _ship,
+      layout: _layout,
+      character: const SnapshotCharacterData.builtin(
+        SnapshotBuiltinCharacter.all5,
+        names: {"en": "All 5", "zh": "全 5"},
+      ),
+      damageProfile: const SnapshotDamageProfile.uniform(),
+      lastModified: DateTime.fromMillisecondsSinceEpoch(1755201600000),
+      description: "Dual-rep brawler.",
+      generator: "eve-fit-assistant/0.6.0",
+      checkoutId: "a1b2c3d4",
+      serverId: "tranquility",
+      securityStatus: securityStatus,
+      clock: clock ?? () => DateTime.fromMillisecondsSinceEpoch(1755300000000),
+    );
 
 const _blaster = SnapshotModuleData(
   type: SnapshotTypeData(typeId: 3170, names: {"en": "Heavy Electron Blaster II"}),
@@ -42,6 +44,11 @@ const _blaster = SnapshotModuleData(
 
 void main() {
   group("FitSnapshotBuilder", () {
+    test("carries the pilot security status, omitting the zero default", () {
+      expect(_builder().build().hasSecurityStatus(), isFalse);
+      expect(_builder(securityStatus: 10.0).build().securityStatus, 10.0);
+    });
+
     test("fills racks to the layout size with indexed empty slots", () {
       final builder = _builder()..setModule(SnapshotRack.high, 0, _blaster);
       final snapshot = builder.build();

@@ -483,6 +483,7 @@ Map<String, Object?> _encodeNativeFit(native_storage.Fit fit) => {
     "kinetic": fit.damageProfile.kinetic,
     "thermal": fit.damageProfile.thermal,
   },
+  "security_status": fit.securityStatus,
   "modules": [for (final m in fit.modules) _encodeNativeModule(m)],
   "drones": [
     for (final d in fit.drones)

@@ -32,6 +32,9 @@ pub struct FitPayload {
 pub struct FitDto {
     pub ship_type_id: i32,
     pub damage_profile: DamageProfileDto,
+    /// Pilot security status (-10.0..=5.0); defaults to 0 (no bonus).
+    #[serde(default)]
+    pub security_status: f64,
     #[serde(default)]
     pub modules: Vec<ModuleDto>,
     #[serde(default)]
@@ -196,6 +199,7 @@ impl FitDto {
                 kinetic: self.damage_profile.kinetic,
                 thermal: self.damage_profile.thermal,
             },
+            security_status: self.security_status,
             modules: self.modules.into_iter().map(|m| m.into_native()).collect(),
             drones: self.drones.into_iter().map(|d| d.into_native()).collect(),
             fighters: self.fighters.into_iter().map(|f| f.into_native()).collect(),
@@ -309,6 +313,7 @@ mod tests {
                     kinetic: 0.0,
                     thermal: 0.0,
                 },
+                security_status: 0.0,
                 modules: vec![],
                 drones: vec![DroneDto {
                     item_id,
