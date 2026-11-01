@@ -200,7 +200,7 @@ class _SecurityStatusRow extends StatelessWidget {
       ),
     ),
     trailing: Text(
-      fitContext.fit.body.securityStatus.toStringAsFixed(1),
+      "${fitContext.fit.body.securityStatus}",
       style: context.theme.textTheme.bodyMedium,
     ),
     onTap: interactionOptions.allowMutations ? () => _handleEdit(context) : null,
