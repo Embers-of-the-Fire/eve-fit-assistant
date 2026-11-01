@@ -199,7 +199,7 @@ SHIM
       # AppImages it creates is embedded, so no wrapper or network is needed.
       appimagetoolAppImage = pkgs.fetchurl {
         name = "appimagetool-x86_64.AppImage";
-        url = "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage";
+        url = "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage";
         hash = "sha256-rH/Vb+reYALC9X2zlYcRMnXTUfzpEaX7sp6oTNBmbKs=";
       };
 
