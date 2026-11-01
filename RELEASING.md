@@ -107,6 +107,14 @@ To override the version or published time:
 
 Use `--force` to overwrite an existing release note directory.
 
+To preview the generated `spec.yaml` and `changelog.md` on stdout without
+writing any files, use `./x release preview` with the same version, track,
+metadata, and `--from-ref` options:
+
+```bash
+./x release preview --track testing --from-ref releases/v<previous-tag>
+```
+
 ### 1.2.1. Generate the version banner image
 
 ```bash
@@ -504,6 +512,7 @@ wired into releases as follows:
 | Bump version (testing release) | Edit `efa.config.toml` `[version.testing]` + shared `build` |
 | Classify release intent | `./x ci release intent --base-ref origin/dev` |
 | Generate release note | `./x release relnote --track <track> --from-ref releases/v<previous>` |
+| Preview release note (stdout, no writes) | `./x release preview --track <track> --from-ref releases/v<previous>` |
 | Generate version banner image | `./x release version-image` |
 | Author localized content | `docs/changelog/<version-dir>/content.{zh,en}.md` |
 | Sync version targets | `./x release version sync --track testing` |

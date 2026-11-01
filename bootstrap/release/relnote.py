@@ -116,6 +116,35 @@ def _build_spec(
     return spec
 
 
+def plan_raw_release_note(
+    version: ReleaseVersion,
+    *,
+    published_at: str | None = None,
+    channels: list[str] | None = None,
+    platforms: list[str] | None = None,
+    from_ref: str | None = None,
+) -> tuple[Path, str, dict[str, object], str]:
+    """Compute the raw release note contents without writing any files.
+
+    Returns (directory, entry_id, spec, changelog_body).
+    """
+    app_version = version.semver
+    dir_name = normalize_version_dir(app_version)
+    entry_id = version_dir_to_entry_id(app_version)
+    directory = CHANGELOG_ROOT / dir_name
+
+    spec = _build_spec(
+        version=version,
+        published_at=published_at,
+        channels=channels,
+        platforms=platforms,
+        from_ref=from_ref,
+    )
+    changelog_body = _run_cliff(version.tag, from_ref=from_ref)
+
+    return directory, entry_id, spec, changelog_body
+
+
 def create_raw_release_note(
     version: ReleaseVersion,
     *,
@@ -146,15 +175,13 @@ def create_raw_release_note(
     if dry_run:
         return directory, entry_id
 
-    spec = _build_spec(
-        version=version,
+    directory, entry_id, spec, changelog_body = plan_raw_release_note(
+        version,
         published_at=published_at,
         channels=channels,
         platforms=platforms,
         from_ref=from_ref,
     )
-    tag = version.tag
-    changelog_body = _run_cliff(tag, from_ref=from_ref)
 
     if directory.exists():
         shutil.rmtree(directory)

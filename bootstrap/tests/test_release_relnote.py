@@ -9,6 +9,9 @@ import click
 import pytest
 import yaml
 
+from click.testing import CliRunner
+
+from bootstrap.cli.release import register_release_commands
 from bootstrap.config import ReleaseVersion
 from bootstrap.release import relnote
 
@@ -311,3 +314,107 @@ def test_create_raw_release_note_with_from_ref_dry_run(
     assert returned_directory == directory
     assert entry_id == "version-0-2-0-beta-1"
     assert not directory.exists()
+
+
+def test_plan_raw_release_note_returns_spec_and_changelog(
+    tmp_path: Path,
+    version: ReleaseVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    stub = _write_cliff_stub(tmp_path)
+
+    with (
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+        patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+    ):
+        directory, entry_id, spec, changelog_body = relnote.plan_raw_release_note(
+            version,
+            from_ref="v0.1.0",
+        )
+
+    assert directory == isolated_changelog_root / "0-2-0-beta-1"
+    assert entry_id == "version-0-2-0-beta-1"
+    assert spec["id"] == "version-0-2-0-beta-1"
+    assert spec["appVersion"] == "0.2.0-beta.1"
+    assert spec["tags"] == ["release-note"]
+    assert spec["channels"] == ["testing"]
+    assert spec["platforms"] == []
+    assert spec["fromRef"] == "v0.1.0"
+    assert "publishedAt" in spec
+    assert "## [v0.2.0-beta.1]" in changelog_body
+    assert not directory.exists()
+
+
+def test_plan_raw_release_note_rejects_invalid_platforms(
+    version: ReleaseVersion,
+    isolated_changelog_root: Path,
+) -> None:
+    with (
+        pytest.raises(click.ClickException, match="Invalid platform"),
+        patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+    ):
+        relnote.plan_raw_release_note(version, platforms=["fuchsiaos"])
+
+    assert not (isolated_changelog_root / "0-2-0-beta-1").exists()
+
+
+class TestReleasePreviewCommand:
+    @pytest.fixture
+    def cli(self) -> click.Group:
+        group = click.Group()
+        register_release_commands(group)
+        return group
+
+    @pytest.fixture
+    def runner(self) -> CliRunner:
+        return CliRunner()
+
+    def test_preview_prints_spec_and_changelog_without_writing(
+        self,
+        cli: click.Group,
+        runner: CliRunner,
+        tmp_path: Path,
+        isolated_changelog_root: Path,
+    ) -> None:
+        stub = _write_cliff_stub(tmp_path)
+
+        with (
+            patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+            patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+        ):
+            result = runner.invoke(
+                cli,
+                ["release", "preview", "--version", "0.2.0-beta.1", "--from-ref", "v0.1.0"],
+            )
+
+        assert result.exit_code == 0
+        assert "spec.yaml (would be written) ===" in result.output
+        assert "changelog.md (would be written) ===" in result.output
+        assert "id: version-0-2-0-beta-1" in result.output
+        assert "appVersion: 0.2.0-beta.1" in result.output
+        assert "fromRef: v0.1.0" in result.output
+        assert "## [v0.2.0-beta.1]" in result.output
+        assert not (isolated_changelog_root / "0-2-0-beta-1").exists()
+
+    def test_preview_notes_existing_entry_on_stderr(
+        self,
+        cli: click.Group,
+        runner: CliRunner,
+        tmp_path: Path,
+        isolated_changelog_root: Path,
+    ) -> None:
+        directory = isolated_changelog_root / "0-2-0-beta-1"
+        directory.mkdir()
+        (directory / "spec.yaml").write_text("id: old", encoding="utf-8")
+        stub = _write_cliff_stub(tmp_path)
+
+        with (
+            patch.object(relnote, "CHANGELOG_ROOT", isolated_changelog_root),
+            patch("bootstrap.release.relnote.get_command", return_value=str(stub)),
+        ):
+            result = runner.invoke(cli, ["release", "preview", "--version", "0.2.0-beta.1"])
+
+        assert result.exit_code == 0
+        assert "Entry already exists" in result.stderr
+        assert "previews a regeneration" in result.stderr
+        assert (directory / "spec.yaml").read_text(encoding="utf-8") == "id: old"
