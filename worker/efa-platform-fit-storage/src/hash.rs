@@ -175,6 +175,7 @@ mod tests {
                     ("en".to_string(), "Test".to_string()),
                 ]),
             }),
+            security_status: Some(5.0),
         }
     }
 
@@ -249,6 +250,19 @@ mod tests {
         let state = sample_state();
         let mut other = state.clone();
         other.ship_type_id = 11186;
+        assert_ne!(
+            fit_hash(&canonical_state(&state).encode_to_vec()),
+            fit_hash(&canonical_state(&other).encode_to_vec())
+        );
+    }
+
+    /// Security status is part of the fit identity: a Marshal at +10 must
+    /// not share a hash with the same fit at 0.
+    #[test]
+    fn canonical_bytes_change_with_security_status() {
+        let state = sample_state();
+        let mut other = state.clone();
+        other.security_status = None;
         assert_ne!(
             fit_hash(&canonical_state(&state).encode_to_vec()),
             fit_hash(&canonical_state(&other).encode_to_vec())

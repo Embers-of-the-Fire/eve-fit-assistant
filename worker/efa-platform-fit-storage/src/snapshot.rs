@@ -293,6 +293,7 @@ pub fn assemble(
         boosters,
         character,
         damage_profile: state.damage_profile,
+        security_status: state.security_status,
         statistics: Some(crate::statistics::build_statistics(ship)),
     }
 }

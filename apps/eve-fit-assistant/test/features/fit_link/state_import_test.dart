@@ -49,6 +49,25 @@ void main() {
       expect(converted.dynamicRegistry.dynamicItems, isEmpty);
     });
 
+    test("maps the pilot security status, defaulting to 0 when absent", () {
+      final withStatus = fitStateToStorage(
+        FitState(
+          shipTypeId: 12017,
+          layout: _layout(),
+          damageProfile: _profile(),
+          securityStatus: -5.0,
+        ),
+        characterId: "predefined_all_5",
+      );
+      expect(withStatus.body.securityStatus, -5.0);
+
+      final withoutStatus = fitStateToStorage(
+        FitState(shipTypeId: 12017, layout: _layout(), damageProfile: _profile()),
+        characterId: "predefined_all_5",
+      );
+      expect(withoutStatus.body.securityStatus, 0.0);
+    });
+
     test("places modules by rack and index, honoring the layout size", () {
       final converted = fitStateToStorage(
         FitState(

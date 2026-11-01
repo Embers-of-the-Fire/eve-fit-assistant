@@ -267,6 +267,7 @@ class FitSnapshotBuilder {
     required this.character,
     required this.damageProfile,
     required this.lastModified,
+    this.securityStatus = 0.0,
     this.description,
     this.generator,
     this.checkoutId,
@@ -281,6 +282,10 @@ class FitSnapshotBuilder {
   final SnapshotShipLayoutData layout;
   final SnapshotCharacterData character;
   final SnapshotDamageProfile damageProfile;
+
+  /// The pilot's security status (-10..10), scaling CONCORD/AT hull bonuses.
+  /// Zero is omitted from the wire (proto default).
+  final double securityStatus;
   final DateTime lastModified;
   final String? description;
   final String? generator;
@@ -466,6 +471,7 @@ class FitSnapshotBuilder {
         kinetic: damageProfile.kinetic,
         explosive: damageProfile.explosive,
       ),
+      securityStatus: securityStatus == 0.0 ? null : securityStatus,
       statistics: _statistics,
     );
   }

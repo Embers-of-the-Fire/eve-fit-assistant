@@ -98,6 +98,7 @@ class _EnvironmentTabState extends ConsumerState<_EnvironmentTab>
         Expanded(
           child: ListView(
             children: [
+              _SecurityStatusRow(fitContext: fitContext, interactionOptions: interactionOptions),
               for (final presetId in presetIds)
                 _EnvironmentPresetRow(
                   fitContext: fitContext,
@@ -174,6 +175,45 @@ class _EnvironmentTabState extends ConsumerState<_EnvironmentTab>
     if (entry == null) return;
     final value = resolveLibraryDefaultValue(entry, dogma.attrsOf);
     await widget.fitContext.fitWrapper.addCustomSystemBuff(entry.buffId, value);
+  }
+}
+
+/// Fixed row at the top of the environment tab showing and editing the
+/// fit's pilot security status (drives CONCORD/AT hull bonuses).
+class _SecurityStatusRow extends StatelessWidget {
+  const _SecurityStatusRow({
+    required this.fitContext,
+    this.interactionOptions = const FitInteractionOptions(),
+  });
+
+  final FitContext fitContext;
+  final FitInteractionOptions interactionOptions;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: const Icon(Icons.security),
+    title: Text(context.l10n.fitEnvironmentSecurityStatus),
+    subtitle: Text(
+      context.l10n.fitEnvironmentSecurityStatusHint,
+      style: context.theme.textTheme.bodySmall?.copyWith(
+        color: context.theme.colorScheme.onSurfaceVariant,
+      ),
+    ),
+    trailing: Text(
+      fitContext.fit.body.securityStatus.toStringAsFixed(1),
+      style: context.theme.textTheme.bodyMedium,
+    ),
+    onTap: interactionOptions.allowMutations ? () => _handleEdit(context) : null,
+  );
+
+  Future<void> _handleEdit(BuildContext context) async {
+    final value = await showDialog<double>(
+      context: context,
+      builder: (context) =>
+          _EditSecurityStatusDialog(initialValue: fitContext.fit.body.securityStatus),
+    );
+    if (value == null) return;
+    await fitContext.fitWrapper.setSecurityStatus(value);
   }
 }
 
@@ -573,5 +613,61 @@ class _EditSystemBuffValueDialogState extends State<_EditSystemBuffValueDialog> 
     final value = double.tryParse(text.trim());
     if (value == null || !value.isFinite) return;
     Navigator.of(context).pop(value);
+  }
+}
+
+/// Numeric input dialog for the pilot security status; the submitted value
+/// is clamped to the in-game -10.0..=10.0 range.
+class _EditSecurityStatusDialog extends StatefulWidget {
+  const _EditSecurityStatusDialog({required this.initialValue});
+
+  final double initialValue;
+
+  @override
+  State<_EditSecurityStatusDialog> createState() => _EditSecurityStatusDialogState();
+}
+
+class _EditSecurityStatusDialogState extends State<_EditSecurityStatusDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: "${widget.initialValue}");
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AppDialog(
+    title: context.l10n.fitEnvironmentEditSecurityStatus,
+    content: Padding(
+      padding: const .fromLTRB(16, 0, 16, 8),
+      child: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+        decoration: InputDecoration(
+          isDense: true,
+          labelText: context.l10n.fitEnvironmentSecurityStatus,
+          border: const OutlineInputBorder(),
+        ),
+        onSubmitted: _submit,
+      ),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.cancel)),
+      FilledButton(onPressed: () => _submit(_controller.text), child: Text(context.l10n.confirm)),
+    ],
+  );
+
+  void _submit(String text) {
+    final value = double.tryParse(text.trim());
+    if (value == null || !value.isFinite) return;
+    Navigator.of(context).pop(value.clamp(-10.0, 10.0));
   }
 }

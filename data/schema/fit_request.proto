@@ -68,6 +68,10 @@ message FitState {
   repeated FitDynamicItem dynamic_items = 12;
 
   optional FitCharacter character = 13;
+
+  /// The pilot's security status (-10..10), scaling CONCORD/AT hull bonuses
+  /// on the engine side. Absent means 0 (no bonus).
+  optional double security_status = 14;
 }
 
 message FitTacticalModeRef {

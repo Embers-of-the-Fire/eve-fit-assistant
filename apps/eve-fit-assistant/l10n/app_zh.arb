@@ -851,6 +851,9 @@
   "fitEnvironmentEmpty": "未应用环境效果",
   "fitEnvironmentEditBuffValue": "编辑增益强度",
   "fitEnvironmentEngineUnavailable": "引擎数据不可用，无法解析当前快照中的环境效果。",
+  "fitEnvironmentSecurityStatus": "安等",
+  "fitEnvironmentSecurityStatusHint": "影响基于安等的船体加成（统合部/AT 舰船），范围 -10 至 +10",
+  "fitEnvironmentEditSecurityStatus": "编辑安等",
   "fitSkillPolicyPresetTitle": "技能档案：{profileName}",
   "@fitSkillPolicyPresetTitle": {
     "placeholders": {

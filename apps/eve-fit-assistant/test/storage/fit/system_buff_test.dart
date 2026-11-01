@@ -102,6 +102,7 @@ void main() {
           kinetic: 0.25,
           thermal: 0.25,
         ),
+        securityStatus: 0.0,
         modules: const [],
         drones: const [],
         fighters: const [],
