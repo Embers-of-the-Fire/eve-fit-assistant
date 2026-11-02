@@ -36,4 +36,16 @@ message Collection {
 
   // Optional: absent in older bundles; feature-gate UI on emptiness.
   map<uint32, fit.ImplantSet> implant_sets = 15;
+
+  // The official faction → member-races mapping from FSD `factions.msgpack`
+  // (`memberRaces`), copied verbatim. Consumers resolve a type's `faction_id`
+  // to its parent race (e.g. pirate hulls follow their parent race's skybox
+  // default). Absent in older bundles; treat a missing entry as "no faction
+  // race".
+  map<uint32, FactionRaces> faction_races = 16;
+}
+
+// The races a faction draws its members from (`memberRaces` in FSD).
+message FactionRaces {
+  repeated uint32 member_races = 1 [packed = true];
 }

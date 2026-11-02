@@ -85,7 +85,14 @@ void main() {
     });
   });
 
-  group("R6: default", () {
+  group("R6: static skyboxes", () {
+    test("lazy for equirects and sidecars", () {
+      expect(_resolve("resource://static/skyboxes/a01.hdr"), ResourceResolution.lazy);
+      expect(_resolve("resource://static/skyboxes/a01.pb2"), ResourceResolution.lazy);
+    });
+  });
+
+  group("R7: default", () {
     test("unknown ids fail closed to eager", () {
       expect(_resolve("resource://static/collection.pb2"), ResourceResolution.eager);
       expect(_resolve("resource://agent/agent_resource.db"), ResourceResolution.eager);
@@ -123,7 +130,7 @@ void main() {
     });
   });
 
-  test("RRS version is 2", () {
-    expect(kResourceResolutionSchemaVersion, 2);
+  test("RRS version is 3", () {
+    expect(kResourceResolutionSchemaVersion, 3);
   });
 }

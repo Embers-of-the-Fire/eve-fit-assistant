@@ -360,6 +360,11 @@ class RepoCollectionService {
   Ship? getShip(int typeId) => _ships[typeId];
   pb_types.Type? getType(int typeId) => _types[typeId];
 
+  /// The member races of a faction (the official FSD `memberRaces` mapping,
+  /// used to resolve a hull's faction to its parent race), or `null` when the
+  /// faction is unknown or the bundle predates the field.
+  List<int>? factionMemberRaces(int factionId) => _collection.factionRaces[factionId]?.memberRaces;
+
   /// Reverse index from localized type-name string id to type id, built
   /// lazily: localization string ids live in their own namespace (shared with
   /// group and market group names), so name-search hits must be mapped back

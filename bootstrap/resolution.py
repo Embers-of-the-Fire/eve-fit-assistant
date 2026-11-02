@@ -89,11 +89,16 @@ class ResolutionVocabulary(BaseModel):
     static_images_prefix: str
     #: Path prefix (relative to the scheme) of the static 3D model resources.
     static_models_prefix: str
+    #: Path prefix (relative to the scheme) of the static skybox resources.
+    static_skyboxes_prefix: str
     #: Resolution-context placeholder embedded in resource-id patterns.
     locale_placeholder: str
 
     @field_validator(
-        "legacy_localization_db", "localization_locales_prefix", "static_models_prefix"
+        "legacy_localization_db",
+        "localization_locales_prefix",
+        "static_models_prefix",
+        "static_skyboxes_prefix",
     )
     @classmethod
     def _validate_relative_posix_path(cls, value: str) -> str:

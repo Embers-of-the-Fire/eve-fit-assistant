@@ -1,11 +1,15 @@
 import "dart:async";
 import "dart:math" as math;
 
+import "package:eve_fit_assistant/components/model/skybox_environment.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
 import "package:eve_fit_assistant/storage/repo/model_asset.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/skybox_asset.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_scene/scene.dart";
@@ -25,6 +29,15 @@ const double _kFovY = 45 * math.pi / 180;
 /// Auto-rotation speed in radians per second (applied while idle).
 const double _kAutoRotateSpeed = 0.25;
 
+/// The skybox equirect ships at 2048x1024; decoding wider buys nothing.
+const int _kSkyboxMaxWidth = 2048;
+
+/// The analytic "sun" key light paired with a skybox: a fixed-direction
+/// neutral-white directional light complementing the image-based nebula
+/// lighting (spec §5.3).
+final vm.Vector3 _kSunDirection = vm.Vector3(-0.45, -0.85, -0.28).normalized();
+const double _kSunIntensity = 2;
+
 enum _ShipModelStatus { loading, ready, unavailable, error }
 
 /// An interactive 3D view of a ship's baked model (flutter_scene / Flutter
@@ -38,9 +51,19 @@ enum _ShipModelStatus { loading, ready, unavailable, error }
 ///
 /// The widget fills its parent; give it bounded constraints.
 class ShipModelViewer extends ConsumerStatefulWidget {
-  const ShipModelViewer({required this.typeId, this.fallback, super.key});
+  const ShipModelViewer({
+    required this.typeId,
+    this.skybox = kShipModelSkyboxAuto,
+    this.fallback,
+    super.key,
+  });
 
   final int typeId;
+
+  /// The skybox selection behind the model: a skybox id from the data
+  /// catalog, or [kShipModelSkyboxAuto] to follow the viewed ship's race
+  /// default. Per-view only — nothing is persisted.
+  final String skybox;
 
   /// Rendered when no model is available for [typeId] or loading fails.
   final Widget? fallback;
@@ -54,6 +77,14 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
   _ShipModelStatus _status = _ShipModelStatus.loading;
   ShipModelVariant? _viewVariant;
   String? _loadingKey;
+
+  // Skybox state, tracked independently of the model: the model shows as
+  // soon as it is ready even while the skybox is still loading, and a skybox
+  // switch swaps environment/skybox/light on the live scene without touching
+  // the model node. [_skyboxKey] is the resolved skybox id ("" = no skybox).
+  String? _skyboxKey;
+  EnvironmentMap? _environment;
+  double _skyboxIntensity = 1;
 
   // Orbit state: the camera looks at [_center] from [_distance] at the given
   // angles. Mutated by gestures and auto-rotate; the per-frame cameraBuilder
@@ -134,6 +165,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
         "bounds=$bounds, distance=$_distance",
       );
       scene.add(node);
+      _applySkyboxTo(scene);
 
       final old = _scene;
       setState(() {
@@ -146,6 +178,103 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       if (mounted && _loadingKey == key) {
         setState(() => _status = _ShipModelStatus.error);
       }
+    }
+  }
+
+  // ── Skybox ──
+
+  /// Applies the current skybox state to [scene]: environment, background
+  /// skybox, and the sun key light. With no active skybox the scene keeps the
+  /// engine defaults (studio IBL, transparent background).
+  void _applySkyboxTo(Scene scene) {
+    final environment = _environment;
+    if (environment == null) {
+      scene
+        ..environment = null
+        ..environmentIntensity = 1.0
+        ..skybox = null
+        ..directionalLight = null;
+      return;
+    }
+    scene
+      ..environment = environment
+      ..environmentIntensity = _skyboxIntensity
+      ..skybox = Skybox(EnvironmentSkySource())
+      ..directionalLight = DirectionalLight(direction: _kSunDirection, intensity: _kSunIntensity);
+  }
+
+  /// Starts (or clears) the skybox load for the resolved [skyboxId]. The
+  /// single-flight [_skyboxKey] guards re-fetch; superseded in-flight builds
+  /// are discarded, not cached (last selection wins).
+  ///
+  /// Called from `build`, so it mutates state directly (the in-progress
+  /// build produces the frame); only the async completion uses `setState`.
+  void _ensureSkyboxLoading(SkyboxAssetService service, String? skyboxId) {
+    final key = skyboxId ?? "";
+    if (_skyboxKey == key) return;
+    _skyboxKey = key;
+    if (skyboxId == null) {
+      _environment = null;
+      _skyboxIntensity = 1.0;
+      final scene = _scene;
+      if (scene != null) _applySkyboxTo(scene);
+      return;
+    }
+    unawaited(_loadSkybox(service, skyboxId, key));
+  }
+
+  Future<void> _loadSkybox(SkyboxAssetService service, String skyboxId, String key) async {
+    void clearSkybox() {
+      if (!mounted || _skyboxKey != key) return;
+      setState(() {
+        _environment = null;
+        _skyboxIntensity = 1.0;
+        final scene = _scene;
+        if (scene != null) _applySkyboxTo(scene);
+      });
+    }
+
+    try {
+      final asset = (await service.readSkybox(skyboxId)).toNullable();
+      if (!mounted || _skyboxKey != key) return;
+      if (asset == null) {
+        debug("skybox $skyboxId is not fetchable; rendering without a skybox");
+        clearSkybox();
+        return;
+      }
+      final sh = diffuseShCoefficients(asset);
+      if (kIsWeb && sh == null) {
+        // The web build never computes SH on the main thread: a skybox
+        // without a precomputed sidecar cannot light the scene there.
+        debug("skybox $skyboxId has no usable sidecar; skipping on web");
+        clearSkybox();
+        return;
+      }
+      await Scene.initializeStaticResources();
+      if (!mounted || _skyboxKey != key) return;
+      final cache = ref.read(skyboxEnvironmentCacheProvider);
+      final build = cache.getOrBuild(
+        skyboxId,
+        () => EnvironmentMap.fromEquirectImageBytes(
+          bytes: asset.hdrBytes,
+          maxWidth: _kSkyboxMaxWidth,
+          diffuseSphericalHarmonics: sh,
+        ),
+      );
+      final environment = await build;
+      if (!mounted || _skyboxKey != key) {
+        cache.discard(skyboxId, build);
+        return;
+      }
+      setState(() {
+        _environment = environment;
+        _skyboxIntensity = asset.metadata?.nebulaIntensity ?? 1.0;
+        final scene = _scene;
+        if (scene != null) _applySkyboxTo(scene);
+      });
+    } catch (e) {
+      debug("skybox $skyboxId load failed: $e");
+      clearSkybox();
     }
   }
 
@@ -194,6 +323,24 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
           variant = other;
         }
         _ensureLoading(service, variant);
+
+        // The skybox resolves and loads independently of the model; each has
+        // its own loading state, and the model shows as soon as it is ready
+        // even while the skybox is still loading.
+        final skyboxService = ref.watch(skyboxAssetServiceProvider).value;
+        if (skyboxService != null) {
+          final collection = ref.watch(repoCollectionProvider);
+          _ensureSkyboxLoading(
+            skyboxService,
+            resolveSkyboxId(
+              setting: widget.skybox,
+              service: skyboxService,
+              type: collection?.getType(widget.typeId),
+              factionMemberRaces: collection?.factionMemberRaces ?? (_) => null,
+            ),
+          );
+        }
+
         final scene = _scene;
         return switch (_status) {
           _ShipModelStatus.ready when scene != null => _buildViewer(context, scene, variant),

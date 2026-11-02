@@ -282,14 +282,15 @@ def register_ci_commands(cli_group: click.Group) -> None:
     @click.option(
         "--models-cache/--no-models-cache",
         default=False,
-        help="Reuse unchanged ship-model GLBs via the CI build-state map "
+        help="Reuse unchanged ship-model GLBs and skybox blobs via the CI build-state maps "
         "(requires [ci.storage] read and [remote.s3] read config).",
     )
     @click.option(
         "--rebuild-models",
         is_flag=True,
         default=False,
-        help="Ignore the models build-state map and reconvert everything (rewrites the map).",
+        help="Ignore the models and skyboxes build-state maps and reconvert everything "
+        "(rewrites both maps).",
     )
     @click.option(
         "--skip-models",
@@ -421,7 +422,10 @@ def register_ci_commands(cli_group: click.Group) -> None:
                 ws_descriptor = runtime.get_workspace(server_id)
                 ws_config = WorkspaceConfig.load_from_descriptor(ws_descriptor)
                 cache_ctx = None
+                skyboxes_cache_ctx = None
                 if cache_clients is not None:
+                    from bootstrap.data.buildstate.skyboxes import SkyboxesCacheContext
+
                     ci_client, prod_client, resource_root = cache_clients
                     cache_ctx = ModelsCacheContext(
                         server_id=server_id,
@@ -434,6 +438,17 @@ def register_ci_commands(cli_group: click.Group) -> None:
                         ).resolve(),
                         workers=s3_cfg.verify_workers,
                     )
+                    skyboxes_cache_ctx = SkyboxesCacheContext(
+                        server_id=server_id,
+                        resource_root=resource_root,
+                        ci_client=ci_client,
+                        prod_client=prod_client,
+                        rebuild=rebuild_models,
+                        map_path=(
+                            PROJECT_ROOT / build_state_dir / "skyboxes" / f"{server_id}.json"
+                        ).resolve(),
+                        workers=s3_cfg.verify_workers,
+                    )
                 snapshot_hash = await run_generator(
                     ws_config,
                     {"models"} if skip_models else set(),
@@ -441,6 +456,7 @@ def register_ci_commands(cli_group: click.Group) -> None:
                     models_cache=cache_ctx,
                     models_threads=models_threads,
                     models_batch_size=models_batch_size,
+                    skyboxes_cache=skyboxes_cache_ctx,
                 )
                 if snapshot_hash is None:
                     raise click.ClickException(f"No snapshot produced for {server_id}")

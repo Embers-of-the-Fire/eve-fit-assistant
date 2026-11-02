@@ -57,6 +57,11 @@ class ResourceBlobProxy {
   /// Returns the [ResourceIndex_Entry] for [resourceId], or `null` if absent.
   ResourceIndex_Entry? entry(String resourceId) => _entries[resourceId];
 
+  /// All resource ids in the index under [prefix] (e.g.
+  /// `resource://static/skyboxes/`), in the index's iteration order.
+  Iterable<String> resourceIdsWithPrefix(String prefix) =>
+      _entries.keys.where((id) => id.startsWith(prefix));
+
   /// Returns the ident hash and content hash for [resourceId], or `null`.
   ({String identHash, String contentHash})? ident(String resourceId) {
     final entry = _entries[resourceId];

@@ -226,6 +226,7 @@ def _codegen_vocabulary(spec: ResolutionSpec) -> None:
     locales_prefix = f"{vocab.scheme}{vocab.localization_locales_prefix}"
     images_prefix = f"{vocab.scheme}{vocab.static_images_prefix}"
     models_prefix = f"{vocab.scheme}{vocab.static_models_prefix}"
+    skyboxes_prefix = f"{vocab.scheme}{vocab.static_skyboxes_prefix}"
     placeholder = "{" + vocab.locale_placeholder + "}"
     locale_db_pattern = f"{locales_prefix}{placeholder}.db"
 
@@ -256,6 +257,11 @@ def _codegen_vocabulary(spec: ResolutionSpec) -> None:
             f'const String kStaticModelsPathPrefix = "{vocab.static_models_prefix}";\n\n'
             "/// Resource-id prefix of the static 3D model resources.\n"
             f'const String kStaticModelsResourcePrefix = "{models_prefix}";\n\n'
+            "/// Path prefix (relative to `resource://`) of the static skybox\n"
+            "/// resources.\n"
+            f'const String kStaticSkyboxesPathPrefix = "{vocab.static_skyboxes_prefix}";\n\n'
+            "/// Resource-id prefix of the static skybox resources.\n"
+            f'const String kStaticSkyboxesResourcePrefix = "{skyboxes_prefix}";\n\n'
             "/// Resolution-context placeholder embedded in resource-id patterns.\n"
             f'const String kLocalePlaceholder = "{placeholder}";\n\n'
             "/// Resource-id pattern of the per-locale localization database for\n"

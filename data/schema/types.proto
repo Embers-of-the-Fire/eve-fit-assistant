@@ -49,4 +49,12 @@ message Type {
   repeated DogmaAttributeValue dogma_attributes = 11;
   repeated TraitSection trait_sections = 12;
   optional uint32 alpha_max_level = 13;
+
+  // Copied verbatim from FSD `types.msgpack` (`raceID`, `factionID`). Absent
+  // when the FSD record lacks the value (non-ship types frequently omit
+  // `factionID`). The app derives per-race skybox defaults from these (see
+  // `skybox.proto`); faction → race resolution uses the official
+  // `memberRaces` mapping in `collections.Collection.faction_races`.
+  optional uint32 race_id = 14;
+  optional uint32 faction_id = 15;
 }

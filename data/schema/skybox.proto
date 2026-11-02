@@ -1,0 +1,30 @@
+syntax = "proto2";
+package skybox;
+
+// Lighting/background metadata for one baked skybox, shipped as
+// resource://static/skyboxes/<id>.pb2 next to the .hdr equirect.
+message SkyboxMetadata {
+  required int32 schema_version = 1;      // currently 1; gates breaking changes
+  required string id = 2;                 // skybox id, e.g. "a01" (matches blob stem)
+  required string family = 3;             // "universe" | "wormholes" | "abyssal"
+  optional string source_resource = 4;    // official res:/ path this was baked from
+
+  // Parameters from the skybox's .black descriptor. Left unset when the
+  // descriptor lacks them — never zero-filled; consumers substitute defaults.
+  optional float nebula_intensity = 5;
+  optional RgbColor ambient_color = 6;
+  optional RgbColor tint = 7;
+
+  // Diffuse irradiance as 9 L2 spherical-harmonic RGB coefficients, in the
+  // exact convention flutter_scene's EnvironmentMap.diffuseSphericalHarmonics
+  // accepts (Lambertian convolution and 1/π folded in). Precomputed offline so
+  // the runtime — critically the web build, which has no isolates — never runs
+  // the SH quadrature. Exactly 27 floats (9 × RGB) when present.
+  repeated float diffuse_sh = 8 [packed = true];
+}
+
+message RgbColor {
+  required float r = 1;  // linear RGB
+  required float g = 2;
+  required float b = 3;
+}
