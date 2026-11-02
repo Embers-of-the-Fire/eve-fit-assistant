@@ -84,7 +84,14 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
   // the model node. [_skyboxKey] is the resolved skybox id ("" = no skybox).
   String? _skyboxKey;
   EnvironmentMap? _environment;
+
+  /// Background brightness (EVE's `nebulaIntensity`, fed to background.fx) and
+  /// IBL brightness (EVE's `reflectionIntensity`, the per-frame
+  /// ReflectionIntensity) are independent scalars in EVE. flutter_scene shows
+  /// the sky at `environmentIntensity * Skybox.intensity`, so the skybox
+  /// factor is the ratio of the two.
   double _skyboxIntensity = 1;
+  double _environmentIntensity = 1;
 
   // Orbit state: the camera looks at [_center] from [_distance] at the given
   // angles. Mutated by gestures and auto-rotate; the per-frame cameraBuilder
@@ -198,8 +205,8 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     }
     scene
       ..environment = environment
-      ..environmentIntensity = _skyboxIntensity
-      ..skybox = Skybox(EnvironmentSkySource())
+      ..environmentIntensity = _environmentIntensity
+      ..skybox = Skybox(EnvironmentSkySource(), intensity: _skyboxIntensity / _environmentIntensity)
       ..directionalLight = DirectionalLight(direction: _kSunDirection, intensity: _kSunIntensity);
   }
 
@@ -216,6 +223,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     if (skyboxId == null) {
       _environment = null;
       _skyboxIntensity = 1.0;
+      _environmentIntensity = 1.0;
       final scene = _scene;
       if (scene != null) _applySkyboxTo(scene);
       return;
@@ -229,6 +237,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       setState(() {
         _environment = null;
         _skyboxIntensity = 1.0;
+        _environmentIntensity = 1.0;
         final scene = _scene;
         if (scene != null) _applySkyboxTo(scene);
       });
@@ -266,9 +275,20 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
         cache.discard(skyboxId, build);
         return;
       }
+      // proto2 presence matters: an unset scalar getter returns 0, not null.
+      final metadata = asset.metadata;
+      final nebula = metadata != null && metadata.hasNebulaIntensity()
+          ? metadata.nebulaIntensity
+          : 1.0;
+      final reflection = metadata != null && metadata.hasReflectionIntensity()
+          ? metadata.reflectionIntensity
+          : 1.0;
       setState(() {
         _environment = environment;
-        _skyboxIntensity = asset.metadata?.nebulaIntensity ?? 1.0;
+        _skyboxIntensity = nebula;
+        // A non-positive reflection intensity would black out the visible sky
+        // as well (it is a factor of it); no shipped descriptor does this.
+        _environmentIntensity = reflection > 0 ? reflection : 1.0;
         final scene = _scene;
         if (scene != null) _applySkyboxTo(scene);
       });

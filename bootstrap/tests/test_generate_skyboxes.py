@@ -133,6 +133,7 @@ class TestBuildSidecar:
     def test_full_metadata(self):
         meta = {
             "nebulaIntensity": 1.25,
+            "reflectionIntensity": 1.4,
             "ambientColor": [0.09, 0.07, 0.04],
             "tint": [1.0, 0.5, 0.25],
             "diffuseSh": [float(i) for i in range(27)],
@@ -143,6 +144,7 @@ class TestBuildSidecar:
         assert pb.family == "universe"
         assert pb.source_resource == "res:/dx9/scene/universe/a01_cube.dds"
         assert pb.nebula_intensity == pytest.approx(1.25)
+        assert pb.reflection_intensity == pytest.approx(1.4)
         assert pb.ambient_color.r == pytest.approx(0.09)
         assert pb.ambient_color.g == pytest.approx(0.07)
         assert pb.ambient_color.b == pytest.approx(0.04)
@@ -156,6 +158,7 @@ class TestBuildSidecar:
             build_sidecar(_source(), {"diffuseSh": [0.0] * 27})
         )
         assert not pb.HasField("nebula_intensity")
+        assert not pb.HasField("reflection_intensity")
         assert not pb.HasField("ambient_color")
         assert not pb.HasField("tint")
         assert len(pb.diffuse_sh) == 27
