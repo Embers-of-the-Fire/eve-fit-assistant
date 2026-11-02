@@ -56,7 +56,7 @@ jobs:
       # The full Renovate image installs lockfile toolchains on demand
       # (uv, cargo, pnpm, dart/flutter, nix via containerbase), so every
       # manager in renovate.json5 can regenerate its lockfile in-container.
-      - uses: renovatebot/github-action@a63d9a7bc606f7336fd20b47f2f32259a35e6213 # v46.3.9
+      - uses: renovatebot/github-action@2804199d260ad00c1fae0e9e842888369391c776 # v46.3.10
         with:
           token: ${{ steps.bot-token.outputs.token }}
         env:
