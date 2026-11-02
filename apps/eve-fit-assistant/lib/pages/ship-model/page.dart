@@ -34,7 +34,7 @@ class _ShipModelPageState extends ConsumerState<ShipModelPage> {
   /// the selection is page state, never persisted.
   String _skyboxSelection = kShipModelSkyboxAuto;
 
-  static const _skyboxFamilies = ["universe", "wormholes", "abyssal"];
+  static const _skyboxFamilies = ["universe", "wormholes", "abyssal", "fitting"];
 
   @override
   Widget build(BuildContext context) {

@@ -14,32 +14,69 @@ part "skybox_environment.g.dart";
 /// race at view time.
 const String kShipModelSkyboxAuto = "auto";
 
-/// EVE race id → its `universe` skybox prefix (the alphabetic prefix of the
-/// universe skybox ids: Amarr `a`, Caldari `c`, Gallente `g`, Minmatar `m`,
-/// Jove `j`). Races without a skybox prefix (e.g. Triglavian) resolve to no
-/// skybox.
-const Map<int, String> kRaceSkyboxPrefixes = {4: "a", 1: "c", 8: "g", 2: "m", 16: "j"};
+/// EVE race id → the skybox of its authentic item-preview scene: the
+/// `NebulaMap` referenced by `res:/dx9/scene/preview/<race>.black` (Amarr
+/// a05, Caldari c05, Gallente g04, Minmatar m01, Jove m10, Triglavian
+/// ad01_a). Race ids follow the client's appConst.py (`raceTriglavian` is
+/// 135, not one of the empire bits).
+const Map<int, String> kRaceSkyboxDefaults = {
+  4: "a05",
+  1: "c05",
+  8: "g04",
+  2: "m01",
+  16: "m10",
+  135: "ad01_a",
+};
 
-/// Resolves the skybox id a ship view should render (spec §5.2):
+/// Faction id → preview skybox for factions with a dedicated preview scene
+/// (`res:/dx9/scene/preview/<name>.black`); faction ids follow the client's
+/// appConst.py. The sleeper/talocan preview scenes exist but no FSD faction
+/// carries them, so those skyboxes are picker-only. Factions without a
+/// dedicated scene (e.g. Guristas) fall through to their member race's
+/// default — EVE falls back to the generic m10 there; following the parent
+/// race is a deliberate app choice.
+const Map<int, String> kFactionSkyboxDefaults = {
+  500019: "a10", // Sansha's Nation — sansha.black
+  500011: "m01", // Angel Cartel — angel.black
+  500006: "c18", // CONCORD Assembly — concord.black
+  500018: "c02", // Mordu's Legion — mordu.black
+  500014: "c06", // ORE — ore.black
+  500017: "g06", // Society of Conscious Thought — soct.black
+  500016: "c07", // Sisters of EVE — soe.black
+  500026: "ad01_a", // Triglavian Collective — triglavian.black
+};
+
+/// The generic preview scene's skybox (`generic.black` → m10, also the
+/// jove/other/rogue previews) and the fallback when nothing else resolves.
+const String kGenericSkyboxId = "m10";
+
+/// Resolves the skybox id a ship view should render, mirroring EVE's
+/// item-preview scenes:
 ///
 /// 1. A concrete [setting] (not `auto`) wins, when the id is in the catalog;
 ///    a stored id the catalog no longer contains behaves as `auto` (the
 ///    stored value is not rewritten).
-/// 2. `auto` takes the type's `faction_id` resolved through the official
-///    `memberRaces` mapping first ([factionMemberRaces]; pirate hulls follow
-///    their parent race), then its `race_id`, and maps the race to its
-///    `universe` prefix.
-/// 3. The default is the lowest-numbered catalog entry with that prefix.
-/// 4. Nothing resolvable → `null`: the viewer renders without a skybox
-///    (transparent background, studio IBL). A normal state, not an error.
+/// 2. `auto` prefers the type's `faction_id` when that faction has a
+///    dedicated preview scene ([kFactionSkyboxDefaults]).
+/// 3. Otherwise the faction's first member race ([factionMemberRaces],
+///    FSD `memberRaces`) or the type's own `race_id` picks the race's
+///    preview skybox ([kRaceSkyboxDefaults]).
+/// 4. Otherwise the generic preview skybox ([kGenericSkyboxId]).
+/// 5. A candidate missing from the catalog (e.g. an older snapshot) falls
+///    through to the next step; if even the generic skybox is absent the
+///    result is `null` and the viewer renders without a skybox (transparent
+///    background, studio IBL). A normal state, not an error.
 String? resolveSkyboxId({
   required String setting,
   required SkyboxAssetService service,
   required pb_types.Type? type,
   required List<int>? Function(int factionId) factionMemberRaces,
 }) {
-  if (setting != kShipModelSkyboxAuto) {
-    if (service.hasSkybox(setting)) return setting;
+  if (setting != kShipModelSkyboxAuto && service.hasSkybox(setting)) return setting;
+
+  if (type != null && type.hasFactionId()) {
+    final factionDefault = kFactionSkyboxDefaults[type.factionId];
+    if (factionDefault != null && service.hasSkybox(factionDefault)) return factionDefault;
   }
 
   int? raceId;
@@ -48,15 +85,10 @@ String? resolveSkyboxId({
     if (memberRaces != null && memberRaces.isNotEmpty) raceId = memberRaces.first;
   }
   if (raceId == null && type != null && type.hasRaceId()) raceId = type.raceId;
-  final prefix = raceId == null ? null : kRaceSkyboxPrefixes[raceId];
-  if (prefix == null) return null;
+  final raceDefault = raceId == null ? null : kRaceSkyboxDefaults[raceId];
+  if (raceDefault != null && service.hasSkybox(raceDefault)) return raceDefault;
 
-  final catalog = service.listSkyboxes();
-  final candidates = [
-    for (final skybox in catalog)
-      if (skybox.family == "universe" && skybox.id.startsWith(prefix)) skybox.id,
-  ]..sort();
-  return candidates.isEmpty ? null : candidates.first;
+  return service.hasSkybox(kGenericSkyboxId) ? kGenericSkyboxId : null;
 }
 
 /// The 27-float sidecar SH as the 9 RGB coefficient vectors

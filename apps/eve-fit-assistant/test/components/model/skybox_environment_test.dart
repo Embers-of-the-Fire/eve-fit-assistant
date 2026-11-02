@@ -32,7 +32,23 @@ void main() {
   List<int>? noFactions(int factionId) => null;
 
   group("resolveSkyboxId", () {
-    final service = serviceWithCatalog(["a01", "a02", "c01", "m01", "wormhole_class_01"]);
+    final service = serviceWithCatalog([
+      "a01",
+      "a05",
+      "a10",
+      "c01",
+      "c02",
+      "c05",
+      "c06",
+      "c07",
+      "c18",
+      "g04",
+      "g06",
+      "m01",
+      "m10",
+      "ad01_a",
+      "wormhole_class_01",
+    ]);
 
     test("a concrete setting wins verbatim, for every ship", () {
       final type = pb_types.Type()..raceId = 2;
@@ -60,31 +76,53 @@ void main() {
       );
     });
 
-    test("auto resolves the race prefix's lowest-numbered catalog entry", () {
-      expect(
-        resolveSkyboxId(
-          setting: "auto",
-          service: service,
-          type: pb_types.Type()..raceId = 4, // Amarr
-          factionMemberRaces: noFactions,
-        ),
-        "a01",
-      );
-      expect(
-        resolveSkyboxId(
-          setting: "auto",
-          service: service,
-          type: pb_types.Type()..raceId = 1, // Caldari
-          factionMemberRaces: noFactions,
-        ),
-        "c01",
-      );
+    test("auto resolves each race's authentic item-preview skybox", () {
+      final expectations = {4: "a05", 1: "c05", 8: "g04", 2: "m01", 16: "m10", 135: "ad01_a"};
+      for (final entry in expectations.entries) {
+        expect(
+          resolveSkyboxId(
+            setting: "auto",
+            service: service,
+            type: pb_types.Type()..raceId = entry.key,
+            factionMemberRaces: noFactions,
+          ),
+          entry.value,
+          reason: "race ${entry.key}",
+        );
+      }
     });
 
-    test("the faction's member race wins over the type race (pirate hulls)", () {
+    test("factions with a dedicated preview scene win over the race", () {
+      final expectations = {
+        500019: "a10", // Sansha's Nation
+        500011: "m01", // Angel Cartel
+        500006: "c18", // CONCORD Assembly
+        500018: "c02", // Mordu's Legion
+        500014: "c06", // ORE
+        500017: "g06", // Society of Conscious Thought
+        500016: "c07", // Sisters of EVE
+        500026: "ad01_a", // Triglavian Collective
+      };
+      for (final entry in expectations.entries) {
+        final type = pb_types.Type()
+          ..raceId = 2 // Minmatar hull; the faction's scene must win
+          ..factionId = entry.key;
+        expect(
+          resolveSkyboxId(
+            setting: "auto",
+            service: service,
+            type: type,
+            factionMemberRaces: noFactions,
+          ),
+          entry.value,
+          reason: "faction ${entry.key}",
+        );
+      }
+    });
+
+    test("an unlisted faction follows its member race (pirate hulls)", () {
       final type = pb_types.Type()
-        ..raceId =
-            2 // Minmatar hull...
+        ..raceId = 2 // Minmatar hull...
         ..factionId = 500010; // ...flown by a Caldari pirate faction
       expect(
         resolveSkyboxId(
@@ -93,7 +131,7 @@ void main() {
           type: type,
           factionMemberRaces: (factionId) => factionId == 500010 ? [1] : null,
         ),
-        "c01",
+        "c05",
       );
     });
 
@@ -112,8 +150,8 @@ void main() {
       );
     });
 
-    test("a race without a skybox prefix resolves to no skybox", () {
-      final type = pb_types.Type()..raceId = 128; // no prefix
+    test("an unmapped race falls back to the generic preview skybox", () {
+      final type = pb_types.Type()..raceId = 128; // no preview scene
       expect(
         resolveSkyboxId(
           setting: "auto",
@@ -121,38 +159,40 @@ void main() {
           type: type,
           factionMemberRaces: noFactions,
         ),
-        isNull,
+        "m10",
       );
     });
 
-    test("a type without race or faction resolves to no skybox", () {
+    test("a type without race or faction falls back to the generic skybox", () {
       expect(
-        resolveSkyboxId(
-          setting: "auto",
-          service: service,
-          type: pb_types.Type(),
-          factionMemberRaces: noFactions,
-        ),
-        isNull,
+        resolveSkyboxId(setting: "auto", service: service, type: pb_types.Type(), factionMemberRaces: noFactions),
+        "m10",
       );
       expect(
-        resolveSkyboxId(
-          setting: "auto",
-          service: service,
-          type: null,
-          factionMemberRaces: noFactions,
-        ),
-        isNull,
+        resolveSkyboxId(setting: "auto", service: service, type: null, factionMemberRaces: noFactions),
+        "m10",
       );
     });
 
-    test("a prefix without catalog entries resolves to no skybox", () {
+    test("a race default missing from the catalog falls back to generic", () {
       final gallente = pb_types.Type()..raceId = 8;
       expect(
         resolveSkyboxId(
           setting: "auto",
-          service: serviceWithCatalog(["a01"]),
+          service: serviceWithCatalog(["a01", "m10"]),
           type: gallente,
+          factionMemberRaces: noFactions,
+        ),
+        "m10",
+      );
+    });
+
+    test("no skybox only when even the generic one is absent from the catalog", () {
+      expect(
+        resolveSkyboxId(
+          setting: "auto",
+          service: serviceWithCatalog(["a01"]),
+          type: pb_types.Type()..raceId = 8,
           factionMemberRaces: noFactions,
         ),
         isNull,
