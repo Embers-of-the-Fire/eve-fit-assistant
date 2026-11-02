@@ -11,9 +11,13 @@ message SkyboxMetadata {
 
   // Parameters from the skybox's .black descriptor. Left unset when the
   // descriptor lacks them — never zero-filled; consumers substitute defaults.
+  // nebula_intensity scales the background only; reflection_intensity scales
+  // image-based lighting (EVE feeds them to separate shader constants:
+  // NebulaIntensity on background.fx vs the per-frame ReflectionIntensity).
   optional float nebula_intensity = 5;
   optional RgbColor ambient_color = 6;
   optional RgbColor tint = 7;
+  optional float reflection_intensity = 9;
 
   // Diffuse irradiance as 9 L2 spherical-harmonic RGB coefficients, in the
   // exact convention flutter_scene's EnvironmentMap.diffuseSphericalHarmonics

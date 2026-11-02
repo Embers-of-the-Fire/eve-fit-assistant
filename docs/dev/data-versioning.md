@@ -40,8 +40,8 @@ The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal}/` s
 cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
 converter decodes from BC7) into a 2048×1024 Radiance `.hdr` equirect plus
 a `SkyboxMetadata` protobuf sidecar (`data/schema/skybox.proto`: the `.black` descriptor's
-`nebulaIntensity`/`ambientColor`/`Tint`, unset when absent, plus the precomputed diffuse
-SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
+`nebulaIntensity`/`reflectionIntensity`/`ambientColor`/`Tint`, unset when absent, plus the
+precomputed diffuse SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
 converter's `--batch-skybox` verb. Skybox resources are NON_FORCE (lazy) via the
 `static/skyboxes/` RRS rule. The `types` step also stamps `Type.race_id`/`faction_id`
 and `Collection.faction_races` (the FSD `memberRaces` faction→race mapping), which the

@@ -14,8 +14,9 @@ One blob pair is emitted per skybox under ``static/skyboxes/`` (see
   ``*_cube.dds`` BC6H cube (a plain Radiance file, consumed by
   flutter_scene's stock loader);
 - ``<id>.pb2`` — the ``SkyboxMetadata`` sidecar (schema_version 1): the
-  ``.black`` descriptor's ``nebulaIntensity``/``ambientColor``/``Tint`` (unset
-  when the descriptor lacks them, never zero-filled) plus the precomputed
+  ``.black`` descriptor's ``nebulaIntensity``/``reflectionIntensity``/
+  ``ambientColor``/``Tint`` (unset when the descriptor lacks them, never
+  zero-filled) plus the precomputed
   diffuse SH projection in flutter_scene's convention, so the runtime — the
   web build above all — never runs the SH quadrature.
 
@@ -152,9 +153,9 @@ def build_sidecar(source: SkyboxSource, meta: dict) -> bytes:
     """Assemble the SkyboxMetadata sidecar bytes from the converter's metadata.
 
     ``meta`` is the converter's per-job JSON (``nebulaIntensity``,
-    ``ambientColor``, ``tint``, ``diffuseSh``). Absent values stay unset
-    (proto2 presence); a malformed SH list (not 27 floats) is dropped rather
-    than shipped.
+    ``reflectionIntensity``, ``ambientColor``, ``tint``, ``diffuseSh``).
+    Absent values stay unset (proto2 presence); a malformed SH list (not 27
+    floats) is dropped rather than shipped.
     """
     pb = skybox_pb2.SkyboxMetadata()
     pb.schema_version = SKYBOX_SIDECAR_SCHEMA_VERSION
@@ -165,6 +166,9 @@ def build_sidecar(source: SkyboxSource, meta: dict) -> bytes:
     intensity = meta.get("nebulaIntensity")
     if intensity is not None:
         pb.nebula_intensity = float(intensity)
+    reflection = meta.get("reflectionIntensity")
+    if reflection is not None:
+        pb.reflection_intensity = float(reflection)
     for field_name, key in (("ambient_color", "ambientColor"), ("tint", "tint")):
         color = meta.get(key)
         if isinstance(color, list) and len(color) >= 3:
