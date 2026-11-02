@@ -59,9 +59,21 @@ def _listing() -> dict[str, list[str]]:
         "res:/dx9/scene/wormholes": [
             "res:/dx9/scene/wormholes/wormhole_class_01_cube.dds",
             "res:/dx9/scene/wormholes/wormhole_class_01.black",
+            # The legacy suffix-less full-detail cube scans too; its variants do not.
+            "res:/dx9/scene/wormholes/wormhole_class_00.dds",
+            "res:/dx9/scene/wormholes/wormhole_class_00.black",
+            "res:/dx9/scene/wormholes/wormhole_class_00_blur.dds",
+            "res:/dx9/scene/wormholes/wormhole_class_00_refl.dds",
+            "res:/dx9/scene/wormholes/wormhole_class_00_lowdetail.dds",
         ],
         "res:/dx9/scene/abyssal": [
             "res:/dx9/scene/abyssal/ad01_a_cube.dds",
+        ],
+        "res:/dx9/scene/fitting": [
+            "res:/dx9/scene/fitting/fitting_cube.dds",
+            "res:/dx9/scene/fitting/fitting_cube.black",
+            "res:/dx9/scene/fitting/previewturrets_cube.dds",
+            "res:/dx9/scene/fitting/previewturrets.black",
         ],
     }
 
@@ -70,10 +82,26 @@ class TestScanSkyboxSources:
     def test_ids_derive_from_cube_filenames(self):
         data = _FakeData(_FakeResIndex(_listing(), {}))
         sources = scan_skybox_sources(data)
-        assert set(sources) == {"a01", "c02", "wormhole_class_01", "ad01_a"}
+        assert set(sources) == {
+            "a01",
+            "c02",
+            "wormhole_class_01",
+            "wormhole_class_00",
+            "ad01_a",
+            "fitting",
+            "previewturrets",
+        }
         assert sources["a01"].family == "universe"
         assert sources["wormhole_class_01"].family == "wormholes"
+        assert sources["wormhole_class_00"].family == "wormholes"
         assert sources["ad01_a"].family == "abyssal"
+        assert sources["fitting"].family == "fitting"
+        assert sources["fitting"].black_res == "res:/dx9/scene/fitting/fitting_cube.black"
+        assert sources["previewturrets"].black_res == "res:/dx9/scene/fitting/previewturrets.black"
+        assert (
+            sources["wormhole_class_00"].black_res
+            == "res:/dx9/scene/wormholes/wormhole_class_00.black"
+        )
         # The .black descriptor is picked up only when present in the index.
         assert sources["a01"].black_res == "res:/dx9/scene/universe/a01_cube.black"
         assert sources["ad01_a"].black_res is None

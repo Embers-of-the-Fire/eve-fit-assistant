@@ -1,7 +1,7 @@
 """Baked environment skybox (HDR equirect + sidecar) generator.
 
 Converts every scene skybox cubemap under ``res:/dx9/scene/{universe,
-wormholes,abyssal}/`` into a Radiance ``.hdr`` equirect plus a
+wormholes,abyssal,fitting}/`` into a Radiance ``.hdr`` equirect plus a
 ``SkyboxMetadata`` protobuf sidecar via the ``tools/carbon-gr2-to-glb``
 converter's ``--batch-skybox`` verb (Node.js). All asset acquisition goes
 through the workspace ``ResourceManager`` (resfileindex-backed, per-server CDN
@@ -41,6 +41,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 
 from dataclasses import dataclass
@@ -63,13 +64,20 @@ if TYPE_CHECKING:
     from bootstrap.data.workspace.generate import GeneratorDatasource
 
 
-#: The resindex directories skybox cubemaps come from.
-SKYBOX_FAMILIES = ("universe", "wormholes", "abyssal")
+#: The resindex directories skybox cubemaps come from. `fitting` holds the
+#: dedicated preview scenes' cubes (fitting_cube = the fitting window,
+#: previewturrets_cube = turret previews).
+SKYBOX_FAMILIES = ("universe", "wormholes", "abyssal", "fitting")
 
 #: Skybox ids derive from the full-detail cube filename with this suffix
 #: removed. The suffix also excludes the `_cube_blur`/`_cube_refl`/
 #: `_cube_lowdetail` variants.
 CUBE_SUFFIX = "_cube.dds"
+
+#: wormhole_class_00 predates the `_cube` naming: its full-detail cube is
+#: plain `wormhole_class_00.dds`. Its `_blur`/`_refl`/`_lowdetail` variants
+#: still carry their suffix, so they do not match this pattern.
+LEGACY_WORMHOLE_CUBE = re.compile(r"^wormhole_class_\d+\.dds$")
 
 #: The sidecar schema version emitted by this generator.
 SKYBOX_SIDECAR_SCHEMA_VERSION = 1
@@ -94,17 +102,21 @@ class SkyboxSource:
 
 def scan_skybox_sources(data: GeneratorDatasource) -> dict[str, SkyboxSource]:
     """Enumerate skyboxes by scanning the resindex for ``*_cube.dds``
-    under each family directory; the id derives from the filename (no
-    hand-maintained list). The ``.black`` descriptor is picked up when present.
+    under each family directory (plus the suffix-less legacy wormhole cube);
+    the id derives from the filename (no hand-maintained list). The ``.black``
+    descriptor is picked up when present.
     """
     sources: dict[str, SkyboxSource] = {}
     for family in SKYBOX_FAMILIES:
         prefix = f"{_SCENE_ROOT}/{family}"
         for res_path in data.resources.res.list_resources(prefix):
             filename = res_path.rsplit("/", 1)[-1]
-            if not filename.endswith(CUBE_SUFFIX):
+            if filename.endswith(CUBE_SUFFIX):
+                skybox_id = filename[: -len(CUBE_SUFFIX)]
+            elif family == "wormholes" and LEGACY_WORMHOLE_CUBE.match(filename):
+                skybox_id = filename[: -len(".dds")]
+            else:
                 continue
-            skybox_id = filename[: -len(CUBE_SUFFIX)]
             # The descriptor is `<id>_cube.black` for universe/abyssal but
             # `<id>.black` for wormholes.
             black_res: str | None = None

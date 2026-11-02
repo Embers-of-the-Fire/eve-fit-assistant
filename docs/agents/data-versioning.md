@@ -36,9 +36,10 @@ snapshots carrying them stamp resource index `format_version` 4, which older cli
 reject through the app-update gate (they would otherwise classify the unknown prefixes as
 eager).
 
-The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal}/` skybox
-cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
-converter decodes from BC7) into a 2048×1024 Radiance `.hdr` equirect plus
+The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal,fitting}/`
+skybox cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
+converter decodes from BC7; the fitting cubes are 1024², and the legacy
+`wormhole_class_00.dds` carries no `_cube` suffix) into a 2048×1024 Radiance `.hdr` equirect plus
 a `SkyboxMetadata` protobuf sidecar (`data/schema/skybox.proto`: the `.black` descriptor's
 `nebulaIntensity`/`reflectionIntensity`/`ambientColor`/`Tint`, unset when absent, plus the
 precomputed diffuse SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
