@@ -33,6 +33,7 @@ import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:eve_fit_assistant/storage/repo/resource_resolution.dart";
 import "package:eve_fit_assistant/storage/repo/schema_version.dart";
 import "package:eve_fit_assistant/storage/repo/service.dart";
+import "package:eve_fit_assistant/storage/repo/skybox_asset.dart";
 import "package:eve_fit_assistant/storage/repo/verification.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/riverpod.dart";
@@ -111,6 +112,15 @@ Future<ModelAssetService?> modelAssetService(Ref ref) async {
   final proxy = await ref.watch(resourceBlobProxyProvider.future);
   if (proxy == null) return null;
   return ModelAssetService(proxy);
+}
+
+/// Resolves baked environment skyboxes (HDR equirects + metadata sidecars)
+/// from the active checkout's blob store.
+@riverpodSingleton
+Future<SkyboxAssetService?> skyboxAssetService(Ref ref) async {
+  final proxy = await ref.watch(resourceBlobProxyProvider.future);
+  if (proxy == null) return null;
+  return SkyboxAssetService(proxy);
 }
 
 @riverpodSingleton

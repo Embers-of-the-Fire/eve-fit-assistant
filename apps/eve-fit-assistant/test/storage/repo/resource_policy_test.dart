@@ -27,15 +27,19 @@ void main() {
     });
 
     test("rejects indexes beyond the maximum supported format", () {
-      final v4 = ResourceIndex()
+      final beyond = ResourceIndex()
         ..schemaVersion = 1
         ..formatVersion = kMaxSupportedResourceIndexFormatVersion + 1;
 
       expect(
-        () => decodeResourceIndex(Uint8List.fromList(v4.writeToBuffer())),
+        () => decodeResourceIndex(Uint8List.fromList(beyond.writeToBuffer())),
         throwsA(
           isA<UnsupportedResourceIndexError>()
-              .having((e) => e.formatVersion, "formatVersion", 4)
+              .having(
+                (e) => e.formatVersion,
+                "formatVersion",
+                kMaxSupportedResourceIndexFormatVersion + 1,
+              )
               .having((e) => e.toString(), "message", contains("update the app")),
         ),
       );

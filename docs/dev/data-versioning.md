@@ -20,7 +20,7 @@ Generated data depends on external EVE FSD/resource files described by
 ## Generator Steps
 
 `./x build data` runs the generators in `bootstrap/data/workspace/generate/` in order:
-`static`, `native`, `localization`, `agent`, `images`, `models` (skippable via
+`static`, `native`, `localization`, `agent`, `images`, `models`, `skyboxes` (skippable via
 `--skip <name>`). The `models` step bakes per-ship GLB models with the
 `tools/carbon-gr2-to-glb` submodule (Node.js), converting shards across parallel
 converter processes (`--models-threads`, default: CPU count; `--models-batch-size`
@@ -31,10 +31,21 @@ never touches the network), and emits meshopt-compressed GLBs under
 PBR textures; WebP rides as plain `image/webp` sources without EXT_texture_webp, an
 app-internal contract for the Flutter Scene viewer, which decodes WebP by content) and
 `base` (geometry-only, factor-only materials, no textures). Model resources are NON_FORCE
-(lazy) via the `static/models/` rule in `data/schema/resource_resolution.toml` (RRS v2);
-snapshots carrying them stamp resource index `format_version` 3, which format-2 clients
-reject through the app-update gate (RRS v1 would otherwise classify the unknown prefix as
+(lazy) via the `static/models/` rule in `data/schema/resource_resolution.toml` (RRS v3);
+snapshots carrying them stamp resource index `format_version` 4, which older clients
+reject through the app-update gate (they would otherwise classify the unknown prefixes as
 eager).
+
+The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal}/` skybox
+cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
+converter decodes from BC7) into a 2048×1024 Radiance `.hdr` equirect plus
+a `SkyboxMetadata` protobuf sidecar (`data/schema/skybox.proto`: the `.black` descriptor's
+`nebulaIntensity`/`ambientColor`/`Tint`, unset when absent, plus the precomputed diffuse
+SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
+converter's `--batch-skybox` verb. Skybox resources are NON_FORCE (lazy) via the
+`static/skyboxes/` RRS rule. The `types` step also stamps `Type.race_id`/`faction_id`
+and `Collection.faction_races` (the FSD `memberRaces` faction→race mapping), which the
+app uses to pick each ship's default skybox.
 
 ### Models build-state cache
 
@@ -60,6 +71,14 @@ toolchain changes, invalidate manually (see RELEASING.md). Test-mode/PR builds n
 read or write the map (they publish to a mock, so their outputs do not exist in the
 production store). Operators manage the map with `./x ci build-state ...`
 (`invalidate`, `seed`, `push-models`, `commit`).
+
+The `skyboxes` step has its own per-server map (`build-state/skyboxes/<server>.json`)
+with the same invalidation model: each entry keys on the resindex MD5 columns of the
+cube DDS and its `.black` descriptor, and records both output blob hashes (`.hdr` and
+`.pb2`); a hit requires unchanged inputs and both production blobs present. It is
+enabled and rewritten by the same release-data flags as the models map
+(`--models-cache` / `--rebuild-models`); it has no dedicated `./x ci build-state`
+subcommands.
 
 ## Canonical Version
 

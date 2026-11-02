@@ -65,6 +65,9 @@ class TypeDef(BaseModel):
     typeNameID: int
     descriptionID: int | None = Field(default=None)
 
+    raceID: int | None = Field(default=None)
+    factionID: int | None = Field(default=None)
+
     def to_pb(self) -> types_pb2.Type:
         pb = types_pb2.Type()
 
@@ -80,6 +83,10 @@ class TypeDef(BaseModel):
         pb.type_name.CopyFrom(loc(self.typeNameID))
         if self.descriptionID is not None:
             pb.description.CopyFrom(loc(self.descriptionID))
+        if self.raceID is not None:
+            pb.race_id = self.raceID
+        if self.factionID is not None:
+            pb.faction_id = self.factionID
 
         return pb
 

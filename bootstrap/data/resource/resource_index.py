@@ -254,3 +254,23 @@ class ResourceIndex:
 
     def get_resource(self, resource_id: str) -> _ResourceNode:
         return self.__resource_tree.recursive_find(self.normalize_key(resource_id).split("/"))
+
+    def list_resources(self, prefix: str) -> list[str]:
+        """All resource ids under the directory [prefix] (e.g. "res:/dx9/scene/universe").
+
+        The returned ids are normalized (lowercase, forward slashes), matching
+        the index's key form; feed them back into ``get_resource`` to fetch.
+        """
+        parts = [part for part in self.normalize_key(prefix).split("/") if part]
+        node = self.__resource_tree.recursive_find(parts)
+        if node is None:
+            return []
+        found: list[str] = []
+        stack = [node]
+        while stack:
+            current = stack.pop()
+            if current.is_file:
+                found.append(current.full_path)
+                continue
+            stack.extend((current.children or {}).values())
+        return sorted(found)

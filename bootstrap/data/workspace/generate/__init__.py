@@ -14,6 +14,7 @@ from . import localizations
 from . import models
 from . import native
 from . import schema as schema_generator
+from . import skyboxes
 from . import static
 from .data import GeneratorDatasource
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from bootstrap.data.buildstate.models import ModelsCacheContext
+    from bootstrap.data.buildstate.skyboxes import SkyboxesCacheContext
     from bootstrap.data.workspace.config import WorkspaceConfig
 
 
@@ -34,6 +36,7 @@ async def run_generator(
     models_cache: ModelsCacheContext | None = None,
     models_threads: int | None = None,
     models_batch_size: int | None = None,
+    skyboxes_cache: SkyboxesCacheContext | None = None,
 ) -> str | None:
     info("Running data generator...")
     datasource = GeneratorDatasource(config)
@@ -60,12 +63,14 @@ async def run_generator(
 
         external_entries: list[tuple[str, str, int]] = []
         if "models" not in skip:
-            external_entries = await models.generate(
+            external_entries += await models.generate(
                 datasource,
                 cache=models_cache,
                 threads=models_threads,
                 batch_size=models_batch_size,
             )
+        if "skyboxes" not in skip:
+            external_entries += await skyboxes.generate(datasource, cache=skyboxes_cache)
 
         snapshot_hash = schema_generator.generate_schema_checkout(
             config,

@@ -15,7 +15,8 @@
 # kResourceResolutionSchemaVersion. Bump when the rule list changes in a
 # behaviorally meaningful way.
 # v2: static/models/ resolves lazy (baked ship GLB models).
-version = 2
+# v3: static/skyboxes/ resolves lazy (baked environment skyboxes).
+version = 3
 
 # Client-side state available to rule evaluation. Each entry is generated
 # into the Dart ResourceResolutionContext class; `import` is required only
@@ -34,6 +35,7 @@ legacy_localization_db = "localization/localization.db"
 localization_locales_prefix = "localization/locales/"
 static_images_prefix = "static/images/"
 static_models_prefix = "static/models/"
+static_skyboxes_prefix = "static/skyboxes/"
 locale_placeholder = "locale"
 
 # Ordered rules; first match wins. Each rule has exactly one matcher
@@ -67,4 +69,10 @@ resolution = "lazy"
 # Baked static 3D models are fetched on demand.
 [[rules]]
 prefix = "static/models/"
+resolution = "lazy"
+
+# Baked environment skyboxes (equirect .hdr + protobuf sidecar) are fetched
+# on demand.
+[[rules]]
+prefix = "static/skyboxes/"
 resolution = "lazy"

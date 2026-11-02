@@ -13,6 +13,7 @@ from . import categories
 from . import dogma_attributes
 from . import dogma_units
 from . import dynamic
+from . import factions
 from . import fit
 from . import groups
 from . import implant_sets
@@ -43,6 +44,7 @@ async def generate(data: GeneratorDatasource) -> collections_pb2.Collection:
             dogma_attributes,
             dynamic,
             fit,
+            factions,
             implant_sets,
         ]
     )

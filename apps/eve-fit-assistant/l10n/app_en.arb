@@ -642,6 +642,8 @@
   "appSettingsPageShipModelDescription": "The 3D representation shown for ships.\nTextured renders the full color scheme; it downloads more data and uses more memory.\nGeometry Only shows the hull shape with flat colors and downloads a fraction of the data.\nDetail views can switch representations on the fly without changing this default.",
   "shipModelVariantTextured": "Textured",
   "shipModelVariantGeometryOnly": "Geometry Only",
+  "shipModelSkyboxTitle": "Ship Skybox",
+  "shipModelSkyboxAuto": "Auto (ship's race)",
   "shipModelViewerShowTextures": "Show textures",
   "shipModelViewerHideTextures": "Hide textures",
   "shipModelViewerResetView": "Reset view",
