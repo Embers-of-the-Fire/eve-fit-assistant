@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 
 import bootstrap.config
 
-from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
-from bootstrap.data.workspace.generate.loc_source import find_missing_strings
 from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
 from bootstrap.data.workspace.generate.loc_source import load_localized_strings
+from bootstrap.data.workspace.generate.loc_source import resolve_localized_strings
 from bootstrap.log import info
 from bootstrap.log import warning
 
@@ -32,9 +31,9 @@ LOCALIZATION_DB_SCHEMA_VERSION = 1
 #: database, so client query text is identical for both.
 LOCALE_DB_SCHEMA_VERSION = 2
 
-#: Maximum number of still-missing strings sampled into log lines and CI
+#: Maximum number of default-locale fallbacks sampled into log lines and CI
 #: annotations per locale (the full count is always reported).
-_MISSING_SAMPLE_LIMIT = 20
+_FALLBACK_SAMPLE_LIMIT = 20
 
 
 async def generate(ws_data: GeneratorDatasource):
@@ -48,8 +47,8 @@ async def generate(ws_data: GeneratorDatasource):
     for lang, strings in per_language:
         if lang == default_language:
             continue
-        __apply_patches(ws_data, lang, strings, reference)
-        __report_missing(ws_data, lang, strings, reference)
+        fallback_filled = __resolve_strings(ws_data, lang, strings, reference)
+        __report_fallback(ws_data, lang, default_language, fallback_filled)
 
     __write_localization_db(ws_data.paths.localization_db_path, per_language)
     for lang, strings in per_language:
@@ -69,50 +68,50 @@ async def __generate(
     return lang, strings
 
 
-def __apply_patches(
+def __resolve_strings(
     ws_data: GeneratorDatasource,
     lang: LocalizationType,
     strings: dict[int, str],
     reference: dict[int, str],
-):
-    """Fills missing strings from the workspace's curated localization patches."""
-    patch_map = load_localization_patch_map(ws_data, lang)
-    if not patch_map:
-        return
-    report = apply_localization_patches(strings, reference, patch_map)
-    if report.filled:
-        info(f"Applied {len(report.filled)} curated localization patches for {lang}.")
-    for key in report.stale_keys:
+) -> list[tuple[int, str]]:
+    """Applies curated patches followed by the default-locale fallback."""
+    report = resolve_localized_strings(
+        strings, reference, load_localization_patch_map(ws_data, lang)
+    )
+    if report.patches.filled:
+        info(f"Applied {len(report.patches.filled)} curated localization patches for {lang}.")
+    for key in report.patches.stale_keys:
         warning(
             f"Stale localization patch for {lang}: {key!r}"
             " (already translated upstream, or the English source text changed)"
         )
+    return report.fallback_filled
 
 
-def __report_missing(
+def __report_fallback(
     ws_data: GeneratorDatasource,
     lang: LocalizationType,
-    strings: dict[int, str],
-    reference: dict[int, str],
+    default_lang: LocalizationType,
+    fallback_filled: list[tuple[int, str]],
 ):
-    """Flags strings still missing after patching; surfaces as a GitHub
-    Actions warning annotation when running in CI."""
-    missing = find_missing_strings(strings, reference)
-    if not missing:
+    """Warns that default-locale text was emitted for missing translations."""
+    if not fallback_filled:
         return
     workspace = ws_data.config.metadata.identifier
     patch_hint = f"data/resources/{workspace}/patches/localization.yaml"
     sample = ", ".join(
-        f"{text!r} ({message_id})" for message_id, text in missing[:_MISSING_SAMPLE_LIMIT]
+        f"{text!r} ({message_id})" for message_id, text in fallback_filled[:_FALLBACK_SAMPLE_LIMIT]
     )
     warning(
-        f"{len(missing)} strings have no {lang} localization on {workspace}"
-        f" (e.g. {sample}); add curated translations to {patch_hint}"
+        f"Filled {len(fallback_filled)} missing {lang} strings with {default_lang} "
+        f"on {workspace} after curated patches (e.g. {sample}); "
+        f"add curated translations to {patch_hint}"
     )
     if os.environ.get("GITHUB_ACTIONS") == "true":
         print(
-            f"::warning title=Missing {lang} localization ({workspace})::"
-            f"{len(missing)} strings have no {lang} text (e.g. {sample})."
+            f"::warning title={default_lang} fallback for {lang} localization ({workspace})::"
+            f"Filled {len(fallback_filled)} missing {lang} strings with {default_lang} "
+            f"after curated patches (e.g. {sample})."
             f" Add curated translations to {patch_hint}."
         )
 

@@ -23,9 +23,9 @@ import bootstrap.config
 from bootstrap.constant import IMPLANT_SLOT_ATTR_ID
 from bootstrap.data.schema import collections_pb2
 from bootstrap.data.schema import fit_pb2
-from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
 from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
 from bootstrap.data.workspace.generate.loc_source import load_localized_strings
+from bootstrap.data.workspace.generate.loc_source import resolve_localized_strings
 from bootstrap.log import error
 from bootstrap.log import info
 from bootstrap.log import warning
@@ -324,7 +324,7 @@ async def generate(data: GeneratorDatasource, collection: collections_pb2.Collec
     for lang in locales:
         if lang == default_lang:
             continue
-        apply_localization_patches(
+        resolve_localized_strings(
             names_by_locale[lang], reference, load_localization_patch_map(data, lang)
         )
     cluster_lang: LocalizationType = "en" if "en" in locales else locales[0]

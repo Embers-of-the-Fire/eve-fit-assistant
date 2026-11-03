@@ -4,8 +4,9 @@
 # new content (e.g. the carrier market-group split) are missing and surface as
 # `LOC[<id>]` in the app. Entries are keyed by the English source text so they
 # survive message-ID changes, and only fill strings that are missing or empty
-# upstream — they never override existing translations. The data build warns
-# about entries that have become stale.
+# upstream — they never override existing translations. Any remaining gaps are
+# filled with English, with a data-build warning. The build also warns about
+# entries that have become stale.
 zh:
   "Advanced Carriers": "高级航母"
   "Standard Carriers": "标准航母"

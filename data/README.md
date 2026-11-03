@@ -62,9 +62,10 @@ CCP's non-English FSD localization lags behind new content, so a workspace may
 ship curated overrides in `resources/<server name>/patches/localization.yaml`,
 keyed by locale and then by the English source text (so entries survive
 message-ID changes). Patches only fill strings that are missing or empty
-upstream and never override existing translations; the data build warns about
-still-missing strings (as a GitHub Actions annotation in CI) and stale patch
-entries:
+upstream and never override existing translations. Strings still missing after
+patching are filled from the default locale (English), including in the agent
+and implant-set resources; the data build warns about these fallbacks (as a
+GitHub Actions annotation in CI) and stale patch entries:
 
 ```yaml
 zh:

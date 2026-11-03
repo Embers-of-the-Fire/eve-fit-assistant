@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import sqlite3
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from bootstrap.data.workspace.generate import localizations
 from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
 from bootstrap.data.workspace.generate.loc_source import find_missing_strings
+from bootstrap.data.workspace.generate.loc_source import resolve_localized_strings
 from bootstrap.data.workspace.generate.localizations import LOCALE_DB_SCHEMA_VERSION
 from bootstrap.data.workspace.generate.localizations import LOCALIZATION_DB_SCHEMA_VERSION
 from bootstrap.data.workspace.generate.localizations import _write_locale_db
@@ -16,6 +19,8 @@ from bootstrap.data.workspace.generate.localizations import _write_strings_db
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def _read_meta(connection: sqlite3.Connection) -> dict[str, str]:
@@ -158,6 +163,32 @@ class TestApplyLocalizationPatches:
         assert report.stale_keys == ["Advanced Carriers", "Removed Group"]
 
 
+class TestResolveLocalizedStrings:
+    def test_upstream_then_patch_then_default_precedence(self) -> None:
+        reference = {1: "Upstream", 2: "Patched", 3: "English", 4: ""}
+        strings = {1: "上游", 2: "", 3: "", 4: ""}
+
+        report = resolve_localized_strings(
+            strings, reference, {"Upstream": "覆盖", "Patched": "补丁"}
+        )
+
+        assert strings == {1: "上游", 2: "补丁", 3: "English", 4: ""}
+        assert report.patches.filled == {2: "补丁"}
+        assert report.patches.stale_keys == ["Upstream"]
+        assert report.fallback_filled == [(3, "English")]
+
+    def test_applies_default_fallback_without_patches(self) -> None:
+        reference = {2: "Second", 1: "First"}
+        strings = {2: ""}
+
+        report = resolve_localized_strings(strings, reference, {})
+
+        assert strings == {1: "First", 2: "Second"}
+        assert report.patches.filled == {}
+        assert report.patches.stale_keys == []
+        assert report.fallback_filled == [(1, "First"), (2, "Second")]
+
+
 class TestFindMissingStrings:
     def test_reports_missing_and_empty(self) -> None:
         reference = {1: "Advanced Carriers", 2: "Tritanium", 3: "Empty In Target"}
@@ -171,3 +202,41 @@ class TestFindMissingStrings:
     def test_ignores_empty_reference_text(self) -> None:
         reference = {1: ""}
         assert find_missing_strings({}, reference) == []
+
+
+class TestFallbackWarning:
+    def test_reports_terminal_and_github_warnings(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        warnings: list[str] = []
+        monkeypatch.setattr(localizations, "warning", warnings.append)
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        ws_data = SimpleNamespace(
+            config=SimpleNamespace(metadata=SimpleNamespace(identifier="tranquility"))
+        )
+
+        getattr(localizations, "__report_fallback")(
+            ws_data, "zh", "en", [(2, "Second"), (1, "First")]
+        )
+
+        assert len(warnings) == 1
+        assert "Filled 2 missing zh strings with en on tranquility" in warnings[0]
+        assert "data/resources/tranquility/patches/localization.yaml" in warnings[0]
+        output = capsys.readouterr().out
+        assert "::warning title=en fallback for zh localization (tranquility)::" in output
+        assert "Filled 2 missing zh strings with en after curated patches" in output
+
+    def test_does_not_warn_when_fallback_is_unused(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        warnings: list[str] = []
+        monkeypatch.setattr(localizations, "warning", warnings.append)
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+        ws_data = SimpleNamespace(
+            config=SimpleNamespace(metadata=SimpleNamespace(identifier="tranquility"))
+        )
+
+        getattr(localizations, "__report_fallback")(ws_data, "zh", "en", [])
+
+        assert warnings == []
+        assert capsys.readouterr().out == ""

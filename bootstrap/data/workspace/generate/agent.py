@@ -13,9 +13,9 @@ import bootstrap.config
 
 from bootstrap.constant import BOOSTER_SLOT_ATTR_ID
 from bootstrap.constant import IMPLANT_SLOT_ATTR_ID
-from bootstrap.data.workspace.generate.loc_source import apply_localization_patches
 from bootstrap.data.workspace.generate.loc_source import load_localization_patch_map
 from bootstrap.data.workspace.generate.loc_source import load_localized_strings
+from bootstrap.data.workspace.generate.loc_source import resolve_localized_strings
 from bootstrap.log import error
 from bootstrap.log import info
 
@@ -163,11 +163,12 @@ def _locale_rows(
 ) -> tuple[str, list[tuple[int, str]]]:
     """Resolves (type id, localized name) rows for one locale.
 
-    Non-default locales are first patched from the workspace's curated
-    `patches/localization.yaml` (see `loc_source`).
+    Non-default locales are resolved from the workspace's curated
+    `patches/localization.yaml`, then from the default locale (see
+    `loc_source`).
     """
     if lang != bootstrap.config.CONFIGURATION.localizations.default:
-        apply_localization_patches(strings, reference, load_localization_patch_map(ws_data, lang))
+        resolve_localized_strings(strings, reference, load_localization_patch_map(ws_data, lang))
 
     rows = [
         (type_id, strings[name_id]) for type_id, name_id in name_ids.items() if strings.get(name_id)
