@@ -12,7 +12,9 @@ zh:
 ```
 
 Patches only fill strings that are missing or empty in the target locale;
-they never override upstream text.
+they never override upstream text. After patching, any remaining gaps are
+filled from the default locale so generated snapshot resources always use the
+same upstream -> curated patch -> default-locale precedence.
 """
 
 from __future__ import annotations
@@ -43,6 +45,15 @@ class LocalizationPatchReport:
     #: Patch entries whose English source text no longer resolves to a missing
     #: string (already translated upstream, or the source text changed).
     stale_keys: list[str]
+
+
+@dataclass(frozen=True)
+class LocalizationResolutionReport:
+    """Outcome of resolving one locale against the default locale."""
+
+    patches: LocalizationPatchReport
+    #: (message id, default-locale text) pairs filled after curated patching.
+    fallback_filled: list[tuple[int, str]]
 
 
 async def load_localized_strings(
@@ -103,3 +114,20 @@ def find_missing_strings(
         for message_id, ref_text in reference.items()
         if ref_text and not strings.get(message_id)
     )
+
+
+def resolve_localized_strings(
+    strings: dict[int, str],
+    reference: dict[int, str],
+    patch_map: dict[str, str],
+) -> LocalizationResolutionReport:
+    """Resolves one locale as upstream text, curated patches, then default text.
+
+    Both curated patches and the final default-locale fallback only fill
+    missing/empty target strings. `strings` is mutated in place.
+    """
+    patches = apply_localization_patches(strings, reference, patch_map)
+    fallback_filled = find_missing_strings(strings, reference)
+    for message_id, ref_text in fallback_filled:
+        strings[message_id] = ref_text
+    return LocalizationResolutionReport(patches=patches, fallback_filled=fallback_filled)

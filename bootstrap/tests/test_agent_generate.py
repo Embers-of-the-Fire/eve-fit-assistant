@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
+from bootstrap.data.workspace.generate import agent
 from bootstrap.data.workspace.generate.agent import _AGENT_RESOURCE_APPLICATION_ID
 from bootstrap.data.workspace.generate.agent import AGENT_RESOURCE_DB_SCHEMA_VERSION
 from bootstrap.data.workspace.generate.agent import _type_metas
@@ -16,6 +18,8 @@ from bootstrap.data.workspace.generate.agent import _write_db
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 class TestTypeNameIds:
@@ -65,6 +69,30 @@ class TestTypeMetas:
         assert metas[33516].slot_index == 1
         assert metas[81083].slot_kind == "booster"
         assert metas[81083].slot_index == 2
+
+
+class TestLocaleRows:
+    def test_uses_upstream_patch_then_default_names(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            agent.bootstrap.config,
+            "CONFIGURATION",
+            SimpleNamespace(localizations=SimpleNamespace(default="en")),
+        )
+        monkeypatch.setattr(
+            agent,
+            "load_localization_patch_map",
+            lambda _ws_data, _lang: {"Patched": "补丁"},
+        )
+
+        rows = agent._locale_rows(
+            object(),
+            "zh",
+            {1: "上游", 2: "", 3: ""},
+            {1: "Upstream", 2: "Patched", 3: "English"},
+            {10: 1, 20: 2, 30: 3},
+        )
+
+        assert rows == ("zh", [(10, "上游"), (20, "补丁"), (30, "English")])
 
 
 class TestWriteDb:
