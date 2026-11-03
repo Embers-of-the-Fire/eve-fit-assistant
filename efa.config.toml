@@ -9,7 +9,7 @@ zh = "简体中文"
 [version]
 # Shared build number (Flutter/Android versionCode); strictly increases
 # across every release-triggering merge on both tracks.
-build = 5001
+build = 5002
 data_schema = 2
 
 [version.testing]
@@ -18,7 +18,7 @@ data_schema = 2
 major = 1
 minor = 0
 patch = 0
-num = 3
+num = 4
 
 [version.stable]
 # Stable track renders as major.minor.patch+build.
