@@ -50,6 +50,46 @@ melos run app:gen        # freezed/JSON model generation for the app
 | Windows | `./x build windows` | `cache/releases/windows/<ver>/` |
 | Web | `./x build web` | `apps/eve-fit-assistant/build/web/` |
 
+### Platform Builds
+
+Direct Flutter builds are also available from the app directory. They do not run the
+generators: `./x dev env install` only installs dependencies, so a fresh checkout has no
+generated Dart, FRB, or app-content assets yet, and the native Rust dependency also
+requires generated workspace data. Prepare the tree first; the `./x` commands run from
+the repository root:
+
+Generate code and localization (re-run `./x generate -f all` after schema, FRB, Dart
+model, or l10n changes):
+
+```bash
+./x generate -f all
+```
+
+Generate the workspace data the native engine consumes (for more information, see the
+[data readme](../../data/README.md)):
+
+```bash
+./x workspace list
+./x workspace default <workspace>
+./x build data
+```
+
+Then build the APK for Android. The `flutter` commands run from
+`apps/eve-fit-assistant/`, not the repository root:
+
+```bash
+cd apps/eve-fit-assistant
+flutter build apk
+```
+
+Build IPA for iOS (requires macOS with Xcode; see the
+[official Flutter documentation](https://docs.flutter.dev/deployment/ios) for
+signing and distribution details). Stay in `apps/eve-fit-assistant/`:
+
+```bash
+flutter build ipa
+```
+
 ### Linux Variants
 
 `./x build linux` builds two variants; select a subset with `--variant appimage` or
@@ -78,7 +118,7 @@ The command also emits a Linux release fragment (`<ver>-linux.json`) for the rel
   accepting the OSMF EULA.
 
 The command also emits a Windows release fragment (`<ver>-windows.json`) for the release
-registry. See @docs/agents/environment for the Windows toolchain prerequisites.
+registry. See [Setup & Configuration](./setup-and-config.md) for the Windows toolchain prerequisites.
 
 ### Web Engine Build
 

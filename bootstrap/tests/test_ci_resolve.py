@@ -44,7 +44,7 @@ def test_ts_leaf_change_pulls_in_ts_dependents_only():
 
 
 def test_unrelated_files_affect_nothing():
-    resolution = resolver.resolve(["README.md", "docs/agents/README.md", "AGENTS.md"])
+    resolution = resolver.resolve(["README.md", "docs/dev/README.md", "AGENTS.md"])
     assert not resolution.escalated
     assert not resolution.packages
     assert not resolution.instances

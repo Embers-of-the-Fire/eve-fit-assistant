@@ -24,7 +24,7 @@
   dependencyDashboard: true,
   minimumReleaseAge: '3 days',
   prBodyNotes: [
-    "This is a batched dependency update opened by Renovate. Merging is manual: the `CI / Required` check (the change-aware matrix instantiated for the touched ecosystem) must pass first. Details on the bot's role: `docs/agents/ci-release.md`.",
+    "This is a batched dependency update opened by Renovate. Merging is manual: the `CI / Required` check (the change-aware matrix instantiated for the touched ecosystem) must pass first. Details on the bot's role: `docs/dev/ci-release.md`.",
   ],
   labels: [
     'T-Dependencies',

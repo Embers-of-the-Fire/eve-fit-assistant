@@ -74,7 +74,7 @@ available.
 | **Android** | Official | Download the signed APK for your CPU architecture from [efa-tech.dev/download](https://efa-tech.dev/download). The app also detects and downloads updates in the background. |
 | **Windows** | Preview | Native zip or per-user MSI installer from the [download page](https://efa-tech.dev/download). |
 | **Linux** | Preview | AppImage or native zip from the [download page](https://efa-tech.dev/download). |
-| **iOS** | Self-build only | No pre-built binaries are provided; build from source following the [development guide](docs/dev/development.md#build). |
+| **iOS** | Self-build only | No pre-built binaries are provided; set up the environment with the [setup guide](docs/dev/setup-and-config.md), then build from source following the [platform build instructions](docs/dev/build-and-test.md#platform-builds). |
 
 The app is designed for phones first; tablets and desktop windows work but are
 not the primary target.
@@ -106,19 +106,14 @@ ship from it; the `main` branch is deprecated. Releases ship on two tracks:
 `stable` for normal users and `testing` (beta) for early testers — expect rough
 edges on `testing`, and please report what you find.
 
-## For Developers
+## Development
 
-EFA is a Flutter/Dart app with a Rust fitting engine (via
+EFA is built with Flutter/Dart, Rust (via
 [`flutter_rust_bridge`](https://github.com/fzyzcjy/flutter_rust_bridge), core
 logic in [`eve-fit-os`](https://github.com/Embers-of-the-Fire/eve-fit-os)),
-Python data tooling, and TypeScript/SvelteKit web services.
-
-To build from source or contribute, start with the
-[development guide](docs/dev/development.md) and [AGENTS.md](AGENTS.md).
-
-EFA is source-insensitive by design: unlike the sibling project
-[EVE Multitools](https://github.com/Embers-of-the-Fire/EVE-Multitools),
-it never cares where the game data comes from.
+Python, and TypeScript. Local setup, build, and contribution-facing docs live in
+the [developer documentation](docs/dev/README.md); run `./x --help` for the
+workspace CLI.
 
 ## License
 

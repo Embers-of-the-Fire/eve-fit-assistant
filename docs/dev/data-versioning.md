@@ -91,5 +91,5 @@ Create the raw release-note scaffold with:
 ```
 
 The command emits `spec.yaml` and `changelog.md`; author `content.zh.md` and
-`content.en.md` separately. The `changelog` OpenCode skill contains the curated bilingual
+`content.en.md` separately. The `changelog` assistant skill encodes the curated bilingual
 release-note workflow.

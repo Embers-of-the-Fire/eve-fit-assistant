@@ -1,24 +1,14 @@
 # efa_fit
 
-Scope: shared fit-format logic exposed as `package:efa_fit/efa_fit.dart`.
+Scope: shared fit-format logic exposed as `package:efa_fit/efa_fit.dart` (EFA payload
+codecs, EFT import/export, fit-link construction/parsing, `FitSnapshot` construction and
+protobuf encoding).
 
-The package provides:
+- Keep this package usable outside the app and avoid adding app-storage dependencies; the
+  app owns the `FitStorage` model and maps it to/from these formats.
 
-- EFA(n) native payload codecs: versioned JSON envelope → gzip → base64/base64url with an
-  `EFA<n>:` prefix, size caps, and `EfaFitFormatException`;
-- EFT-compatible text import/export through `parseEft`/`formatEft` over the neutral `EftFit`
-  model, with injected `EftTypeResolver`/`EftTypeNameLookup` name and slot resolution;
-- fit-link construction/parsing through `buildFitLinkShareUrl`, `parseFitLinkUri`, and
-  `parseFitLinkBootUri`;
-- `FitSnapshot` construction and protobuf wire encoding.
+## Docs
 
-The app owns the `FitStorage` model and maps it to/from these formats. Keep this package
-usable outside the app and avoid adding app-storage dependencies.
-
-Validation:
-
-```sh
-melos run pkg:test
-```
-
-See `README.md` in this directory for snapshot invariants and examples.
+- Snapshot invariants and examples: `README.md` in this directory.
+- Fit links and sharing: [docs/dev/app-links.md](../../docs/dev/app-links.md)
+- Validation: `melos run pkg:test`.

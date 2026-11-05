@@ -3,13 +3,12 @@
 Scope: dependency-free EVE constant definitions exposed as `package:efa_constant/eve.dart`
 (`EveConst*` classes and `EveDogmaUnitId`).
 
-- `eve_dogma_unit_generated.dart` is tracked; regenerate it with
-  `./x generate values dogma-units` when its source data changes.
-- `eve_attr_generated.dart` is generated and gitignored.
 - Keep this package dependency-free unless a design change explicitly requires otherwise.
+- `eve_attr_generated.dart` is generated and gitignored — never edit or check it in.
+- `eve_dogma_unit_generated.dart` is tracked; regenerate it with
+  `./x generate values dogma-units` when its source data changes instead of editing by hand.
 
-Validation:
+## Docs
 
-```sh
-./x generate values dogma-units
-```
+- Data workspaces and versioning: [docs/dev/data-versioning.md](../../docs/dev/data-versioning.md)
+- Validation: `./x generate values dogma-units`.

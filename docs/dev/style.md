@@ -30,7 +30,7 @@ and trustworthy.
 
 The full color system — the two palette families (Brand vs. Workload), per-surface
 assignment, concrete token values, and shared semantic colors — is defined in
-@docs/agents/color and is canonical. Summary:
+[color](./color.md) and is canonical. Summary:
 
 - **Brand surfaces** (the homepage and other presentation surfaces) use the gold/cyan
   "New Eden" family.

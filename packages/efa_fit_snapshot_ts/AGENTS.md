@@ -2,15 +2,14 @@
 
 Scope: TypeScript/Svelte fit-snapshot rendering support consumed by the platform app.
 
+- Keep rendering read-only and data-driven from `FitSnapshot`; do not re-resolve fitting
+  data in this package.
 - Import package entry points from `efa-fit-snapshot-ts`; protobuf bindings come from
   `efa-proto-ts`.
-- Keep rendering read-only and data-driven from `FitSnapshot`; do not re-resolve fitting data
-  in this package.
-- Follow @docs/agents/style and @docs/agents/color for UI work.
+- Follow [docs/dev/style.md](../../docs/dev/style.md) and [docs/dev/color.md](../../docs/dev/color.md)
+  for UI work.
 
-Validation:
+## Docs
 
-```sh
-pnpm --filter efa-fit-snapshot-ts check
-pnpm dlx biome check --fix packages/efa_fit_snapshot_ts
-```
+- Validation: `pnpm --filter efa-fit-snapshot-ts check`,
+  `pnpm biome check --fix packages/efa_fit_snapshot_ts`.

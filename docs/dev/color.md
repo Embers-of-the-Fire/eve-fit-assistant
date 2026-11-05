@@ -1,7 +1,7 @@
 # Color System
 
 Canonical color guidance for all EVE Fit Assistant surfaces. The general design principles
-live in @docs/agents/style; this file is the authority on **which palette a surface uses**
+live in [style](./style.md); this file is the authority on **which palette a surface uses**
 and on concrete palette values.
 
 ## Two Families

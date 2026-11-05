@@ -1,7 +1,7 @@
-# Development Guide
+# Setup & Configuration
 
-This guide covers setting up a local development environment and building EFA
-from source. If you only want to use EFA, see the [root README](../../README.md)
+This guide covers setting up a local development environment and configuring
+EFA for development. If you only want to use EFA, see the [root README](../../README.md)
 or the [user manual](https://docs.efa-tech.dev) instead.
 
 ## Development Tools
@@ -22,14 +22,20 @@ The repository contains some configurations for both editors for easier developm
   [Flutter iOS setup](https://docs.flutter.dev/platform-integration/ios/setup)
   to prepare the environment.
 
+Use `nix develop` on Linux to enter the preferred development shell. `flake.nix`
+supplies Flutter, JDK 17, Android SDK/NDK, Rust and Cargo, `uv`, protobuf tools,
+`flutter_rust_bridge_codegen`, and the Linux packaging tools.
+Treat `flake.nix` as the environment source of truth.
+
 After setting up the environment,
 run the following command to initialize the workspace:
 
 ```bash
-nix develop      # enter the preferred development shell
-flutter pub get  # init flutter
-uv sync          # init python
+nix develop           # enter the preferred development shell
+./x dev env install   # bootstrap flutter, python, and pnpm dependencies
 ```
+
+The manual equivalent is `flutter pub get`, `uv sync`, and `pnpm install`.
 
 > Note: Lock files (`pubspec.lock`, `uv.lock`, `Cargo.lock`) are checked in.
 > If you use a mirror for package registries, you may need to regenerate them.
@@ -92,37 +98,39 @@ FSD_LOC_EN_DIR=/path/to/repo/cache/workspaces/tranquility/index-cache/resources/
 OUTPUT_DIR=/path/to/repo/cache/workspaces/tranquility/native
 ```
 
-## Build
+### Local Configuration Notes
 
-Generate code and localization after schema, FRB, Dart model, or l10n changes.
+- Python's minimum version is declared by `requires-python` in `pyproject.toml` and is
+  managed by `uv`: the interpreter is uv-downloaded (python-build-standalone) and pinned
+  by `.python-version`. Renovate has no uv manager;
+  its built-in `pyenv` manager matches `.python-version` but only supports the `docker`
+  datasource (rendering Python as a Docker dependency), so `renovate.json5` disables
+  `pyenv` and bumps the pin with a custom regex manager on the `python-version`
+  datasource. The Nix shell deliberately ships no CPython and sets
+  `UV_PYTHON_PREFERENCE=only-managed`; run the workspace CLI through `./x`, `./x.ps1`, or
+  `uv run x.py`, not through a global Python interpreter.
+- Do not hand-edit `apps/eve-fit-assistant/android/local.properties` unless necessary. The
+  Nix shell hook regenerates it with only SDK, NDK, and CMake paths derived from the Nix
+  environment. When its marker line is absent or the SDK path changes,
+  `scripts/setup-android-sdk.sh` rewrites the entire file, deleting existing build
+  properties and any other custom entries. Flutter build properties such as version and
+  build mode are read from the app's `pubspec.yaml` rather than this file. Keep any
+  necessary custom Gradle settings in a separate file (for example the project's
+  `gradle.properties` or per-user `~/.gradle/gradle.properties`) so regeneration cannot
+  discard them.
+- Windows has no Nix toolchain. For Windows builds, `flutter`, `cargo`, `protoc`, `dotnet`,
+  and `wix` must be on `PATH`, and the Visual Studio C++ ATL component
+  (`Microsoft.VisualStudio.Component.VC.ATL`, providing `atlstr.h` for
+  `flutter_secure_storage_windows`) must be installed.
 
-```bash
-./x generate -f all
-```
+## Dev-Only Environment
 
-Generate backend data. For more information, see [data readme](../../data/README.md).
+You can set local developer defaults in `efa.dev.toml` to simplify the development process.
+It's strongly not recommended to use these values in production builds.
 
-```bash
-./x workspace list
-./x workspace default <workspace>
-./x build data
-```
+See [`efa.dev.example.toml`](../../efa.dev.example.toml) for more information.
 
-Build APK for Android.
-
-```bash
-flutter build apk
-```
-
-Build IPA for iOS (requires macOS with Xcode; see the
-[official Flutter documentation](https://docs.flutter.dev/deployment/ios) for
-signing and distribution details):
-
-```bash
-flutter build ipa
-```
-
-## Management
+## Management (x.py)
 
 The project uses a built-in Python script, [`x.py`](../../x.py) to manage the workspace.
 
@@ -161,13 +169,6 @@ Common manager commands:
 If you want to or have to use a new cmdline operation,
 you can add a new subcommand to the manager instead.
 
-## Dev-Only Environment
-
-You can set local developer defaults in `efa.dev.toml` to simplify the development process.
-It's strongly not recommended to use these values in production builds.
-
-See [`efa.dev.example.toml`](../../efa.dev.example.toml) for more information.
-
 ## Data Build Routine
 
 When you need to build data:
@@ -190,3 +191,9 @@ by adding `--workspace/--ws` when calling `x.py`:
 ```bash
 ./x --ws serenity build data
 ```
+
+## External Data Prerequisites
+
+Generated data depends on external EVE FSD/resource files described by
+`data/resources/*/descriptor.toml`. Missing local resources can block data builds. Data
+workspace selection and build commands are documented in [Data Versioning](./data-versioning.md).

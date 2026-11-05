@@ -3,7 +3,7 @@
 Scope: the Flutter application, its Rust FRB bridge (`rust/`), the `efa-chat` Rust crate
 (`rust/lib/efa-chat/`), and the cargokit wrapper (`rust_builder/`).
 
-## Local Rules
+## Hard Constraints
 
 - Paths in repository docs written as `lib/...`, `test/...`, `rust/...`, `l10n/...`, or
   `web/...` are relative to this directory unless stated otherwise.
@@ -12,37 +12,16 @@ Scope: the Flutter application, its Rust FRB bridge (`rust/`), the `efa-chat` Ru
   `*.freezed.dart`.
 - Route, Riverpod, freezed, JSON-model, and annotation changes require the matching Dart
   generator; localization changes require `./x generate l10n`.
-- Keep FRB APIs in `rust/src/api/` small and explicit; choose `#[frb(sync)]`, `async`, or a
-  normal function according to @docs/agents/engineering-conventions.
-- UI work must follow @docs/agents/style and @docs/agents/color.
-- Developer-mode-only UI uses hardcoded English as described in
-  @docs/agents/developer-mode.
+- Mixed Dart+Rust changes must also pass the repository-wide `./x lint`.
 
-## Subsystem Docs
+## Docs
 
-- Storage and data flow: @docs/agents/storage
-- Fit deep links and sharing: @docs/agents/app-links
-- AI chat: @docs/agents/efa-chat
-- Developer mode: @docs/agents/developer-mode
-- Environment: @docs/agents/environment
-- Builds and tests: @docs/agents/build-and-test
-
-## Common Commands
-
-Run from the repository root unless noted:
-
-This guide covers both Dart and Rust, so mixed-language changes must also pass the
-repository-wide `./x lint` check in addition to the per-language commands below.
-
-```sh
-melos run app:format
-melos run app:analyze
-melos run app:test
-melos run app:gen
-./x generate dart
-./x generate l10n
-./x generate rust
-./x lint
-cargo test -p rust_lib_eve_fit_assistant
-cargo test -p efa-chat
-```
+- Storage and data flow: [docs/dev/app-storage.md](../../docs/dev/app-storage.md)
+- Style and color: [docs/dev/style.md](../../docs/dev/style.md), [docs/dev/color.md](../../docs/dev/color.md)
+- Engineering conventions (FRB API shape): [docs/dev/engineering-conventions.md](../../docs/dev/engineering-conventions.md)
+- Fit deep links and sharing: [docs/dev/app-links.md](../../docs/dev/app-links.md)
+- AI chat: [docs/dev/efa-chat.md](../../docs/dev/efa-chat.md)
+- Developer mode: [docs/dev/developer-mode.md](../../docs/dev/developer-mode.md)
+- Environment: [docs/dev/setup-and-config.md](../../docs/dev/setup-and-config.md)
+- Builds and tests: [docs/dev/build-and-test.md](../../docs/dev/build-and-test.md)
+- Validation: per-language format/analyze/test via melos, `./x generate ...`, `./x lint`.
