@@ -1,8 +1,8 @@
 # Workspace Shape
 
 This document maps the repository's major areas. Scoped operating rules live in the nearest
-`AGENTS.md`; deeper subsystem behavior lives in the other documents indexed by
-@docs/agents/README.
+`AGENTS.md`; deeper subsystem behavior lives in the other documents indexed by the
+[developer documentation README](./README.md).
 
 ## Control Plane
 
@@ -54,7 +54,7 @@ Rust has three main crates:
 
 - the Flutter Rust Bridge crate in `apps/eve-fit-assistant/rust/` (`rust/src/api/*`);
 - the fitting engine submodule in `packages/eve-fit-os/`;
-- the AI chat crate in `apps/eve-fit-assistant/rust/lib/efa-chat/` (see @docs/agents/efa-chat).
+- the AI chat crate in `apps/eve-fit-assistant/rust/lib/efa-chat/` (see [efa-chat](./efa-chat.md)).
 
 The root `Cargo.toml` is the Cargo workspace root. Keep FRB-facing APIs in the bridge crate
 small and put core fitting behavior in `packages/eve-fit-os` where practical.

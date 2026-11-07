@@ -1,10 +1,12 @@
 # Fit Storage and Versioning
 
-Saved fits are persisted as JSON files under `<documents>/fittings/`.
-The fit registry is stored alongside them as `<documents>/fittings/registry.json`.
+Saved fits are persisted as JSON documents in the fittings document store
+([`DocStore`](../../apps/eve-fit-assistant/lib/storage/fs/doc_store.dart),
+`UserDataDomain.fittings`), one per fit under the key `<fitId>.json`.
+The fit registry is stored alongside them in the same store under the key `registry.json`.
 
 This document summarizes the current alpha-stage persistence contract,
-including file layout, versioning, eager normalization, and native text import behavior.
+including storage layout, versioning, eager normalization, and native text import behavior.
 
 ## Concept, Choice and Suggestion
 
@@ -65,7 +67,7 @@ version (currently `EFA2:`).
 ### Fit Registry
 
 - `FitRegistryManager` loads and stores the fit registry.
-- The registry file is `<documents>/fittings/registry.json`.
+- The registry is the `registry.json` key in the fittings document store.
 - The current on-disk registry shape is:
 
 ```json
@@ -92,6 +94,45 @@ then rewritten immediately in the versioned format.
 
 This separation keeps shareable text payload versioning explicit,
 without tying future native text versions directly to on-disk file versions.
+
+## Registry and Manager Logic
+
+All fits are stored locally in the fittings document store, and won't be loaded until accessed.
+
+The manager is written in [`lib/storage/fit/manager.dart`](../../apps/eve-fit-assistant/lib/storage/fit/manager.dart).
+
+The registry manager owns a fit registry, which is a map of all fits available in the app,
+keyed by `fitId`.
+The registry is the `registry.json` key described above.
+
+Loading an individual fit is not the manager's job: the `Fit` provider
+([`lib/storage/fit/service.dart`](../../apps/eve-fit-assistant/lib/storage/fit/service.dart))
+loads the fit from the store and holds it in memory while the provider is mounted.
+The fit schema is defined in [`lib/storage/fit/schema.dart`](../../apps/eve-fit-assistant/lib/storage/fit/schema.dart).
+
+Locally a fit is a JSON document with an extra entry in the registry.
+`FitManager` writes the fit through the fittings document store under the key
+`<fitId>.json`, where the `fitId` is a UUID v4 string.
+On native, that key is a file under `PathProvider.fittingsPath`
+([`lib/config/paths.dart`](../../apps/eve-fit-assistant/lib/config/paths.dart));
+on web, it is an entry in the `efa_fittings` Hive box backed by IndexedDB
+([`lib/storage/fs/user_store_web.dart`](../../apps/eve-fit-assistant/lib/storage/fs/user_store_web.dart)).
+
+### Checkout Compatibility
+
+Each fit stores a `CheckoutRef` binding with the fields `checkoutId` and `serverId`.
+Editing remains enabled only when the active checkout is compatible with the fit's saved binding
+(`FitCheckoutCompatibilityKind.compatible`); outdated or incompatible bindings mark the fit
+as requiring attention.
+
+If a fit becomes read-only because of a checkout mismatch, the supported recovery is limited.
+Editing is re-enabled only on an exact `checkoutRef.checkoutId` match, so it can be restored
+only by switching back to the saved checkout itself (re-fetching its data through
+`fetchResourcesForCheckout()` when the local resources are incomplete). If the saved checkout
+was deleted, recovery is unsupported: creating a replacement checkout generates a new checkout
+ID that can never match the fit's saved binding, so the fit remains read-only. Its content can
+only be carried over by exporting and re-importing it as a new fit, which is bound to the
+active checkout on import.
 
 ## Current Limits
 

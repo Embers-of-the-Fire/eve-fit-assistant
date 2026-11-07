@@ -30,7 +30,7 @@ the matching generator:
   with placeholder metadata; `l10n/app_en.arb` contains translations only.
 - For JS/TS site packages, run the package's `check` script (for example
   `pnpm --filter efa-tech check` or `pnpm --filter efa-platform check`) and
-  `pnpm dlx biome check --fix site` for formatting/linting.
+  `pnpm biome check --fix site` for formatting/linting.
 
 ## Flutter Rust Bridge Threading
 
@@ -57,6 +57,6 @@ run `./x lint`. Run relevant tests before committing.
 | Rust bridge | `cargo fmt --package rust_lib_eve_fit_assistant` and `cargo clippy --fix --allow-dirty --package rust_lib_eve_fit_assistant`. |
 | Rust fitting-engine logic | The bridge minimum as applicable plus targeted `cargo test -p eve-fit-os ...`. |
 | Localization | `./x generate l10n`, then Dart format/analyze as applicable. |
-| Site JS/TS | `pnpm run check` in the relevant site and `pnpm dlx biome check --fix site`. |
+| Site JS/TS | `pnpm run check` in the relevant site and `pnpm biome check --fix site`. |
 
-Broad test entry points are documented in @docs/agents/build-and-test.
+Broad test entry points are documented in [build-and-test](./build-and-test.md).

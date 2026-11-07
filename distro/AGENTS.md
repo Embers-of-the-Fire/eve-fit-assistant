@@ -2,23 +2,18 @@
 
 Scope: platform packaging assets under `distro/linux/` and `distro/windows/`.
 
-## Linux
+## Hard Constraints
 
-- `./x build linux` emits `appimage` and `native` variants into
-  `cache/releases/linux/<ver>/`.
-- The AppImage path requires `linuxdeploy` and `appimagetool` from the Nix dev shell.
-- `distro/linux/appimage/efa.desktop` declares the `efa://` scheme handler on a best-effort
-  basis.
-
-## Windows
-
-- `./x build windows` runs only on a Windows host and emits `native` and `installer`
-  variants into `cache/releases/windows/<ver>/`.
-- The MSI source is `distro/windows/installer/Package.wxs` plus per-culture
-  `Package.<culture>.wxl` files.
+- `./x build linux` requires `linuxdeploy` and `appimagetool` from the Nix dev shell.
+- `./x build windows` runs only on a Windows host.
 - Windows packaging uses WiX v6; WiX v7 is intentionally excluded because it requires
   accepting the OSMF EULA.
-- `Package.wxs` registers the `efa://` scheme per user.
+- The MSI source is `distro/windows/installer/Package.wxs` plus per-culture
+  `Package.<culture>.wxl` files.
+- `efa://` scheme registration: `distro/linux/appimage/efa.desktop` (best-effort) and
+  `Package.wxs` (per user on Windows).
 
-See @docs/agents/build-and-test and @docs/agents/environment for prerequisites and detailed
-variant behavior.
+## Docs
+
+- Builds and prerequisites: [docs/dev/build-and-test.md](../docs/dev/build-and-test.md)
+- Environment setup: [docs/dev/setup-and-config.md](../docs/dev/setup-and-config.md)

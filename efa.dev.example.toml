@@ -32,11 +32,11 @@ output_dir = "cache/workspaces/tranquility/native"
 attr_id_source = "data/resources/tranquility/cache/native/json/dogmaAttributes.json"
 
 [remote]
-# Settings used by `./x remote` to materialize and launch local remote mocks
+# Settings used by `./x remote` to launch the local RustFS mock
 # and publish content to S3-compatible storage.
 channel = "testing"
 
-# Common mock host for both RustFS and static mocks.
+# Mock host for the RustFS mock server.
 host = "127.0.0.1"
 
 # Paths are resolved relative to [paths].root unless absolute.
