@@ -363,3 +363,56 @@ def register_build_state_commands(ci: click.Group) -> None:
                 f"Pushed pre-built models for {server_id}: blobs uploaded, map committed.",
             )
         )
+
+    @build_state.command("push-skyboxes")
+    @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
+    @click.option(
+        "--threads",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Parallel baker processes for skybox baking (default: CPU count).",
+    )
+    def push_skyboxes(server: str, threads: int | None):
+        """Pre-bake skyboxes locally and push outputs to the production store.
+
+        Runs the full skyboxes bake on this machine, uploads every produced
+        HDR/PB2 blob pair to the production remote store (skipping blobs
+        already present), and commits the updated build-state map to CI
+        storage. The next CI build then references the blobs in place instead
+        of baking.
+        """
+        from bootstrap.data.workspace.generate import GeneratorDatasource
+        from bootstrap.data.workspace.generate import skyboxes as skyboxes_step
+
+        server_id = _resolve_server(server)
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
+        resource_root = bootstrap.config.CONFIGURATION.data_schema.resource_root
+
+        from bootstrap.data.buildstate.skyboxes import SkyboxesCacheContext
+
+        cache = SkyboxesCacheContext(
+            server_id=server_id,
+            resource_root=resource_root,
+            ci_client=_ci_client(),
+            prod_client=_prod_client(),
+            rebuild=True,
+            upload_map=True,
+            upload_blobs=True,
+        )
+
+        async def run():
+            ws_config = WorkspaceConfig.load_from_descriptor(runtime.get_workspace(server_id))
+            data = GeneratorDatasource(ws_config)
+            try:
+                await skyboxes_step.generate(data, cache=cache, threads=threads)
+            finally:
+                await data.aclose()
+
+        asyncio.run(run())
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Pushed pre-built skyboxes for {server_id}: blobs uploaded, map committed.",
+            )
+        )

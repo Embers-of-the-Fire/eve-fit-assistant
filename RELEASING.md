@@ -363,6 +363,18 @@ the converter beginning to consume new SOF fields:
   converter's Node dependencies, `[remote.s3]` write credentials and
   `[ci.storage]` write credentials in `efa.dev.toml`. The next CI data build
   then references the blobs in place instead of converting.
+- **Pre-bake skyboxes on a powerful local machine**: same pattern for the
+  skyboxes map — re-bakes every skybox, uploads each HDR/PB2 pair straight to
+  the production store (blobs already present are skipped), and commits the
+  updated skyboxes map to CI storage:
+
+  ```sh
+  ./x ci build-state push-skyboxes --server tranquility
+  ```
+
+  Same requirements as `push-models` (hydrated workspace, converter Node
+  dependencies, `[remote.s3]` and `[ci.storage]` write credentials). The next
+  CI data build then references the blobs in place instead of baking.
 
 Skybox HDR/PB2 pairs use the parallel `build-state/skyboxes/<server>.json` map
 and the same release-data cache/rebuild flags. `build-state commit` uploads both

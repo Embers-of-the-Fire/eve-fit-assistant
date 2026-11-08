@@ -78,7 +78,7 @@ The map carries no converter identity: when the converter submodule or the encod
 toolchain changes, invalidate manually (see RELEASING.md). Test-mode/PR builds never
 read or write the map (they publish to a mock, so their outputs do not exist in the
 production store). Operators manage the map with `./x ci build-state ...`
-(`invalidate`, `seed`, `push-models`, `commit`).
+(`invalidate`, `seed`, `push-models`, `push-skyboxes`, `commit`).
 
 The `skyboxes` step has its own per-server map (`build-state/skyboxes/<server>.json`)
 with the same invalidation model: each entry keys on the resindex MD5 columns of the
@@ -88,7 +88,10 @@ enabled and rewritten by the same release-data flags as the models map
 (`--models-cache` / `--rebuild-models`). `./x ci build-state seed` reconstructs
 both model and skybox maps from a game-build-compatible channel head without
 reconversion; only complete HDR/PB2 pairs are seeded, and new ids stay misses.
-`commit` uploads either or both map families. Lighting-catalog changes are not
+`commit` uploads either or both map families. Like `push-models`,
+`push-skyboxes` pre-bakes every skybox on a local machine (a full rebuild),
+pushes each HDR/PB2 pair to the production store, and commits the skyboxes
+map. Lighting-catalog changes are not
 environment-pair inputs and invalidate neither skybox pairs nor models. Never
 seed across an output-affecting baker or sidecar-contract change; use the shared
 `--rebuild-models` gate instead.

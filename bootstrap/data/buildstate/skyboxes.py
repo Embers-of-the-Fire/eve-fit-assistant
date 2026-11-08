@@ -37,6 +37,10 @@ with unchanged inputs is the accepted human gate — rebuild the map with the
 release-data ``--rebuild-models`` flag (which covers both the models and
 skyboxes maps) when the baker or its toolchain changes.
 
+The local pre-build path (``./x ci build-state push-skyboxes``) re-bakes
+every skybox and pushes each HDR/PB2 pair to the production store before
+committing the map, mirroring ``push-models``.
+
 Test-mode / PR builds must never write the map: they publish to a mock, so the
 outputs they "produce" do not exist in the production store and rule 2 would
 mass-invalidate the map on the next real run.
@@ -182,7 +186,10 @@ class SkyboxesCacheContext:
     storage; ``prod_client`` HEADs output blobs in the production store
     (existence + size — hits are referenced in place and never downloaded).
     Set ``rebuild`` to treat every entry as a miss while still rewriting the
-    map. ``workers`` sizes the probe pool in ``partition``.
+    map. ``upload_blobs`` additionally pushes every produced HDR/PB2 pair to
+    the production store — the local pre-build path
+    (``./x ci build-state push-skyboxes``).
+    ``workers`` sizes the probe pool in ``partition``.
     """
 
     server_id: str
@@ -192,6 +199,7 @@ class SkyboxesCacheContext:
     rebuild: bool = False
     map_path: Path | None = None
     upload_map: bool = False
+    upload_blobs: bool = False
     workers: int = 16
 
     _map: SkyboxesBuildStateMap = field(default_factory=SkyboxesBuildStateMap)
@@ -276,13 +284,27 @@ class SkyboxesCacheContext:
     def record_conversion(
         self, resource_id: str, inputs: SkyboxInputs, output: Path, sidecar_output: Path
     ) -> None:
-        """Record a freshly baked artifact pair."""
+        """Record a freshly baked artifact pair; optionally push both blobs to prod."""
+        output_hash = hashlib.sha256(output.read_bytes()).hexdigest()
+        sidecar_hash = hashlib.sha256(sidecar_output.read_bytes()).hexdigest()
+        if self.upload_blobs:
+            sidecar_rid = skybox_sidecar_resource_id(_skybox_id_of(resource_id))
+            for blob, rid, content_hash in (
+                (output, resource_id, output_hash),
+                (sidecar_output, sidecar_rid, sidecar_hash),
+            ):
+                key = self.blob_key(rid, content_hash)
+                if not self.prod_client.object_exists(key):
+                    self.prod_client.upload_file(blob, key)
         self._new_entries[resource_id] = SkyboxArtifactEntry(
             cube=inputs.cube,
             black=inputs.black,
-            output=hashlib.sha256(output.read_bytes()).hexdigest(),
-            sidecar_output=hashlib.sha256(sidecar_output.read_bytes()).hexdigest(),
+            output=output_hash,
+            sidecar_output=sidecar_hash,
         )
+
+    def blob_key(self, resource_id: str, output_hash: str) -> str:
+        return blob_remote_key(self.resource_root, resource_id, output_hash)
 
     def record_hit(self, resource_id: str) -> None:
         """Carry a cache hit's entry over into the updated map."""

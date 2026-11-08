@@ -13,6 +13,7 @@ from click.testing import CliRunner
 from bootstrap.cli.ci import buildstate as buildstate_cli
 from bootstrap.data.buildstate import skyboxes as buildstate_skyboxes
 from bootstrap.data.buildstate.models import ModelsBuildStateMap
+from bootstrap.data.buildstate.models import blob_remote_key
 from bootstrap.data.buildstate.skyboxes import MAP_SCHEMA_VERSION
 from bootstrap.data.buildstate.skyboxes import SkyboxArtifactEntry
 from bootstrap.data.buildstate.skyboxes import SkyboxesBuildStateMap
@@ -149,6 +150,28 @@ class _StatProdClient:
         return self.default
 
 
+class _UploadProdClient:
+    """Prod client stub recording uploads; existence keys on content hash."""
+
+    def __init__(self, existing: set[str] | None = None):
+        self.existing = existing or set()
+        self.uploads: list[tuple[str, bytes]] = []
+
+    def object_exists(self, key: str) -> bool:
+        return any(key.endswith(content_hash) for content_hash in self.existing)
+
+    def upload_file(self, src, key: str) -> None:
+        self.uploads.append((key, src.read_bytes()))
+
+
+def _baked_pair(tmp_path):
+    hdr = tmp_path / "a01.hdr"
+    sidecar = tmp_path / "a01.pb2"
+    hdr.write_bytes(b"hdr-bytes")
+    sidecar.write_bytes(b"sidecar-bytes")
+    return hdr, sidecar
+
+
 class TestCacheContext:
     def _context(self, prod_client, entries=None) -> SkyboxesCacheContext:
         state_map = SkyboxesBuildStateMap(
@@ -190,15 +213,63 @@ class TestCacheContext:
     def test_record_and_hit_roundtrip(self, tmp_path):
         cache = self._context(_StatProdClient(), entries={})
         cache.partition({HDR_RID: _inputs()})
-        hdr = tmp_path / "a01.hdr"
-        sidecar = tmp_path / "a01.pb2"
-        hdr.write_bytes(b"hdr-bytes")
-        sidecar.write_bytes(b"sidecar-bytes")
+        hdr, sidecar = _baked_pair(tmp_path)
         cache.record_conversion(HDR_RID, _inputs(), hdr, sidecar)
         cache.save()
         entry = cache._new_entries[HDR_RID]
         assert entry.output == hashlib.sha256(b"hdr-bytes").hexdigest()
         assert entry.sidecar_output == hashlib.sha256(b"sidecar-bytes").hexdigest()
+
+    def test_record_conversion_uploads_both_blobs(self, tmp_path):
+        client = _UploadProdClient()
+        cache = SkyboxesCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(),  # type: ignore[arg-type]
+            prod_client=client,  # type: ignore[arg-type]
+            upload_blobs=True,
+        )
+        hdr, sidecar = _baked_pair(tmp_path)
+        cache.record_conversion(HDR_RID, _inputs(), hdr, sidecar)
+        hdr_hash = hashlib.sha256(b"hdr-bytes").hexdigest()
+        sidecar_hash = hashlib.sha256(b"sidecar-bytes").hexdigest()
+        assert client.uploads == [
+            (blob_remote_key("efa/v2", HDR_RID, hdr_hash), b"hdr-bytes"),
+            (blob_remote_key("efa/v2", SIDECAR_RID, sidecar_hash), b"sidecar-bytes"),
+        ]
+        entry = cache._new_entries[HDR_RID]
+        assert entry.output == hdr_hash
+        assert entry.sidecar_output == sidecar_hash
+
+    def test_record_conversion_skips_blobs_already_in_prod(self, tmp_path):
+        hdr_hash = hashlib.sha256(b"hdr-bytes").hexdigest()
+        client = _UploadProdClient(existing={hdr_hash})
+        cache = SkyboxesCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(),  # type: ignore[arg-type]
+            prod_client=client,  # type: ignore[arg-type]
+            upload_blobs=True,
+        )
+        hdr, sidecar = _baked_pair(tmp_path)
+        cache.record_conversion(HDR_RID, _inputs(), hdr, sidecar)
+        sidecar_hash = hashlib.sha256(b"sidecar-bytes").hexdigest()
+        assert client.uploads == [
+            (blob_remote_key("efa/v2", SIDECAR_RID, sidecar_hash), b"sidecar-bytes")
+        ]
+
+    def test_record_conversion_without_upload_blobs_touches_no_prod(self, tmp_path):
+        client = _UploadProdClient()
+        cache = SkyboxesCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(),  # type: ignore[arg-type]
+            prod_client=client,  # type: ignore[arg-type]
+        )
+        hdr, sidecar = _baked_pair(tmp_path)
+        cache.record_conversion(HDR_RID, _inputs(), hdr, sidecar)
+        assert client.uploads == []
+        assert cache._new_entries[HDR_RID].output == hashlib.sha256(b"hdr-bytes").hexdigest()
 
     def test_record_hit_carries_entry(self):
         cache = self._context(_StatProdClient())
@@ -257,6 +328,94 @@ class TestBuildStateCommitCommand:
             ("build-state/models/tranquility.json", models_raw),
             ("build-state/skyboxes/tranquility.json", skyboxes_raw),
         ]
+
+
+class TestPushSkyboxesCommand:
+    @staticmethod
+    def _install_fakes(monkeypatch: pytest.MonkeyPatch) -> dict:
+        calls: dict = {}
+
+        ci_client = object()
+        prod_client = object()
+        monkeypatch.setattr(buildstate_cli, "_ci_client", lambda: ci_client)
+        monkeypatch.setattr(buildstate_cli, "_prod_client", lambda: prod_client)
+        calls["ci_client"] = ci_client
+        calls["prod_client"] = prod_client
+
+        class FakeDataSchema:
+            resource_root = "efa/v2"
+
+        class FakeConfiguration:
+            data_schema = FakeDataSchema()
+
+        monkeypatch.setattr(buildstate_cli.bootstrap.config, "CONFIGURATION", FakeConfiguration())
+        monkeypatch.setattr(
+            buildstate_cli.bootstrap.config.ProjectConfiguration,
+            "ensure_loaded",
+            classmethod(lambda cls: None),
+        )
+
+        monkeypatch.setattr(buildstate_cli.runtime, "get_workspace", lambda server: f"ws:{server}")
+
+        class FakeWorkspaceConfig:
+            @staticmethod
+            def load_from_descriptor(descriptor):
+                calls["descriptor"] = descriptor
+                return "ws-config"
+
+        monkeypatch.setattr(buildstate_cli, "WorkspaceConfig", FakeWorkspaceConfig)
+
+        class FakeDatasource:
+            def __init__(self, ws_config):
+                calls["ws_config"] = ws_config
+
+            async def aclose(self):
+                calls["closed"] = True
+
+        async def fake_generate(data, cache=None, threads=None):
+            calls["cache"] = cache
+            calls["threads"] = threads
+
+        monkeypatch.setattr("bootstrap.data.workspace.generate.GeneratorDatasource", FakeDatasource)
+        monkeypatch.setattr("bootstrap.data.workspace.generate.skyboxes.generate", fake_generate)
+        return calls
+
+    def _invoke(self, monkeypatch: pytest.MonkeyPatch, *args: str):
+        calls = self._install_fakes(monkeypatch)
+
+        @click.group()
+        def root():
+            pass
+
+        @root.group()
+        def ci():
+            pass
+
+        buildstate_cli.register_build_state_commands(ci)
+        result = CliRunner().invoke(root, ["ci", "build-state", "push-skyboxes", *args])
+        return result, calls
+
+    def test_push_skyboxes_rebuilds_uploads_and_commits(self, monkeypatch: pytest.MonkeyPatch):
+        result, calls = self._invoke(monkeypatch, "--server", "tranquility")
+        assert result.exit_code == 0, result.output
+        cache = calls["cache"]
+        assert cache.server_id == "tranquility"
+        assert cache.resource_root == "efa/v2"
+        assert cache.ci_client is calls["ci_client"]
+        assert cache.prod_client is calls["prod_client"]
+        assert cache.rebuild is True
+        assert cache.upload_map is True
+        assert cache.upload_blobs is True
+        assert calls["descriptor"] == "ws:tranquility"
+        assert calls["ws_config"] == "ws-config"
+        assert calls["threads"] is None
+        assert calls.get("closed") is True
+        assert "Pushed pre-built skyboxes for tranquility" in result.output
+
+    def test_push_skyboxes_passes_threads(self, monkeypatch: pytest.MonkeyPatch):
+        result, calls = self._invoke(monkeypatch, "--server", "tranquility", "--threads", "8")
+        assert result.exit_code == 0, result.output
+        assert calls["threads"] == 8
 
 
 class TestLoadMap:
