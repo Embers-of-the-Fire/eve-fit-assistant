@@ -53,9 +53,12 @@ Collection _testCollection() {
   collection.skillProfiles.addAll({
     "alpha": Collection_SkillProfile(skills: [const MapEntry(200, 3)]),
   });
-  collection.slots = pb_fit.Slots(highSlots: [
-    MapEntry(0, pb_fit.Slots_HighSlot(typeId: 100, isTurret: true)),
-  ]);
+  collection.factionRaces.addAll({
+    500001: FactionRaces(memberRaces: [1, 4]),
+  });
+  collection.slots = pb_fit.Slots(
+    highSlots: [MapEntry(0, pb_fit.Slots_HighSlot(typeId: 100, isTurret: true))],
+  );
   return collection;
 }
 
@@ -90,10 +93,7 @@ void main() {
       await expectLater(
         decodeCollectionChunked(
           raw,
-          ChunkedDecodeOptions(
-            yieldEvery: Duration.zero,
-            isCancelled: () => ++calls > 1,
-          ),
+          ChunkedDecodeOptions(yieldEvery: Duration.zero, isCancelled: () => ++calls > 1),
         ),
         throwsA(isA<ChunkedDecodeCancelled>()),
       );
@@ -121,15 +121,13 @@ void main() {
       expect(chunked.getSubsystem(200), equals(reference.getSubsystem(200)));
       expect(chunked.getTypeMaterial(100), equals(reference.getTypeMaterial(100)));
       expect(chunked.getDynamicMutator(900), equals(reference.getDynamicMutator(900)));
-      expect(
-        chunked.getDynamicTypeOptions(901),
-        equals(reference.getDynamicTypeOptions(901)),
-      );
+      expect(chunked.getDynamicTypeOptions(901), equals(reference.getDynamicTypeOptions(901)));
       expect(chunked.getImplantSet(1), equals(reference.getImplantSet(1)));
       expect(chunked.getImplantSetForType(701), equals(reference.getImplantSetForType(701)));
       expect(chunked.getSkillProfile("alpha"), equals(reference.getSkillProfile("alpha")));
       expect(chunked.getSkillTypeIds(), equals(reference.getSkillTypeIds()));
       expect(chunked.slots, equals(reference.slots));
+      expect(chunked.factionMemberRaces(500001), equals(reference.factionMemberRaces(500001)));
     });
   });
 }
