@@ -356,7 +356,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     }
 
     final cache = ref.read(skyboxEnvironmentCacheProvider);
-    final cacheKey = skyboxEnvironmentCacheKey(skyboxId, profile);
+    SkyboxEnvironmentCacheKey? cacheKey;
     Future<EnvironmentMap>? build;
 
     try {
@@ -367,6 +367,14 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
         clearSkybox();
         return;
       }
+      // Scope the cached environment to the exact HDR/sidecar bytes of the
+      // active checkout; a same-id asset with different content must not
+      // reuse the previous checkout's build.
+      cacheKey = skyboxEnvironmentCacheKey(
+        service.skyboxAssetIdentity(skyboxId)!,
+        skyboxId,
+        profile,
+      );
       final baseSh = diffuseShCoefficients(asset);
       if (kIsWeb && baseSh == null) {
         // Web cannot run the runtime SH quadrature off the main thread.
@@ -414,7 +422,8 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       // Drop a rejected build from the cache: otherwise every later request
       // for this key re-awaits the same failure until LRU eviction.
       final failed = build;
-      if (failed != null) cache.discard(cacheKey, failed);
+      final failedKey = cacheKey;
+      if (failed != null && failedKey != null) cache.discard(failedKey, failed);
       clearSkybox();
     }
   }

@@ -165,6 +165,39 @@ void main() {
     });
   });
 
+  group("skyboxAssetIdentity", () {
+    test("is null when the .hdr blob is absent from the index", () {
+      final service = SkyboxAssetService(proxyWith(const []));
+      expect(service.skyboxAssetIdentity("a01"), isNull);
+    });
+
+    test("combines the HDR and sidecar content hashes", () async {
+      final sidecar = Uint8List.fromList(_sidecar().writeToBuffer());
+      final withSidecar = await proxyWithBlobs({
+        "resource://static/skyboxes/a01.hdr": Uint8List.fromList([1, 2, 3]),
+        "resource://static/skyboxes/a01.pb2": sidecar,
+      });
+      final withoutSidecar = await proxyWithBlobs({
+        "resource://static/skyboxes/a01.hdr": Uint8List.fromList([1, 2, 3]),
+      });
+      final changedHdr = await proxyWithBlobs({
+        "resource://static/skyboxes/a01.hdr": Uint8List.fromList([4, 5, 6]),
+        "resource://static/skyboxes/a01.pb2": sidecar,
+      });
+
+      final identity = SkyboxAssetService(withSidecar).skyboxAssetIdentity("a01");
+      expect(identity, isNotNull);
+      // A missing sidecar is part of the identity: the runtime SH path
+      // produces a different environment than a precomputed sidecar.
+      expect(
+        SkyboxAssetService(withoutSidecar).skyboxAssetIdentity("a01"),
+        isNot(equals(identity)),
+      );
+      expect(SkyboxAssetService(changedHdr).skyboxAssetIdentity("a01"), isNot(equals(identity)));
+      expect(SkyboxAssetService(withSidecar).skyboxAssetIdentity("c02"), isNull);
+    });
+  });
+
   group("readSkybox", () {
     test("returns None when the .hdr blob is not in the index", () async {
       final service = SkyboxAssetService(proxyWith(const []));

@@ -152,6 +152,18 @@ class SkyboxAssetService {
   /// defaults instead of hiding the skybox.
   bool hasSkybox(String id) => _proxy.entry(skyboxHdrResourceId(id)) != null;
 
+  /// The content-hash identity of skybox [id]'s HDR and sidecar blobs in the
+  /// active checkout, or `null` when the HDR is absent from the index. This
+  /// distinguishes assets that share a skybox id across checkouts but ship
+  /// different bytes, so environment caches never reuse a stale build; a
+  /// missing sidecar is part of the identity too.
+  String? skyboxAssetIdentity(String id) {
+    final hdr = _proxy.entry(skyboxHdrResourceId(id))?.contentHash;
+    if (hdr == null) return null;
+    final sidecar = _proxy.entry(skyboxSidecarResourceId(id))?.contentHash ?? "";
+    return "$hdr:$sidecar";
+  }
+
   /// Reads skybox [id], downloading its blobs on demand when absent locally.
   /// Returns [None] when the `.hdr` blob is not in the index or cannot be
   /// fetched; a missing/undecodable sidecar degrades to `metadata: null`.

@@ -210,9 +210,13 @@ List<vm.Vector3>? composeEffectiveDiffuseSh(List<vm.Vector3>? baseSh, AppLightin
   );
 }
 
-/// Every input that changes a built environment. Profile id and camera motion
-/// deliberately do not appear here; equal tuples share their GPU environment.
+/// Every input that changes a built environment. The [assetIdentity] scopes
+/// the entry to the exact HDR/sidecar bytes of the active checkout: a checkout
+/// that ships different content for the same skybox id must not reuse the
+/// previous build. Profile id and camera motion deliberately do not appear
+/// here; equal tuples share their GPU environment.
 typedef SkyboxEnvironmentCacheKey = ({
+  String assetIdentity,
   String skyboxId,
   double ambientRed,
   double ambientGreen,
@@ -220,14 +224,20 @@ typedef SkyboxEnvironmentCacheKey = ({
   double reflectionIntensity,
 });
 
-SkyboxEnvironmentCacheKey skyboxEnvironmentCacheKey(String skyboxId, AppLightingProfile profile) =>
-    (
-      skyboxId: skyboxId,
-      ambientRed: profile.ambientColor.x,
-      ambientGreen: profile.ambientColor.y,
-      ambientBlue: profile.ambientColor.z,
-      reflectionIntensity: profile.reflectionIntensity,
-    );
+/// The cache key for skybox [skyboxId] under [profile]; [assetIdentity] is
+/// [SkyboxAssetService.skyboxAssetIdentity] for the same checkout.
+SkyboxEnvironmentCacheKey skyboxEnvironmentCacheKey(
+  String assetIdentity,
+  String skyboxId,
+  AppLightingProfile profile,
+) => (
+  assetIdentity: assetIdentity,
+  skyboxId: skyboxId,
+  ambientRed: profile.ambientColor.x,
+  ambientGreen: profile.ambientColor.y,
+  ambientBlue: profile.ambientColor.z,
+  reflectionIntensity: profile.reflectionIntensity,
+);
 
 /// Computes the app-space key travel direction without modifying the scene.
 /// A degenerate camera has no forward direction and returns `null`.

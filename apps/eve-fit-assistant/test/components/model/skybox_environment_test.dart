@@ -513,11 +513,16 @@ void main() {
   group("SkyboxEnvironmentCache", () {
     Future<EnvironmentMap> pending() => Completer<EnvironmentMap>().future;
     final profile = _profile("amarr", "a05");
-    SkyboxEnvironmentCacheKey key(String id, {vm.Vector3? ambient, double reflection = 1}) =>
-        skyboxEnvironmentCacheKey(
-          id,
-          _profile("synthetic", id, ambient: ambient, reflection: reflection),
-        );
+    SkyboxEnvironmentCacheKey key(
+      String id, {
+      String? assetIdentity,
+      vm.Vector3? ambient,
+      double reflection = 1,
+    }) => skyboxEnvironmentCacheKey(
+      assetIdentity ?? "hash-$id",
+      id,
+      _profile("synthetic", id, ambient: ambient, reflection: reflection),
+    );
 
     test("getOrBuild returns the in-flight build for repeat identical tuples", () {
       final cache = SkyboxEnvironmentCache();
@@ -527,10 +532,26 @@ void main() {
         return pending();
       }
 
-      final identity = skyboxEnvironmentCacheKey("a05", profile);
+      final identity = skyboxEnvironmentCacheKey("hash-a05", "a05", profile);
       final first = cache.getOrBuild(identity, build);
       expect(identical(cache.getOrBuild(identity, build), first), isTrue);
       expect(builds, 1);
+    });
+
+    test("same skybox id with a different asset identity does not share entries", () {
+      final cache = SkyboxEnvironmentCache();
+      var builds = 0;
+      Future<EnvironmentMap> build() {
+        builds++;
+        return pending();
+      }
+
+      final first = cache.getOrBuild(key("a05", assetIdentity: "hash-a05-v1"), build);
+      expect(
+        identical(cache.getOrBuild(key("a05", assetIdentity: "hash-a05-v2"), build), first),
+        isFalse,
+      );
+      expect(builds, 2);
     });
 
     test("same skybox with different ambient or reflection does not share entries", () {
