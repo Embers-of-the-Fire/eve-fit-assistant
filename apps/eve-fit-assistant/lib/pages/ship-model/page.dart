@@ -104,13 +104,24 @@ class _ShipModelPageState extends ConsumerState<ShipModelPage> {
     setState(() => _skyboxSelection = selected);
   }
 
+  String _skyboxFamilyLabel(BuildContext context, String family) => switch (family) {
+    "universe" => context.l10n.shipModelSkyboxFamilyUniverse,
+    "wormholes" => context.l10n.shipModelSkyboxFamilyWormholes,
+    "abyssal" => context.l10n.shipModelSkyboxFamilyAbyssal,
+    "fitting" => context.l10n.shipModelSkyboxFamilyFitting,
+    _ => family,
+  };
+
   List<Widget> _skyboxFamilySection(BuildContext context, List<SkyboxInfo> catalog, String family) {
     final skyboxes = catalog.where((skybox) => skybox.family == family).toList();
     if (skyboxes.isEmpty) return const [];
     return [
       Padding(
         padding: const .fromLTRB(16, 12, 16, 4),
-        child: Text(family, style: Theme.of(context).textTheme.labelSmall),
+        child: Text(
+          _skyboxFamilyLabel(context, family),
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
       ),
       for (final skybox in skyboxes)
         RadioListTile<String>(value: skybox.id, title: Text(skybox.id)),
