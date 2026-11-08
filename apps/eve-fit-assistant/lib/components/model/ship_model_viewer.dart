@@ -355,6 +355,10 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       setState(_clearEnvironment);
     }
 
+    final cache = ref.read(skyboxEnvironmentCacheProvider);
+    final cacheKey = skyboxEnvironmentCacheKey(skyboxId, profile);
+    Future<EnvironmentMap>? build;
+
     try {
       final asset = (await service.readSkybox(skyboxId)).toNullable();
       if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) return;
@@ -386,9 +390,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
 
       await Scene.initializeStaticResources();
       if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) return;
-      final cache = ref.read(skyboxEnvironmentCacheProvider);
-      final cacheKey = skyboxEnvironmentCacheKey(skyboxId, profile);
-      final build = cache.getOrBuild(
+      build = cache.getOrBuild(
         cacheKey,
         () => EnvironmentMap.fromEquirectImageBytes(
           bytes: asset.hdrBytes,
@@ -409,6 +411,10 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       });
     } catch (e) {
       debug("skybox $skyboxId load failed: $e");
+      // Drop a rejected build from the cache: otherwise every later request
+      // for this key re-awaits the same failure until LRU eviction.
+      final failed = build;
+      if (failed != null) cache.discard(cacheKey, failed);
       clearSkybox();
     }
   }
