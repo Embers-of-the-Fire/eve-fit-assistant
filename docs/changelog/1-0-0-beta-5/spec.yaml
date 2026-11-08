@@ -1,0 +1,9 @@
+id: version-1-0-0-beta-5
+publishedAt: '2026-11-08T14:33:49Z'
+tags:
+- release-note
+channels:
+- testing
+appVersion: 1.0.0-beta.5
+platforms: []
+fromRef: releases/v1.0.0-beta.4
