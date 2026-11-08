@@ -43,8 +43,15 @@ converter decodes from BC7; the fitting cubes are 1024², and the legacy
 a `SkyboxMetadata` protobuf sidecar (`data/schema/skybox.proto`: the `.black` descriptor's
 `nebulaIntensity`/`reflectionIntensity`/`ambientColor`/`Tint`, unset when absent, plus the
 precomputed diffuse SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
-converter's `--batch-skybox` verb. Skybox resources are NON_FORCE (lazy) via the
-`static/skyboxes/` RRS rule. The `types` step also stamps `Type.race_id`/`faction_id`
+converter's `--batch-skybox` verb. The same step extracts every
+`res:/dx9/scene/preview/*.black` plus `fitting/fitting.black` through the
+converter's metadata-only `--batch-scene-metadata` verb and emits
+`static/skyboxes/lighting_profiles.pb2`. This fully resolved catalog maps each
+scene's `NebulaMap` through the scanned cube resources, applies Carbon defaults
+and item-preview runtime overrides, and validates references against the final
+cache-hit-plus-baked environment set. It is regenerated on every run, including
+all-cache-hit runs. Skybox resources and the catalog are NON_FORCE (lazy) via
+the `static/skyboxes/` RRS rule. The `types` step also stamps `Type.race_id`/`faction_id`
 and `Collection.faction_races` (the FSD `memberRaces` faction→race mapping), which the
 app uses to pick each ship's default skybox.
 
@@ -78,8 +85,13 @@ with the same invalidation model: each entry keys on the resindex MD5 columns of
 cube DDS and its `.black` descriptor, and records both output blob hashes (`.hdr` and
 `.pb2`); a hit requires unchanged inputs and both production blobs present. It is
 enabled and rewritten by the same release-data flags as the models map
-(`--models-cache` / `--rebuild-models`); it has no dedicated `./x ci build-state`
-subcommands.
+(`--models-cache` / `--rebuild-models`). `./x ci build-state seed` reconstructs
+both model and skybox maps from a game-build-compatible channel head without
+reconversion; only complete HDR/PB2 pairs are seeded, and new ids stay misses.
+`commit` uploads either or both map families. Lighting-catalog changes are not
+environment-pair inputs and invalidate neither skybox pairs nor models. Never
+seed across an output-affecting baker or sidecar-contract change; use the shared
+`--rebuild-models` gate instead.
 
 ## Canonical Version
 

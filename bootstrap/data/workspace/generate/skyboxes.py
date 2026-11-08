@@ -18,9 +18,11 @@ One blob pair is emitted per skybox under ``static/skyboxes/`` (see
   ``ambientColor``/``Tint`` (unset when the descriptor lacks them, never
   zero-filled) plus the precomputed
   diffuse SH projection in flutter_scene's convention, so the runtime — the
-  web build above all — never runs the SH quadrature.
+  web build above all — never runs the SH quadrature;
+- ``lighting_profiles.pb2`` — fully resolved preview/fitting scene lighting,
+  extracted independently by :mod:`bootstrap.data.workspace.generate.lighting`.
 
-Both blobs are lazy (NON_FORCE) resources fetched on first access, exactly
+All blobs are lazy (NON_FORCE) resources fetched on first access, exactly
 like the baked ship models.
 
 Build-state memoization
@@ -33,7 +35,10 @@ descriptor); skyboxes whose inputs *and* recorded output blobs are unchanged
 are referenced in place (the snapshot index points at the existing production
 blobs; nothing is downloaded) instead of re-baked. See
 ``bootstrap.data.buildstate.skyboxes`` for the invalidation rules and the
-manual-invalidation contract (the map carries no baker identity).
+manual-invalidation contract (the map carries no baker identity). The lighting
+catalog is regenerated after every partition/bake pass, including when all
+pairs hit; its descriptor inputs do not participate in environment-pair
+invalidation.
 """
 
 from __future__ import annotations
@@ -54,6 +59,7 @@ from bootstrap.data.schema import skybox_pb2
 from bootstrap.log import info
 from bootstrap.log import warning
 
+from .lighting import generate_lighting_catalog
 from .models import _ensure_converter_installed
 from .models import _run_converter
 
@@ -262,6 +268,11 @@ async def generate(
     produced: set[str] = set()
     if miss_ids:
         produced = await _bake(data, sources, miss_ids, threads)
+
+    # Lighting descriptors are inputs to this separate catalog only. They must
+    # not invalidate environment pairs, and all-cache-hit runs still regenerate
+    # the catalog against exactly the pairs present in the final snapshot.
+    await generate_lighting_catalog(data, sources, hit_ids | produced)
 
     if cache is not None:
         for skybox_id in sorted(hit_ids):

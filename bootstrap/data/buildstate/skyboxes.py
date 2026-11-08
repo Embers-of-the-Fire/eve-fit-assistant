@@ -124,6 +124,35 @@ def inputs_match(entry: SkyboxArtifactEntry, inputs: SkyboxInputs) -> bool:
     return entry.cube == inputs.cube and entry.black == inputs.black
 
 
+def seed_artifact_entries(
+    inputs_by_id: dict[str, SkyboxInputs | None], outputs: dict[str, str]
+) -> dict[str, SkyboxArtifactEntry]:
+    """Pair current input identities with compatible published output hashes.
+
+    Only complete HDR/PB2 pairs are seeded. A newly discovered id or an
+    unhashable input remains absent from the map and is therefore a normal miss
+    on the next build. The lighting catalog is intentionally not an input.
+    """
+    entries: dict[str, SkyboxArtifactEntry] = {}
+    for skybox_id in sorted(inputs_by_id):
+        inputs = inputs_by_id[skybox_id]
+        if inputs is None:
+            continue
+        hdr_rid = skybox_hdr_resource_id(skybox_id)
+        sidecar_rid = skybox_sidecar_resource_id(skybox_id)
+        output = outputs.get(hdr_rid)
+        sidecar_output = outputs.get(sidecar_rid)
+        if output is None or sidecar_output is None:
+            continue
+        entries[hdr_rid] = SkyboxArtifactEntry(
+            cube=inputs.cube,
+            black=inputs.black,
+            output=output,
+            sidecar_output=sidecar_output,
+        )
+    return entries
+
+
 def load_map(ci_client: S3Client, server_id: str) -> SkyboxesBuildStateMap:
     """Fetch the map from CI storage; missing/corrupt/stale maps read as empty."""
     key = map_remote_key(server_id)

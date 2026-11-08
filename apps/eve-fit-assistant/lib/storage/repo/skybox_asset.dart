@@ -3,6 +3,7 @@ import "dart:typed_data";
 import "package:efa_proto/skybox.pb.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/constant/resource_vocabulary.g.dart";
+import "package:eve_fit_assistant/storage/repo/lighting_profile.dart";
 import "package:eve_fit_assistant/storage/repo/resource_proxy.dart";
 import "package:fpdart/fpdart.dart";
 
@@ -10,9 +11,12 @@ import "package:fpdart/fpdart.dart";
 /// treated as a missing sidecar (proto2 unknown fields are simply ignored).
 const int kSupportedSkyboxSidecarSchemaVersion = 1;
 
+/// The lighting-profile catalog schema version this client understands.
+const int kSupportedLightingProfileCatalogSchemaVersion = 1;
+
 /// One skybox in the catalog: its canonical id (e.g. `a01`,
 /// `wormhole_class_01`, `ad01_a`) and its family — the resindex directory the
-/// cube was baked from (`universe` / `wormholes` / `abyssal`).
+/// cube was baked from (`universe` / `wormholes` / `abyssal` / `fitting`).
 ///
 /// The resource index is the catalog: entries are enumerated from it, never
 /// probed on disk.
@@ -22,7 +26,7 @@ class SkyboxInfo {
   /// Canonical skybox id (the blob stem).
   final String id;
 
-  /// The skybox family (`universe`, `wormholes`, or `abyssal`).
+  /// The skybox family (`universe`, `wormholes`, `abyssal`, or `fitting`).
   final String family;
 }
 
@@ -30,9 +34,9 @@ class SkyboxInfo {
 /// [SkyboxMetadata] sidecar.
 ///
 /// [metadata] is `null` when the sidecar is missing, undecodable, carries an
-/// unsupported `schema_version`, or has a malformed `diffuse_sh` (not 27
-/// floats); consumers then substitute defaults (intensity 1.0, no tint) and —
-/// off the web — let the runtime compute the diffuse SH itself.
+/// unsupported `schema_version`, or has malformed/non-finite `diffuse_sh`;
+/// native consumers may then compute environment SH at runtime (without
+/// additive profile ambient), while web consumers skip the skybox.
 class SkyboxAsset {
   const SkyboxAsset({required this.hdrBytes, required this.metadata});
 
@@ -52,15 +56,80 @@ class SkyboxAsset {
 /// `OnDemandBlobFetcher`. The ResourceIndex is the source of truth for the
 /// catalog, so [listSkyboxes]/[hasSkybox] need no disk probes.
 class SkyboxAssetService {
-  const SkyboxAssetService(this._proxy);
+  SkyboxAssetService(this._proxy);
 
   final ResourceBlobProxy _proxy;
+  Future<Map<String, AppLightingProfile>?>? _lightingProfiles;
 
   /// The resource id of the `.hdr` equirect blob of skybox [id].
   static String skyboxHdrResourceId(String id) => "$kStaticSkyboxesResourcePrefix$id.hdr";
 
   /// The resource id of the `SkyboxMetadata` sidecar blob of skybox [id].
   static String skyboxSidecarResourceId(String id) => "$kStaticSkyboxesResourcePrefix$id.pb2";
+
+  /// The versioned lighting-profile catalog in the lazy skybox namespace.
+  static const String lightingProfileCatalogResourceId =
+      "${kStaticSkyboxesResourcePrefix}lighting_profiles.pb2";
+
+  /// Lazily reads, parses, and validates the lighting-profile catalog once per
+  /// active checkout. Missing, undecodable, and unsupported catalogs all have
+  /// `null` semantics, allowing callers to use the built-in compatibility
+  /// profiles. Invalid or ambiguous duplicate profiles are omitted.
+  Future<Map<String, AppLightingProfile>?> readLightingProfiles() =>
+      _lightingProfiles ??= _readLightingProfiles();
+
+  Future<Map<String, AppLightingProfile>?> _readLightingProfiles() async {
+    final Uint8List? bytes;
+    try {
+      bytes = (await _proxy.read(lightingProfileCatalogResourceId)).toNullable();
+    } on Object catch (e) {
+      debug("lighting-profile catalog fetch failed; using compatibility profiles: $e");
+      return null;
+    }
+    if (bytes == null) {
+      debug("lighting-profile catalog is unavailable; using compatibility profiles");
+      return null;
+    }
+
+    final LightingProfileCatalog catalog;
+    try {
+      catalog = LightingProfileCatalog.fromBuffer(bytes);
+    } on Object catch (e) {
+      debug("lighting-profile catalog is undecodable; using compatibility profiles: $e");
+      return null;
+    }
+    if (catalog.schemaVersion != kSupportedLightingProfileCatalogSchemaVersion) {
+      debug(
+        "lighting-profile catalog schema_version ${catalog.schemaVersion} is unsupported; "
+        "using compatibility profiles",
+      );
+      return null;
+    }
+
+    final rawIdCounts = <String, int>{};
+    for (final proto in catalog.profiles) {
+      if (proto.hasId() && proto.id.isNotEmpty) {
+        rawIdCounts.update(proto.id, (count) => count + 1, ifAbsent: () => 1);
+      }
+    }
+
+    final profiles = <String, AppLightingProfile>{};
+    for (final proto in catalog.profiles) {
+      if ((rawIdCounts[proto.id] ?? 0) > 1) {
+        // Ambiguity is determined from raw ids before validation: an invalid
+        // twin must not make the other occurrence selectable.
+        debug("ignoring duplicate lighting profile id ${proto.id}");
+        continue;
+      }
+      final profile = AppLightingProfile.tryFromProto(proto);
+      if (profile == null) {
+        debug("ignoring invalid lighting profile ${proto.id}");
+        continue;
+      }
+      profiles[profile.id] = profile;
+    }
+    return Map.unmodifiable(profiles);
+  }
 
   /// The skybox catalog of the active checkout, sorted by id.
   List<SkyboxInfo> listSkyboxes() {
@@ -116,16 +185,21 @@ class SkyboxAssetService {
       debug("skybox sidecar has malformed diffuse_sh (${metadata.diffuseSh.length} floats)");
       return null;
     }
+    if (metadata.diffuseSh.any((value) => !value.isFinite)) {
+      debug("skybox sidecar has non-finite diffuse_sh values");
+      return null;
+    }
     return metadata;
   }
 
   /// The family segment of a skybox resource id, derived from the canonical
   /// id: `wormhole_*` ids come from `wormholes`, `ad##_[abc]` ids from
-  /// `abyssal`, everything else from `universe`.
+  /// `abyssal`, and the two dedicated fitting scenes from `fitting`.
   static String _familyOf(String resourceId) {
     final id = resourceId.substring(kStaticSkyboxesResourcePrefix.length);
     if (id.startsWith("wormhole_")) return "wormholes";
     if (RegExp(r"^ad\d").hasMatch(id)) return "abyssal";
+    if (id == "fitting.hdr" || id == "previewturrets.hdr") return "fitting";
     return "universe";
   }
 }

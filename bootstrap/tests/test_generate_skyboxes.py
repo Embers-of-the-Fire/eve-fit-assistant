@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from bootstrap.data.schema import skybox_pb2
+from bootstrap.data.workspace.generate import skyboxes as skybox_step
 from bootstrap.data.workspace.generate.skyboxes import SkyboxSource
 from bootstrap.data.workspace.generate.skyboxes import build_sidecar
 from bootstrap.data.workspace.generate.skyboxes import gather_skybox_inputs
@@ -196,6 +197,120 @@ class TestBuildSidecar:
         assert len(pb.diffuse_sh) == 0
         pb = skybox_pb2.SkyboxMetadata.FromString(build_sidecar(_source(), {}))
         assert len(pb.diffuse_sh) == 0
+
+
+class _FakePaths:
+    def __init__(self, root):
+        self.root = root
+
+    def get_skybox_hdr_path(self, skybox_id: str):
+        return self.root / f"{skybox_id}.hdr"
+
+    def get_skybox_sidecar_path(self, skybox_id: str):
+        return self.root / f"{skybox_id}.pb2"
+
+
+class _FakeCache:
+    def __init__(self, hit_ids: set[str]):
+        self.hit_ids = hit_ids
+        self.recorded_hits: list[str] = []
+        self.saved = False
+
+    def load(self):
+        pass
+
+    def partition(self, desired):
+        hits = {
+            resource_id: object()
+            for resource_id in desired
+            if resource_id.removeprefix("resource://static/skyboxes/").removesuffix(".hdr")
+            in self.hit_ids
+        }
+        return hits, set(desired) - set(hits)
+
+    def hit_reference(self, resource_id: str):
+        skybox_id = resource_id.removeprefix("resource://static/skyboxes/").removesuffix(".hdr")
+        sidecar_id = f"resource://static/skyboxes/{skybox_id}.pb2"
+        return [(resource_id, "hdr-hash", 10), (sidecar_id, "pb2-hash", 20)]
+
+    def record_hit(self, resource_id: str):
+        self.recorded_hits.append(resource_id)
+
+    def record_conversion(self, *_args):
+        pass
+
+    def save(self):
+        self.saved = True
+
+
+class _FakeGenerateData:
+    def __init__(self, paths):
+        self.paths = paths
+
+
+async def test_all_environment_cache_hits_still_regenerate_lighting_catalog(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    sources = {"a05": _source()}
+    monkeypatch.setattr(skybox_step, "scan_skybox_sources", lambda _data: sources)
+    monkeypatch.setattr(
+        skybox_step, "gather_skybox_inputs", lambda _data, _sources: {"a05": object()}
+    )
+
+    async def unexpected_bake(*_args):
+        raise AssertionError("cache-hit environments must not be baked")
+
+    catalog_environments = []
+
+    async def fake_catalog(_data, actual_sources, environment_ids):
+        assert actual_sources == sources
+        catalog_environments.append(environment_ids)
+
+    monkeypatch.setattr(skybox_step, "_bake", unexpected_bake)
+    monkeypatch.setattr(skybox_step, "generate_lighting_catalog", fake_catalog)
+    cache = _FakeCache({"a05"})
+    external = await skybox_step.generate(_FakeGenerateData(_FakePaths(tmp_path)), cache=cache)
+    assert catalog_environments == [{"a05"}]
+    assert external == [
+        ("resource://static/skyboxes/a05.hdr", "hdr-hash", 10),
+        ("resource://static/skyboxes/a05.pb2", "pb2-hash", 20),
+    ]
+    assert cache.recorded_hits == ["resource://static/skyboxes/a05.hdr"]
+    assert cache.saved
+
+
+async def test_lighting_references_validate_against_hits_and_produced_only(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    sources = {
+        "a05": _source(),
+        "m10": SkyboxSource(
+            id="m10",
+            family="universe",
+            cube_res="res:/dx9/scene/universe/m10_cube.dds",
+            black_res=None,
+        ),
+    }
+    monkeypatch.setattr(skybox_step, "scan_skybox_sources", lambda _data: sources)
+    monkeypatch.setattr(
+        skybox_step,
+        "gather_skybox_inputs",
+        lambda _data, _sources: {"a05": object(), "m10": object()},
+    )
+
+    async def bake_only_miss(*_args):
+        return {"m10"}
+
+    catalog_environments = []
+
+    async def fake_catalog(_data, _sources, environment_ids):
+        catalog_environments.append(environment_ids)
+
+    monkeypatch.setattr(skybox_step, "_bake", bake_only_miss)
+    monkeypatch.setattr(skybox_step, "generate_lighting_catalog", fake_catalog)
+    cache = _FakeCache({"a05"})
+    await skybox_step.generate(_FakeGenerateData(_FakePaths(tmp_path)), cache=cache)
+    assert catalog_environments == [{"a05", "m10"}]
 
 
 if __name__ == "__main__":

@@ -186,3 +186,8 @@ class PathManager:
     def get_skybox_sidecar_path(self, skybox_id: str) -> Path:
         """The SkyboxMetadata protobuf sidecar of one baked skybox."""
         return self.skyboxes_root_path / f"{skybox_id}.pb2"
+
+    @property
+    def lighting_profile_catalog_path(self) -> Path:
+        """Fully resolved scene-lighting profiles, independent of pair caching."""
+        return self.skyboxes_root_path / "lighting_profiles.pb2"

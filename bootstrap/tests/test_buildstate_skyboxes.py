@@ -5,9 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 
+import click
 import pytest
 
+from click.testing import CliRunner
+
+from bootstrap.cli.ci import buildstate as buildstate_cli
 from bootstrap.data.buildstate import skyboxes as buildstate_skyboxes
+from bootstrap.data.buildstate.models import ModelsBuildStateMap
 from bootstrap.data.buildstate.skyboxes import MAP_SCHEMA_VERSION
 from bootstrap.data.buildstate.skyboxes import SkyboxArtifactEntry
 from bootstrap.data.buildstate.skyboxes import SkyboxesBuildStateMap
@@ -16,6 +21,7 @@ from bootstrap.data.buildstate.skyboxes import SkyboxInputs
 from bootstrap.data.buildstate.skyboxes import inputs_match
 from bootstrap.data.buildstate.skyboxes import load_map
 from bootstrap.data.buildstate.skyboxes import map_remote_key
+from bootstrap.data.buildstate.skyboxes import seed_artifact_entries
 from bootstrap.data.buildstate.skyboxes import skybox_hdr_resource_id
 from bootstrap.data.buildstate.skyboxes import skybox_sidecar_resource_id
 
@@ -59,6 +65,39 @@ class TestInputsMatch:
     def test_absent_black_descriptor_matches_empty(self):
         assert inputs_match(_entry(black=""), _inputs(black=""))
         assert not inputs_match(_entry(black=""), _inputs(black="b1"))
+
+
+class TestNonRebuildSeeding:
+    def test_seeds_only_complete_pairs_from_current_inputs(self):
+        inputs = {
+            "a01": _inputs(cube="current-cube", black="current-black"),
+            "new_id": _inputs(cube="new-cube"),
+            "unhashable": None,
+        }
+        entries = seed_artifact_entries(
+            inputs,
+            {
+                HDR_RID: "published-hdr",
+                SIDECAR_RID: "published-sidecar",
+                # The independently regenerated lighting catalog is not an
+                # environment-pair input and must not be seeded as one.
+                "resource://static/skyboxes/lighting_profiles.pb2": "catalog-hash",
+            },
+        )
+        assert entries == {
+            HDR_RID: SkyboxArtifactEntry(
+                cube="current-cube",
+                black="current-black",
+                output="published-hdr",
+                sidecar_output="published-sidecar",
+            )
+        }
+
+    @pytest.mark.parametrize("missing", [HDR_RID, SIDECAR_RID])
+    def test_incomplete_pair_remains_a_miss(self, missing: str):
+        outputs = {HDR_RID: "hdr", SIDECAR_RID: "sidecar"}
+        del outputs[missing]
+        assert seed_artifact_entries({"a01": _inputs()}, outputs) == {}
 
 
 class TestMapSerialization:
@@ -182,6 +221,42 @@ class TestCacheContext:
         parsed = SkyboxesBuildStateMap.from_json(map_path.read_bytes())
         assert parsed.server_id == "tranquility"
         assert parsed.schema_version == MAP_SCHEMA_VERSION
+
+
+class TestBuildStateCommitCommand:
+    def test_commit_uploads_models_and_skyboxes(self, tmp_path, monkeypatch: pytest.MonkeyPatch):
+        models_dir = tmp_path / "models"
+        skyboxes_dir = tmp_path / "skyboxes"
+        models_dir.mkdir()
+        skyboxes_dir.mkdir()
+        models_raw = ModelsBuildStateMap(server_id="tranquility").to_json()
+        skyboxes_raw = SkyboxesBuildStateMap(server_id="tranquility").to_json()
+        (models_dir / "tranquility.json").write_bytes(models_raw)
+        (skyboxes_dir / "tranquility.json").write_bytes(skyboxes_raw)
+
+        writes = []
+
+        class Client:
+            def write_bytes(self, key: str, raw: bytes):
+                writes.append((key, raw))
+
+        monkeypatch.setattr(buildstate_cli, "_ci_client", Client)
+
+        @click.group()
+        def root():
+            pass
+
+        @root.group()
+        def ci():
+            pass
+
+        buildstate_cli.register_build_state_commands(ci)
+        result = CliRunner().invoke(root, ["ci", "build-state", "commit", "--from", str(tmp_path)])
+        assert result.exit_code == 0, result.output
+        assert writes == [
+            ("build-state/models/tranquility.json", models_raw),
+            ("build-state/skyboxes/tranquility.json", skyboxes_raw),
+        ]
 
 
 class TestLoadMap:

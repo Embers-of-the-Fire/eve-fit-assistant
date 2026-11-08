@@ -32,3 +32,42 @@ message RgbColor {
   required float g = 2;
   required float b = 3;
 }
+
+message Vector3 {
+  required float x = 1;
+  required float y = 2;
+  required float z = 3;
+}
+
+enum LightingProfileKind {
+  ITEM_PREVIEW = 0;
+  FITTING = 1;
+}
+
+enum SunDirectionMode {
+  CAMERA_FORWARD = 0;
+  FIXED = 1;
+}
+
+// Fully resolved lighting parameters from one EVE preview/fitting scene.
+// Environment selection remains independent: skybox_id is the profile's
+// default environment, not a constraint on a manually selected skybox.
+message SceneLightingProfile {
+  required string id = 1;  // descriptor-derived id, e.g. "amarr" or "fitting"
+  required LightingProfileKind kind = 2;
+  required string skybox_id = 3;
+  required string reflection_resource = 4;  // official envMapResPath provenance
+  required float nebula_intensity = 5;
+  required float reflection_intensity = 6;
+  required RgbColor ambient_color = 7;
+  required RgbColor sun_color = 8;
+  required SunDirectionMode sun_direction_mode = 9;
+  optional Vector3 fixed_sun_direction = 10;  // normalized, app coordinates
+}
+
+// Versioned catalog shipped as
+// resource://static/skyboxes/lighting_profiles.pb2.
+message LightingProfileCatalog {
+  required int32 schema_version = 1;  // currently 1; gates breaking changes
+  repeated SceneLightingProfile profiles = 2;
+}
