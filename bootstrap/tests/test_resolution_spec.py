@@ -35,6 +35,7 @@ def _spec_dict(**overrides: object) -> dict:
             "localization_locales_prefix": "localization/locales/",
             "static_images_prefix": "static/images/",
             "static_models_prefix": "static/models/",
+            "static_skyboxes_prefix": "static/skyboxes/",
             "locale_placeholder": "locale",
         },
         "rules": [{"prefix": "static/images/", "resolution": "lazy"}],
@@ -56,10 +57,10 @@ def _custom_spec(monkeypatch: pytest.MonkeyPatch, **vocab_overrides: str) -> Res
 class TestSpecFile:
     def test_repository_spec_loads(self) -> None:
         spec = resolution_spec()
-        assert spec.version == 2
+        assert spec.version == 3
         assert [field.name for field in spec.context] == ["locale"]
         assert spec.vocabulary.scheme == "resource://"
-        assert len(spec.rules) == 4
+        assert len(spec.rules) == 5
 
     def test_rule_literals_match_vocabulary(self) -> None:
         """Pin the agreement between rule matchers and the vocabulary.
@@ -83,6 +84,7 @@ class TestSpecFile:
         )
         assert vocab.static_images_prefix in prefix_rules
         assert vocab.static_models_prefix in prefix_rules
+        assert vocab.static_skyboxes_prefix in prefix_rules
 
 
 class TestRuleValidation:
@@ -203,6 +205,8 @@ class TestIsLazyResource:
         assert is_lazy_resource("resource://static/images/icons/1.png")
         assert is_lazy_resource("resource://static/images/graphics/2.png")
         assert is_lazy_resource("resource://static/models/ships/587.glb")
+        assert is_lazy_resource("resource://static/skyboxes/a01.hdr")
+        assert is_lazy_resource("resource://static/skyboxes/a01.pb2")
         assert is_lazy_resource("resource://localization/locales/en.db")
         assert not is_lazy_resource("resource://static/collection.pb2")
         assert not is_lazy_resource("resource://agent/agent_resource.db")
@@ -229,6 +233,7 @@ class TestMakeResourceIndex:
         ("resource://static/images/icons/1.png", "bb" * 32, 20),
         ("resource://static/images/graphics/2.png", "cc" * 32, 30),
         ("resource://static/models/ships/587.full.glb", "ab" * 32, 35),
+        ("resource://static/skyboxes/a01.hdr", "ac" * 32, 36),
         ("resource://localization/localization.db", "dd" * 32, 40),
         ("resource://localization/locales/en.db", "ff" * 32, 60),
         ("resource://agent/agent_resource.db", "ee" * 32, 50),
@@ -241,9 +246,9 @@ class TestMakeResourceIndex:
         index = make_resource_index(self._entries)
         # schema_version is reserved for the remote storage protocol.
         assert index.schema_version == 1
-        # Format 3: snapshots may carry static/models/ entries, which
-        # format-2 clients would misclassify as eager.
-        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 3
+        # Format 4: snapshots may carry static/skyboxes/ entries, which
+        # format-3 clients would misclassify as eager.
+        assert index.format_version == RESOURCE_INDEX_FORMAT_VERSION == 4
 
     def test_stamp_matches_rrs_derivation(self) -> None:
         from bootstrap.remote.models import make_resource_index
@@ -258,6 +263,7 @@ class TestMakeResourceIndex:
         assert policy["resource://static/images/icons/1.png"] == non_force
         assert policy["resource://static/images/graphics/2.png"] == non_force
         assert policy["resource://static/models/ships/587.full.glb"] == non_force
+        assert policy["resource://static/skyboxes/a01.hdr"] == non_force
         assert policy["resource://localization/locales/en.db"] == non_force
 
     def test_custom_spec_drives_stamping(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -274,6 +280,7 @@ class TestMakeResourceIndex:
                         "localization_locales_prefix": "i18n/locales/",
                         "static_images_prefix": "assets/images/",
                         "static_models_prefix": "assets/models/",
+                        "static_skyboxes_prefix": "assets/skyboxes/",
                         "locale_placeholder": "locale",
                     },
                     rules=[

@@ -20,7 +20,7 @@ Generated data depends on external EVE FSD/resource files described by
 ## Generator Steps
 
 `./x build data` runs the generators in `bootstrap/data/workspace/generate/` in order:
-`static`, `native`, `localization`, `agent`, `images`, `models` (skippable via
+`static`, `native`, `localization`, `agent`, `images`, `models`, `skyboxes` (skippable via
 `--skip <name>`). The `models` step bakes per-ship GLB models with the
 `tools/carbon-gr2-to-glb` submodule (Node.js), converting shards across parallel
 converter processes (`--models-threads`, default: CPU count; `--models-batch-size`
@@ -31,10 +31,29 @@ never touches the network), and emits meshopt-compressed GLBs under
 PBR textures; WebP rides as plain `image/webp` sources without EXT_texture_webp, an
 app-internal contract for the Flutter Scene viewer, which decodes WebP by content) and
 `base` (geometry-only, factor-only materials, no textures). Model resources are NON_FORCE
-(lazy) via the `static/models/` rule in `data/schema/resource_resolution.toml` (RRS v2);
-snapshots carrying them stamp resource index `format_version` 3, which format-2 clients
-reject through the app-update gate (RRS v1 would otherwise classify the unknown prefix as
+(lazy) via the `static/models/` rule in `data/schema/resource_resolution.toml` (RRS v3);
+snapshots carrying them stamp resource index `format_version` 4, which older clients
+reject through the app-update gate (they would otherwise classify the unknown prefixes as
 eager).
+
+The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal,fitting}/`
+skybox cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
+converter decodes from BC7; the fitting cubes are 1024², and the legacy
+`wormhole_class_00.dds` carries no `_cube` suffix) into a 2048×1024 Radiance `.hdr` equirect plus
+a `SkyboxMetadata` protobuf sidecar (`data/schema/skybox.proto`: the `.black` descriptor's
+`nebulaIntensity`/`reflectionIntensity`/`ambientColor`/`Tint`, unset when absent, plus the
+precomputed diffuse SH in flutter_scene's convention) under `static/skyboxes/<id>.hdr`/`.pb2`, via the same
+converter's `--batch-skybox` verb. The same step extracts every
+`res:/dx9/scene/preview/*.black` plus `fitting/fitting.black` through the
+converter's metadata-only `--batch-scene-metadata` verb and emits
+`static/skyboxes/lighting_profiles.pb2`. This fully resolved catalog maps each
+scene's `NebulaMap` through the scanned cube resources, applies Carbon defaults
+and item-preview runtime overrides, and validates references against the final
+cache-hit-plus-baked environment set. It is regenerated on every run, including
+all-cache-hit runs. Skybox resources and the catalog are NON_FORCE (lazy) via
+the `static/skyboxes/` RRS rule. The `types` step also stamps `Type.race_id`/`faction_id`
+and `Collection.faction_races` (the FSD `memberRaces` faction→race mapping), which the
+app uses to pick each ship's default skybox.
 
 ### Models build-state cache
 
@@ -59,7 +78,23 @@ The map carries no converter identity: when the converter submodule or the encod
 toolchain changes, invalidate manually (see RELEASING.md). Test-mode/PR builds never
 read or write the map (they publish to a mock, so their outputs do not exist in the
 production store). Operators manage the map with `./x ci build-state ...`
-(`invalidate`, `seed`, `push-models`, `commit`).
+(`invalidate`, `seed`, `push-models`, `push-skyboxes`, `commit`).
+
+The `skyboxes` step has its own per-server map (`build-state/skyboxes/<server>.json`)
+with the same invalidation model: each entry keys on the resindex MD5 columns of the
+cube DDS and its `.black` descriptor, and records both output blob hashes (`.hdr` and
+`.pb2`); a hit requires unchanged inputs and both production blobs present. It is
+enabled and rewritten by the same release-data flags as the models map
+(`--models-cache` / `--rebuild-models`). `./x ci build-state seed` reconstructs
+both model and skybox maps from a game-build-compatible channel head without
+reconversion; only complete HDR/PB2 pairs are seeded, and new ids stay misses.
+`commit` uploads either or both map families. Like `push-models`,
+`push-skyboxes` pre-bakes every skybox on a local machine (a full rebuild),
+pushes each HDR/PB2 pair to the production store, and commits the skyboxes
+map. Lighting-catalog changes are not
+environment-pair inputs and invalidate neither skybox pairs nor models. Never
+seed across an output-affecting baker or sidecar-contract change; use the shared
+`--rebuild-models` gate instead.
 
 ## Canonical Version
 

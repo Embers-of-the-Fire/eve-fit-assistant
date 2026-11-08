@@ -311,7 +311,7 @@ development line:
   stable `0.21.0`, `build` continuing at 35. The next testing release bumps
   `num` to 1 and `build` to 36; the first ship promotes `1.0.0` to stable.
 
-## Models build-state cache (operations)
+## Model and skybox build-state caches (operations)
 
 Data builds memoize ship-model conversion via a per-server map in CI storage
 (`build-state/models/<server>.json`); output blobs are referenced in place in
@@ -344,7 +344,11 @@ the converter beginning to consume new SOF fields:
 
   `seed` recomputes input hashes from the server's resource index and pairs
   them with the output blob hashes recorded in the synced channel head
-  snapshot; no conversion runs.
+  snapshot; no conversion or baking runs. It writes both the models and
+  skyboxes maps. Only complete HDR/PB2 skybox pairs are seeded; newly discovered
+  ids remain misses. Use this adoption path only when the baker and sidecar
+  contract are compatible with the published artifacts—never across an
+  output-affecting change.
 - **Pre-build models on a powerful local machine**: run the full conversion
   locally, upload the produced GLB blobs straight to the production store
   (blobs already present are skipped; unreferenced blobs are inert), and
@@ -359,6 +363,24 @@ the converter beginning to consume new SOF fields:
   converter's Node dependencies, `[remote.s3]` write credentials and
   `[ci.storage]` write credentials in `efa.dev.toml`. The next CI data build
   then references the blobs in place instead of converting.
+- **Pre-bake skyboxes on a powerful local machine**: same pattern for the
+  skyboxes map — re-bakes every skybox, uploads each HDR/PB2 pair straight to
+  the production store (blobs already present are skipped), and commits the
+  updated skyboxes map to CI storage:
+
+  ```sh
+  ./x ci build-state push-skyboxes --server tranquility
+  ```
+
+  Same requirements as `push-models` (hydrated workspace, converter Node
+  dependencies, `[remote.s3]` and `[ci.storage]` write credentials). The next
+  CI data build then references the blobs in place instead of baking.
+
+Skybox HDR/PB2 pairs use the parallel `build-state/skyboxes/<server>.json` map
+and the same release-data cache/rebuild flags. `build-state commit` uploads both
+map families when present. The separately regenerated lighting-profile catalog
+is not part of either cache identity: changing it invalidates neither
+environment pairs nor models.
 
 Test-mode/PR builds never touch the map. Maps are committed by the
 `build-state-upload` job in `_release-data.yml` (environment `ci-write`);

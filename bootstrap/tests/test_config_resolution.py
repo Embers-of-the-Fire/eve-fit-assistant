@@ -16,6 +16,7 @@ def _vocabulary(**overrides: str) -> ResolutionVocabulary:
         "localization_locales_prefix": "localization/locales/",
         "static_images_prefix": "static/images/",
         "static_models_prefix": "static/models/",
+        "static_skyboxes_prefix": "static/skyboxes/",
         "locale_placeholder": "locale",
     }
     base.update(overrides)
@@ -88,6 +89,7 @@ class TestResolutionVocabularyPaths:
             ("legacy_localization_db", "localization/combined.db"),
             ("localization_locales_prefix", "localization/per-locale/"),
             ("static_models_prefix", "assets/models/"),
+            ("static_skyboxes_prefix", "assets/skyboxes/"),
         ],
     )
     def test_relative_paths_without_parent_segments_are_accepted(

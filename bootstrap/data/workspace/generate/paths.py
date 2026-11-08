@@ -47,6 +47,7 @@ class PathManager:
         self.__legacy_localization_db_rel = PurePosixPath(vocab.legacy_localization_db)
         self.__localization_locales_rel = PurePosixPath(vocab.localization_locales_prefix)
         self.__static_models_rel = PurePosixPath(vocab.static_models_prefix)
+        self.__static_skyboxes_rel = PurePosixPath(vocab.static_skyboxes_prefix)
 
         self.full_generate_out_path.mkdir(parents=True, exist_ok=True)
         self.native_root_path.mkdir(parents=True, exist_ok=True)
@@ -170,3 +171,23 @@ class PathManager:
     ) -> Path:
         path = self.models_root_path / "ships" / f"{type_id}.{variant}.glb"
         return path
+
+    @property
+    def skyboxes_root_path(self) -> Path:
+        """Directory of the baked static skybox resources (.hdr + .pb2)."""
+        path = self.full_generate_out_path / self.__static_skyboxes_rel
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_skybox_hdr_path(self, skybox_id: str) -> Path:
+        """The Radiance HDR equirect blob of one baked skybox."""
+        return self.skyboxes_root_path / f"{skybox_id}.hdr"
+
+    def get_skybox_sidecar_path(self, skybox_id: str) -> Path:
+        """The SkyboxMetadata protobuf sidecar of one baked skybox."""
+        return self.skyboxes_root_path / f"{skybox_id}.pb2"
+
+    @property
+    def lighting_profile_catalog_path(self) -> Path:
+        """Fully resolved scene-lighting profiles, independent of pair caching."""
+        return self.skyboxes_root_path / "lighting_profiles.pb2"

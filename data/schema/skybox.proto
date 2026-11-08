@@ -1,0 +1,73 @@
+syntax = "proto2";
+package skybox;
+
+// Lighting/background metadata for one baked skybox, shipped as
+// resource://static/skyboxes/<id>.pb2 next to the .hdr equirect.
+message SkyboxMetadata {
+  required int32 schema_version = 1;      // currently 1; gates breaking changes
+  required string id = 2;                 // skybox id, e.g. "a01" (matches blob stem)
+  required string family = 3;             // "universe" | "wormholes" | "abyssal"
+  optional string source_resource = 4;    // official res:/ path this was baked from
+
+  // Parameters from the skybox's .black descriptor. Left unset when the
+  // descriptor lacks them — never zero-filled; consumers substitute defaults.
+  // nebula_intensity scales the background only; reflection_intensity scales
+  // image-based lighting (EVE feeds them to separate shader constants:
+  // NebulaIntensity on background.fx vs the per-frame ReflectionIntensity).
+  optional float nebula_intensity = 5;
+  optional RgbColor ambient_color = 6;
+  optional RgbColor tint = 7;
+  optional float reflection_intensity = 9;
+
+  // Diffuse irradiance as 9 L2 spherical-harmonic RGB coefficients, in the
+  // exact convention flutter_scene's EnvironmentMap.diffuseSphericalHarmonics
+  // accepts (Lambertian convolution and 1/π folded in). Precomputed offline so
+  // the runtime — critically the web build, which has no isolates — never runs
+  // the SH quadrature. Exactly 27 floats (9 × RGB) when present.
+  repeated float diffuse_sh = 8 [packed = true];
+}
+
+message RgbColor {
+  required float r = 1;  // linear RGB
+  required float g = 2;
+  required float b = 3;
+}
+
+message Vector3 {
+  required float x = 1;
+  required float y = 2;
+  required float z = 3;
+}
+
+enum LightingProfileKind {
+  ITEM_PREVIEW = 0;
+  FITTING = 1;
+}
+
+enum SunDirectionMode {
+  CAMERA_FORWARD = 0;
+  FIXED = 1;
+}
+
+// Fully resolved lighting parameters from one EVE preview/fitting scene.
+// Environment selection remains independent: skybox_id is the profile's
+// default environment, not a constraint on a manually selected skybox.
+message SceneLightingProfile {
+  required string id = 1;  // descriptor-derived id, e.g. "amarr" or "fitting"
+  required LightingProfileKind kind = 2;
+  required string skybox_id = 3;
+  required string reflection_resource = 4;  // official envMapResPath provenance
+  required float nebula_intensity = 5;
+  required float reflection_intensity = 6;
+  required RgbColor ambient_color = 7;
+  required RgbColor sun_color = 8;
+  required SunDirectionMode sun_direction_mode = 9;
+  optional Vector3 fixed_sun_direction = 10;  // normalized, app coordinates
+}
+
+// Versioned catalog shipped as
+// resource://static/skyboxes/lighting_profiles.pb2.
+message LightingProfileCatalog {
+  required int32 schema_version = 1;  // currently 1; gates breaking changes
+  repeated SceneLightingProfile profiles = 2;
+}

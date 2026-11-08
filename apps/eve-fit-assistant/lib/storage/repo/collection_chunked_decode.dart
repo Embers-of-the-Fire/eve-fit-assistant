@@ -124,6 +124,8 @@ Future<Collection> decodeCollectionChunked(
         );
       case 15:
         _mergeUint32MessageEntry(reader, collection.implantSets, ImplantSet.fromBuffer);
+      case 16:
+        _mergeUint32MessageEntry(reader, collection.factionRaces, FactionRaces.fromBuffer);
       default:
         // Unknown field: skip it the same way `mergeFromBuffer` would.
         reader.skipField(tag);

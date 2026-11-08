@@ -1,15 +1,24 @@
 import "dart:async";
 import "dart:math" as math;
 
+import "package:efa_proto/types.pb.dart" as pb_types;
+import "package:eve_fit_assistant/components/model/skybox_environment.dart";
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/repo/collection.dart";
+import "package:eve_fit_assistant/storage/repo/lighting_profile.dart";
 import "package:eve_fit_assistant/storage/repo/model_asset.dart";
 import "package:eve_fit_assistant/storage/repo/providers.dart";
+import "package:eve_fit_assistant/storage/repo/skybox_asset.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_scene/scene.dart";
 import "package:vector_math/vector_math.dart" as vm;
+
+export "package:eve_fit_assistant/components/model/skybox_environment.dart"
+    show ShipModelLightingMode;
 
 /// Textures are decoded down to this longest-side cap at import time, so a
 /// 4K ship never holds its full-size pixels in memory on a phone.
@@ -25,6 +34,12 @@ const double _kFovY = 45 * math.pi / 180;
 /// Auto-rotation speed in radians per second (applied while idle).
 const double _kAutoRotateSpeed = 0.25;
 
+/// The skybox equirect ships at 2048x1024; decoding wider buys nothing.
+const int _kSkyboxMaxWidth = 2048;
+
+/// App-wide degradation log guard: one message per environment/profile pair.
+final Set<String> _missingShLogKeys = <String>{};
+
 enum _ShipModelStatus { loading, ready, unavailable, error }
 
 /// An interactive 3D view of a ship's baked model (flutter_scene / Flutter
@@ -38,9 +53,23 @@ enum _ShipModelStatus { loading, ready, unavailable, error }
 ///
 /// The widget fills its parent; give it bounded constraints.
 class ShipModelViewer extends ConsumerStatefulWidget {
-  const ShipModelViewer({required this.typeId, this.fallback, super.key});
+  const ShipModelViewer({
+    required this.typeId,
+    this.skybox = kShipModelSkyboxAuto,
+    this.lightingMode = ShipModelLightingMode.itemPreview,
+    this.fallback,
+    super.key,
+  });
 
   final int typeId;
+
+  /// The environment assets behind the model: a skybox id from the data
+  /// catalog, or [kShipModelSkyboxAuto] to follow the active lighting profile.
+  /// Per-view only — nothing is persisted. This never changes [lightingMode].
+  final String skybox;
+
+  /// Selects scene lighting independently of the environment override.
+  final ShipModelLightingMode lightingMode;
 
   /// Rendered when no model is available for [typeId] or loading fails.
   final Widget? fallback;
@@ -54,6 +83,16 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
   _ShipModelStatus _status = _ShipModelStatus.loading;
   ShipModelVariant? _viewVariant;
   String? _loadingKey;
+
+  // Environment/profile state is independent of model loading. The selection
+  // key guards the catalog-resolution stage; the full request key additionally
+  // contains every resolved profile parameter and the environment id.
+  String? _lightingSelectionKey;
+  String? _environmentRequestKey;
+  int _lightingRequestSerial = 0;
+  AppLightingProfile? _activeProfile;
+  EnvironmentMap? _environment;
+  DirectionalLight? _keyLight;
 
   // Orbit state: the camera looks at [_center] from [_distance] at the given
   // angles. Mutated by gestures and auto-rotate; the per-frame cameraBuilder
@@ -73,7 +112,8 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     super.dispose();
   }
 
-  /// Restores the initial framing and variant default.
+  /// Restores the initial framing and variant default. The next cameraBuilder
+  /// pass also updates a camera-following key light.
   void resetView() => setState(() {
     _azimuth = 0;
     _polar = 0.3;
@@ -134,6 +174,7 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
         "bounds=$bounds, distance=$_distance",
       );
       scene.add(node);
+      _applySkyboxTo(scene);
 
       final old = _scene;
       setState(() {
@@ -146,6 +187,244 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       if (mounted && _loadingKey == key) {
         setState(() => _status = _ShipModelStatus.error);
       }
+    }
+  }
+
+  // ── Environment and lighting ──
+
+  /// Applies the current environment and active profile to [scene]. With no
+  /// active environment, retain studio IBL, a transparent background, and no
+  /// skybox-driven directional key.
+  void _applySkyboxTo(Scene scene) {
+    final environment = _environment;
+    final profile = _activeProfile;
+    if (environment == null || profile == null) {
+      scene
+        ..environment = null
+        ..environmentIntensity = 1.0
+        ..skybox = null
+        ..directionalLight = null;
+      return;
+    }
+
+    final intensities = lightingIntensities(profile);
+    final light = _keyLight ?? DirectionalLight(color: vm.Vector3.all(1));
+    _keyLight = light;
+    light
+      ..color.setValues(1, 1, 1)
+      ..intensity = profile.keyIntensity;
+    updateKeyLightDirection(light, profile, _camera());
+    scene
+      ..environment = environment
+      ..environmentIntensity = intensities.environmentIntensity
+      ..skybox = Skybox(EnvironmentSkySource(), intensity: intensities.skyboxIntensity)
+      ..directionalLight = light;
+  }
+
+  void _clearEnvironment() {
+    _environment = null;
+    _activeProfile = null;
+    _keyLight = null;
+    final scene = _scene;
+    if (scene != null) _applySkyboxTo(scene);
+  }
+
+  /// Starts catalog/profile/environment resolution when the view selection or
+  /// active checkout changes. The type fields in the key ensure a late FSD
+  /// collection still replaces the initial generic resolution.
+  void _ensureLightingLoading(
+    SkyboxAssetService service,
+    pb_types.Type? pbType,
+    List<int>? Function(int factionId) factionMemberRaces,
+  ) {
+    final memberRaces = pbType != null && pbType.hasFactionId()
+        ? factionMemberRaces(pbType.factionId)
+        : null;
+    final key = [
+      identityHashCode(service),
+      widget.typeId,
+      widget.skybox,
+      widget.lightingMode.name,
+      pbType?.factionId,
+      pbType?.raceId,
+      memberRaces?.join(","),
+    ].join(":");
+    if (_lightingSelectionKey == key) return;
+    _lightingSelectionKey = key;
+    final serial = ++_lightingRequestSerial;
+    unawaited(_loadLighting(service, key, serial, factionMemberRaces));
+  }
+
+  Future<void> _loadLighting(
+    SkyboxAssetService service,
+    String selectionKey,
+    int serial,
+    List<int>? Function(int factionId) factionMemberRaces,
+  ) async {
+    try {
+      final profiles = await service.readLightingProfiles();
+      if (!mounted || _lightingSelectionKey != selectionKey || _lightingRequestSerial != serial) {
+        return;
+      }
+      final collection = ref.read(repoCollectionProvider);
+      final type = collection?.getType(widget.typeId);
+      final profile = resolveLightingProfile(
+        mode: widget.lightingMode,
+        profiles: profiles,
+        type: type,
+        factionMemberRaces: factionMemberRaces,
+      );
+      if (profiles != null) {
+        final requestedId = requestedLightingProfileId(
+          mode: widget.lightingMode,
+          type: type,
+          factionMemberRaces: factionMemberRaces,
+        );
+        if (!identical(profile, profiles[requestedId])) {
+          debug(
+            "lighting profile $requestedId is missing or invalid; "
+            "using ${profile.id} compatibility/fallback lighting",
+          );
+        }
+      }
+      final skyboxId = resolveEnvironmentId(
+        setting: widget.skybox,
+        mode: widget.lightingMode,
+        activeProfile: profile,
+        service: service,
+        type: type,
+        factionMemberRaces: factionMemberRaces,
+      );
+      final requestKey = _lightingRequestIdentity(skyboxId, profile);
+      _environmentRequestKey = requestKey;
+      if (skyboxId == null) {
+        setState(_clearEnvironment);
+        return;
+      }
+      await _loadSkybox(service, skyboxId, profile, selectionKey, requestKey, serial);
+    } catch (e) {
+      if (!mounted || _lightingSelectionKey != selectionKey || _lightingRequestSerial != serial) {
+        return;
+      }
+      debug("ship lighting resolution failed: $e");
+      setState(_clearEnvironment);
+    }
+  }
+
+  /// The full async request identity, including profile fields that do not
+  /// participate in the environment cache (key behavior and N).
+  static String _lightingRequestIdentity(String? skyboxId, AppLightingProfile profile) {
+    final fixed = profile.fixedSunDirection;
+    return [
+      skyboxId ?? "",
+      profile.id,
+      profile.kind.name,
+      profile.skyboxId,
+      profile.reflectionResource,
+      profile.nebulaIntensity,
+      profile.reflectionIntensity,
+      profile.ambientColor.x,
+      profile.ambientColor.y,
+      profile.ambientColor.z,
+      profile.sunColor.x,
+      profile.sunColor.y,
+      profile.sunColor.z,
+      profile.sunDirectionMode.name,
+      fixed?.x,
+      fixed?.y,
+      fixed?.z,
+    ].join(":");
+  }
+
+  bool _isCurrentLightingRequest(String selectionKey, String requestKey, int serial) =>
+      mounted &&
+      _lightingSelectionKey == selectionKey &&
+      _environmentRequestKey == requestKey &&
+      _lightingRequestSerial == serial;
+
+  Future<void> _loadSkybox(
+    SkyboxAssetService service,
+    String skyboxId,
+    AppLightingProfile profile,
+    String selectionKey,
+    String requestKey,
+    int serial,
+  ) async {
+    void clearSkybox() {
+      if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) return;
+      setState(_clearEnvironment);
+    }
+
+    final cache = ref.read(skyboxEnvironmentCacheProvider);
+    SkyboxEnvironmentCacheKey? cacheKey;
+    Future<EnvironmentMap>? build;
+
+    try {
+      final asset = (await service.readSkybox(skyboxId)).toNullable();
+      if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) return;
+      if (asset == null) {
+        debug("skybox $skyboxId is not fetchable; rendering without a skybox");
+        clearSkybox();
+        return;
+      }
+      // Scope the cached environment to the exact HDR/sidecar bytes of the
+      // active checkout; a same-id asset with different content must not
+      // reuse the previous checkout's build.
+      cacheKey = skyboxEnvironmentCacheKey(
+        service.skyboxAssetIdentity(skyboxId)!,
+        skyboxId,
+        profile,
+      );
+      final baseSh = diffuseShCoefficients(asset);
+      if (kIsWeb && baseSh == null) {
+        // Web cannot run the runtime SH quadrature off the main thread.
+        debug("skybox $skyboxId has no usable sidecar; skipping on web");
+        clearSkybox();
+        return;
+      }
+
+      final effectiveSh = composeEffectiveDiffuseSh(baseSh, profile);
+      if (baseSh == null) {
+        // Native can still compute environment SH at runtime, but that SH does
+        // not include profile ambient. Log once per environment/profile pair.
+        final logKey = "$skyboxId:${profile.id}";
+        if (_missingShLogKeys.add(logKey)) {
+          debug(
+            "skybox $skyboxId has no usable precomputed SH for profile ${profile.id}; "
+            "skipping additive ambient",
+          );
+        }
+      }
+
+      await Scene.initializeStaticResources();
+      if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) return;
+      build = cache.getOrBuild(
+        cacheKey,
+        () => EnvironmentMap.fromEquirectImageBytes(
+          bytes: asset.hdrBytes,
+          maxWidth: _kSkyboxMaxWidth,
+          diffuseSphericalHarmonics: effectiveSh,
+        ),
+      );
+      final environment = await build;
+      if (!_isCurrentLightingRequest(selectionKey, requestKey, serial)) {
+        cache.discard(cacheKey, build);
+        return;
+      }
+      setState(() {
+        _environment = environment;
+        _activeProfile = profile;
+        final scene = _scene;
+        if (scene != null) _applySkyboxTo(scene);
+      });
+    } catch (e) {
+      debug("skybox $skyboxId load failed: $e");
+      // Drop a rejected build from the cache: otherwise every later request
+      // for this key re-awaits the same failure until LRU eviction.
+      final failed = build;
+      final failedKey = cacheKey;
+      if (failed != null && failedKey != null) cache.discard(failedKey, failed);
+      clearSkybox();
     }
   }
 
@@ -194,6 +473,19 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
           variant = other;
         }
         _ensureLoading(service, variant);
+
+        // Model and environment loading remain independent. Environment/profile
+        // swaps affect only the live scene's environment, sky, and key light.
+        final skyboxService = ref.watch(skyboxAssetServiceProvider).value;
+        if (skyboxService != null) {
+          final collection = ref.watch(repoCollectionProvider);
+          _ensureLightingLoading(
+            skyboxService,
+            collection?.getType(widget.typeId),
+            collection?.factionMemberRaces ?? (_) => null,
+          );
+        }
+
         final scene = _scene;
         return switch (_status) {
           _ShipModelStatus.ready when scene != null => _buildViewer(context, scene, variant),
@@ -238,7 +530,15 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
             child: SceneView(
               scene,
               pixelRatio: pixelRatio,
-              cameraBuilder: (_) => _camera(),
+              cameraBuilder: (_) {
+                final camera = _camera();
+                final light = _keyLight;
+                final profile = _activeProfile;
+                if (light != null && profile != null) {
+                  updateKeyLightDirection(light, profile, camera);
+                }
+                return camera;
+              },
               onTick: reduceMotion
                   ? null
                   : (_, deltaSeconds) {

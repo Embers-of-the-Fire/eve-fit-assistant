@@ -1,9 +1,8 @@
 """Build-state (generator memoization) subcommands.
 
-The per-server models build-state map lives in CI storage
-(``build-state/models/<server>.json``); output blob hashes reference the
-production remote store. See ``bootstrap.data.buildstate.models`` for the
-map semantics and invalidation rules.
+The per-server models and skyboxes build-state maps live in CI storage;
+output blob hashes reference the production remote store. See the respective
+``bootstrap.data.buildstate`` modules for map semantics and invalidation rules.
 """
 
 from __future__ import annotations
@@ -29,6 +28,10 @@ from bootstrap.data.buildstate.models import ModelArtifactEntry
 from bootstrap.data.buildstate.models import ModelsBuildStateMap
 from bootstrap.data.buildstate.models import map_remote_key
 from bootstrap.data.buildstate.models import ship_resource_id
+from bootstrap.data.buildstate.skyboxes import MAP_SCHEMA_VERSION as SKYBOXES_MAP_SCHEMA_VERSION
+from bootstrap.data.buildstate.skyboxes import SkyboxesBuildStateMap
+from bootstrap.data.buildstate.skyboxes import map_remote_key as skyboxes_map_remote_key
+from bootstrap.data.buildstate.skyboxes import seed_artifact_entries as seed_skybox_artifact_entries
 from bootstrap.data.updater.server import SERVER_ALIASES
 from bootstrap.data.updater.server import SERVER_IDS
 from bootstrap.data.workspace.config import WorkspaceConfig
@@ -36,6 +39,7 @@ from bootstrap.remote.s3client import S3Client
 
 
 _MODELS_RESOURCE_PREFIX = "resource://static/models/"
+_SKYBOXES_RESOURCE_PREFIX = "resource://static/skyboxes/"
 
 
 def _resolve_server(server: str) -> str:
@@ -79,7 +83,7 @@ def _prod_client() -> S3Client:
 def register_build_state_commands(ci: click.Group) -> None:
     @ci.group("build-state")
     def build_state():
-        """Manage generator build-state maps (models memoization)."""
+        """Manage model and skybox generator build-state maps."""
 
     @build_state.command("invalidate")
     @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
@@ -105,29 +109,39 @@ def register_build_state_commands(ci: click.Group) -> None:
         "from_dir",
         type=click.Path(exists=True, file_okay=False, path_type=Path),
         required=True,
-        help="Directory containing models/<server>.json maps to upload.",
+        help="Directory containing models/ and/or skyboxes/<server>.json maps to upload.",
     )
     def commit(from_dir: Path):
-        """Upload locally written build-state maps to CI storage."""
-        maps_dir = from_dir / "models"
-        if not maps_dir.is_dir():
-            raise click.ClickException(f"No models maps found under {maps_dir}")
+        """Upload locally written model and skybox build-state maps."""
+        map_files = [
+            (family, map_file)
+            for family in ("models", "skyboxes")
+            for map_file in sorted((from_dir / family).glob("*.json"))
+        ]
+        if not map_files:
+            raise click.ClickException(f"No models or skyboxes maps found under {from_dir}")
         client = _ci_client()
-        maps = sorted(maps_dir.glob("*.json"))
-        if not maps:
-            raise click.ClickException(f"No models maps found under {maps_dir}")
-        for map_file in maps:
-            state_map = ModelsBuildStateMap.from_json(map_file.read_bytes())
-            if state_map.schema_version != MAP_SCHEMA_VERSION:
+        for family, map_file in map_files:
+            if family == "models":
+                state_map = ModelsBuildStateMap.from_json(map_file.read_bytes())
+                expected_schema = MAP_SCHEMA_VERSION
+                remote_key = map_remote_key
+            else:
+                state_map = SkyboxesBuildStateMap.from_json(map_file.read_bytes())
+                expected_schema = SKYBOXES_MAP_SCHEMA_VERSION
+                remote_key = skyboxes_map_remote_key
+            if state_map.schema_version != expected_schema:
                 raise click.ClickException(f"Unsupported map schema in {map_file}")
             if state_map.server_id != map_file.stem:
                 raise click.ClickException(
                     f"Map {map_file} declares server {state_map.server_id!r}; "
                     "filename must be <server>.json."
                 )
-            client.write_bytes(map_remote_key(state_map.server_id), map_file.read_bytes())
-            click.echo(f"Committed models build-state for {state_map.server_id}.")
-        click.echo(styled([Style.BRIGHT, Fore.GREEN], f"Committed {len(maps)} build-state map(s)."))
+            client.write_bytes(remote_key(state_map.server_id), map_file.read_bytes())
+            click.echo(f"Committed {family} build-state for {state_map.server_id}.")
+        click.echo(
+            styled([Style.BRIGHT, Fore.GREEN], f"Committed {len(map_files)} build-state map(s).")
+        )
 
     @build_state.command("seed")
     @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
@@ -149,8 +163,8 @@ def register_build_state_commands(ci: click.Group) -> None:
         "build, or when either side lacks game-build metadata.",
     )
     def seed(server: str, channel: str, schema_root: Path, force: bool):
-        """Rebuild a server's map without converting: inputs from the resource
-        index, outputs from the synced channel head snapshot.
+        """Rebuild both server maps without converting or baking: inputs from
+        the resource index, outputs from the synced channel head snapshot.
 
         Recovery path when the map is lost but the published blobs exist. The
         snapshot's game build must match the workspace build, so outputs from
@@ -162,6 +176,8 @@ def register_build_state_commands(ci: click.Group) -> None:
         from bootstrap.data.workspace.generate.models import gather_dna_inputs
         from bootstrap.data.workspace.generate.models import resolve_ship_jobs
         from bootstrap.data.workspace.generate.paths import ShipModelVariant
+        from bootstrap.data.workspace.generate.skyboxes import gather_skybox_inputs
+        from bootstrap.data.workspace.generate.skyboxes import scan_skybox_sources
 
         server_id = _resolve_server(server)
         resolved_channel = validate_remote_channel(channel).value
@@ -191,9 +207,14 @@ def register_build_state_commands(ci: click.Group) -> None:
         outputs = {
             entry.resource_id: entry.content_hash
             for entry in index.entries
-            if entry.resource_id.startswith(_MODELS_RESOURCE_PREFIX)
+            if entry.resource_id.startswith((_MODELS_RESOURCE_PREFIX, _SKYBOXES_RESOURCE_PREFIX))
         }
-        if not outputs:
+        model_outputs = {
+            resource_id: content_hash
+            for resource_id, content_hash in outputs.items()
+            if resource_id.startswith(_MODELS_RESOURCE_PREFIX)
+        }
+        if not model_outputs:
             raise click.ClickException(
                 f"Snapshot {snapshot_hash[:16]}... carries no models resources."
             )
@@ -237,11 +258,14 @@ def register_build_state_commands(ci: click.Group) -> None:
             data = GeneratorDatasource(ws_config)
             try:
                 _jobs, resolved_jobs = await resolve_ship_jobs(data)
-                return gather_dna_inputs(data, resolved_jobs)
+                model_inputs = gather_dna_inputs(data, resolved_jobs)
+                skybox_sources = scan_skybox_sources(data)
+                skybox_inputs = gather_skybox_inputs(data, skybox_sources)
+                return model_inputs, skybox_inputs
             finally:
                 await data.aclose()
 
-        dna_aliases, _dna_jobs, dna_inputs = asyncio.run(gather_inputs())
+        (dna_aliases, _dna_jobs, dna_inputs), skybox_inputs = asyncio.run(gather_inputs())
 
         entries: dict[str, ModelArtifactEntry] = {}
         for dna, aliases in dna_aliases.items():
@@ -266,12 +290,17 @@ def register_build_state_commands(ci: click.Group) -> None:
                     )
 
         state_map = ModelsBuildStateMap(server_id=server_id, entries=entries)
-        _ci_client().write_bytes(map_remote_key(server_id), state_map.to_json())
+        skybox_entries = seed_skybox_artifact_entries(skybox_inputs, outputs)
+        skybox_state_map = SkyboxesBuildStateMap(server_id=server_id, entries=skybox_entries)
+        client = _ci_client()
+        client.write_bytes(map_remote_key(server_id), state_map.to_json())
+        client.write_bytes(skyboxes_map_remote_key(server_id), skybox_state_map.to_json())
         click.echo(
             styled(
                 [Style.BRIGHT, Fore.GREEN],
-                f"Seeded models build-state for {server_id}: "
-                f"{len(entries)} entries ({len(outputs)} outputs in snapshot).",
+                f"Seeded build-state for {server_id}: {len(entries)} model entries and "
+                f"{len(skybox_entries)} complete skybox pairs "
+                f"({len(outputs)} model/skybox outputs in snapshot).",
             )
         )
 
@@ -332,5 +361,58 @@ def register_build_state_commands(ci: click.Group) -> None:
             styled(
                 [Style.BRIGHT, Fore.GREEN],
                 f"Pushed pre-built models for {server_id}: blobs uploaded, map committed.",
+            )
+        )
+
+    @build_state.command("push-skyboxes")
+    @click.option("--server", required=True, help=f"Server id ({', '.join(sorted(SERVER_IDS))}).")
+    @click.option(
+        "--threads",
+        type=click.IntRange(min=1),
+        default=None,
+        help="Parallel baker processes for skybox baking (default: CPU count).",
+    )
+    def push_skyboxes(server: str, threads: int | None):
+        """Pre-bake skyboxes locally and push outputs to the production store.
+
+        Runs the full skyboxes bake on this machine, uploads every produced
+        HDR/PB2 blob pair to the production remote store (skipping blobs
+        already present), and commits the updated build-state map to CI
+        storage. The next CI build then references the blobs in place instead
+        of baking.
+        """
+        from bootstrap.data.workspace.generate import GeneratorDatasource
+        from bootstrap.data.workspace.generate import skyboxes as skyboxes_step
+
+        server_id = _resolve_server(server)
+
+        bootstrap.config.ProjectConfiguration.ensure_loaded()
+        resource_root = bootstrap.config.CONFIGURATION.data_schema.resource_root
+
+        from bootstrap.data.buildstate.skyboxes import SkyboxesCacheContext
+
+        cache = SkyboxesCacheContext(
+            server_id=server_id,
+            resource_root=resource_root,
+            ci_client=_ci_client(),
+            prod_client=_prod_client(),
+            rebuild=True,
+            upload_map=True,
+            upload_blobs=True,
+        )
+
+        async def run():
+            ws_config = WorkspaceConfig.load_from_descriptor(runtime.get_workspace(server_id))
+            data = GeneratorDatasource(ws_config)
+            try:
+                await skyboxes_step.generate(data, cache=cache, threads=threads)
+            finally:
+                await data.aclose()
+
+        asyncio.run(run())
+        click.echo(
+            styled(
+                [Style.BRIGHT, Fore.GREEN],
+                f"Pushed pre-built skyboxes for {server_id}: blobs uploaded, map committed.",
             )
         )
