@@ -258,6 +258,35 @@ class TestCacheContext:
             (blob_remote_key("efa/v2", SIDECAR_RID, sidecar_hash), b"sidecar-bytes")
         ]
 
+    def test_record_conversion_uploads_when_prod_probe_fails(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A transient probe failure must not abort the push: the key is
+        content-addressed, so uploading unconditionally is safe."""
+
+        class FlakyProdClient(_UploadProdClient):
+            def object_exists(self, key: str) -> bool:
+                raise ConnectionError("transient S3 error")
+
+        monkeypatch.setattr(buildstate_skyboxes, "warning", lambda *_args: None)
+        client = FlakyProdClient()
+        cache = SkyboxesCacheContext(
+            server_id="tranquility",
+            resource_root="efa/v2",
+            ci_client=_FakeClient(),  # type: ignore[arg-type]
+            prod_client=client,  # type: ignore[arg-type]
+            upload_blobs=True,
+        )
+        hdr, sidecar = _baked_pair(tmp_path)
+        cache.record_conversion(HDR_RID, _inputs(), hdr, sidecar)
+        hdr_hash = hashlib.sha256(b"hdr-bytes").hexdigest()
+        sidecar_hash = hashlib.sha256(b"sidecar-bytes").hexdigest()
+        assert client.uploads == [
+            (blob_remote_key("efa/v2", HDR_RID, hdr_hash), b"hdr-bytes"),
+            (blob_remote_key("efa/v2", SIDECAR_RID, sidecar_hash), b"sidecar-bytes"),
+        ]
+        assert cache._new_entries[HDR_RID].output == hdr_hash
+
     def test_record_conversion_without_upload_blobs_touches_no_prod(self, tmp_path):
         client = _UploadProdClient()
         cache = SkyboxesCacheContext(

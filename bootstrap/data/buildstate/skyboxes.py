@@ -294,7 +294,12 @@ class SkyboxesCacheContext:
                 (sidecar_output, sidecar_rid, sidecar_hash),
             ):
                 key = self.blob_key(rid, content_hash)
-                if not self.prod_client.object_exists(key):
+                try:
+                    exists = self.prod_client.object_exists(key)
+                except Exception as exc:  # noqa: BLE001 - probe failure must not abort the push
+                    warning(f"Skyboxes prod probe failed for {key}; uploading anyway: {exc}")
+                    exists = False
+                if not exists:
                     self.prod_client.upload_file(blob, key)
         self._new_entries[resource_id] = SkyboxArtifactEntry(
             cube=inputs.cube,
