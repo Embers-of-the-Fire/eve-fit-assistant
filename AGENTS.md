@@ -18,6 +18,13 @@ before editing a subtree (more local instructions take precedence over this file
 - After edits, run the relevant formatter and linter; use `./x lint` for mixed-language or
   uncertain changes.
 
+## UI Work
+
+- Before changing a user-facing surface, start at
+  [docs/dev/style/index.md](docs/dev/style/index.md). These are judgment rules, not hard
+  constraints.
+- Match the nearest existing surface before inventing a new pattern.
+
 ## Top-Level Organization
 
 | Area | Scoped guide |

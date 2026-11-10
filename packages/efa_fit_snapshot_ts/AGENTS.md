@@ -6,8 +6,8 @@ Scope: TypeScript/Svelte fit-snapshot rendering support consumed by the platform
   data in this package.
 - Import package entry points from `efa-fit-snapshot-ts`; protobuf bindings come from
   `efa-proto-ts`.
-- Follow [docs/dev/style.md](../../docs/dev/style.md) and [docs/dev/color.md](../../docs/dev/color.md)
-  for UI work.
+- Follow [docs/dev/style/global/index.md](../../docs/dev/style/global/index.md) and
+  [docs/dev/color.md](../../docs/dev/color.md) for UI work.
 
 ## Docs
 

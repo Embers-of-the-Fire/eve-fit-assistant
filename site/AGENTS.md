@@ -8,13 +8,16 @@ manual site has its own pnpm workspace.
 
 - Use pnpm, not npm.
 - Root `biome.json` governs JS/TS formatting and linting for this area.
-- Follow [docs/dev/style.md](../docs/dev/style.md) and [docs/dev/color.md](../docs/dev/color.md)
-  for UI work. Brand surfaces use the Brand family; workload surfaces use the Workload family.
 - Use the nearest nested `AGENTS.md`: `manual/` and `platform/` have their own local rules.
+
+## Design
+
+- Start at [docs/dev/style/index.md](../docs/dev/style/index.md) for UI work; the color
+  authority is [docs/dev/color.md](../docs/dev/color.md). Brand surfaces use the Brand
+  family; workload surfaces use the Workload family.
 
 ## Docs
 
-- Style and color: [docs/dev/style.md](../docs/dev/style.md), [docs/dev/color.md](../docs/dev/color.md)
 - App links: [docs/dev/app-links.md](../docs/dev/app-links.md)
 - Validation: run the relevant package `check` script when the package defines
   one (`home` and `platform` do; `manual` currently does not), then `pnpm biome check --fix site`.

@@ -1,8 +1,8 @@
 # Color System
 
 Canonical color guidance for all EVE Fit Assistant surfaces. The general design principles
-live in [style](./style.md); this file is the authority on **which palette a surface uses**
-and on concrete palette values.
+live in [style principles](./style/index.md); this file is the authority on **which palette
+a surface uses** and on concrete palette values.
 
 ## Two Families
 
@@ -80,6 +80,23 @@ themes. Never reuse these hues decoratively.
 | Danger / overload / destructive | red | `colorStatusOverload` `#ef5350`, `colorActionDelete` `#fe4a49` |
 | Online-but-neutral / disabled | gray | `colorStatusOnline` `#bdbdbd`, `colorStatusPassive` `#2d2d2d` |
 
+## Design Principles
+
+These color-specific judgment rules apply across both families. Palette selection is
+covered by the rules below; concrete values live in the family tables above.
+
+- **Pick by role.** Choose colors by role (primary accent, surface, border, text hierarchy,
+  semantic status), not by appearance; keep each role consistent across a surface.
+- **Low-noise backgrounds.** Backgrounds and surfaces stay in the near-black blue/gray
+  family (the app's dark surface tokens, the site's `eve-bg`/`eve-surface`). Surfaces layer
+  in small, subtle lightness steps — never large jumps, never pure black-on-black ambiguity.
+- **Restrained glow.** Glow, shimmer, and neon effects are accents, not ambience. A screen
+  should have at most one or two glowing elements at a time.
+- **Contrast over decoration.** Text must remain readable against its surface; dim and
+  muted text exist for hierarchy, not for hiding required information.
+- **Borders instead of shadows in the dark.** Dark surfaces separate through subtle
+  borders and small lightness steps, not heavy elevation shadows.
+
 ## Rules
 
 1. **Classify the surface first.** Brand-facing → Brand family. User-work surface →
@@ -87,7 +104,8 @@ themes. Never reuse these hues decoratively.
    workload surface; brand styling may appear only in embedded brand assets (logo,
    banners), not in the surface's own palette.
 2. **One accent system per surface.** Gold and cyan-blue never mix on the same screen.
-   Within a surface, the family's primary accent marks the single most important action.
+   Within a surface, the family's primary accent marks the single most important action;
+   if two things are glowing, one of them is wrong.
 3. **Cross-links may switch families.** Navigating from the homepage to the app, share, or
    discussion platform *is* a visible palette switch — that is intentional product
    differentiation, not inconsistency.

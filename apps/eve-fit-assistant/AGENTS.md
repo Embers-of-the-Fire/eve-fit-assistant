@@ -17,7 +17,7 @@ Scope: the Flutter application, its Rust FRB bridge (`rust/`), the `efa-chat` Ru
 ## Docs
 
 - Storage and data flow: [docs/dev/app-storage.md](../../docs/dev/app-storage.md)
-- Style and color: [docs/dev/style.md](../../docs/dev/style.md), [docs/dev/color.md](../../docs/dev/color.md)
+- Style and color: [docs/dev/style/index.md](../../docs/dev/style/index.md), [docs/dev/color.md](../../docs/dev/color.md)
 - Engineering conventions (FRB API shape): [docs/dev/engineering-conventions.md](../../docs/dev/engineering-conventions.md)
 - Fit deep links and sharing: [docs/dev/app-links.md](../../docs/dev/app-links.md)
 - AI chat: [docs/dev/efa-chat.md](../../docs/dev/efa-chat.md)
