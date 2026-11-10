@@ -6,6 +6,7 @@ import "package:eve_fit_assistant/config/force_column.dart";
 import "package:eve_fit_assistant/config/list_tile_anti_scroll.dart";
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/config/workspace_layout.dart";
 import "package:eve_fit_assistant/features/remote_content/channel.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
 import "package:eve_fit_assistant/storage/fs/user_store.dart";
@@ -225,6 +226,18 @@ abstract class AppSetting with _$AppSetting {
     @JsonKey(unknownEnumValue: ShipModelVariant.textured, defaultValue: ShipModelVariant.textured)
     @Default(ShipModelVariant.textured)
     ShipModelVariant shipModelVariant,
+    @JsonKey(
+      unknownEnumValue: WorkspaceTileStyle.automatic,
+      defaultValue: WorkspaceTileStyle.automatic,
+    )
+    @Default(WorkspaceTileStyle.automatic)
+    WorkspaceTileStyle workspaceTileStyle,
+    @JsonKey(
+      unknownEnumValue: WorkspaceColumnMode.automatic,
+      defaultValue: WorkspaceColumnMode.automatic,
+    )
+    @Default(WorkspaceColumnMode.automatic)
+    WorkspaceColumnMode workspaceColumnMode,
   }) = _AppSetting;
 
   factory AppSetting.fromJson(Map<String, dynamic> json) => _$AppSettingFromJson(json);

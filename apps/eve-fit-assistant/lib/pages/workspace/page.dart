@@ -4,15 +4,21 @@ import "package:auto_route/auto_route.dart";
 import "package:eve_fit_assistant/components/badge/notification_dot.dart";
 import "package:eve_fit_assistant/components/card/homepage_link_card.dart";
 import "package:eve_fit_assistant/config/engine_availability.dart";
+import "package:eve_fit_assistant/config/workspace_layout.dart";
 import "package:eve_fit_assistant/constant/links.dart";
 import "package:eve_fit_assistant/features/announcements/repository/repository.dart";
 import "package:eve_fit_assistant/features/app_update/state/app_version_state_notifier.dart";
 import "package:eve_fit_assistant/pages/router.dart";
 import "package:eve_fit_assistant/pages/workspace/data_update_banner.dart";
+import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:eve_fit_assistant/utils/context.dart";
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+
+const double _workspaceMaxWidth = 1200;
+const double _workspaceTileMaxCrossAxisExtent = 300;
+const double _workspaceTileSpacing = 12;
 
 class _WorkspaceShortcutItem {
   const _WorkspaceShortcutItem({
@@ -88,27 +94,82 @@ class WorkspacePage extends ConsumerWidget {
     ];
 
     final unreadCount = kIsWeb ? 0 : ref.watch(unreadAnnouncementCountProvider);
+    final tileStyle = ref.watch(appSettingServiceProvider.select((s) => s.workspaceTileStyle));
+    final columnMode = ref.watch(appSettingServiceProvider.select((s) => s.workspaceColumnMode));
+
+    Widget buildItem(int index, {bool compact = false}) {
+      final it = items[index];
+      Widget card = HomepageLinkCard(
+        title: it.title,
+        icon: it.icon,
+        onTap: it.onTap,
+        compact: compact,
+      );
+      if (it.isUpdatesCard && unreadCount > 0) {
+        card = NotificationDot(count: unreadCount, badgeRadius: 13, child: card);
+      }
+      return card;
+    }
 
     final grid = Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
+        constraints: const BoxConstraints(maxWidth: _workspaceMaxWidth),
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: GridView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 300,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final it = items[index];
-              Widget card = HomepageLinkCard(title: it.title, icon: it.icon, onTap: it.onTap);
-              if (it.isUpdatesCard && unreadCount > 0) {
-                card = NotificationDot(count: unreadCount, badgeRadius: 13, child: card);
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final responsiveColumnCount = constraints.maxWidth <= 0
+                  ? 1
+                  : (constraints.maxWidth /
+                            (_workspaceTileMaxCrossAxisExtent + _workspaceTileSpacing))
+                        .ceil();
+              final columnCount = switch (columnMode) {
+                WorkspaceColumnMode.automatic => responsiveColumnCount,
+                WorkspaceColumnMode.forceList => 1,
+                WorkspaceColumnMode.forceTwoColumns => 2,
+              };
+              final useCompactCards = switch (tileStyle) {
+                WorkspaceTileStyle.automatic => columnCount == 1,
+                WorkspaceTileStyle.square => false,
+                WorkspaceTileStyle.compact => true,
+              };
+
+              if (useCompactCards) {
+                final rowCount = (items.length + columnCount - 1) ~/ columnCount;
+                return ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: rowCount,
+                  itemBuilder: (context, rowIndex) {
+                    final rowStart = rowIndex * columnCount;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var columnIndex = 0; columnIndex < columnCount; columnIndex++) ...[
+                          if (columnIndex > 0) const SizedBox(width: _workspaceTileSpacing),
+                          Expanded(
+                            child: rowStart + columnIndex < items.length
+                                ? buildItem(rowStart + columnIndex, compact: true)
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: _workspaceTileSpacing),
+                );
               }
-              return card;
+
+              return GridView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columnCount,
+                  crossAxisSpacing: _workspaceTileSpacing,
+                  mainAxisSpacing: _workspaceTileSpacing,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) => buildItem(index),
+              );
             },
           ),
         ),

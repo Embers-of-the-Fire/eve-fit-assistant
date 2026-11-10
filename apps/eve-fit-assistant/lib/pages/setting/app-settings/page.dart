@@ -12,6 +12,7 @@ import "package:eve_fit_assistant/config/locale.dart" show Locale;
 import "package:eve_fit_assistant/config/paths.dart";
 import "package:eve_fit_assistant/config/storage_root.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/config/workspace_layout.dart";
 import "package:eve_fit_assistant/features/app_update/platform/update_platform.dart";
 import "package:eve_fit_assistant/features/locale_switch/locale_switch_dialog.dart";
 import "package:eve_fit_assistant/features/remote_content/cadence.dart";
@@ -38,6 +39,7 @@ part "select_list.dart";
 part "ship_model.dart";
 part "storage_root.dart";
 part "update_strategy.dart";
+part "workspace.dart";
 
 @RoutePage()
 class AppSettingsPage extends ConsumerWidget {
@@ -52,6 +54,9 @@ class AppSettingsPage extends ConsumerWidget {
         const ConfigListTile.custom(LocaleTile()),
         const ConfigListTile.custom(FontScaleTile()),
         const ConfigListTile.custom(ListTileAntiScrollTile()),
+        ConfigListTile.title(context.l10n.appSettingsPageSectionWorkspace),
+        const ConfigListTile.custom(WorkspaceTileStyleTile()),
+        const ConfigListTile.custom(WorkspaceColumnModeTile()),
         // The configured storage root is honored on every native platform,
         // but only Windows exposes editing.
         if (storageRootEditable) ...[
