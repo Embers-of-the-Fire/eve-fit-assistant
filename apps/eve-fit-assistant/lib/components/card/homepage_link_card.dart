@@ -17,18 +17,24 @@ class HomepageLinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     final titleStyle =
-        Theme.of(context).textTheme.titleLarge?.copyWith(
+        (compact ? textTheme.titleMedium : textTheme.titleLarge)?.copyWith(
           fontWeight: FontWeight.w600,
           color: colorScheme.onSurface,
         ) ??
-        TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
+        TextStyle(
+          fontSize: compact ? 16 : 18,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface,
+        );
 
     if (compact) {
       return _buildCard(
         colorScheme,
         ListTile(
           onTap: onTap,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
           leading: Icon(icon, color: colorScheme.onSurface),
           title: Text(title, style: titleStyle, maxLines: 2, overflow: TextOverflow.ellipsis),
           trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
