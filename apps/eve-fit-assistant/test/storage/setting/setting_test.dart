@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
+import "package:eve_fit_assistant/config/workspace_layout.dart";
 import "package:eve_fit_assistant/storage/setting/setting.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:riverpod/riverpod.dart";
@@ -32,6 +33,44 @@ void main() {
     addTearDown(container.dispose);
 
     expect(container.read(fontScaleProvider), 1.0);
+  });
+
+  test("workspace layout settings default to automatic for legacy JSON", () {
+    final json =
+        (jsonDecode(jsonEncode(testAppSetting(Locale.en).toJson())) as Map<String, dynamic>)
+          ..remove("workspaceTileStyle")
+          ..remove("workspaceColumnMode");
+
+    final setting = AppSetting.fromJson(json);
+
+    expect(setting.workspaceTileStyle, WorkspaceTileStyle.automatic);
+    expect(setting.workspaceColumnMode, WorkspaceColumnMode.automatic);
+  });
+
+  test("workspace layout settings roundtrip", () {
+    final original = testAppSetting(Locale.en).copyWith(
+      workspaceTileStyle: WorkspaceTileStyle.compact,
+      workspaceColumnMode: WorkspaceColumnMode.forceTwoColumns,
+    );
+
+    final setting = AppSetting.fromJson(
+      jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>,
+    );
+
+    expect(setting.workspaceTileStyle, WorkspaceTileStyle.compact);
+    expect(setting.workspaceColumnMode, WorkspaceColumnMode.forceTwoColumns);
+  });
+
+  test("unknown workspace layout settings fall back to automatic", () {
+    final json =
+        (jsonDecode(jsonEncode(testAppSetting(Locale.en).toJson())) as Map<String, dynamic>)
+          ..["workspaceTileStyle"] = "future-style"
+          ..["workspaceColumnMode"] = "future-column-mode";
+
+    final setting = AppSetting.fromJson(json);
+
+    expect(setting.workspaceTileStyle, WorkspaceTileStyle.automatic);
+    expect(setting.workspaceColumnMode, WorkspaceColumnMode.automatic);
   });
 
   test("localeProvider falls back to en when appSetting is set to en", () {
@@ -77,10 +116,7 @@ void main() {
     );
 
     expect(decoded, setting);
-    expect(
-      decoded.connections[ChatProvider.deepSeek]!.models.first.ownedBy,
-      "deepseek",
-    );
+    expect(decoded.connections[ChatProvider.deepSeek]!.models.first.ownedBy, "deepseek");
   });
 
   test("AiChatSetting resolves provider defaults for blank connection", () {
