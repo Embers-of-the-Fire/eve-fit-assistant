@@ -34,7 +34,7 @@ page.
 ## Docs
 
 - Fit deep links and sharing: [docs/dev/app-links.md](../../docs/dev/app-links.md)
-- Style and color: [docs/dev/style.md](../../docs/dev/style.md), [docs/dev/color.md](../../docs/dev/color.md)
+- Style and color: [docs/dev/style/index.md](../../docs/dev/style/index.md), [docs/dev/color.md](../../docs/dev/color.md)
 - Builds and tests: [docs/dev/build-and-test.md](../../docs/dev/build-and-test.md)
 - Release/deploy integration: [docs/dev/ci-release.md](../../docs/dev/ci-release.md)
 - Site-wide rules: [AGENTS.md](../AGENTS.md)

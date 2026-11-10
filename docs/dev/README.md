@@ -42,7 +42,7 @@ Counts describe the current repository layout, not deploy targets. Use `git subm
 | [Python Pipeline](./python-pipeline.md) | Python workspace CLI, remote session model, and Python-specific operating rules. |
 | [Developer Mode](./developer-mode.md) | App developer-mode access, entry points, providers, and localization restrictions. |
 | [AI Chat](./efa-chat.md) | AI chat architecture across the `efa-chat` Rust crate, FRB bridge, and Dart feature/storage layers. |
-| [Style](./style.md) | Cross-product design principles: identity, surfaces, motion, typography, voice, bilingual text, and accessibility. |
+| [Style principles](./style/index.md) | Scoped design principles: global vocabulary and per-place rules for identity, surfaces, motion, typography, voice, bilingual text, and accessibility. |
 | [Color](./color.md) | Canonical Brand and Workload color families, concrete tokens, semantic colors, and palette-selection rules. |
 
 Additional material:
