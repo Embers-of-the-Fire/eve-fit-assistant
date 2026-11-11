@@ -25,6 +25,7 @@ const String _fitId = "history-test-fit";
 
 class _InMemoryDocStore implements DocStore {
   final Map<String, String> docs = {};
+  Completer<void>? writeBlocker;
 
   @override
   Future<void> init() async {}
@@ -37,6 +38,7 @@ class _InMemoryDocStore implements DocStore {
 
   @override
   Future<void> write(String key, String value) async {
+    await writeBlocker?.future;
     docs[key] = value;
   }
 
@@ -254,6 +256,38 @@ void main() {
     final history = container.read(fitHistoryProvider(_fitId));
     expect(history.length, 1);
     expect(history.cursor, 0);
+  });
+
+  test("reload waits for pending writes before reseeding history", () async {
+    final fitNotifier = container.read(fitProvider(_fitId).notifier);
+    final historyNotifier = container.read(fitHistoryProvider(_fitId).notifier);
+    final writeBlocker = Completer<void>();
+    store.writeBlocker = writeBlocker;
+
+    final edit = fitNotifier.update(
+      action: const FitEditAction.renameFit(),
+      transform: (fit) => fit.copyWith(metadata: fit.metadata.copyWith(name: "Before reload")),
+    );
+    await pump();
+    final reload = fitNotifier.reload();
+    await pump();
+
+    writeBlocker.complete();
+    await Future.wait([edit, reload]);
+
+    var history = container.read(fitHistoryProvider(_fitId));
+    expect(history.length, 1);
+    expect(history.entries.single.state.metadata.name, "Before reload");
+
+    await fitNotifier.update(
+      action: const FitEditAction.renameFit(),
+      transform: (fit) => fit.copyWith(metadata: fit.metadata.copyWith(name: "After reload")),
+    );
+    await historyNotifier.undo();
+
+    history = container.read(fitHistoryProvider(_fitId));
+    expect(history.cursor, 0);
+    expect(container.read(fitProvider(_fitId)).fit.metadata.name, "Before reload");
   });
 
   test("history survives fit provider disposal and remount", () async {

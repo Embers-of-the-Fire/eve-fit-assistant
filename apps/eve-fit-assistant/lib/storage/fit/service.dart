@@ -130,7 +130,12 @@ class Fit extends _$Fit {
     state = FitServiceState.error(messageKey: messageKey);
   }
 
-  Future<void> _loadFromDisk(String fitId, {required bool reseedHistory}) async {
+  Future<void> _loadFromDisk(
+    String fitId, {
+    required bool reseedHistory,
+    required int revision,
+  }) async {
+    if (revision != _latestSyncRevision) return;
     if (state.isInitialized) {
       warning("Fit service already initialized, force loading");
     }
@@ -154,6 +159,7 @@ class Fit extends _$Fit {
           debug(errorValue.toString(), stackTrace: stackTrace);
         }
       }
+      if (revision != _latestSyncRevision) return;
       _mountedFit = fit;
       final history = ref.read(fitHistoryProvider(fitId));
       if (reseedHistory ||
@@ -170,6 +176,7 @@ class Fit extends _$Fit {
       final messageKey = exists
           ? FitErrorMessageKey.fitLoadFailed
           : FitErrorMessageKey.fitLoadMissing;
+      if (revision != _latestSyncRevision) return;
       _setLoadError(fitId, messageKey, errorValue, stackTrace);
     }
   }
@@ -195,16 +202,20 @@ class Fit extends _$Fit {
     }
   }
 
-  Future<void> _queueSync(FitStorage fit) {
+  Future<void> _queueOperation(Future<void> Function(int revision) operation) {
     final revision = ++_latestSyncRevision;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => _syncToDisk(fit, revision));
+        .then((_) => operation(revision));
     return _pendingSync;
   }
 
-  Future<void> _mount(String fitId, {bool reseedHistory = false}) =>
-      _loadFromDisk(fitId, reseedHistory: reseedHistory);
+  Future<void> _queueSync(FitStorage fit) =>
+      _queueOperation((revision) => _syncToDisk(fit, revision));
+
+  Future<void> _mount(String fitId, {bool reseedHistory = false}) => _queueOperation(
+    (revision) => _loadFromDisk(fitId, reseedHistory: reseedHistory, revision: revision),
+  );
 
   FitCheckoutCompatibility _compatibilityFor(FitStorage fit) {
     final checkoutId = ref.read(activeCheckoutIdProvider);
