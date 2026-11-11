@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:eve_fit_assistant/config/logger.dart";
+import "package:eve_fit_assistant/storage/fit/history.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fs/doc_store.dart";
@@ -151,6 +152,7 @@ class FitManager extends _$FitManager {
     notifier
       ..state = notifier.state.copyWith(fits: notifier.state.fits.remove(fitId))
       .._syncToStore();
+    ref.invalidate(fitHistoryProvider(fitId));
   }
 
   Future<FitMetadata> importFit(FitStorage importedFit) async {

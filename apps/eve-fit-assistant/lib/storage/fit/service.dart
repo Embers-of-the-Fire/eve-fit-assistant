@@ -9,6 +9,8 @@ import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
+import "package:eve_fit_assistant/storage/fit/edit_action.dart";
+import "package:eve_fit_assistant/storage/fit/history.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -115,7 +117,7 @@ class Fit extends _$Fit {
     return const FitServiceState.notInitialized();
   }
 
-  Future<void> reload() => _mount(_fitId);
+  Future<void> reload() => _mount(_fitId, reseedHistory: true);
 
   void _setLoadError(
     String fitId,
@@ -124,10 +126,16 @@ class Fit extends _$Fit {
     StackTrace stackTrace,
   ) {
     error("Failed to load fit $fitId: $errorValue", stackTrace: stackTrace);
+    ref.invalidate(fitHistoryProvider(fitId));
     state = FitServiceState.error(messageKey: messageKey);
   }
 
-  Future<void> _loadFromDisk(String fitId) async {
+  Future<void> _loadFromDisk(
+    String fitId, {
+    required bool reseedHistory,
+    required int revision,
+  }) async {
+    if (revision != _latestSyncRevision) return;
     if (state.isInitialized) {
       warning("Fit service already initialized, force loading");
     }
@@ -151,7 +159,14 @@ class Fit extends _$Fit {
           debug(errorValue.toString(), stackTrace: stackTrace);
         }
       }
+      if (revision != _latestSyncRevision) return;
       _mountedFit = fit;
+      final history = ref.read(fitHistoryProvider(fitId));
+      if (reseedHistory ||
+          !history.isSeeded ||
+          !fitContentEquals(history.entries[history.cursor].state, fit)) {
+        ref.read(fitHistoryProvider(fitId).notifier).seed(fit);
+      }
       state = FitServiceState.loaded(
         status: FitServiceStatus.loaded(lastSync: DateTime.now()),
         fit: fit,
@@ -161,6 +176,7 @@ class Fit extends _$Fit {
       final messageKey = exists
           ? FitErrorMessageKey.fitLoadFailed
           : FitErrorMessageKey.fitLoadMissing;
+      if (revision != _latestSyncRevision) return;
       _setLoadError(fitId, messageKey, errorValue, stackTrace);
     }
   }
@@ -186,15 +202,20 @@ class Fit extends _$Fit {
     }
   }
 
-  Future<void> _queueSync(FitStorage fit) {
+  Future<void> _queueOperation(Future<void> Function(int revision) operation) {
     final revision = ++_latestSyncRevision;
     _pendingSync = _pendingSync
         .catchError((Object _, StackTrace _) {})
-        .then((_) => _syncToDisk(fit, revision));
+        .then((_) => operation(revision));
     return _pendingSync;
   }
 
-  Future<void> _mount(String fitId) => _loadFromDisk(fitId);
+  Future<void> _queueSync(FitStorage fit) =>
+      _queueOperation((revision) => _syncToDisk(fit, revision));
+
+  Future<void> _mount(String fitId, {bool reseedHistory = false}) => _queueOperation(
+    (revision) => _loadFromDisk(fitId, reseedHistory: reseedHistory, revision: revision),
+  );
 
   FitCheckoutCompatibility _compatibilityFor(FitStorage fit) {
     final checkoutId = ref.read(activeCheckoutIdProvider);
@@ -223,10 +244,10 @@ class Fit extends _$Fit {
     }
   }
 
-  Future<void> update(FitStorage Function(FitStorage) updater) async {
+  FitStorage? _commit(FitStorage Function(FitStorage) transform) {
     if (!state.isInitialized) {
       error("Cannot update fit service: not initialized");
-      return;
+      return null;
     }
     final currentFit = state.fit;
     final compatibility = _compatibilityFor(currentFit);
@@ -235,12 +256,12 @@ class Fit extends _$Fit {
         status: const FitServiceStatus.error(messageKey: FitErrorMessageKey.fitReadOnly),
         fit: currentFit,
       );
-      return;
+      return null;
     }
 
     final active = ref.read(activeCheckoutProvider);
     final checkoutId = ref.read(activeCheckoutIdProvider);
-    final updated = pruneDynamicRegistry(updater(currentFit));
+    final updated = pruneDynamicRegistry(transform(currentFit));
     final fit = updated.copyWith(
       metadata: updated.metadata.copyWith(
         lastModified: DateTime.now().millisecondsSinceEpoch,
@@ -254,7 +275,41 @@ class Fit extends _$Fit {
     _mountedFit = fit;
     state = FitServiceState.loaded(status: const FitServiceStatus.syncing(), fit: fit);
     ref.read(fitRegistryManagerProvider.notifier).updateFit(fit.metadata);
+    return fit;
+  }
+
+  /// Commits a UI-initiated edit and records it in the fit's history.
+  ///
+  /// [action] is required so every edit reachable from the UI carries a
+  /// locale-independent descriptor; there is no generic fallback.
+  Future<void> update({
+    required FitEditAction action,
+    required FitStorage Function(FitStorage) transform,
+  }) async {
+    final before = state.isInitialized ? state.fit : null;
+    final fit = _commit(transform);
+    if (fit == null) return;
+
+    final history = ref.read(fitHistoryProvider(fit.metadata.fitId).notifier);
+    if (before != null && !history.state.isSeeded) {
+      history.seed(before);
+    }
+    history.record(action, fit);
     await _queueSync(fit);
+  }
+
+  /// Commits a history navigation target without recording a new entry.
+  ///
+  /// Only the history controller should invoke this.
+  Future<bool> restore(FitStorage target) async {
+    final fit = _commit((_) => target);
+    if (fit == null) return false;
+
+    if (!fitContentEquals(fit, target)) {
+      error("Restored fit ${fit.metadata.fitId} does not match the requested content");
+    }
+    await _queueSync(fit);
+    return true;
   }
 }
 

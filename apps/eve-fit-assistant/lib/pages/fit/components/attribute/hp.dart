@@ -213,7 +213,9 @@ class _HpTable extends ConsumerWidget {
                       await ref
                           .read(fitProvider(fitId!).notifier)
                           .update(
-                            (fit) => fit.copyWith(body: fit.body.copyWith(damageProfile: profile)),
+                            action: FitEditAction.setDamageProfile(values: profile),
+                            transform: (fit) =>
+                                fit.copyWith(body: fit.body.copyWith(damageProfile: profile)),
                           );
                     }
                   : null,
