@@ -291,7 +291,7 @@ class _CharacterImplantTabState extends ConsumerState<_CharacterImplantTab>
     if (setId == null) return;
     final implantSet = collection.getImplantSet(setId);
     if (implantSet == null) return;
-    await widget.fitContext.fitWrapper.applyImplantSet(implantSet.memberTypeIds, ref);
+    await widget.fitContext.fitWrapper.applyImplantSet(setId, implantSet.memberTypeIds, ref);
   }
 }
 

@@ -147,15 +147,26 @@ class _UtilsTabState extends ConsumerState<_UtilsTab> with AutomaticKeepAliveCli
   Future<void> _handleSave() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // Keep metadata editing local to the tab.
-    await widget.fitContext.fitWrapper.update(
-      (storage) => storage.copyWith(
-        metadata: storage.metadata.copyWith(
-          name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
-        ),
-      ),
-    );
+    final wrapper = widget.fitContext.fitWrapper;
+    final current = widget.fitContext.fit.metadata;
+    final name = _nameController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    // Keep metadata editing local to the tab, but record rename and
+    // description edits as their own history actions.
+    if (name != current.name) {
+      await wrapper.update(
+        action: const FitEditAction.renameFit(),
+        updater: (storage) => storage.copyWith(metadata: storage.metadata.copyWith(name: name)),
+      );
+    }
+    if (description != current.description) {
+      await wrapper.update(
+        action: const FitEditAction.editDescription(),
+        updater: (storage) =>
+            storage.copyWith(metadata: storage.metadata.copyWith(description: description)),
+      );
+    }
 
     if (!mounted) return;
     setState(() => _editable = false);

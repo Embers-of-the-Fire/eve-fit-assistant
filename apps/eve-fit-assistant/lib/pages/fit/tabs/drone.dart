@@ -45,16 +45,7 @@ class _DroneTab extends ConsumerWidget {
                         validator: slotIdent.validator(ref),
                       );
                       if (typeId == null) return;
-                      await fitWrapper.update((storage) {
-                        final newDrone = FitDroneItem(
-                          itemId: FitStorageItemId.item(id: typeId),
-                          state: FitItemState.active,
-                          quantity: 1,
-                        );
-                        return storage.copyWith(
-                          body: storage.body.copyWith(drones: storage.body.drones.add(newDrone)),
-                        );
-                      });
+                      await fitWrapper.equipDrone(drones.length, typeId);
                     }
                   : null,
               child: const Icon(Icons.add),
@@ -62,11 +53,7 @@ class _DroneTab extends ConsumerWidget {
             InkWell(
               onTap: interactionOptions.allowMutations
                   ? () async {
-                      await fitWrapper.update(
-                        (storage) => storage.copyWith(
-                          body: storage.body.copyWith(drones: IList<FitDroneItem>()),
-                        ),
-                      );
+                      await fitWrapper.clearDrones();
                     }
                   : null,
               child: const Icon(Icons.clear_all),

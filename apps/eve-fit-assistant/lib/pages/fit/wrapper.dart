@@ -51,10 +51,85 @@ class FitWrapper {
   final String fitId;
   final WidgetRef ref;
 
-  Future<void> update(FitStorage Function(FitStorage) updater) => wrapped.update(updater);
+  Future<void> update({
+    required FitEditAction action,
+    required FitStorage Function(FitStorage) updater,
+  }) => wrapped.update(action: action, transform: updater);
 
-  Future<void> setCharacter(String characterId) =>
-      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(characterId: characterId)));
+  Future<void> setCharacter(String characterId) => wrapped.update(
+    action: FitEditAction.setCharacter(characterId: characterId),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(characterId: characterId)),
+  );
+
+  FitSlotKind _slotKindFor(SlotIdentifier slotIdent) => switch (slotIdent) {
+    SlotIdentifierHigh _ => FitSlotKind.high,
+    SlotIdentifierMedium _ => FitSlotKind.medium,
+    SlotIdentifierLow _ => FitSlotKind.low,
+    SlotIdentifierRig _ => FitSlotKind.rig,
+    SlotIdentifierSubsystem _ => FitSlotKind.subsystem,
+    SlotIdentifierService _ => FitSlotKind.service,
+    SlotIdentifierDrone _ => FitSlotKind.drone,
+    SlotIdentifierFighter _ => FitSlotKind.fighter,
+    SlotIdentifierImplant _ => FitSlotKind.implant,
+    SlotIdentifierBooster _ => FitSlotKind.booster,
+    _ => FitSlotKind.high,
+  };
+
+  int _typeIdForSlot(SlotIdentifier slotIdent) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final slot = getSlot(fitState.fit, slotIdent).toNullable();
+    if (slot == null) return 0;
+    return _resolveOriginTypeId(fitState.fit, slot.itemId) ??
+        _resolveDisplayTypeId(fitState.fit, slot.itemId) ??
+        0;
+  }
+
+  int _typeIdForStorageItem(FitStorage fit, FitStorageItemId itemId) =>
+      _resolveOriginTypeId(fit, itemId) ?? _resolveDisplayTypeId(fit, itemId) ?? 0;
+
+  int _typeIdForDynamicItem(FitStorage fit, int dynamicItemId) {
+    final item = fit.dynamicRegistry.dynamicItems[dynamicItemId];
+    if (item == null) return 0;
+    return item.originTypeId;
+  }
+
+  int _currentTypeIdForDynamicItem(int dynamicItemId) {
+    final fitState = ref.read(fitProvider(fitId));
+    return fitState.isInitialized ? _typeIdForDynamicItem(fitState.fit, dynamicItemId) : 0;
+  }
+
+  int _typeIdForDroneIndex(int index) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final drones = fitState.fit.body.drones;
+    if (index < 0 || index >= drones.length) return 0;
+    return _typeIdForStorageItem(fitState.fit, drones[index].itemId);
+  }
+
+  int _typeIdForFighterIndex(int index) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final fighters = fitState.fit.body.fighters;
+    if (index < 0 || index >= fighters.length) return 0;
+    return _typeIdForStorageItem(fitState.fit, fighters[index].itemId);
+  }
+
+  int _currentDroneQuantity(int index) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final drones = fitState.fit.body.drones;
+    if (index < 0 || index >= drones.length) return 0;
+    return drones[index].quantity;
+  }
+
+  int _currentFighterQuantity(int index) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final fighters = fitState.fit.body.fighters;
+    if (index < 0 || index >= fighters.length) return 0;
+    return fighters[index].quantity;
+  }
 
   int _allocateDynamicItemId(FitStorage fit) => allocateDynamicItemId(fit);
 
@@ -196,64 +271,80 @@ class FitWrapper {
   // each implant still comes from bundle metadata. We therefore keep array
   // storage while resolving the logical slot from the fitted type whenever the
   // UI needs slot-aware behavior.
-  Future<void> setImplant(int index, int typeId) => wrapped.update((fit) {
-    final implants = fit.body.implants.toList();
-    final implant = FitImplantItem(
-      itemId: FitStorageItemId.item(id: typeId),
-      state: FitItemState.online,
-    );
+  Future<void> setImplant(int index, int typeId) => wrapped.update(
+    action: FitEditAction.setImplant(typeId: typeId, slotId: index),
+    transform: (fit) {
+      final implants = fit.body.implants.toList();
+      final implant = FitImplantItem(
+        itemId: FitStorageItemId.item(id: typeId),
+        state: FitItemState.online,
+      );
 
-    if (index < 0) return fit;
-    if (index < implants.length) {
-      implants[index] = implant;
-    } else if (index == implants.length) {
-      implants.add(implant);
-    } else {
-      warning("Cannot set implant at sparse index $index with current fit storage layout");
-      return fit;
-    }
+      if (index < 0) return fit;
+      if (index < implants.length) {
+        implants[index] = implant;
+      } else if (index == implants.length) {
+        implants.add(implant);
+      } else {
+        warning("Cannot set implant at sparse index $index with current fit storage layout");
+        return fit;
+      }
 
-    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
-  });
+      return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+    },
+  );
 
-  Future<void> removeImplant(int index) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.implants.length) return fit;
-    final implants = fit.body.implants.toList()..removeAt(index);
-    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
-  });
+  Future<void> removeImplant(int index) => wrapped.update(
+    action: FitEditAction.removeImplant(slotId: index),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.implants.length) return fit;
+      final implants = fit.body.implants.toList()..removeAt(index);
+      return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+    },
+  );
 
-  Future<void> clearImplants() =>
-      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(implants: IList())));
+  Future<void> clearImplants() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.implant),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(implants: IList())),
+  );
 
   // Boosters already carry their own slot id in storage, so replacement is
   // keyed by that slot instead of by list position.
-  Future<void> setBooster(int slotId, int typeId) => wrapped.update((fit) {
-    final boosters = fit.body.boosters.toList();
-    final newBooster = FitBoosterItem(
-      itemId: FitStorageItemId.item(id: typeId),
-      index: slotId,
-      state: FitItemState.online,
-    );
-    final existingIndex = boosters.indexWhere((booster) => booster.index == slotId);
+  Future<void> setBooster(int slotId, int typeId) => wrapped.update(
+    action: FitEditAction.setBooster(typeId: typeId),
+    transform: (fit) {
+      final boosters = fit.body.boosters.toList();
+      final newBooster = FitBoosterItem(
+        itemId: FitStorageItemId.item(id: typeId),
+        index: slotId,
+        state: FitItemState.online,
+      );
+      final existingIndex = boosters.indexWhere((booster) => booster.index == slotId);
 
-    if (existingIndex >= 0) {
-      boosters[existingIndex] = newBooster;
-    } else {
-      boosters
-        ..add(newBooster)
-        ..sort((left, right) => left.index.compareTo(right.index));
-    }
+      if (existingIndex >= 0) {
+        boosters[existingIndex] = newBooster;
+      } else {
+        boosters
+          ..add(newBooster)
+          ..sort((left, right) => left.index.compareTo(right.index));
+      }
 
-    return fit.copyWith(body: fit.body.copyWith(boosters: boosters.toIList()));
-  });
+      return fit.copyWith(body: fit.body.copyWith(boosters: boosters.toIList()));
+    },
+  );
 
-  Future<void> removeBooster(int slotId) => wrapped.update((fit) {
-    final boosters = fit.body.boosters.where((booster) => booster.index != slotId).toIList();
-    return fit.copyWith(body: fit.body.copyWith(boosters: boosters));
-  });
+  Future<void> removeBooster(int slotId) => wrapped.update(
+    action: FitEditAction.removeBooster(slotId: slotId),
+    transform: (fit) {
+      final boosters = fit.body.boosters.where((booster) => booster.index != slotId).toIList();
+      return fit.copyWith(body: fit.body.copyWith(boosters: boosters));
+    },
+  );
 
-  Future<void> clearBoosters() =>
-      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(boosters: IList())));
+  Future<void> clearBoosters() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.booster),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(boosters: IList())),
+  );
 
   // ---- System buffs (environmental effects) ----
 
@@ -261,11 +352,17 @@ class FitWrapper {
   /// the active snapshot by the caller. Entries of the same preset are
   /// replaced; entries of other presets and custom entries are kept.
   Future<void> setSystemEffectPreset(String presetId, List<FitSystemBuff> presetBuffs) =>
-      wrapped.update((fit) {
-        final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toList()
-          ..addAll(presetBuffs);
-        return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
-      });
+      wrapped.update(
+        action: FitEditAction.systemEffectPreset(
+          presetId: presetId,
+          operation: FitEditOperation.apply,
+        ),
+        transform: (fit) {
+          final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toList()
+            ..addAll(presetBuffs);
+          return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+        },
+      );
 
   /// Atomically swaps [previousPresetId]'s entries for [presetBuffs] of
   /// [presetId], so re-picking a row's preset never leaves both active.
@@ -273,56 +370,79 @@ class FitWrapper {
     String previousPresetId,
     String presetId,
     List<FitSystemBuff> presetBuffs,
-  ) => wrapped.update((fit) {
-    final buffs =
-        fit.body.systemBuffs
-            .where((b) => b.presetId != previousPresetId && b.presetId != presetId)
-            .toList()
-          ..addAll(presetBuffs);
-    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
-  });
+  ) => wrapped.update(
+    action: FitEditAction.systemEffectPreset(presetId: presetId, operation: FitEditOperation.apply),
+    transform: (fit) {
+      final buffs =
+          fit.body.systemBuffs
+              .where((b) => b.presetId != previousPresetId && b.presetId != presetId)
+              .toList()
+            ..addAll(presetBuffs);
+      return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+    },
+  );
 
-  Future<void> removeSystemEffectPreset(String presetId) => wrapped.update((fit) {
-    final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toIList();
-    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
-  });
+  Future<void> removeSystemEffectPreset(String presetId) => wrapped.update(
+    action: FitEditAction.systemEffectPreset(
+      presetId: presetId,
+      operation: FitEditOperation.remove,
+    ),
+    transform: (fit) {
+      final buffs = fit.body.systemBuffs.where((b) => b.presetId != presetId).toIList();
+      return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+    },
+  );
 
   /// Adds a custom buff entry, replacing any existing custom entry for the
   /// same buff.
-  Future<void> addCustomSystemBuff(int buffId, double value) => wrapped.update((fit) {
-    final buffs =
-        fit.body.systemBuffs.where((b) => b.presetId != null || b.buffId != buffId).toList()
-          ..add(FitSystemBuff(buffId: buffId, value: value));
-    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
-  });
+  Future<void> addCustomSystemBuff(int buffId, double value) => wrapped.update(
+    action: FitEditAction.systemBuff(buffId: buffId, operation: FitEditOperation.add),
+    transform: (fit) {
+      final buffs =
+          fit.body.systemBuffs.where((b) => b.presetId != null || b.buffId != buffId).toList()
+            ..add(FitSystemBuff(buffId: buffId, value: value));
+      return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs.toIList()));
+    },
+  );
 
   /// Updates the strength of a custom buff entry.
-  Future<void> updateCustomSystemBuff(int buffId, double value) => wrapped.update((fit) {
-    final buffs = fit.body.systemBuffs
-        .map((b) => b.presetId == null && b.buffId == buffId ? b.copyWith(value: value) : b)
-        .toIList();
-    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
-  });
+  Future<void> updateCustomSystemBuff(int buffId, double value) => wrapped.update(
+    action: FitEditAction.systemBuff(buffId: buffId, operation: FitEditOperation.update),
+    transform: (fit) {
+      final buffs = fit.body.systemBuffs
+          .map((b) => b.presetId == null && b.buffId == buffId ? b.copyWith(value: value) : b)
+          .toIList();
+      return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+    },
+  );
 
-  Future<void> removeCustomSystemBuff(int buffId) => wrapped.update((fit) {
-    final buffs = fit.body.systemBuffs
-        .where((b) => b.presetId != null || b.buffId != buffId)
-        .toIList();
-    return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
-  });
+  Future<void> removeCustomSystemBuff(int buffId) => wrapped.update(
+    action: FitEditAction.systemBuff(buffId: buffId, operation: FitEditOperation.remove),
+    transform: (fit) {
+      final buffs = fit.body.systemBuffs
+          .where((b) => b.presetId != null || b.buffId != buffId)
+          .toIList();
+      return fit.copyWith(body: fit.body.copyWith(systemBuffs: buffs));
+    },
+  );
 
-  Future<void> clearSystemBuffs() =>
-      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(systemBuffs: IList())));
+  Future<void> clearSystemBuffs() => wrapped.update(
+    action: const FitEditAction.clearSystemBuffs(),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(systemBuffs: IList())),
+  );
 
   // ---- Pilot security status ----
 
   /// Sets the pilot security status driving security-status-scaling hull
   /// bonuses (CONCORD/AT ships); clamped to the effective in-game
   /// -10.0..=5.0 range (+5 is the maximum reachable security status).
-  Future<void> setSecurityStatus(double value) => wrapped.update((fit) {
-    final clamped = value.clamp(-10.0, 5.0);
-    return fit.copyWith(body: fit.body.copyWith(securityStatus: clamped));
-  });
+  Future<void> setSecurityStatus(double value) => wrapped.update(
+    action: FitEditAction.setSecurityStatus(value: value),
+    transform: (fit) {
+      final clamped = value.clamp(-10.0, 5.0);
+      return fit.copyWith(body: fit.body.copyWith(securityStatus: clamped));
+    },
+  );
 
   int? findImplantStorageIndex(FitStorage fit, int slotId, WidgetRef ref) {
     final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
@@ -342,73 +462,109 @@ class FitWrapper {
     return null;
   }
 
-  Future<void> equipImplantForSlot(int slotId, int typeId, WidgetRef ref) => wrapped.update((fit) {
-    final implants = fit.body.implants.toList();
-    final implant = FitImplantItem(
-      itemId: FitStorageItemId.item(id: typeId),
-      state: FitItemState.online,
-    );
-    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+  Future<void> equipImplantForSlot(int slotId, int typeId, WidgetRef ref) => wrapped.update(
+    action: FitEditAction.setImplant(typeId: typeId, slotId: slotId),
+    transform: (fit) {
+      final implants = fit.body.implants.toList();
+      final implant = FitImplantItem(
+        itemId: FitStorageItemId.item(id: typeId),
+        state: FitItemState.online,
+      );
+      final existingIndex = findImplantStorageIndex(fit, slotId, ref);
 
-    if (existingIndex == null) {
-      implants.add(implant);
-    } else {
-      implants[existingIndex] = implant;
-    }
+      if (existingIndex == null) {
+        implants.add(implant);
+      } else {
+        implants[existingIndex] = implant;
+      }
 
-    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
-  });
+      return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+    },
+  );
 
-  Future<void> removeImplantForSlot(int slotId, WidgetRef ref) => wrapped.update((fit) {
-    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
-    if (existingIndex == null) return fit;
-    final implants = fit.body.implants.toList()..removeAt(existingIndex);
-    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
-  });
+  Future<void> removeImplantForSlot(int slotId, WidgetRef ref) => wrapped.update(
+    action: FitEditAction.removeImplant(slotId: slotId),
+    transform: (fit) {
+      final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+      if (existingIndex == null) return fit;
+      final implants = fit.body.implants.toList()..removeAt(existingIndex);
+      return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+    },
+  );
 
   // Applies a whole implant set in a single update: set members replace any
   // implant occupying one of the set's slots; implants in other slots are kept.
-  Future<void> applyImplantSet(Iterable<int> memberTypeIds, WidgetRef ref) => wrapped.update((fit) {
-    final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
-    if (slotsInfo == null) return fit;
+  Future<void> applyImplantSet(int setId, Iterable<int> memberTypeIds, WidgetRef ref) =>
+      wrapped.update(
+        action: FitEditAction.applyImplantSet(setId: setId),
+        transform: (fit) {
+          final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
+          if (slotsInfo == null) return fit;
 
-    final setSlots = <int>{};
-    final members = <FitImplantItem>[];
-    for (final typeId in memberTypeIds) {
-      final slotIndex = slotsInfo.implantSlots[typeId]?.slotIndex;
-      if (slotIndex == null || slotIndex < 1) continue;
-      setSlots.add(slotIndex);
-      members.add(
-        FitImplantItem(
-          itemId: FitStorageItemId.item(id: typeId),
-          state: FitItemState.online,
-        ),
+          final setSlots = <int>{};
+          final members = <FitImplantItem>[];
+          for (final typeId in memberTypeIds) {
+            final slotIndex = slotsInfo.implantSlots[typeId]?.slotIndex;
+            if (slotIndex == null || slotIndex < 1) continue;
+            setSlots.add(slotIndex);
+            members.add(
+              FitImplantItem(
+                itemId: FitStorageItemId.item(id: typeId),
+                state: FitItemState.online,
+              ),
+            );
+          }
+          if (members.isEmpty) return fit;
+
+          final kept = fit.body.implants.where((implant) {
+            final typeId = switch (implant.itemId) {
+              FitStorageItemIdItem(:final id) => id,
+              _ => null,
+            };
+            final slotIndex = typeId == null ? null : slotsInfo.implantSlots[typeId]?.slotIndex;
+            return slotIndex == null || !setSlots.contains(slotIndex);
+          });
+
+          return fit.copyWith(body: fit.body.copyWith(implants: IList([...kept, ...members])));
+        },
       );
-    }
-    if (members.isEmpty) return fit;
 
-    final kept = fit.body.implants.where((implant) {
-      final typeId = switch (implant.itemId) {
-        FitStorageItemIdItem(:final id) => id,
-        _ => null,
-      };
-      final slotIndex = typeId == null ? null : slotsInfo.implantSlots[typeId]?.slotIndex;
-      return slotIndex == null || !setSlots.contains(slotIndex);
-    });
+  Future<void> toggleImplantForSlot(int slotId, WidgetRef ref) {
+    final typeId = _implantTypeIdForSlot(slotId, ref);
+    return wrapped.update(
+      action: FitEditAction.toggleModuleState(
+        typeId: typeId,
+        online: _implantOnlineAfterToggle(slotId, ref),
+      ),
+      transform: (fit) {
+        final existingIndex = findImplantStorageIndex(fit, slotId, ref);
+        if (existingIndex == null) return fit;
 
-    return fit.copyWith(body: fit.body.copyWith(implants: IList([...kept, ...members])));
-  });
-
-  Future<void> toggleImplantForSlot(int slotId, WidgetRef ref) => wrapped.update((fit) {
-    final existingIndex = findImplantStorageIndex(fit, slotId, ref);
-    if (existingIndex == null) return fit;
-
-    final implants = fit.body.implants.toList();
-    implants[existingIndex] = implants[existingIndex].copyWith(
-      state: implants[existingIndex].state.toggle(FitItemState.online),
+        final implants = fit.body.implants.toList();
+        implants[existingIndex] = implants[existingIndex].copyWith(
+          state: implants[existingIndex].state.toggle(FitItemState.online),
+        );
+        return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
+      },
     );
-    return fit.copyWith(body: fit.body.copyWith(implants: implants.toIList()));
-  });
+  }
+
+  int _implantTypeIdForSlot(int slotId, WidgetRef ref) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return 0;
+    final index = findImplantStorageIndex(fitState.fit, slotId, ref);
+    if (index == null || index < 0 || index >= fitState.fit.body.implants.length) return 0;
+    return _typeIdForStorageItem(fitState.fit, fitState.fit.body.implants[index].itemId);
+  }
+
+  bool _implantOnlineAfterToggle(int slotId, WidgetRef ref) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return true;
+    final index = findImplantStorageIndex(fitState.fit, slotId, ref);
+    if (index == null || index < 0 || index >= fitState.fit.body.implants.length) return true;
+    final state = fitState.fit.body.implants[index].state;
+    return state.toggle(FitItemState.online) != FitItemState.passive;
+  }
 
   Option<FitModuleItem> getImplantAsModule(FitStorage fit, int index) {
     if (index < 0 || index >= fit.body.implants.length) return const Option.none();
@@ -473,26 +629,34 @@ class FitWrapper {
             ),
           );
           if (ship == null) return;
-          await wrapped.update((fit) {
-            final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
-              type.index,
-              (_) => Option.of(
-                FitModuleItem(
-                  itemId: FitStorageItemId.item(id: proto.typeId),
-                  charge: const Option.none(),
-                  state: FitItemState.online,
+          await wrapped.update(
+            action: FitEditAction.equipModule(
+              typeId: proto.typeId,
+              slotKind: FitSlotKind.subsystem,
+            ),
+            transform: (fit) {
+              final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+                type.index,
+                (_) => Option.of(
+                  FitModuleItem(
+                    itemId: FitStorageItemId.item(id: proto.typeId),
+                    charge: const Option.none(),
+                    state: FitItemState.online,
+                  ),
                 ),
-              ),
-            );
-            final afterEquip = fit.copyWith(
-              body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
-            );
-            return applySubsystemResize(
-              afterEquip,
-              ship,
-              (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
-            );
-          });
+              );
+              final afterEquip = fit.copyWith(
+                body: fit.body.copyWith(
+                  slots: fit.body.slots.copyWith(subsystem: updatedSubsystem),
+                ),
+              );
+              return applySubsystemResize(
+                afterEquip,
+                ship,
+                (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
+              );
+            },
+          );
         }
       case SlotIdentifierService(:final index):
         final proto = slotsInfo.serviceSlots[typeId];
@@ -514,60 +678,72 @@ class FitWrapper {
       return;
     }
 
-    await wrapped.update((fit) {
-      final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
-      if (slotsInfo == null) return fit;
+    final currentFit = ref.read(fitProvider(fitId));
+    final currentSlot = currentFit.isInitialized
+        ? getSlot(currentFit.fit, slotIdent).toNullable()
+        : null;
+    final actionTypeId = currentSlot == null
+        ? 0
+        : _typeIdForStorageItem(currentFit.fit, currentSlot.itemId);
+    final actionOnline = currentSlot == null || currentSlot.state == FitItemState.passive;
 
-      final slotOpt = getSlot(fit, slotIdent);
-      if (slotOpt.isNone()) return fit;
+    await wrapped.update(
+      action: FitEditAction.toggleModuleState(typeId: actionTypeId, online: actionOnline),
+      transform: (fit) {
+        final slotsInfo = ref.read(repoCollectionProvider.select((c) => c?.slots));
+        if (slotsInfo == null) return fit;
 
-      final slot = slotOpt.toNullable()!;
-      final typeId = _resolveOriginTypeId(fit, slot.itemId);
-      if (typeId == null) {
-        final message =
-            "Missing origin type for slot toggle: slotIdent=$slotIdent, itemId=${slot.itemId}";
-        warning(message);
-        if (kDebugMode) {
-          throw StateError(message);
-        }
-        return fit;
-      }
+        final slotOpt = getSlot(fit, slotIdent);
+        if (slotOpt.isNone()) return fit;
 
-      switch (slotIdent) {
-        case SlotIdentifierHigh(:final index):
-          final proto = slotsInfo.highSlots[typeId];
-          if (proto == null) return fit;
-          return toggleHighSlot(fit, index, slot, proto);
-        case SlotIdentifierMedium(:final index):
-          final proto = slotsInfo.mediumSlots[typeId];
-          if (proto == null) return fit;
-          return toggleMediumSlot(fit, index, slot, proto);
-        case SlotIdentifierLow(:final index):
-          final proto = slotsInfo.lowSlots[typeId];
-          if (proto == null) return fit;
-          return toggleLowSlot(fit, index, slot, proto);
-        case SlotIdentifierRig(:final index):
-          final proto = slotsInfo.rigSlots[typeId];
-          if (proto == null) return fit;
-          return toggleRigSlot(fit, index, slot, proto);
-        case SlotIdentifierSubsystem(:final type):
-          final proto = slotsInfo.subsystemSlots[typeId];
-          if (proto == null) return fit;
-          return toggleSubsystemSlot(fit, type, slot, proto);
-        case SlotIdentifierService(:final index):
-          final proto = slotsInfo.serviceSlots[typeId];
-          if (proto == null) return fit;
-          return toggleServiceSlot(fit, index, slot, proto);
-        case SlotIdentifierDrone(:final index):
-          return toggleDroneSlot(fit, slot, index);
-        case SlotIdentifierImplant(:final index):
-          return toggleImplantSlot(fit, slot, index);
-        case SlotIdentifierBooster(:final slotId):
-          return toggleBoosterSlot(fit, slot, slotId);
-        default:
+        final slot = slotOpt.toNullable()!;
+        final typeId = _resolveOriginTypeId(fit, slot.itemId);
+        if (typeId == null) {
+          final message =
+              "Missing origin type for slot toggle: slotIdent=$slotIdent, itemId=${slot.itemId}";
+          warning(message);
+          if (kDebugMode) {
+            throw StateError(message);
+          }
           return fit;
-      }
-    });
+        }
+
+        switch (slotIdent) {
+          case SlotIdentifierHigh(:final index):
+            final proto = slotsInfo.highSlots[typeId];
+            if (proto == null) return fit;
+            return toggleHighSlot(fit, index, slot, proto);
+          case SlotIdentifierMedium(:final index):
+            final proto = slotsInfo.mediumSlots[typeId];
+            if (proto == null) return fit;
+            return toggleMediumSlot(fit, index, slot, proto);
+          case SlotIdentifierLow(:final index):
+            final proto = slotsInfo.lowSlots[typeId];
+            if (proto == null) return fit;
+            return toggleLowSlot(fit, index, slot, proto);
+          case SlotIdentifierRig(:final index):
+            final proto = slotsInfo.rigSlots[typeId];
+            if (proto == null) return fit;
+            return toggleRigSlot(fit, index, slot, proto);
+          case SlotIdentifierSubsystem(:final type):
+            final proto = slotsInfo.subsystemSlots[typeId];
+            if (proto == null) return fit;
+            return toggleSubsystemSlot(fit, type, slot, proto);
+          case SlotIdentifierService(:final index):
+            final proto = slotsInfo.serviceSlots[typeId];
+            if (proto == null) return fit;
+            return toggleServiceSlot(fit, index, slot, proto);
+          case SlotIdentifierDrone(:final index):
+            return toggleDroneSlot(fit, slot, index);
+          case SlotIdentifierImplant(:final index):
+            return toggleImplantSlot(fit, slot, index);
+          case SlotIdentifierBooster(:final slotId):
+            return toggleBoosterSlot(fit, slot, slotId);
+          default:
+            return fit;
+        }
+      },
+    );
   }
 
   Future<void> clearSlot(SlotIdentifier slotIdent) async {
@@ -644,33 +820,40 @@ class FitWrapper {
           repoCollectionProvider.select((c) => c?.getShip(fitState.fit.body.shipTypeId)),
         );
         if (ship == null) return;
-        await wrapped.update((fit) {
-          final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
-            type.index,
-            (_) => const Option.none(),
-          );
-          final afterRemove = fit.copyWith(
-            body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
-          );
-          return applySubsystemResize(
-            afterRemove,
-            ship,
-            (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
-          );
-        });
+        final typeId = _typeIdForSlot(slotIdent);
+        await wrapped.update(
+          action: FitEditAction.removeModule(typeId: typeId, slotKind: FitSlotKind.subsystem),
+          transform: (fit) {
+            final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+              type.index,
+              (_) => const Option.none(),
+            );
+            final afterRemove = fit.copyWith(
+              body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
+            );
+            return applySubsystemResize(
+              afterRemove,
+              ship,
+              (id) => ref.read(repoCollectionProvider.select((c) => c?.getSubsystem(id))),
+            );
+          },
+        );
       default:
         await removeSlot(slotIdent, ref);
     }
   }
 
-  Future<void> clearSubsystemAdjusted(Ship ship) => wrapped.update((fit) {
-    final cleared = fit.copyWith(
-      body: fit.body.copyWith(
-        slots: fit.body.slots.copyWith(subsystem: emptySlotList(fit.body.slots.subsystem.length)),
-      ),
-    );
-    return applySubsystemResize(cleared, ship, (_) => null);
-  });
+  Future<void> clearSubsystemAdjusted(Ship ship) => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.subsystem),
+    transform: (fit) {
+      final cleared = fit.copyWith(
+        body: fit.body.copyWith(
+          slots: fit.body.slots.copyWith(subsystem: emptySlotList(fit.body.slots.subsystem.length)),
+        ),
+      );
+      return applySubsystemResize(cleared, ship, (_) => null);
+    },
+  );
 
   Future<void> setSlotCharge(SlotIdentifier slotIdent, int chargeTypeId) async {
     switch (slotIdent) {
@@ -701,7 +884,8 @@ class FitWrapper {
   /// Set the number of completed damage ramp-up cycles (damage turns) of a
   /// precursor turret in a slot (0 = first shot, base damage).
   Future<void> setSlotDamageTurns(SlotIdentifier slotIdent, int damageTurns) => wrapped.update(
-    (fit) => updateSlot(
+    action: FitEditAction.setDamageTurns(typeId: _typeIdForSlot(slotIdent), turns: damageTurns),
+    transform: (fit) => updateSlot(
       fit,
       slotIdent,
       (slotOpt) => slotOpt.map((slot) => slot.copyWith(damageTurns: damageTurns)),
@@ -709,192 +893,234 @@ class FitWrapper {
   );
 
   Future<void> copySlot(SlotIdentifier fromIdent, SlotIdentifier toIdent) async {
-    await wrapped.update((fit) {
-      final fromSlot = getSlot(fit, fromIdent);
-      if (fromSlot.isNone()) return fit;
+    await wrapped.update(
+      action: FitEditAction.copyModule(
+        typeId: _typeIdForSlot(fromIdent),
+        slotKind: _slotKindFor(toIdent),
+      ),
+      transform: (fit) {
+        final fromSlot = getSlot(fit, fromIdent);
+        if (fromSlot.isNone()) return fit;
 
-      final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
+        final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
 
-      return updateSlot(updatedFit, toIdent, (_) => Option.of(clonedSlot));
-    });
+        return updateSlot(updatedFit, toIdent, (_) => Option.of(clonedSlot));
+      },
+    );
   }
 
   Future<void> copySlotToNext(SlotIdentifier slotIdent) async {
-    await wrapped.update((fit) {
-      final fromSlot = getSlot(fit, slotIdent);
-      if (fromSlot.isNone()) return fit;
+    await wrapped.update(
+      action: FitEditAction.copyModule(
+        typeId: _typeIdForSlot(slotIdent),
+        slotKind: _slotKindFor(slotIdent),
+      ),
+      transform: (fit) {
+        final fromSlot = getSlot(fit, slotIdent);
+        if (fromSlot.isNone()) return fit;
 
-      final slots = getSlotList(fit, slotIdent);
-      final currentIndex = slotIdent.asIndexed;
+        final slots = getSlotList(fit, slotIdent);
+        final currentIndex = slotIdent.asIndexed;
 
-      int? targetIndex;
+        int? targetIndex;
 
-      for (int i = currentIndex + 1; i < slots.length; i++) {
-        if (slots[i].isNone()) {
-          targetIndex = i;
-          break;
-        }
-      }
-
-      if (targetIndex == null) {
-        for (int i = 0; i < currentIndex; i++) {
+        for (int i = currentIndex + 1; i < slots.length; i++) {
           if (slots[i].isNone()) {
             targetIndex = i;
             break;
           }
         }
-      }
 
-      if (targetIndex == null) return fit;
+        if (targetIndex == null) {
+          for (int i = 0; i < currentIndex; i++) {
+            if (slots[i].isNone()) {
+              targetIndex = i;
+              break;
+            }
+          }
+        }
 
-      final targetIdent = createSlotIdentifier(slotIdent, targetIndex);
-      final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
+        if (targetIndex == null) return fit;
 
-      return updateSlot(updatedFit, targetIdent, (_) => Option.of(clonedSlot));
-    });
+        final targetIdent = createSlotIdentifier(slotIdent, targetIndex);
+        final (updatedFit, clonedSlot) = _cloneModuleItem(fit, fromSlot.toNullable()!);
+
+        return updateSlot(updatedFit, targetIdent, (_) => Option.of(clonedSlot));
+      },
+    );
   }
 
   Future<void> setDynamicAttributeFactor(int dynamicItemId, int attributeId, double factor) =>
-      wrapped.update((fit) {
-        final updatedFit = _updateDynamicItem(
-          fit,
-          dynamicItemId,
-          (dynamicItem) => dynamicItem.copyWith(
-            dynamicAttributes: dynamicItem.dynamicAttributes.add(attributeId, factor),
-          ),
-        );
-        return updatedFit ?? fit;
-      });
-
-  Future<void> resetDynamicAttributes(int dynamicItemId) => wrapped.update((fit) {
-    final updatedFit = _updateDynamicItem(
-      fit,
-      dynamicItemId,
-      (dynamicItem) => dynamicItem.copyWith(
-        dynamicAttributes: IMap.fromEntries(
-          dynamicItem.dynamicAttributes.keys.map(
-            (attributeId) => MapEntry<int, double>(attributeId, 1),
-          ),
+      wrapped.update(
+        action: FitEditAction.editDynamicAttributes(
+          typeId: _currentTypeIdForDynamicItem(dynamicItemId),
         ),
-      ),
-    );
-    return updatedFit ?? fit;
-  });
-
-  Future<void> randomizeDynamicAttributes(int dynamicItemId) => wrapped.update((fit) {
-    final dynamicItem = _dynamicItemForId(fit, dynamicItemId);
-    if (dynamicItem == null) {
-      warning("Missing dynamic item $dynamicItemId while randomizing fit item");
-      return fit;
-    }
-
-    final dynamicMutator = ref
-        .read(repoCollectionProvider)
-        ?.getDynamicMutator(dynamicItem.modifierTypeId);
-    if (dynamicMutator == null) {
-      warning(
-        "Missing dynamic mutator ${dynamicItem.modifierTypeId} while randomizing fit item $dynamicItemId",
+        transform: (fit) {
+          final updatedFit = _updateDynamicItem(
+            fit,
+            dynamicItemId,
+            (dynamicItem) => dynamicItem.copyWith(
+              dynamicAttributes: dynamicItem.dynamicAttributes.add(attributeId, factor),
+            ),
+          );
+          return updatedFit ?? fit;
+        },
       );
-      return fit;
-    }
 
-    return _storeDynamicItem(
-      fit,
-      dynamicItem.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
-    );
-  });
-
-  Future<void> convertSlotToDynamic(SlotIdentifier slotIdent, int modifierTypeId, WidgetRef ref) =>
-      wrapped.update((fit) {
-        final slotOpt = getSlot(fit, slotIdent);
-        if (slotOpt.isNone()) return fit;
-
-        final slot = slotOpt.toNullable()!;
-        if (slot.itemId is FitStorageItemIdDynamic) return fit;
-
-        final originTypeId = _resolveOriginTypeId(fit, slot.itemId);
-        if (originTypeId == null) return fit;
-
-        final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
-        if (dynamicMutator == null) return fit;
-        if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
-
-        final dynamicItemId = _allocateDynamicItemId(fit);
-        final dynamicItem = FitDynamicItem(
-          dynamicItemId: dynamicItemId,
-          originTypeId: originTypeId,
-          typeId: dynamicMutator.resultingTypeId,
-          modifierTypeId: modifierTypeId,
+  Future<void> resetDynamicAttributes(int dynamicItemId) => wrapped.update(
+    action: FitEditAction.editDynamicAttributes(
+      typeId: _currentTypeIdForDynamicItem(dynamicItemId),
+    ),
+    transform: (fit) {
+      final updatedFit = _updateDynamicItem(
+        fit,
+        dynamicItemId,
+        (dynamicItem) => dynamicItem.copyWith(
           dynamicAttributes: IMap.fromEntries(
-            dynamicMutator.attributes.keys.map(
+            dynamicItem.dynamicAttributes.keys.map(
               (attributeId) => MapEntry<int, double>(attributeId, 1),
             ),
           ),
-        );
-        final updatedFit = fit.copyWith(
-          dynamicRegistry: fit.dynamicRegistry.copyWith(
-            dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItemId, dynamicItem),
-          ),
-        );
-
-        return updateSlot(
-          updatedFit,
-          slotIdent,
-          (_) =>
-              Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
-        );
-      });
-
-  Future<void> revertSlotFromDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
-    final slotOpt = getSlot(fit, slotIdent);
-    if (slotOpt.isNone()) return fit;
-
-    final slot = slotOpt.toNullable()!;
-    return slot.itemId.when(
-      item: (_) => fit,
-      dynamic: (dynamicId) {
-        final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
-        if (dynamicItem == null) return fit;
-        return updateSlot(
-          fit,
-          slotIdent,
-          (_) =>
-              Option.of(slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId))),
-        );
-      },
-    );
-  });
-
-  Future<void> fillSlotsFromSlot(SlotIdentifier slotIdent) => wrapped.update((fit) {
-    final sourceOpt = getSlot(fit, slotIdent);
-    if (sourceOpt.isNone()) return fit;
-    final source = sourceOpt.toNullable()!;
-
-    final collection = ref.read(repoCollectionProvider);
-    if (collection == null) return fit;
-
-    final originTypeId = _resolveOriginTypeId(fit, source.itemId);
-    if (originTypeId == null) return fit;
-    final type = collection.getType(originTypeId);
-    if (type == null) return fit;
-
-    var remaining = _fillLimitForSlot(fit, slotIdent, originTypeId, type, collection);
-    if (remaining <= 0) return fit;
-
-    final slots = getSlotList(fit, slotIdent);
-    var updatedFit = fit;
-    for (var i = 0; i < slots.length && remaining > 0; i++) {
-      if (slots[i].isSome()) continue;
-      final (nextFit, cloned) = _cloneModuleItem(updatedFit, source);
-      updatedFit = updateSlot(
-        nextFit,
-        createSlotIdentifier(slotIdent, i),
-        (_) => Option.of(cloned),
+        ),
       );
-      remaining--;
-    }
-    return updatedFit;
-  });
+      return updatedFit ?? fit;
+    },
+  );
+
+  Future<void> randomizeDynamicAttributes(int dynamicItemId) => wrapped.update(
+    action: FitEditAction.editDynamicAttributes(
+      typeId: _currentTypeIdForDynamicItem(dynamicItemId),
+    ),
+    transform: (fit) {
+      final dynamicItem = _dynamicItemForId(fit, dynamicItemId);
+      if (dynamicItem == null) {
+        warning("Missing dynamic item $dynamicItemId while randomizing fit item");
+        return fit;
+      }
+
+      final dynamicMutator = ref
+          .read(repoCollectionProvider)
+          ?.getDynamicMutator(dynamicItem.modifierTypeId);
+      if (dynamicMutator == null) {
+        warning(
+          "Missing dynamic mutator ${dynamicItem.modifierTypeId} while randomizing fit item $dynamicItemId",
+        );
+        return fit;
+      }
+
+      return _storeDynamicItem(
+        fit,
+        dynamicItem.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+      );
+    },
+  );
+
+  Future<void> convertSlotToDynamic(
+    SlotIdentifier slotIdent,
+    int modifierTypeId,
+    WidgetRef ref,
+  ) => wrapped.update(
+    action: FitEditAction.convertDynamic(typeId: _typeIdForSlot(slotIdent)),
+    transform: (fit) {
+      final slotOpt = getSlot(fit, slotIdent);
+      if (slotOpt.isNone()) return fit;
+
+      final slot = slotOpt.toNullable()!;
+      if (slot.itemId is FitStorageItemIdDynamic) return fit;
+
+      final originTypeId = _resolveOriginTypeId(fit, slot.itemId);
+      if (originTypeId == null) return fit;
+
+      final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+      if (dynamicMutator == null) return fit;
+      if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+      final dynamicItemId = _allocateDynamicItemId(fit);
+      final dynamicItem = FitDynamicItem(
+        dynamicItemId: dynamicItemId,
+        originTypeId: originTypeId,
+        typeId: dynamicMutator.resultingTypeId,
+        modifierTypeId: modifierTypeId,
+        dynamicAttributes: IMap.fromEntries(
+          dynamicMutator.attributes.keys.map(
+            (attributeId) => MapEntry<int, double>(attributeId, 1),
+          ),
+        ),
+      );
+      final updatedFit = fit.copyWith(
+        dynamicRegistry: fit.dynamicRegistry.copyWith(
+          dynamicItems: fit.dynamicRegistry.dynamicItems.add(dynamicItemId, dynamicItem),
+        ),
+      );
+
+      return updateSlot(
+        updatedFit,
+        slotIdent,
+        (_) => Option.of(slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId))),
+      );
+    },
+  );
+
+  Future<void> revertSlotFromDynamic(SlotIdentifier slotIdent) => wrapped.update(
+    action: FitEditAction.revertDynamic(typeId: _typeIdForSlot(slotIdent)),
+    transform: (fit) {
+      final slotOpt = getSlot(fit, slotIdent);
+      if (slotOpt.isNone()) return fit;
+
+      final slot = slotOpt.toNullable()!;
+      return slot.itemId.when(
+        item: (_) => fit,
+        dynamic: (dynamicId) {
+          final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+          if (dynamicItem == null) return fit;
+          return updateSlot(
+            fit,
+            slotIdent,
+            (_) => Option.of(
+              slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId)),
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  Future<void> fillSlotsFromSlot(SlotIdentifier slotIdent) => wrapped.update(
+    action: FitEditAction.fillModules(
+      typeId: _typeIdForSlot(slotIdent),
+      slotKind: _slotKindFor(slotIdent),
+    ),
+    transform: (fit) {
+      final sourceOpt = getSlot(fit, slotIdent);
+      if (sourceOpt.isNone()) return fit;
+      final source = sourceOpt.toNullable()!;
+
+      final collection = ref.read(repoCollectionProvider);
+      if (collection == null) return fit;
+
+      final originTypeId = _resolveOriginTypeId(fit, source.itemId);
+      if (originTypeId == null) return fit;
+      final type = collection.getType(originTypeId);
+      if (type == null) return fit;
+
+      var remaining = _fillLimitForSlot(fit, slotIdent, originTypeId, type, collection);
+      if (remaining <= 0) return fit;
+
+      final slots = getSlotList(fit, slotIdent);
+      var updatedFit = fit;
+      for (var i = 0; i < slots.length && remaining > 0; i++) {
+        if (slots[i].isSome()) continue;
+        final (nextFit, cloned) = _cloneModuleItem(updatedFit, source);
+        updatedFit = updateSlot(
+          nextFit,
+          createSlotIdentifier(slotIdent, i),
+          (_) => Option.of(cloned),
+        );
+        remaining--;
+      }
+      return updatedFit;
+    },
+  );
 
   int _fillLimitForSlot(
     FitStorage fit,
@@ -981,143 +1207,174 @@ class FitWrapper {
     return ((usedTurret, usedLauncher), (totalTurret, totalLauncher));
   }
 
-  Future<void> removeAllSlotsOfType(SlotIdentifier slotIdent) => wrapped.update((fit) {
-    final sourceOpt = getSlot(fit, slotIdent);
-    if (sourceOpt.isNone()) return fit;
-    final displayTypeId = _resolveDisplayTypeId(fit, sourceOpt.toNullable()!.itemId);
-    if (displayTypeId == null) return fit;
+  Future<void> removeAllSlotsOfType(SlotIdentifier slotIdent) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(slotIdent),
+      slotKind: _slotKindFor(slotIdent),
+    ),
+    transform: (fit) {
+      final sourceOpt = getSlot(fit, slotIdent);
+      if (sourceOpt.isNone()) return fit;
+      final displayTypeId = _resolveDisplayTypeId(fit, sourceOpt.toNullable()!.itemId);
+      if (displayTypeId == null) return fit;
 
-    final slots = getSlotList(fit, slotIdent);
-    var updatedFit = fit;
-    for (var i = 0; i < slots.length; i++) {
-      final item = slots[i].toNullable();
-      if (item == null) continue;
-      if (_resolveDisplayTypeId(updatedFit, item.itemId) != displayTypeId) continue;
-      updatedFit = updateSlot(
-        updatedFit,
-        createSlotIdentifier(slotIdent, i),
-        (_) => const Option.none(),
-      );
-    }
-    return updatedFit;
-  });
+      final slots = getSlotList(fit, slotIdent);
+      var updatedFit = fit;
+      for (var i = 0; i < slots.length; i++) {
+        final item = slots[i].toNullable();
+        if (item == null) continue;
+        if (_resolveDisplayTypeId(updatedFit, item.itemId) != displayTypeId) continue;
+        updatedFit = updateSlot(
+          updatedFit,
+          createSlotIdentifier(slotIdent, i),
+          (_) => const Option.none(),
+        );
+      }
+      return updatedFit;
+    },
+  );
+
+  bool _currentSlotHasCharge(SlotIdentifier slotIdent) {
+    final fitState = ref.read(fitProvider(fitId));
+    if (!fitState.isInitialized) return false;
+    return getSlot(fitState.fit, slotIdent).toNullable()?.charge.isSome() ?? false;
+  }
 
   Future<void> setChargeForSameType(SlotIdentifier slotIdent, int chargeTypeId) =>
       _updateSameTypeSlots(
         slotIdent,
+        FitEditAction.addCharge(
+          moduleTypeId: _typeIdForSlot(slotIdent),
+          chargeTypeId: chargeTypeId,
+          replaced: _currentSlotHasCharge(slotIdent),
+        ),
         (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
       );
 
-  Future<void> removeChargesForSameType(SlotIdentifier slotIdent) =>
-      _updateSameTypeSlots(slotIdent, (slot) => slot.copyWith(charge: const Option.none()));
+  Future<void> removeChargesForSameType(SlotIdentifier slotIdent) => _updateSameTypeSlots(
+    slotIdent,
+    FitEditAction.removeCharge(moduleTypeId: _typeIdForSlot(slotIdent)),
+    (slot) => slot.copyWith(charge: const Option.none()),
+  );
 
   Future<void> _updateSameTypeSlots(
     SlotIdentifier slotIdent,
+    FitEditAction action,
     FitModuleItem Function(FitModuleItem slot) updater,
-  ) => wrapped.update((fit) {
-    final sourceOpt = getSlot(fit, slotIdent);
-    if (sourceOpt.isNone()) return fit;
-    final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
-    if (originTypeId == null) return fit;
+  ) => wrapped.update(
+    action: action,
+    transform: (fit) {
+      final sourceOpt = getSlot(fit, slotIdent);
+      if (sourceOpt.isNone()) return fit;
+      final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
+      if (originTypeId == null) return fit;
 
-    final slots = getSlotList(fit, slotIdent);
-    var updatedFit = fit;
-    for (var i = 0; i < slots.length; i++) {
-      final item = slots[i].toNullable();
-      if (item == null) continue;
-      if (_resolveOriginTypeId(updatedFit, item.itemId) != originTypeId) continue;
-      updatedFit = updateSlot(
-        updatedFit,
-        createSlotIdentifier(slotIdent, i),
-        (slotOpt) => slotOpt.map(updater),
-      );
-    }
-    return updatedFit;
-  });
+      final slots = getSlotList(fit, slotIdent);
+      var updatedFit = fit;
+      for (var i = 0; i < slots.length; i++) {
+        final item = slots[i].toNullable();
+        if (item == null) continue;
+        if (_resolveOriginTypeId(updatedFit, item.itemId) != originTypeId) continue;
+        updatedFit = updateSlot(
+          updatedFit,
+          createSlotIdentifier(slotIdent, i),
+          (slotOpt) => slotOpt.map(updater),
+        );
+      }
+      return updatedFit;
+    },
+  );
 
-  Future<void> mutateAllSameOrigin(SlotIdentifier slotIdent, int modifierTypeId) =>
-      wrapped.update((fit) {
-        final sourceOpt = getSlot(fit, slotIdent);
-        if (sourceOpt.isNone()) return fit;
-        final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
-        if (originTypeId == null) return fit;
+  Future<void> mutateAllSameOrigin(SlotIdentifier slotIdent, int modifierTypeId) => wrapped.update(
+    action: FitEditAction.mutateDynamic(typeId: _typeIdForSlot(slotIdent)),
+    transform: (fit) {
+      final sourceOpt = getSlot(fit, slotIdent);
+      if (sourceOpt.isNone()) return fit;
+      final originTypeId = _resolveOriginTypeId(fit, sourceOpt.toNullable()!.itemId);
+      if (originTypeId == null) return fit;
 
-        final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
-        if (dynamicMutator == null) return fit;
-        if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+      final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+      if (dynamicMutator == null) return fit;
+      if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
 
-        final slots = getSlotList(fit, slotIdent);
-        var updatedFit = fit;
-        for (var i = 0; i < slots.length; i++) {
-          final slot = slots[i].toNullable();
-          if (slot == null) continue;
-          if (_resolveOriginTypeId(updatedFit, slot.itemId) != originTypeId) continue;
+      final slots = getSlotList(fit, slotIdent);
+      var updatedFit = fit;
+      for (var i = 0; i < slots.length; i++) {
+        final slot = slots[i].toNullable();
+        if (slot == null) continue;
+        if (_resolveOriginTypeId(updatedFit, slot.itemId) != originTypeId) continue;
 
-          updatedFit = slot.itemId.when(
-            item: (_) {
-              final dynamicItemId = _allocateDynamicItemId(updatedFit);
-              final dynamicItem = FitDynamicItem(
-                dynamicItemId: dynamicItemId,
-                originTypeId: originTypeId,
-                typeId: dynamicMutator.resultingTypeId,
-                modifierTypeId: modifierTypeId,
-                dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
-              );
-              final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
-              return updateSlot(
-                fitWithItem,
-                createSlotIdentifier(slotIdent, i),
-                (_) => Option.of(
-                  slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId)),
-                ),
-              );
-            },
-            dynamic: (dynamicId) {
-              final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
-              if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
-              return _storeDynamicItem(
-                updatedFit,
-                existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
-              );
-            },
-          );
-        }
-        return updatedFit;
-      });
+        updatedFit = slot.itemId.when(
+          item: (_) {
+            final dynamicItemId = _allocateDynamicItemId(updatedFit);
+            final dynamicItem = FitDynamicItem(
+              dynamicItemId: dynamicItemId,
+              originTypeId: originTypeId,
+              typeId: dynamicMutator.resultingTypeId,
+              modifierTypeId: modifierTypeId,
+              dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
+            );
+            final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
+            return updateSlot(
+              fitWithItem,
+              createSlotIdentifier(slotIdent, i),
+              (_) => Option.of(
+                slot.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId)),
+              ),
+            );
+          },
+          dynamic: (dynamicId) {
+            final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+            if (existing == null || existing.modifierTypeId != modifierTypeId) {
+              return updatedFit;
+            }
+            return _storeDynamicItem(
+              updatedFit,
+              existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+            );
+          },
+        );
+      }
+      return updatedFit;
+    },
+  );
 
-  Future<void> revertAllSameDynamic(SlotIdentifier slotIdent) => wrapped.update((fit) {
-    final sourceOpt = getSlot(fit, slotIdent);
-    if (sourceOpt.isNone()) return fit;
-    final sourceDynamic = sourceOpt.toNullable()!.itemId.when(
-      item: (_) => null,
-      dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
-    );
-    if (sourceDynamic == null) return fit;
-
-    final slots = getSlotList(fit, slotIdent);
-    var updatedFit = fit;
-    for (var i = 0; i < slots.length; i++) {
-      final slot = slots[i].toNullable();
-      if (slot == null) continue;
-      final reverted = slot.itemId.when(
+  Future<void> revertAllSameDynamic(SlotIdentifier slotIdent) => wrapped.update(
+    action: FitEditAction.revertDynamic(typeId: _typeIdForSlot(slotIdent)),
+    transform: (fit) {
+      final sourceOpt = getSlot(fit, slotIdent);
+      if (sourceOpt.isNone()) return fit;
+      final sourceDynamic = sourceOpt.toNullable()!.itemId.when(
         item: (_) => null,
-        dynamic: (dynamicId) {
-          final dynamicItem = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
-          if (dynamicItem == null) return null;
-          if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
-          if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
-          return slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
-        },
+        dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
       );
-      if (reverted == null) continue;
-      updatedFit = updateSlot(
-        updatedFit,
-        createSlotIdentifier(slotIdent, i),
-        (_) => Option.of(reverted),
-      );
-    }
-    return updatedFit;
-  });
+      if (sourceDynamic == null) return fit;
+
+      final slots = getSlotList(fit, slotIdent);
+      var updatedFit = fit;
+      for (var i = 0; i < slots.length; i++) {
+        final slot = slots[i].toNullable();
+        if (slot == null) continue;
+        final reverted = slot.itemId.when(
+          item: (_) => null,
+          dynamic: (dynamicId) {
+            final dynamicItem = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+            if (dynamicItem == null) return null;
+            if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
+            if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
+            return slot.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+          },
+        );
+        if (reverted == null) continue;
+        updatedFit = updateSlot(
+          updatedFit,
+          createSlotIdentifier(slotIdent, i),
+          (_) => Option.of(reverted),
+        );
+      }
+      return updatedFit;
+    },
+  );
 
   int? _resolveDisplayTypeId(FitStorage fit, FitStorageItemId itemId) => itemId.when(
     item: (id) => id,
@@ -1207,85 +1464,100 @@ class FitWrapper {
     _ => fit,
   };
 
-  Future<void> equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.replaceBy(
-      index,
-      (_) => Option.of(
-        FitModuleItem(
-          itemId: FitStorageItemId.item(id: slotInfo.typeId),
-          charge: const Option.none(),
-          state: slotInfo.maxState.dartImpl.limitToActive,
+  Future<void> equipHigh(int index, Slots_HighSlot slotInfo) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: slotInfo.typeId, slotKind: FitSlotKind.high),
+    transform: (fit) {
+      final updatedHigh = fit.body.slots.high.replaceBy(
+        index,
+        (_) => Option.of(
+          FitModuleItem(
+            itemId: FitStorageItemId.item(id: slotInfo.typeId),
+            charge: const Option.none(),
+            state: slotInfo.maxState.dartImpl.limitToActive,
+          ),
         ),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
-    );
-  });
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
+      );
+    },
+  );
 
-  Future<void> equipMedium(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
-    final updatedMedium = fit.body.slots.medium.replaceBy(
-      index,
-      (_) => Option.of(
-        FitModuleItem(
-          itemId: FitStorageItemId.item(id: slotInfo.typeId),
-          charge: const Option.none(),
-          state: slotInfo.maxState.dartImpl.limitToActive,
+  Future<void> equipMedium(int index, Slots_GeneralSlot slotInfo) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: slotInfo.typeId, slotKind: FitSlotKind.medium),
+    transform: (fit) {
+      final updatedMedium = fit.body.slots.medium.replaceBy(
+        index,
+        (_) => Option.of(
+          FitModuleItem(
+            itemId: FitStorageItemId.item(id: slotInfo.typeId),
+            charge: const Option.none(),
+            state: slotInfo.maxState.dartImpl.limitToActive,
+          ),
         ),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
-    );
-  });
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
+      );
+    },
+  );
 
-  Future<void> equipLow(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
-    final updatedLow = fit.body.slots.low.replaceBy(
-      index,
-      (_) => Option.of(
-        FitModuleItem(
-          itemId: FitStorageItemId.item(id: slotInfo.typeId),
-          charge: const Option.none(),
-          state: slotInfo.maxState.dartImpl.limitToActive,
+  Future<void> equipLow(int index, Slots_GeneralSlot slotInfo) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: slotInfo.typeId, slotKind: FitSlotKind.low),
+    transform: (fit) {
+      final updatedLow = fit.body.slots.low.replaceBy(
+        index,
+        (_) => Option.of(
+          FitModuleItem(
+            itemId: FitStorageItemId.item(id: slotInfo.typeId),
+            charge: const Option.none(),
+            state: slotInfo.maxState.dartImpl.limitToActive,
+          ),
         ),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
-    );
-  });
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
+      );
+    },
+  );
 
-  Future<void> equipRig(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
-    final updatedRig = fit.body.slots.rig.replaceBy(
-      index,
-      (_) => Option.of(
-        FitModuleItem(
-          itemId: FitStorageItemId.item(id: slotInfo.typeId),
-          charge: const Option.none(),
-          state: slotInfo.maxState.dartImpl.limitToActive,
+  Future<void> equipRig(int index, Slots_GeneralSlot slotInfo) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: slotInfo.typeId, slotKind: FitSlotKind.rig),
+    transform: (fit) {
+      final updatedRig = fit.body.slots.rig.replaceBy(
+        index,
+        (_) => Option.of(
+          FitModuleItem(
+            itemId: FitStorageItemId.item(id: slotInfo.typeId),
+            charge: const Option.none(),
+            state: slotInfo.maxState.dartImpl.limitToActive,
+          ),
         ),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
-    );
-  });
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
+      );
+    },
+  );
 
-  Future<void> equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update((fit) {
-    final updatedService = fit.body.slots.service.replaceBy(
-      index,
-      (_) => Option.of(
-        FitModuleItem(
-          itemId: FitStorageItemId.item(id: slotInfo.typeId),
-          charge: const Option.none(),
-          state: slotInfo.maxState.dartImpl.limitToActive,
+  Future<void> equipService(int index, Slots_GeneralSlot slotInfo) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: slotInfo.typeId, slotKind: FitSlotKind.service),
+    transform: (fit) {
+      final updatedService = fit.body.slots.service.replaceBy(
+        index,
+        (_) => Option.of(
+          FitModuleItem(
+            itemId: FitStorageItemId.item(id: slotInfo.typeId),
+            charge: const Option.none(),
+            state: slotInfo.maxState.dartImpl.limitToActive,
+          ),
         ),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
-    );
-  });
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
+      );
+    },
+  );
 
   FitStorage toggleHighSlot(
     FitStorage fit,
@@ -1386,201 +1658,308 @@ class FitWrapper {
     );
   }
 
-  Future<void> clearHigh() => wrapped.update((fit) {
-    final len = fit.body.slots.high.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: emptySlotList(len))),
-    );
-  });
-  Future<void> clearHighCharges() => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.map(
-      (slotOpt) => slotOpt.map((slot) {
-        if (slot.charge.isNone()) return slot;
-        return slot.copyWith(charge: const Option.none());
-      }),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: IList(updatedHigh))),
-    );
-  });
+  Future<void> clearHigh() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.high),
+    transform: (fit) {
+      final len = fit.body.slots.high.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: emptySlotList(len))),
+      );
+    },
+  );
+  Future<void> clearHighCharges() => wrapped.update(
+    action: FitEditAction.clearCharges(slotKind: FitSlotKind.high),
+    transform: (fit) {
+      final updatedHigh = fit.body.slots.high.map(
+        (slotOpt) => slotOpt.map((slot) {
+          if (slot.charge.isNone()) return slot;
+          return slot.copyWith(charge: const Option.none());
+        }),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: IList(updatedHigh))),
+      );
+    },
+  );
 
-  Future<void> clearMedium() => wrapped.update((fit) {
-    final len = fit.body.slots.medium.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: emptySlotList(len))),
-    );
-  });
-  Future<void> clearMediumCharges() => wrapped.update((fit) {
-    final updatedMedium = fit.body.slots.medium
-        .map(
-          (slotOpt) => slotOpt.map((slot) {
-            if (slot.charge.isNone()) return slot;
-            return slot.copyWith(charge: const Option.none());
-          }),
-        )
-        .toList();
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: IList(updatedMedium))),
-    );
-  });
+  Future<void> clearMedium() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.medium),
+    transform: (fit) {
+      final len = fit.body.slots.medium.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: emptySlotList(len))),
+      );
+    },
+  );
+  Future<void> clearMediumCharges() => wrapped.update(
+    action: FitEditAction.clearCharges(slotKind: FitSlotKind.medium),
+    transform: (fit) {
+      final updatedMedium = fit.body.slots.medium
+          .map(
+            (slotOpt) => slotOpt.map((slot) {
+              if (slot.charge.isNone()) return slot;
+              return slot.copyWith(charge: const Option.none());
+            }),
+          )
+          .toList();
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: IList(updatedMedium))),
+      );
+    },
+  );
 
-  Future<void> clearLow() => wrapped.update((fit) {
-    final len = fit.body.slots.low.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: emptySlotList(len))),
-    );
-  });
-  Future<void> clearLowCharges() => wrapped.update((fit) {
-    final updatedLow = fit.body.slots.low
-        .map(
-          (slotOpt) => slotOpt.map((slot) {
-            if (slot.charge.isNone()) return slot;
-            return slot.copyWith(charge: const Option.none());
-          }),
-        )
-        .toList();
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: IList(updatedLow))),
-    );
-  });
+  Future<void> clearLow() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.low),
+    transform: (fit) {
+      final len = fit.body.slots.low.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: emptySlotList(len))),
+      );
+    },
+  );
+  Future<void> clearLowCharges() => wrapped.update(
+    action: FitEditAction.clearCharges(slotKind: FitSlotKind.low),
+    transform: (fit) {
+      final updatedLow = fit.body.slots.low
+          .map(
+            (slotOpt) => slotOpt.map((slot) {
+              if (slot.charge.isNone()) return slot;
+              return slot.copyWith(charge: const Option.none());
+            }),
+          )
+          .toList();
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: IList(updatedLow))),
+      );
+    },
+  );
 
-  Future<void> clearRig() => wrapped.update((fit) {
-    final len = fit.body.slots.rig.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: emptySlotList(len))),
-    );
-  });
+  Future<void> clearRig() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.rig),
+    transform: (fit) {
+      final len = fit.body.slots.rig.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: emptySlotList(len))),
+      );
+    },
+  );
 
-  Future<void> clearSubsystem() => wrapped.update((fit) {
-    final len = fit.body.slots.subsystem.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: emptySlotList(len))),
-    );
-  });
+  Future<void> clearSubsystem() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.subsystem),
+    transform: (fit) {
+      final len = fit.body.slots.subsystem.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: emptySlotList(len))),
+      );
+    },
+  );
 
-  Future<void> clearService() => wrapped.update((fit) {
-    final len = fit.body.slots.service.length;
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: emptySlotList(len))),
-    );
-  });
+  Future<void> clearService() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.service),
+    transform: (fit) {
+      final len = fit.body.slots.service.length;
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: emptySlotList(len))),
+      );
+    },
+  );
 
-  Future<void> removeHigh(int index) => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.replaceBy(index, (_) => const Option.none());
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
-    );
-  });
+  Future<void> removeHigh(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.high(index: index)),
+      slotKind: FitSlotKind.high,
+    ),
+    transform: (fit) {
+      final updatedHigh = fit.body.slots.high.replaceBy(index, (_) => const Option.none());
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
+      );
+    },
+  );
 
-  Future<void> removeMedium(int index) => wrapped.update((fit) {
-    final updatedMedium = fit.body.slots.medium.replaceBy(index, (_) => const Option.none());
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
-    );
-  });
+  Future<void> removeMedium(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.medium(index: index)),
+      slotKind: FitSlotKind.medium,
+    ),
+    transform: (fit) {
+      final updatedMedium = fit.body.slots.medium.replaceBy(index, (_) => const Option.none());
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
+      );
+    },
+  );
 
-  Future<void> removeLow(int index) => wrapped.update((fit) {
-    final updatedLow = fit.body.slots.low.replaceBy(index, (_) => const Option.none());
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
-    );
-  });
+  Future<void> removeLow(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.low(index: index)),
+      slotKind: FitSlotKind.low,
+    ),
+    transform: (fit) {
+      final updatedLow = fit.body.slots.low.replaceBy(index, (_) => const Option.none());
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
+      );
+    },
+  );
 
-  Future<void> removeRig(int index) => wrapped.update((fit) {
-    final updatedRig = fit.body.slots.rig.replaceBy(index, (_) => const Option.none());
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
-    );
-  });
+  Future<void> removeRig(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.rig(index: index)),
+      slotKind: FitSlotKind.rig,
+    ),
+    transform: (fit) {
+      final updatedRig = fit.body.slots.rig.replaceBy(index, (_) => const Option.none());
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(rig: updatedRig)),
+      );
+    },
+  );
 
-  Future<void> removeSubsystem(SubsystemType type) => wrapped.update((fit) {
-    final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
-      type.index,
-      (_) => const Option.none(),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
-    );
-  });
+  Future<void> removeSubsystem(SubsystemType type) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.subsystem(type: type)),
+      slotKind: FitSlotKind.subsystem,
+    ),
+    transform: (fit) {
+      final updatedSubsystem = fit.body.slots.subsystem.replaceBy(
+        type.index,
+        (_) => const Option.none(),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(subsystem: updatedSubsystem)),
+      );
+    },
+  );
 
-  Future<void> removeService(int index) => wrapped.update((fit) {
-    final updatedService = fit.body.slots.service.replaceBy(index, (_) => const Option.none());
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
-    );
-  });
+  Future<void> removeService(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForSlot(SlotIdentifier.service(index: index)),
+      slotKind: FitSlotKind.service,
+    ),
+    transform: (fit) {
+      final updatedService = fit.body.slots.service.replaceBy(index, (_) => const Option.none());
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(service: updatedService)),
+      );
+    },
+  );
 
-  Future<void> setHighCharge(int index, int chargeTypeId) => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map(
-        (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
-    );
-  });
+  Future<void> setHighCharge(int index, int chargeTypeId) => wrapped.update(
+    action: FitEditAction.addCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.high(index: index)),
+      chargeTypeId: chargeTypeId,
+      replaced: _currentSlotHasCharge(SlotIdentifier.high(index: index)),
+    ),
+    transform: (fit) {
+      final updatedHigh = fit.body.slots.high.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map(
+          (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
+        ),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
+      );
+    },
+  );
 
-  Future<void> setMediumCharge(int index, int chargeTypeId) => wrapped.update((fit) {
-    final updatedMedium = fit.body.slots.medium.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map(
-        (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
-    );
-  });
+  Future<void> setMediumCharge(int index, int chargeTypeId) => wrapped.update(
+    action: FitEditAction.addCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.medium(index: index)),
+      chargeTypeId: chargeTypeId,
+      replaced: _currentSlotHasCharge(SlotIdentifier.medium(index: index)),
+    ),
+    transform: (fit) {
+      final updatedMedium = fit.body.slots.medium.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map(
+          (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
+        ),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
+      );
+    },
+  );
 
-  Future<void> setLowCharge(int index, int chargeTypeId) => wrapped.update((fit) {
-    final updatedLow = fit.body.slots.low.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map(
-        (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
-      ),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
-    );
-  });
+  Future<void> setLowCharge(int index, int chargeTypeId) => wrapped.update(
+    action: FitEditAction.addCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.low(index: index)),
+      chargeTypeId: chargeTypeId,
+      replaced: _currentSlotHasCharge(SlotIdentifier.low(index: index)),
+    ),
+    transform: (fit) {
+      final updatedLow = fit.body.slots.low.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map(
+          (slot) => slot.copyWith(charge: Option.of(FitChargeItem(typeId: chargeTypeId))),
+        ),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
+      );
+    },
+  );
 
-  Future<void> removeHighCharge(int index) => wrapped.update((fit) {
-    final updatedHigh = fit.body.slots.high.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
-    );
-  });
+  Future<void> removeHighCharge(int index) => wrapped.update(
+    action: FitEditAction.removeCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.high(index: index)),
+    ),
+    transform: (fit) {
+      final updatedHigh = fit.body.slots.high.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(high: updatedHigh)),
+      );
+    },
+  );
 
-  Future<void> removeMediumCharge(int index) => wrapped.update((fit) {
-    final updatedMedium = fit.body.slots.medium.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
-    );
-  });
+  Future<void> removeMediumCharge(int index) => wrapped.update(
+    action: FitEditAction.removeCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.medium(index: index)),
+    ),
+    transform: (fit) {
+      final updatedMedium = fit.body.slots.medium.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(medium: updatedMedium)),
+      );
+    },
+  );
 
-  Future<void> removeLowCharge(int index) => wrapped.update((fit) {
-    final updatedLow = fit.body.slots.low.replaceBy(
-      index,
-      (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
-    );
-    return fit.copyWith(
-      body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
-    );
-  });
+  Future<void> removeLowCharge(int index) => wrapped.update(
+    action: FitEditAction.removeCharge(
+      moduleTypeId: _typeIdForSlot(SlotIdentifier.low(index: index)),
+    ),
+    transform: (fit) {
+      final updatedLow = fit.body.slots.low.replaceBy(
+        index,
+        (slotOpt) => slotOpt.map((slot) => slot.copyWith(charge: const Option.none())),
+      );
+      return fit.copyWith(
+        body: fit.body.copyWith(slots: fit.body.slots.copyWith(low: updatedLow)),
+      );
+    },
+  );
 
   Future<void> toggleTacticalMode(Ship ship) async {
     final hasTacticalMode = ship.tacticalModes.isNotEmpty;
     if (!hasTacticalMode) return;
+    final fitState = ref.read(fitProvider(fitId));
+    final currentMode = fitState.isInitialized
+        ? fitState.fit.body.slots.tacticalMode.toNullable()
+        : null;
+    final nextTypeId = currentMode == null
+        ? 0
+        : ship.tacticalModes.cycle().skipTo((t) => t.typeId == currentMode).first.typeId;
     return wrapped.update(
-      (fit) => fit.body.slots.tacticalMode.match(
+      action: FitEditAction.setTacticalMode(typeId: nextTypeId),
+      transform: (fit) => fit.body.slots.tacticalMode.match(
         () => fit,
         (current) => fit.copyWith(
           body: fit.body.copyWith(
@@ -1604,23 +1983,26 @@ class FitWrapper {
     );
   }
 
-  Future<void> equipDrone(int index, int typeId) => wrapped.update((fit) {
-    if (index < 0) return fit;
-    final newDrone = FitDroneItem(
-      itemId: FitStorageItemId.item(id: typeId),
-      state: FitItemState.active,
-      quantity: 1,
-    );
+  Future<void> equipDrone(int index, int typeId) => wrapped.update(
+    action: FitEditAction.equipModule(typeId: typeId, slotKind: FitSlotKind.drone),
+    transform: (fit) {
+      if (index < 0) return fit;
+      final newDrone = FitDroneItem(
+        itemId: FitStorageItemId.item(id: typeId),
+        state: FitItemState.active,
+        quantity: 1,
+      );
 
-    final drones = fit.body.drones.toList();
-    if (index >= drones.length) {
-      drones.add(newDrone);
-    } else {
-      drones[index] = newDrone;
-    }
+      final drones = fit.body.drones.toList();
+      if (index >= drones.length) {
+        drones.add(newDrone);
+      } else {
+        drones[index] = newDrone;
+      }
 
-    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-  });
+      return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+    },
+  );
 
   FitStorage toggleDroneSlot(FitStorage fit, FitModuleItem _, int index) {
     if (index < 0 || index >= fit.body.drones.length) return fit;
@@ -1633,8 +2015,10 @@ class FitWrapper {
     return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
   }
 
-  Future<void> clearDrones() =>
-      wrapped.update((fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())));
+  Future<void> clearDrones() => wrapped.update(
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.drone),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(drones: IList<FitDroneItem>())),
+  );
 
   Future<void> addFighter(int typeId) async {
     final fit = ref.read(fitProvider(fitId)).fit;
@@ -1658,235 +2042,297 @@ class FitWrapper {
     final quantity = await _resolveDefaultFighterQuantity(fit, typeId, groupId);
     if (quantity == null) return;
 
-    await wrapped.update((currentFit) {
-      final currentShip = ref.read(
-        repoCollectionProvider.select((c) => c?.getShip(currentFit.body.shipTypeId)),
-      );
-      if (currentFit.body.characterId != fit.body.characterId ||
-          currentShip == null ||
-          currentFit.body.fighters.length >= currentShip.fighterTubes) {
-        return currentFit;
-      }
-      if (category != null) {
-        final categoryLimit = _fighterCategoryLimit(
-          ref.read(nativeEmulatedShipProvider(fitId)),
-          category,
+    await wrapped.update(
+      action: FitEditAction.equipModule(typeId: typeId, slotKind: FitSlotKind.fighter),
+      transform: (currentFit) {
+        final currentShip = ref.read(
+          repoCollectionProvider.select((c) => c?.getShip(currentFit.body.shipTypeId)),
         );
-        if (categoryLimit > 0 && _fighterCategoryCount(currentFit, category) >= categoryLimit) {
+        if (currentFit.body.characterId != fit.body.characterId ||
+            currentShip == null ||
+            currentFit.body.fighters.length >= currentShip.fighterTubes) {
           return currentFit;
         }
-      }
+        if (category != null) {
+          final categoryLimit = _fighterCategoryLimit(
+            ref.read(nativeEmulatedShipProvider(fitId)),
+            category,
+          );
+          if (categoryLimit > 0 && _fighterCategoryCount(currentFit, category) >= categoryLimit) {
+            return currentFit;
+          }
+        }
 
-      final fighters = currentFit.body.fighters.toList()
-        ..add(
-          FitFighterItem(
-            itemId: FitStorageItemId.item(id: typeId),
-            groupId: currentFit.body.fighters.length,
-            quantity: quantity,
-            fighterAbility: 0,
-          ),
+        final fighters = currentFit.body.fighters.toList()
+          ..add(
+            FitFighterItem(
+              itemId: FitStorageItemId.item(id: typeId),
+              groupId: currentFit.body.fighters.length,
+              quantity: quantity,
+              fighterAbility: 0,
+            ),
+          );
+        return currentFit.copyWith(
+          body: currentFit.body.copyWith(fighters: _normalizeFighters(fighters)),
         );
-      return currentFit.copyWith(
-        body: currentFit.body.copyWith(fighters: _normalizeFighters(fighters)),
-      );
-    });
+      },
+    );
   }
 
   Future<void> clearFighters() => wrapped.update(
-    (fit) => fit.copyWith(body: fit.body.copyWith(fighters: IList<FitFighterItem>())),
+    action: FitEditAction.clearSlots(slotKind: FitSlotKind.fighter),
+    transform: (fit) => fit.copyWith(body: fit.body.copyWith(fighters: IList<FitFighterItem>())),
   );
 
-  Future<void> removeFighter(int index) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.fighters.length) return fit;
-    final fighters = fit.body.fighters.toList()..removeAt(index);
-    return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
-  });
-
-  Future<void> setFighterAbility(int index, int abilityMask) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.fighters.length) return fit;
-    final fighters = fit.body.fighters.toList();
-    fighters[index] = fighters[index].copyWith(fighterAbility: abilityMask);
-    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
-  });
-
-  Future<void> changeFighterAmount(int index, int newAmount) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.fighters.length) return fit;
-    final fighters = fit.body.fighters.toList();
-    if (newAmount <= 0) {
-      fighters.removeAt(index);
+  Future<void> removeFighter(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForFighterIndex(index),
+      slotKind: FitSlotKind.fighter,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.fighters.length) return fit;
+      final fighters = fit.body.fighters.toList()..removeAt(index);
       return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
-    }
+    },
+  );
 
-    fighters[index] = fighters[index].copyWith(quantity: newAmount);
-    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
-  });
+  Future<void> setFighterAbility(int index, int abilityMask) => wrapped.update(
+    action: FitEditAction.setFighterAbility(typeId: _typeIdForFighterIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.fighters.length) return fit;
+      final fighters = fit.body.fighters.toList();
+      fighters[index] = fighters[index].copyWith(fighterAbility: abilityMask);
+      return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+    },
+  );
 
-  Future<void> changeFighterAmountBy(int index, int diff) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.fighters.length) return fit;
-    final fighters = fit.body.fighters.toList();
-    final newAmount = fighters[index].quantity + diff;
-    if (newAmount <= 0) {
-      fighters.removeAt(index);
-      return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
-    }
+  Future<void> changeFighterAmount(int index, int newAmount) => wrapped.update(
+    action: FitEditAction.setModuleQuantity(
+      typeId: _typeIdForFighterIndex(index),
+      quantity: newAmount,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.fighters.length) return fit;
+      final fighters = fit.body.fighters.toList();
+      if (newAmount <= 0) {
+        fighters.removeAt(index);
+        return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+      }
 
-    fighters[index] = fighters[index].copyWith(quantity: newAmount);
-    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
-  });
+      fighters[index] = fighters[index].copyWith(quantity: newAmount);
+      return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+    },
+  );
 
-  Future<void> toggleFighterAbilityBit(int index, int abilityBit) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.fighters.length) return fit;
-    final fighters = fit.body.fighters.toList();
-    final fighter = fighters[index];
-    fighters[index] = fighter.copyWith(fighterAbility: fighter.fighterAbility ^ abilityBit);
-    return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
-  });
+  Future<void> changeFighterAmountBy(int index, int diff) => wrapped.update(
+    action: FitEditAction.setModuleQuantity(
+      typeId: _typeIdForFighterIndex(index),
+      quantity: _currentFighterQuantity(index) + diff,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.fighters.length) return fit;
+      final fighters = fit.body.fighters.toList();
+      final newAmount = fighters[index].quantity + diff;
+      if (newAmount <= 0) {
+        fighters.removeAt(index);
+        return fit.copyWith(body: fit.body.copyWith(fighters: _normalizeFighters(fighters)));
+      }
 
-  Future<void> removeDrone(int index) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final drones = fit.body.drones.toList()..removeAt(index);
-    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-  });
+      fighters[index] = fighters[index].copyWith(quantity: newAmount);
+      return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+    },
+  );
 
-  Future<void> changeDroneAmount(int index, int newAmount) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final drones = fit.body.drones.toList();
-    if (newAmount <= 0) {
-      drones.removeAt(index);
-    } else {
-      drones[index] = drones[index].copyWith(quantity: newAmount);
-    }
-    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-  });
+  Future<void> toggleFighterAbilityBit(int index, int abilityBit) => wrapped.update(
+    action: FitEditAction.setFighterAbility(typeId: _typeIdForFighterIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.fighters.length) return fit;
+      final fighters = fit.body.fighters.toList();
+      final fighter = fighters[index];
+      fighters[index] = fighter.copyWith(fighterAbility: fighter.fighterAbility ^ abilityBit);
+      return fit.copyWith(body: fit.body.copyWith(fighters: fighters.toIList()));
+    },
+  );
 
-  Future<void> changeDroneAmountBy(int index, int diff) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final drones = fit.body.drones.toList();
-    final currentAmount = drones[index].quantity;
-    final newAmount = currentAmount + diff;
-    if (newAmount <= 0) {
-      drones.removeAt(index);
-    } else {
-      drones[index] = drones[index].copyWith(quantity: newAmount);
-    }
-    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-  });
+  Future<void> removeDrone(int index) => wrapped.update(
+    action: FitEditAction.removeModule(
+      typeId: _typeIdForDroneIndex(index),
+      slotKind: FitSlotKind.drone,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final drones = fit.body.drones.toList()..removeAt(index);
+      return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+    },
+  );
+
+  Future<void> changeDroneAmount(int index, int newAmount) => wrapped.update(
+    action: FitEditAction.setModuleQuantity(
+      typeId: _typeIdForDroneIndex(index),
+      quantity: newAmount,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final drones = fit.body.drones.toList();
+      if (newAmount <= 0) {
+        drones.removeAt(index);
+      } else {
+        drones[index] = drones[index].copyWith(quantity: newAmount);
+      }
+      return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+    },
+  );
+
+  Future<void> changeDroneAmountBy(int index, int diff) => wrapped.update(
+    action: FitEditAction.setModuleQuantity(
+      typeId: _typeIdForDroneIndex(index),
+      quantity: _currentDroneQuantity(index) + diff,
+    ),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final drones = fit.body.drones.toList();
+      final currentAmount = drones[index].quantity;
+      final newAmount = currentAmount + diff;
+      if (newAmount <= 0) {
+        drones.removeAt(index);
+      } else {
+        drones[index] = drones[index].copyWith(quantity: newAmount);
+      }
+      return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+    },
+  );
 
   // Drone mutation operates on whole stacks: one dynamic item per drone group,
   // shared by every unit of the stack (quantity changes keep the roll).
-  Future<void> convertDroneToDynamic(int index, int modifierTypeId) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final drone = fit.body.drones[index];
-    if (drone.itemId is FitStorageItemIdDynamic) return fit;
+  Future<void> convertDroneToDynamic(int index, int modifierTypeId) => wrapped.update(
+    action: FitEditAction.convertDynamic(typeId: _typeIdForDroneIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final drone = fit.body.drones[index];
+      if (drone.itemId is FitStorageItemIdDynamic) return fit;
 
-    final originTypeId = _resolveOriginTypeId(fit, drone.itemId);
-    if (originTypeId == null) return fit;
+      final originTypeId = _resolveOriginTypeId(fit, drone.itemId);
+      if (originTypeId == null) return fit;
 
-    final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
-    if (dynamicMutator == null) return fit;
-    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+      final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+      if (dynamicMutator == null) return fit;
+      if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
 
-    final dynamicItemId = _allocateDynamicItemId(fit);
-    final dynamicItem = FitDynamicItem(
-      dynamicItemId: dynamicItemId,
-      originTypeId: originTypeId,
-      typeId: dynamicMutator.resultingTypeId,
-      modifierTypeId: modifierTypeId,
-      dynamicAttributes: IMap.fromEntries(
-        dynamicMutator.attributes.keys.map((attributeId) => MapEntry<int, double>(attributeId, 1)),
-      ),
-    );
-    final updatedFit = _storeDynamicItem(fit, dynamicItem);
-    final drones = updatedFit.body.drones.toList();
-    drones[index] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
-    return updatedFit.copyWith(body: updatedFit.body.copyWith(drones: drones.toIList()));
-  });
-
-  Future<void> revertDroneFromDynamic(int index) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final drone = fit.body.drones[index];
-    return drone.itemId.when(
-      item: (_) => fit,
-      dynamic: (dynamicId) {
-        final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
-        if (dynamicItem == null) return fit;
-        final drones = fit.body.drones.toList();
-        drones[index] = drone.copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
-        return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-      },
-    );
-  });
-
-  Future<void> mutateAllSameOriginDrones(int index, int modifierTypeId) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final originTypeId = _resolveOriginTypeId(fit, fit.body.drones[index].itemId);
-    if (originTypeId == null) return fit;
-
-    final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
-    if (dynamicMutator == null) return fit;
-    if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
-
-    var updatedFit = fit;
-    for (var i = 0; i < updatedFit.body.drones.length; i++) {
-      final drone = updatedFit.body.drones[i];
-      if (_resolveOriginTypeId(updatedFit, drone.itemId) != originTypeId) continue;
-
-      updatedFit = drone.itemId.when(
-        item: (_) {
-          final dynamicItemId = _allocateDynamicItemId(updatedFit);
-          final dynamicItem = FitDynamicItem(
-            dynamicItemId: dynamicItemId,
-            originTypeId: originTypeId,
-            typeId: dynamicMutator.resultingTypeId,
-            modifierTypeId: modifierTypeId,
-            dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
-          );
-          final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
-          final drones = fitWithItem.body.drones.toList();
-          drones[i] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
-          return fitWithItem.copyWith(body: fitWithItem.body.copyWith(drones: drones.toIList()));
-        },
-        dynamic: (dynamicId) {
-          final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
-          if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
-          return _storeDynamicItem(
-            updatedFit,
-            existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
-          );
-        },
+      final dynamicItemId = _allocateDynamicItemId(fit);
+      final dynamicItem = FitDynamicItem(
+        dynamicItemId: dynamicItemId,
+        originTypeId: originTypeId,
+        typeId: dynamicMutator.resultingTypeId,
+        modifierTypeId: modifierTypeId,
+        dynamicAttributes: IMap.fromEntries(
+          dynamicMutator.attributes.keys.map(
+            (attributeId) => MapEntry<int, double>(attributeId, 1),
+          ),
+        ),
       );
-    }
-    return updatedFit;
-  });
+      final updatedFit = _storeDynamicItem(fit, dynamicItem);
+      final drones = updatedFit.body.drones.toList();
+      drones[index] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
+      return updatedFit.copyWith(body: updatedFit.body.copyWith(drones: drones.toIList()));
+    },
+  );
 
-  Future<void> revertAllSameDynamicDrones(int index) => wrapped.update((fit) {
-    if (index < 0 || index >= fit.body.drones.length) return fit;
-    final sourceDynamic = fit.body.drones[index].itemId.when(
-      item: (_) => null,
-      dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
-    );
-    if (sourceDynamic == null) return fit;
-
-    final drones = fit.body.drones.toList();
-    var changed = false;
-    for (var i = 0; i < drones.length; i++) {
-      final reverted = drones[i].itemId.when(
-        item: (_) => null,
+  Future<void> revertDroneFromDynamic(int index) => wrapped.update(
+    action: FitEditAction.revertDynamic(typeId: _typeIdForDroneIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final drone = fit.body.drones[index];
+      return drone.itemId.when(
+        item: (_) => fit,
         dynamic: (dynamicId) {
           final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
-          if (dynamicItem == null) return null;
-          if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
-          if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
-          return drones[i].copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+          if (dynamicItem == null) return fit;
+          final drones = fit.body.drones.toList();
+          drones[index] = drone.copyWith(
+            itemId: FitStorageItemId.item(id: dynamicItem.originTypeId),
+          );
+          return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
         },
       );
-      if (reverted == null) continue;
-      drones[i] = reverted;
-      changed = true;
-    }
-    if (!changed) return fit;
-    return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
-  });
+    },
+  );
+
+  Future<void> mutateAllSameOriginDrones(int index, int modifierTypeId) => wrapped.update(
+    action: FitEditAction.mutateDynamic(typeId: _typeIdForDroneIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final originTypeId = _resolveOriginTypeId(fit, fit.body.drones[index].itemId);
+      if (originTypeId == null) return fit;
+
+      final dynamicMutator = ref.read(repoCollectionProvider)?.getDynamicMutator(modifierTypeId);
+      if (dynamicMutator == null) return fit;
+      if (!dynamicMutator.applicableTypes.contains(originTypeId)) return fit;
+
+      var updatedFit = fit;
+      for (var i = 0; i < updatedFit.body.drones.length; i++) {
+        final drone = updatedFit.body.drones[i];
+        if (_resolveOriginTypeId(updatedFit, drone.itemId) != originTypeId) continue;
+
+        updatedFit = drone.itemId.when(
+          item: (_) {
+            final dynamicItemId = _allocateDynamicItemId(updatedFit);
+            final dynamicItem = FitDynamicItem(
+              dynamicItemId: dynamicItemId,
+              originTypeId: originTypeId,
+              typeId: dynamicMutator.resultingTypeId,
+              modifierTypeId: modifierTypeId,
+              dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator),
+            );
+            final fitWithItem = _storeDynamicItem(updatedFit, dynamicItem);
+            final drones = fitWithItem.body.drones.toList();
+            drones[i] = drone.copyWith(itemId: FitStorageItemId.dynamic(dynamicId: dynamicItemId));
+            return fitWithItem.copyWith(body: fitWithItem.body.copyWith(drones: drones.toIList()));
+          },
+          dynamic: (dynamicId) {
+            final existing = updatedFit.dynamicRegistry.dynamicItems[dynamicId];
+            if (existing == null || existing.modifierTypeId != modifierTypeId) return updatedFit;
+            return _storeDynamicItem(
+              updatedFit,
+              existing.copyWith(dynamicAttributes: _randomizedDynamicAttributes(dynamicMutator)),
+            );
+          },
+        );
+      }
+      return updatedFit;
+    },
+  );
+
+  Future<void> revertAllSameDynamicDrones(int index) => wrapped.update(
+    action: FitEditAction.revertDynamic(typeId: _typeIdForDroneIndex(index)),
+    transform: (fit) {
+      if (index < 0 || index >= fit.body.drones.length) return fit;
+      final sourceDynamic = fit.body.drones[index].itemId.when(
+        item: (_) => null,
+        dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId],
+      );
+      if (sourceDynamic == null) return fit;
+
+      final drones = fit.body.drones.toList();
+      var changed = false;
+      for (var i = 0; i < drones.length; i++) {
+        final reverted = drones[i].itemId.when(
+          item: (_) => null,
+          dynamic: (dynamicId) {
+            final dynamicItem = fit.dynamicRegistry.dynamicItems[dynamicId];
+            if (dynamicItem == null) return null;
+            if (dynamicItem.originTypeId != sourceDynamic.originTypeId) return null;
+            if (dynamicItem.modifierTypeId != sourceDynamic.modifierTypeId) return null;
+            return drones[i].copyWith(itemId: FitStorageItemId.item(id: dynamicItem.originTypeId));
+          },
+        );
+        if (reverted == null) continue;
+        drones[i] = reverted;
+        changed = true;
+      }
+      if (!changed) return fit;
+      return fit.copyWith(body: fit.body.copyWith(drones: drones.toIList()));
+    },
+  );
 
   FitStorage applySubsystemResize(
     FitStorage fit,

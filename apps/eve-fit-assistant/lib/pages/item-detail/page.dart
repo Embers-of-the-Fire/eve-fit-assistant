@@ -18,6 +18,7 @@ import "package:eve_fit_assistant/native/api/output.dart" as native;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/pages/item-detail/dogma_unit_display.dart";
 import "package:eve_fit_assistant/pages/ship-model/page.dart";
+import "package:eve_fit_assistant/storage/fit/edit_action.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
@@ -550,50 +551,61 @@ class _DynamicAttributeTabContent extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () => fitNotifier.update((fit) {
-                      final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
-                      if (item == null) return fit;
-                      return fit.copyWith(
-                        dynamicRegistry: fit.dynamicRegistry.copyWith(
-                          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
-                            dynamicEditor.dynamicItemId,
-                            item.copyWith(
-                              dynamicAttributes: IMap.fromEntries(
-                                item.dynamicAttributes.keys.map(
-                                  (attributeId) => MapEntry<int, double>(attributeId, 1),
+                    onPressed: () => fitNotifier.update(
+                      action: FitEditAction.editDynamicAttributes(
+                        typeId: dynamicEditor.originType.typeId,
+                      ),
+                      transform: (fit) {
+                        final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
+                        if (item == null) return fit;
+                        return fit.copyWith(
+                          dynamicRegistry: fit.dynamicRegistry.copyWith(
+                            dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+                              dynamicEditor.dynamicItemId,
+                              item.copyWith(
+                                dynamicAttributes: IMap.fromEntries(
+                                  item.dynamicAttributes.keys.map(
+                                    (attributeId) => MapEntry<int, double>(attributeId, 1),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      },
+                    ),
                     icon: const Icon(Icons.restore),
                     label: Text(context.l10n.itemDetailDynamicReset),
                   ),
                   const SizedBox(width: 12),
                   FilledButton.icon(
-                    onPressed: () => fitNotifier.update((fit) {
-                      final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
-                      if (item == null) return fit;
-                      return fit.copyWith(
-                        dynamicRegistry: fit.dynamicRegistry.copyWith(
-                          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
-                            dynamicEditor.dynamicItemId,
-                            item.copyWith(
-                              dynamicAttributes: IMap.fromEntries(
-                                dynamicEditor.dynamicMutator.attributes.entries.map((entry) {
-                                  final range = entry.value;
-                                  final factor =
-                                      range.min + ((range.max - range.min) * _random.nextDouble());
-                                  return MapEntry(entry.key, factor);
-                                }),
+                    onPressed: () => fitNotifier.update(
+                      action: FitEditAction.editDynamicAttributes(
+                        typeId: dynamicEditor.originType.typeId,
+                      ),
+                      transform: (fit) {
+                        final item = fit.dynamicRegistry.dynamicItems[dynamicEditor.dynamicItemId];
+                        if (item == null) return fit;
+                        return fit.copyWith(
+                          dynamicRegistry: fit.dynamicRegistry.copyWith(
+                            dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+                              dynamicEditor.dynamicItemId,
+                              item.copyWith(
+                                dynamicAttributes: IMap.fromEntries(
+                                  dynamicEditor.dynamicMutator.attributes.entries.map((entry) {
+                                    final range = entry.value;
+                                    final factor =
+                                        range.min +
+                                        ((range.max - range.min) * _random.nextDouble());
+                                    return MapEntry(entry.key, factor);
+                                  }),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      },
+                    ),
                     icon: const Icon(Icons.casino_outlined),
                     label: Text(context.l10n.itemDetailDynamicReroll),
                   ),
@@ -721,20 +733,30 @@ class _DynamicAttributeEditorRowState extends ConsumerState<_DynamicAttributeEdi
     _syncController(nextFactor);
 
     final fitNotifier = ref.read(fitProvider(widget.fitId).notifier);
-    await fitNotifier.update((fit) {
-      final dynamicItem = fit.dynamicRegistry.dynamicItems[widget.dynamicItemId];
-      if (dynamicItem == null) return fit;
-      return fit.copyWith(
-        dynamicRegistry: fit.dynamicRegistry.copyWith(
-          dynamicItems: fit.dynamicRegistry.dynamicItems.add(
-            widget.dynamicItemId,
-            dynamicItem.copyWith(
-              dynamicAttributes: dynamicItem.dynamicAttributes.add(widget.attributeId, nextFactor),
+    final fitState = ref.read(fitProvider(widget.fitId));
+    final dynamicTypeId = fitState.isInitialized
+        ? fitState.fit.dynamicRegistry.dynamicItems[widget.dynamicItemId]?.originTypeId ?? 0
+        : 0;
+    await fitNotifier.update(
+      action: FitEditAction.editDynamicAttributes(typeId: dynamicTypeId),
+      transform: (fit) {
+        final dynamicItem = fit.dynamicRegistry.dynamicItems[widget.dynamicItemId];
+        if (dynamicItem == null) return fit;
+        return fit.copyWith(
+          dynamicRegistry: fit.dynamicRegistry.copyWith(
+            dynamicItems: fit.dynamicRegistry.dynamicItems.add(
+              widget.dynamicItemId,
+              dynamicItem.copyWith(
+                dynamicAttributes: dynamicItem.dynamicAttributes.add(
+                  widget.attributeId,
+                  nextFactor,
+                ),
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   @override
@@ -2054,6 +2076,23 @@ _SpoolEditorContext? _resolveSpoolEditor(
   );
 }
 
+int _moduleTypeIdForSlot(FitStorage fit, native.OutSlotType slotType, int index) {
+  final slot = switch (slotType) {
+    native.OutSlotType_High() => fit.body.slots.high[index],
+    native.OutSlotType_Medium() => fit.body.slots.medium[index],
+    native.OutSlotType_Low() => fit.body.slots.low[index],
+    native.OutSlotType_Rig() => fit.body.slots.rig[index],
+    native.OutSlotType_SubSystem() => fit.body.slots.subsystem[index],
+    native.OutSlotType_Service() => fit.body.slots.service[index],
+    _ => const Option<FitModuleItem>.none(),
+  }.toNullable();
+  if (slot == null) return 0;
+  return slot.itemId.when(
+    item: (id) => id,
+    dynamic: (dynamicId) => fit.dynamicRegistry.dynamicItems[dynamicId]?.originTypeId ?? 0,
+  );
+}
+
 FitStorage _withModuleDamageTurns(
   FitStorage fit,
   native.OutSlotType slotType,
@@ -2109,9 +2148,16 @@ class _SpoolTabContentState extends ConsumerState<_SpoolTabContent> {
 
   Future<void> _setDamageTurns(int turns) {
     final editor = widget.spoolEditor;
+    final fitState = ref.read(fitProvider(editor.fitId));
+    final typeId = fitState.isInitialized
+        ? _moduleTypeIdForSlot(fitState.fit, editor.slotType, editor.index)
+        : 0;
     return ref
         .read(fitProvider(editor.fitId).notifier)
-        .update((fit) => _withModuleDamageTurns(fit, editor.slotType, editor.index, turns));
+        .update(
+          action: FitEditAction.setDamageTurns(typeId: typeId, turns: turns),
+          transform: (fit) => _withModuleDamageTurns(fit, editor.slotType, editor.index, turns),
+        );
   }
 
   @override

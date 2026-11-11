@@ -45,6 +45,8 @@ import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/character/schema.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility_notice.dart";
+import "package:eve_fit_assistant/storage/fit/edit_action.dart";
+import "package:eve_fit_assistant/storage/fit/history.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
 import "package:eve_fit_assistant/storage/fit/service.dart";
@@ -64,6 +66,7 @@ import "package:file_picker/file_picker.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:flutter_slidable/flutter_slidable.dart";
 import "package:fpdart/fpdart.dart" hide State;
@@ -92,6 +95,7 @@ part "components/equipment/slot_row/slot_row.dart";
 part "components/equipment/slot_row/subsystem_slot.dart";
 part "components/equipment/slot_row/tactical_mode_slot.dart";
 part "components/equipment_header.dart";
+part "components/history_panel.dart";
 part "components/issue_reporting.dart";
 part "components/warning.dart";
 part "identifier.dart";
@@ -173,13 +177,74 @@ class _ChatFitAttachState extends ConsumerState<_ChatFitAttach> {
   Widget build(BuildContext context) => widget.child;
 }
 
-class _FitPage extends ConsumerWidget {
+class _FitPage extends ConsumerStatefulWidget {
   const _FitPage({required this.fitId});
 
   final String fitId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FitPage> createState() => _FitPageState();
+}
+
+class _FitPageState extends ConsumerState<_FitPage> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _historyOpen = false;
+
+  String get fitId => widget.fitId;
+
+  bool _isTextEditing() {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    if (focusContext == null) return false;
+    return focusContext.widget is EditableText ||
+        focusContext.findAncestorStateOfType<EditableTextState>() != null;
+  }
+
+  void _undo() {
+    unawaited(ref.read(fitHistoryProvider(fitId).notifier).undo());
+  }
+
+  void _redo() {
+    unawaited(ref.read(fitHistoryProvider(fitId).notifier).redo());
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    // Let the focused text field perform its native undo/redo.
+    if (_isTextEditing()) return KeyEventResult.ignored;
+
+    final keyboard = HardwareKeyboard.instance;
+    final hasModifier = keyboard.isControlPressed || keyboard.isMetaPressed;
+    if (!hasModifier) return KeyEventResult.ignored;
+
+    final isZ = event.logicalKey == LogicalKeyboardKey.keyZ;
+    final isY = event.logicalKey == LogicalKeyboardKey.keyY;
+    if (isZ && keyboard.isShiftPressed) {
+      _redo();
+      return KeyEventResult.handled;
+    }
+    if (isZ) {
+      _undo();
+      return KeyEventResult.handled;
+    }
+    if (isY && keyboard.isControlPressed && !keyboard.isShiftPressed) {
+      _redo();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _toggleHistory(BuildContext context) {
+    final scaffold = _scaffoldKey.currentState;
+    if (scaffold == null) return;
+    if (scaffold.isEndDrawerOpen) {
+      scaffold.closeEndDrawer();
+    } else {
+      scaffold.openEndDrawer();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final fitMetadata = ref.watch(fitRegistryManagerProvider.select((t) => t.fits[fitId]));
     final compatibility = ref.watch(fitCheckoutCompatibilityProvider(fitId));
     final compatibilityNotice = localizeFitCheckoutCompatibility(context.l10n, compatibility);
@@ -325,14 +390,55 @@ class _FitPage extends ConsumerWidget {
       fitWrapper: fitWrapper,
     );
 
-    return Layout(
-      title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
-      child: Stack(
-        children: [
-          FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
-          if (showCheckoutSwitchOverlay)
-            _FitCheckoutSwitchOverlay(pendingCheckoutId: overlayCheckoutId),
+    final isSingleColumn = screenColumnTarget(context) == ScreenColumnTarget.one;
+    final history = ref.watch(fitHistoryProvider(fitId));
+    final editable = compatibility?.allowsEditing ?? false;
+    final canUndo = history.cursor > 0 && editable;
+    final canRedo = history.cursor < history.length - 1 && editable;
+    final historyPanel = FitHistoryPanel(
+      fitId: fitId,
+      onClose: () => _scaffoldKey.currentState?.closeEndDrawer(),
+    );
+    final availableWidth = MediaQuery.sizeOf(context).width;
+
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _handleKeyEvent,
+      child: Layout(
+        scaffoldKey: _scaffoldKey,
+        endDrawer: Drawer(
+          width: isSingleColumn ? availableWidth : math.min(288, availableWidth),
+          child: historyPanel,
+        ),
+        onEndDrawerChanged: (open) {
+          if (_historyOpen == open) return;
+          setState(() => _historyOpen = open);
+        },
+        title: context.l10n.fitPageTitle(fitName: fitMetadata.name, shipName: shipName),
+        actions: [
+          IconButton(
+            tooltip: context.l10n.fitHistoryUndo,
+            onPressed: canUndo ? _undo : null,
+            icon: const Icon(Icons.undo),
+          ),
+          IconButton(
+            tooltip: context.l10n.fitHistoryRedo,
+            onPressed: canRedo ? _redo : null,
+            icon: const Icon(Icons.redo),
+          ),
+          IconButton(
+            tooltip: _historyOpen ? context.l10n.fitHistoryClose : context.l10n.fitHistoryOpen,
+            onPressed: () => _toggleHistory(context),
+            icon: Icon(_historyOpen ? Icons.history_toggle_off : Icons.history),
+          ),
         ],
+        child: Stack(
+          children: [
+            FitDisplayColumns(fitContext: fitContext, compatibilityNotice: compatibilityNotice),
+            if (showCheckoutSwitchOverlay)
+              _FitCheckoutSwitchOverlay(pendingCheckoutId: overlayCheckoutId),
+          ],
+        ),
       ),
     );
   }

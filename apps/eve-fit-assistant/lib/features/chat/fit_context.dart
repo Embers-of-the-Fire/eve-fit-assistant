@@ -9,6 +9,7 @@ import "package:eve_fit_assistant/native/api/server.dart" as native_server;
 import "package:eve_fit_assistant/native/api/storage.dart" as native_storage;
 import "package:eve_fit_assistant/storage/character/manager.dart";
 import "package:eve_fit_assistant/storage/fit/compatibility.dart";
+import "package:eve_fit_assistant/storage/fit/edit_action.dart";
 import "package:eve_fit_assistant/storage/fit/manager.dart";
 import "package:eve_fit_assistant/storage/fit/persistence.dart";
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -377,7 +378,10 @@ Future<String> _applyFitEdit(Ref ref, String opsJson) async {
 
       await ref
           .read(fitProvider(fitId).notifier)
-          .update((fit) => applyFitEditOps(fit, decoded, slotsInfo: slotsInfo));
+          .update(
+            action: FitEditAction.aiEdit(opCount: decoded.length),
+            transform: (fit) => applyFitEditOps(fit, decoded, slotsInfo: slotsInfo),
+          );
 
       final updated = ref.read(fitProvider(fitId));
       if (!updated.isInitialized) {
