@@ -145,6 +145,14 @@ String _fitEditActionDescription(BuildContext context, WidgetRef ref, FitEditAct
     return (name != null && name.isNotEmpty) ? name : l10n.fallbackTypeName(typeId: typeId);
   }
 
+  String characterName(String? characterId) {
+    if (characterId == null) return "";
+    final metadata = ref.watch(
+      characterRegistryManagerProvider.select((registry) => registry.characters[characterId]),
+    );
+    return _characterDisplayName(context, characterId, metadata);
+  }
+
   String slotName(FitSlotKind? kind) => switch (kind) {
     FitSlotKind.high => l10n.highSlot,
     FitSlotKind.medium => l10n.midSlot,
@@ -216,7 +224,7 @@ String _fitEditActionDescription(BuildContext context, WidgetRef ref, FitEditAct
     ),
     FitEditKind.setDamageProfile => l10n.fitHistoryActionSetDamageProfile,
     FitEditKind.setCharacter => l10n.fitHistoryActionSetCharacter(
-      characterId: action.characterId ?? "",
+      characterId: characterName(action.characterId),
     ),
     FitEditKind.setTacticalMode => l10n.fitHistoryActionSetTacticalMode(
       typeName: typeName(action.typeId),
