@@ -5,9 +5,9 @@ permissions:
 
 on:
   schedule:
-    # 21:00 UTC on the 1st and 15th = 05:00 UTC+8 on the 2nd and 16th,
-    # inside the renovate.json5 windows (twice-monthly batch).
-    - cron: "0 21 1,15 * *"
+    # 21:00 UTC on Sunday = 05:00 UTC+8 on Monday,
+    # inside the renovate.json5 window (weekly batch).
+    - cron: "0 21 * * 0"
   workflow_dispatch:
 
 # Runs open/refresh PR branches; canceling mid-run can leave a half-updated
