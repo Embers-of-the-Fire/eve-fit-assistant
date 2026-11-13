@@ -41,15 +41,15 @@ must build and test everything regardless of what changed.
 automatic dependency bumping for `flake.lock` (nix manager, beta opt-in), `pyproject.toml` /
 `uv.lock`, `Cargo.toml` / `Cargo.lock`, `package.json` / `pnpm-lock.yaml`,
 `pubspec.yaml` / `pubspec.lock`, and the SHA-pinned GitHub Actions. The bot never
-automerges: it opens one grouped PR per ecosystem against `dev` twice a month (05:00 UTC+8
-on the 2nd and 16th; "bi-weekly" is not expressible in cron syntax), with the fast-moving
-nix flake inputs batched only in the first window of each month,
-labeled with existing repository labels (`T-Dependencies`, plus `T-CI` for action bumps).
+automerges: it opens one grouped PR per ecosystem against `dev` weekly (05:00 UTC+8 on
+Monday). Standalone lockfile-maintenance PRs refresh resolved dependency versions without
+changing manifest constraints on the same schedule. PRs are labeled with existing repository
+labels (`T-Dependencies`, plus `T-CI` for action bumps).
 Each PR's change set flows through the change-aware resolver like any other PR — lockfile
 blast radii instantiate the affected ecosystem's full task set (`flake.lock` escalates to the
 entire catalog) — so a batch only merges after `CI / Required` proves it works. The
 `packages/eve-fit-os` submodule is excluded (`ignorePaths` and a disabled `git-submodules`
-manager). The runner is a twice-monthly cron workflow using the full Renovate image, which
+manager). The runner is a weekly cron workflow using the full Renovate image, which
 installs lockfile toolchains (uv, cargo, pnpm, dart/flutter, nix) on demand; it mints a token
 from the repository-level GitHub App credentials (`BOT_CLIENT_ID` / `BOT_PRIVATE_KEY`) —
 a GitHub App token rather than the default `GITHUB_TOKEN` is required because
