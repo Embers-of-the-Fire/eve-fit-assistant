@@ -140,6 +140,14 @@ void main() {
     expect(await service.localizedNames(const [], "en"), isEmpty);
   });
 
+  test("name search supports capped and uncapped results", () async {
+    final all = await service.searchNames("e", "en", limit: null);
+    expect(all.keys, unorderedEquals([1001, 1002]));
+
+    final limited = await service.searchNames("e", "en", limit: 1);
+    expect(limited.keys, [1002]);
+  });
+
   test("misses are cached and not queried again", () async {
     expect(await service.localizedName(9999, "en"), "");
     // Second lookup must complete without touching the database again.

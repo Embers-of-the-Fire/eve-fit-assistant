@@ -5,9 +5,9 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 
 /// Searches selectable EVE types by localized name in the active locale.
 ///
-/// Returns matching type ids ordered by relevance (shortest name first); an
-/// empty or blank query yields no results.
-typedef EveTypeSearcher = Future<List<int>> Function(String query, {int limit});
+/// Returns all matching type ids ordered by relevance (shortest name first);
+/// an empty or blank query yields no results.
+typedef EveTypeSearcher = Future<List<int>> Function(String query);
 
 /// Default [EveTypeSearcher] backed by the checkout localization database.
 ///
@@ -39,12 +39,8 @@ class LocalizationTypeSearcher {
   /// Maps a localization string id to the type whose name it carries.
   final int? Function(int nameId) typeIdOfNameId;
 
-  /// Hits include non-type name ids that are dropped afterwards, so the query
-  /// over-fetches to still surface up to the requested number of results.
-  static const int _overFetchFactor = 4;
-
   /// Implements [EveTypeSearcher].
-  Future<List<int>> search(String query, {int limit = 50}) async {
+  Future<List<int>> search(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
     // Localization database initialization may fail (e.g. a broken checkout);
@@ -56,7 +52,7 @@ class LocalizationTypeSearcher {
       return const [];
     }
     if (db == null) return const [];
-    final hits = await db.searchNames(trimmed, locale(), limit: limit * _overFetchFactor);
-    return hits.keys.map(typeIdOfNameId).nonNulls.take(limit).toList();
+    final hits = await db.searchNames(trimmed, locale(), limit: null);
+    return hits.keys.map(typeIdOfNameId).nonNulls.toList();
   }
 }

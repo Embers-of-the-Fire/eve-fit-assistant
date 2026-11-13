@@ -260,9 +260,9 @@ class LocalizationDbService {
   /// "exotic M" matches "Exotic Plasma Charge M" while a lone "M" no longer
   /// floods the result cap with unrelated short names.
   ///
-  /// Returns up to [limit] `id → name` matches ordered by shortest (most
-  /// specific) name first.
-  Future<Map<int, String>> searchNames(String query, String locale, {int limit = 20}) async {
+  /// Returns `id → name` matches ordered by shortest (most specific) name
+  /// first. A null [limit] returns every match.
+  Future<Map<int, String>> searchNames(String query, String locale, {int? limit = 20}) async {
     final tokens = query.trim().split(RegExp(r"\s+")).where((token) => token.isNotEmpty).toList();
     if (tokens.isEmpty) return const {};
     final db = await _databaseFor(locale);
@@ -270,12 +270,13 @@ class LocalizationDbService {
     String escape(String token) =>
         token.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
     final tokenClauses = List.filled(tokens.length, "value LIKE ? ESCAPE '\\'").join(" AND ");
+    final limitClause = limit == null ? "" : " LIMIT ?";
     try {
       final rows = await db.getAll(
         "SELECT id, value FROM strings "
         "WHERE locale = ? AND $tokenClauses "
-        "ORDER BY LENGTH(value) ASC LIMIT ?",
-        [locale, for (final token in tokens) "%${escape(token)}%", limit],
+        "ORDER BY LENGTH(value) ASC$limitClause",
+        [locale, for (final token in tokens) "%${escape(token)}%", ?limit],
       );
       return {
         for (final row in rows)
