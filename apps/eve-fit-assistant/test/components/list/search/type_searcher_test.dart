@@ -18,8 +18,17 @@ void _writeFixtureDb(String path) {
     "PRIMARY KEY(locale, id)) WITHOUT ROWID",
   );
   db.execute("INSERT INTO meta(key, value) VALUES ('schema_version', '1')");
+  final en = <int, String>{
+    5001: "Rifter",
+    5002: "Frigate",
+    5003: "Rifter II",
+    6001: "Amarr Wall",
+    6002: "Amarr Tech",
+    for (var id = 10000; id < 10250; id++) id: "Amarr",
+    for (var i = 0; i < 60; i++) 7000 + i: "Venture ${i.toString().padLeft(2, "0")}",
+  };
   final rows = {
-    "en": {5001: "Rifter", 5002: "Frigate", 5003: "Rifter II"},
+    "en": en,
     "zh": {5001: "裂谷级", 5004: "四重子异种等离子弹药 M"},
   };
   for (final locale in rows.keys) {
@@ -42,7 +51,14 @@ void main() {
   // The localization strings table is keyed by localization string id, a
   // namespace disjoint from type ids; 5002 models a group/market-group name
   // that no type name maps back to.
-  const nameIdToTypeId = {5001: 1001, 5003: 1003, 5004: 1004};
+  final nameIdToTypeId = <int, int>{
+    5001: 1001,
+    5003: 1003,
+    5004: 1004,
+    6001: 2001,
+    6002: 2002,
+    for (var i = 0; i < 60; i++) 7000 + i: 3000 + i,
+  };
   var locale = "en";
 
   late LocalizationTypeSearcher searcher;
@@ -72,6 +88,15 @@ void main() {
 
   test("drops hits that name something other than a type", () async {
     expect(await searcher.search("Frigate"), isEmpty);
+  });
+
+  test("non-type hits cannot exhaust the search before valid types", () async {
+    expect(await searcher.search("Amarr"), unorderedEquals([2001, 2002]));
+  });
+
+  test("returns every matching type without a result cap", () async {
+    final hits = await searcher.search("Venture");
+    expect(hits, unorderedEquals([for (var i = 0; i < 60; i++) 3000 + i]));
   });
 
   test("searches the active locale only", () async {

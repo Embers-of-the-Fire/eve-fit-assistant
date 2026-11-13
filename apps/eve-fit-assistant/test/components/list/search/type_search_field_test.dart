@@ -9,8 +9,7 @@ import "../../../test_helpers.dart";
 void main() {
   testWidgets("a stale search completing during a newer debounce is not reported", (tester) async {
     final pending = <String, Completer<List<int>>>{};
-    Future<List<int>> searcher(String query, {int limit = 50}) =>
-        (pending[query] = Completer<List<int>>()).future;
+    Future<List<int>> searcher(String query) => (pending[query] = Completer<List<int>>()).future;
     final reported = <List<int>?>[];
 
     await tester.pumpWidget(
