@@ -6,11 +6,11 @@ import "package:eve_fit_assistant/storage/fit/schema.dart";
 typedef DogmaAttributesOf = Map<int, double>? Function(int typeId);
 
 /// The `warfareBuff1-4ID/Value` dogma attribute pairs through which the
-/// client delivers abyssal weather and hazard cloud effects.
+/// client delivers abyssal weather, hazard clouds, and Titan generator effects.
 const warfareBuffAttributePairs = [(2468, 2469), (2470, 2471), (2472, 2473), (2536, 2537)];
 
 /// Expands a preset into concrete [FitSystemBuff] entries using the active
-/// snapshot's beacon dogma.
+/// snapshot's source-type dogma.
 ///
 /// Returns null when the preset cannot be resolved in the active snapshot
 /// (beacon type absent, or beacon dogma yields no buffs) — callers must

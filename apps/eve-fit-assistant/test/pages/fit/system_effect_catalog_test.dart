@@ -2,7 +2,7 @@ import "package:eve_fit_assistant/pages/fit/components/system_effect/system_effe
 import "package:eve_fit_assistant/pages/fit/components/system_effect/system_effect_resolver.dart";
 import "package:flutter_test/flutter_test.dart";
 
-/// Beacon dogma fixtures mirroring the tranquility snapshot values
+/// Source-type dogma fixtures mirroring the tranquility snapshot values
 /// (data/resources/*/fsd/typedogma.msgpack).
 final _beaconDogma = <int, Map<int, double>>{
   // Pulsar class 1 / class 6 (wormhole attr mapping).
@@ -18,6 +18,11 @@ final _beaconDogma = <int, Map<int, double>>{
   47383: {2468: 90, 2469: 70, 2470: 92, 2471: -50},
   // Caustic hazard cloud.
   47436: {2468: 80, 2469: -50, 2470: 81, 2471: 300},
+  // Titan Phenomena Generator modules (fixed warfareBuff pairs).
+  43658: {2468: 39, 2469: -30, 2470: 40, 2471: -10, 2472: 41, 2473: 15, 2536: 51, 2537: -10},
+  43660: {2468: 48, 2469: 30, 2470: 49, 2471: -10, 2472: 50, 2473: 15, 2536: 53, 2537: -10},
+  43662: {2468: 42, 2469: 30, 2470: 43, 2471: -10, 2472: 44, 2473: 15, 2536: 52, 2537: -10},
+  43664: {2468: 45, 2469: -30, 2470: 46, 2471: -10, 2472: 47, 2473: 15, 2536: 54, 2537: -10},
 };
 
 Map<int, double>? _attrsOf(int typeId) => _beaconDogma[typeId];
@@ -84,6 +89,29 @@ void main() {
       expect(byId, {80: -50.0, 81: 300.0});
     });
 
+    test("Titan presets resolve complete fixed generator bundles", () {
+      const expected = {
+        "titan.amarr": {39: -30.0, 40: -10.0, 41: 15.0, 51: -10.0},
+        "titan.caldari": {48: 30.0, 49: -10.0, 50: 15.0, 53: -10.0},
+        "titan.gallente": {42: 30.0, 43: -10.0, 44: 15.0, 52: -10.0},
+        "titan.minmatar": {45: -30.0, 46: -10.0, 47: 15.0, 54: -10.0},
+      };
+
+      for (final entry in expected.entries) {
+        final preset = systemEffectPresetById[entry.key]!;
+        expect(preset.category, SystemEffectCategory.titan);
+        final buffs = resolvePresetBuffs(preset, _attrsOf)!;
+        final byId = {for (final b in buffs) b.buffId: b.value};
+        expect(byId, entry.value, reason: "preset ${entry.key}");
+        expect(buffs.every((b) => b.presetId == entry.key), isTrue);
+
+        for (final buffId in byId.keys) {
+          expect(systemBuffLibraryById, contains(buffId));
+          expect(systemBuffLibrary.any((b) => b.buffId == buffId), isFalse);
+        }
+      }
+    });
+
     test("static presets return their pre-expanded entries untouched", () {
       final preset = systemEffectPresetById["sov.gamma"]!;
       final buffs = resolvePresetBuffs(preset, _attrsOf)!;
@@ -117,7 +145,7 @@ void main() {
         final buffs = resolvePresetBuffs(preset, _attrsOf);
         expect(buffs, isNotNull, reason: "preset ${preset.id} (beacon $beacon) should resolve");
       }
-      expect(covered, 8, reason: "fixture should cover all resolution modes");
+      expect(covered, 12, reason: "fixture should cover all resolution modes");
     });
   });
 
@@ -137,9 +165,16 @@ void main() {
       expect(resolveLibraryDefaultValue(systemBuffLibraryById[81]!, _attrsOf), 300.0);
     });
 
-    test("static-fallback buffs default to 1.0", () {
-      expect(resolveLibraryDefaultValue(systemBuffLibraryById[2433]!, _attrsOf), 1.0);
-      expect(resolveLibraryDefaultValue(systemBuffLibraryById[2405]!, _attrsOf), 1.0);
+    test("preset-only Titan buffs resolve values from their generators", () {
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[39]!, _attrsOf), -30.0);
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[48]!, _attrsOf), 30.0);
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[52]!, _attrsOf), -10.0);
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[54]!, _attrsOf), -10.0);
+    });
+
+    test("static-fallback buffs default to their preset values", () {
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[2433]!, _attrsOf), 5.0);
+      expect(resolveLibraryDefaultValue(systemBuffLibraryById[2405]!, _attrsOf), 10.0);
     });
 
     test("beacon-backed entries fall back gracefully when the beacon is absent", () {
