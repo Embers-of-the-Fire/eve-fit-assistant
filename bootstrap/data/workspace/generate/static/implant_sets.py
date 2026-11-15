@@ -8,8 +8,6 @@ display names via longest-common-prefix within each grade cluster.
 
 from __future__ import annotations
 
-import os
-
 from collections import defaultdict
 from typing import TYPE_CHECKING
 from typing import NamedTuple
@@ -128,11 +126,20 @@ def base_name(name: str) -> str:
     return base if sep else name
 
 
+def _common_prefix(strings: list[str]) -> str:
+    """Longest common character-wise prefix (display names, not paths)."""
+    shortest = min(strings, key=len)
+    for index, char in enumerate(shortest):
+        if any(string[index] != char for string in strings):
+            return shortest[:index]
+    return shortest
+
+
 def set_display_name(names: list[str]) -> str:
     """Longest common prefix of member names, trimmed to a clean word boundary."""
     if not names:
         return ""
-    prefix = os.path.commonprefix(names).strip()
+    prefix = _common_prefix(names).strip()
     if prefix and not prefix[-1].isalnum() and " " in prefix:
         prefix = prefix[: prefix.rindex(" ")].strip()
     stripped = prefix.rstrip(_SEPARATOR_CHARS)
@@ -171,7 +178,7 @@ def family_display_name(displays: list[str], lang: str) -> str:
         return families.pop()
 
     # Fallback: longest common suffix, trimmed to a clean token boundary.
-    lcs = os.path.commonprefix([display[::-1] for display in displays])[::-1]
+    lcs = _common_prefix([display[::-1] for display in displays])[::-1]
     starts_mid_token = any(
         len(display) > len(lcs) and display[-len(lcs) - 1] != " " for display in displays
     )
