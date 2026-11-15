@@ -91,8 +91,8 @@ abstract class FitStorageBody with _$FitStorageBody {
     required IList<FitImplantItem> implants,
     required IList<FitBoosterItem> boosters,
 
-    /// System-wide warfare buffs (environmental effects such as wormhole
-    /// system effects or weather) applied to the whole fit.
+    /// Externally supplied warfare buffs (environmental effects or Titan
+    /// Phenomena Generators) applied to the whole fit.
     @Default(IList<FitSystemBuff>.empty()) IList<FitSystemBuff> systemBuffs,
 
     /// The pilot's security status (-10.0..=5.0); scales CONCORD/AT hull
@@ -103,7 +103,7 @@ abstract class FitStorageBody with _$FitStorageBody {
   factory FitStorageBody.fromJson(Map<String, dynamic> json) => _$FitStorageBodyFromJson(json);
 }
 
-/// One system-wide warfare buff applied to a fit.
+/// One externally supplied warfare buff applied to a fit.
 ///
 /// Entries expanded from an environment preset carry its [presetId] for
 /// display grouping; custom entries leave it null.

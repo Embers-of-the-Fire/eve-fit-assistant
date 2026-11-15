@@ -3,7 +3,7 @@
 // packages/eve-fit-os/tool/system_effects/. Regenerate instead of hand-editing.
 //
 // The catalog carries no buff values: presets describe how to resolve values
-// from the active snapshot's effect-beacon dogma at runtime; see
+// from the active snapshot's source-type dogma at runtime; see
 // system_effect_resolver.dart (hand-written) for the expansion logic.
 
 import "package:eve_fit_assistant/storage/fit/schema.dart";
@@ -13,6 +13,7 @@ enum SystemEffectCategory {
   wormhole("虫洞", "Wormhole"),
   abyssalWeather("深渊天气", "Abyssal Weather"),
   storm("风暴", "Storm"),
+  titan("泰坦效果", "Titan Effect"),
   sovUpgrade("主权升级", "Sovereignty Upgrade"),
   triglavian("三神裔", "Triglavian"),
   insurgency("海盗叛乱", "Pirate Insurgency"),
@@ -26,7 +27,7 @@ enum SystemEffectCategory {
 
 /// A system-wide environment preset: bilingual display metadata plus a
 /// rule for expanding the preset into concrete [FitSystemBuff] entries
-/// from the active snapshot's effect-beacon dogma.
+/// from the active snapshot's source-type dogma.
 class SystemEffectPreset {
   const SystemEffectPreset({
     required this.id,
@@ -44,16 +45,16 @@ class SystemEffectPreset {
   final String zh;
   final String en;
 
-  /// Effect beacon type carrying this preset's values in the active
-  /// snapshot's engine data; null for [staticBuffs] presets.
+  /// Effect beacon or generator module carrying this preset's values in
+  /// the active snapshot's engine data; null for [staticBuffs] presets.
   final int? beaconTypeId;
 
   /// Buff ID -> beacon attribute ID: each buff's value is the beacon's
   /// attribute value (wormholes and metaliminal/volatile storms).
   final Map<int, int>? buffAttrs;
 
-  /// Expand the beacon's `warfareBuff1-4ID/Value` attribute pairs
-  /// directly (abyssal weather and hazard clouds).
+  /// Expand the source type's `warfareBuff1-4ID/Value` attribute pairs
+  /// directly (abyssal weather, hazard clouds, and Titan generators).
   final bool warfareFromBeacon;
 
   /// Pre-expanded entries for effects whose beacons carry no usable
@@ -599,6 +600,38 @@ const systemEffectCatalog = <SystemEffectPreset>[
     en: "Weak Volatile Ice Storm",
     beaconTypeId: 56997,
     buffAttrs: {-2120: 987, -2121: 1229},
+  ),
+  SystemEffectPreset(
+    id: "titan.amarr",
+    category: SystemEffectCategory.titan,
+    zh: "艾玛现象发生器",
+    en: "Amarr Phenomena Generator",
+    beaconTypeId: 43658,
+    warfareFromBeacon: true,
+  ),
+  SystemEffectPreset(
+    id: "titan.caldari",
+    category: SystemEffectCategory.titan,
+    zh: "加达里现象发生器",
+    en: "Caldari Phenomena Generator",
+    beaconTypeId: 43660,
+    warfareFromBeacon: true,
+  ),
+  SystemEffectPreset(
+    id: "titan.gallente",
+    category: SystemEffectCategory.titan,
+    zh: "盖伦特现象发生器",
+    en: "Gallente Phenomena Generator",
+    beaconTypeId: 43662,
+    warfareFromBeacon: true,
+  ),
+  SystemEffectPreset(
+    id: "titan.minmatar",
+    category: SystemEffectCategory.titan,
+    zh: "米玛塔尔现象发生器",
+    en: "Minmatar Phenomena Generator",
+    beaconTypeId: 43664,
+    warfareFromBeacon: true,
   ),
   SystemEffectPreset(
     id: "sov.gamma",
@@ -1172,75 +1205,80 @@ const systemBuffLibrary = <SystemBuffLibraryEntry>[
     en: "Scan Resolution Bonus",
     defaultBeaconTypeId: 47384,
   ),
-  SystemBuffLibraryEntry(buffId: 2433, zh: "护盾值加成", en: "Shield Hitpoint Bonus", staticDefault: 1),
+  SystemBuffLibraryEntry(buffId: 2433, zh: "护盾值加成", en: "Shield Hitpoint Bonus", staticDefault: 5),
   SystemBuffLibraryEntry(
     buffId: 2434,
     zh: "电容容量加成",
     en: "Capacitor Capacity Bonus",
-    staticDefault: 1,
+    staticDefault: 10,
   ),
   SystemBuffLibraryEntry(
     buffId: 2441,
     zh: "本地护盾回充加成",
     en: "Local Shield Booster Bonus",
-    staticDefault: 1,
+    staticDefault: 5,
   ),
   SystemBuffLibraryEntry(
     buffId: 2442,
     zh: "本地装甲维修加成",
     en: "Local Armor Repairer Bonus",
-    staticDefault: 1,
+    staticDefault: 5,
   ),
-  SystemBuffLibraryEntry(buffId: 2435, zh: "装甲值加成", en: "Armor Hitpoint Bonus", staticDefault: 1),
-  SystemBuffLibraryEntry(buffId: 2436, zh: "装备超载加成", en: "Module Overload Bonus", staticDefault: 1),
+  SystemBuffLibraryEntry(buffId: 2435, zh: "装甲值加成", en: "Armor Hitpoint Bonus", staticDefault: 5),
+  SystemBuffLibraryEntry(
+    buffId: 2436,
+    zh: "装备超载加成",
+    en: "Module Overload Bonus",
+    staticDefault: 10,
+  ),
   SystemBuffLibraryEntry(
     buffId: 2437,
     zh: "电容回充加成",
     en: "Capacitor Recharge Bonus",
-    staticDefault: 1,
+    staticDefault: -25,
   ),
   SystemBuffLibraryEntry(
     buffId: 2438,
     zh: "锁定与定向扫描距离加成",
     en: "Targeting and DScan Range Bonus",
-    staticDefault: 1,
+    staticDefault: 25,
   ),
   SystemBuffLibraryEntry(
     buffId: 2440,
     zh: "基础跃迁速度增加",
     en: "Base Warp Speed Addition",
-    staticDefault: 1,
+    staticDefault: 2,
   ),
   SystemBuffLibraryEntry(
     buffId: 2439,
     zh: "扫描分辨率加成",
     en: "Scan Resolution Bonus",
-    staticDefault: 1,
+    staticDefault: 25,
   ),
   SystemBuffLibraryEntry(
     buffId: 2534,
     zh: "最大锁定数惩罚",
     en: "Maximum Locked Targets Penalty",
-    staticDefault: 1,
+    staticDefault: -50,
   ),
-  SystemBuffLibraryEntry(buffId: 2535, zh: "跃迁速度惩罚", en: "Warp Speed Penalty", staticDefault: 1),
+  SystemBuffLibraryEntry(buffId: 2535, zh: "跃迁速度惩罚", en: "Warp Speed Penalty", staticDefault: -30),
   SystemBuffLibraryEntry(
     buffId: 2538,
     zh: "远程装甲维修加成",
     en: "Remote Armor Repair Bonus",
-    staticDefault: 1,
+    staticDefault: 30,
   ),
   SystemBuffLibraryEntry(
     buffId: 2539,
     zh: "远程护盾维修加成",
     en: "Remote Shield Boost Bonus",
-    staticDefault: 1,
+    staticDefault: 30,
   ),
   SystemBuffLibraryEntry(
     buffId: 2405,
     zh: "停滞缠绕与跃迁扰断距离加成",
     en: "Webifier and Scrambler Range Bonus (Anti-Pirate)",
-    staticDefault: 1,
+    staticDefault: 10,
   ),
   SystemBuffLibraryEntry(
     buffId: 79,
@@ -1269,7 +1307,103 @@ const systemBuffLibrary = <SystemBuffLibraryEntry>[
   ),
 ];
 
-/// Custom-buff library lookup by buff id.
+/// Preset-only buffs, available for display but not individual custom selection.
+const presetOnlySystemBuffLibrary = <SystemBuffLibraryEntry>[
+  SystemBuffLibraryEntry(
+    buffId: 39,
+    zh: "电容回充量加成",
+    en: "Capacitor Recharge Bonus",
+    defaultBeaconTypeId: 43658,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 40,
+    zh: "动能抗性加成",
+    en: "Kinetic Resistance Bonus",
+    defaultBeaconTypeId: 43658,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 41,
+    zh: "电磁抗性惩罚",
+    en: "EM Resistance Penalty",
+    defaultBeaconTypeId: 43658,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 51,
+    zh: "速度惩罚",
+    en: "Velocity Penalty",
+    defaultBeaconTypeId: 43658,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 48,
+    zh: "护盾值加成",
+    en: "Shield HP Bonus",
+    defaultBeaconTypeId: 43660,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 49,
+    zh: "电磁抗性加成",
+    en: "EM Resistance Bonus",
+    defaultBeaconTypeId: 43660,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 50,
+    zh: "动能抗性惩罚",
+    en: "Kinetic Resistance Penalty",
+    defaultBeaconTypeId: 43660,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 53,
+    zh: "远程装甲维修器强度惩罚",
+    en: "Remote Armor Repairer Strength Penalty",
+    defaultBeaconTypeId: 43660,
+  ),
+  SystemBuffLibraryEntry(buffId: 42, zh: "装甲值加成", en: "Armor HP Bonus", defaultBeaconTypeId: 43662),
+  SystemBuffLibraryEntry(
+    buffId: 43,
+    zh: "爆炸抗性加成",
+    en: "Explosive Resistance Bonus",
+    defaultBeaconTypeId: 43662,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 44,
+    zh: "热能抗性惩罚",
+    en: "Thermal Resistance Penalty",
+    defaultBeaconTypeId: 43662,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 52,
+    zh: "远程护盾回充增量器强度惩罚",
+    en: "Remote Shield Booster Strength Penalty",
+    defaultBeaconTypeId: 43662,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 45,
+    zh: "信号半径加成",
+    en: "Signature Radius Bonus",
+    defaultBeaconTypeId: 43664,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 46,
+    zh: "热能抗性加成",
+    en: "Thermal Resistance Bonus",
+    defaultBeaconTypeId: 43664,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 47,
+    zh: "爆炸抗性惩罚",
+    en: "Explosive Resistance Penalty",
+    defaultBeaconTypeId: 43664,
+  ),
+  SystemBuffLibraryEntry(
+    buffId: 54,
+    zh: "能量和混合炮台最佳射程惩罚",
+    en: "Energy and Hybrid Turret Optimal Penalty",
+    defaultBeaconTypeId: 43664,
+  ),
+];
+
+/// Known-buff lookup by id, including buffs offered only through presets.
 final systemBuffLibraryById = <int, SystemBuffLibraryEntry>{
   for (final entry in systemBuffLibrary) entry.buffId: entry,
+  for (final entry in presetOnlySystemBuffLibrary) entry.buffId: entry,
 };
