@@ -122,6 +122,20 @@ OUTPUT_DIR=/path/to/repo/cache/workspaces/tranquility/native
   and `wix` must be on `PATH`, and the Visual Studio C++ ATL component
   (`Microsoft.VisualStudio.Component.VC.ATL`, providing `atlstr.h` for
   `flutter_secure_storage_windows`) must be installed.
+- Before a native Windows build, set `CARGO_BUILD_BUILD_DIR` to a short absolute path. For
+  example, in PowerShell:
+
+  ```powershell
+  $env:CARGO_BUILD_BUILD_DIR = "$env:TEMP\efa-cargo-build"
+  ```
+
+  Cargo 1.100 and later stores dependency artifacts in per-crate
+  `build/<package>/<hash>/out` directories. Under Flutter/Cargokit's nested target directory,
+  these paths can exceed the 260-character limit of MSVC `link.exe` and fail with `LNK1104`.
+  Enabling Windows long paths does not reliably help because the linker itself must support
+  them. This variable moves intermediate artifacts only; Cargokit's final DLL target directory
+  and Flutter bundling remain unchanged. Release CI sets it to
+  `<runner-temp>/efa-cargo-build` in `.github/workflows/_release.yml`.
 
 ## Dev-Only Environment
 
