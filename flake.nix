@@ -5,8 +5,15 @@
   inputs.fenix.url = "github:nix-community/fenix";
   inputs.fenix.inputs.nixpkgs.follows = "nixpkgs";
 
+  inputs.nixpkgs-master.url = "github:NixOS/nixpkgs/master";
+
   outputs =
-    { nixpkgs, fenix, ... }:
+    {
+      nixpkgs,
+      fenix,
+      nixpkgs-master,
+      ...
+    }:
     let
       system = "x86_64-linux";
 
@@ -16,6 +23,12 @@
           allowUnfree = true;
           android_sdk.accept_license = true;
         };
+        overlays = [
+          (final: prev: {
+            # nixpkgs-unstable offers a broken build missing zstd.
+            worker-build = nixpkgs-master.legacyPackages.${system}.worker-build;
+          })
+        ];
       };
 
       androidVersions = [
@@ -115,26 +128,26 @@
       # wrapper uses (no second Dart instance, no extra download) with
       # IMPELLERC injected; everything else links through unchanged.
       flutterSdk = pkgs.runCommand "flutter-sdk" { } ''
-        mkdir -p $out
-        cp -rs --no-preserve=mode ${flutter}/. $out/
-        rm $out/bin/cache/dart-sdk
-        mkdir -p $out/bin/cache/dart-sdk/bin
-        dartSdk=$(readlink -f ${flutter}/bin/cache/dart-sdk)
-        for entry in $(ls -A "$dartSdk"); do
-          [ "$entry" = bin ] && continue
-          ln -s "$dartSdk/$entry" "$out/bin/cache/dart-sdk/$entry"
-        done
-        for entry in $(ls -A "$dartSdk/bin"); do
-          [ "$entry" = dart ] && continue
-          ln -s "$dartSdk/bin/$entry" "$out/bin/cache/dart-sdk/bin/$entry"
-        done
-        dartBin=$(readlink -f ${flutter}/bin/dart)
-        cat > $out/bin/cache/dart-sdk/bin/dart <<SHIM
-#!${pkgs.runtimeShell}
-export IMPELLERC=${flutter}/bin/cache/artifacts/engine/linux-x64/impellerc
-exec $dartBin "\$@"
-SHIM
-        chmod +x $out/bin/cache/dart-sdk/bin/dart
+                mkdir -p $out
+                cp -rs --no-preserve=mode ${flutter}/. $out/
+                rm $out/bin/cache/dart-sdk
+                mkdir -p $out/bin/cache/dart-sdk/bin
+                dartSdk=$(readlink -f ${flutter}/bin/cache/dart-sdk)
+                for entry in $(ls -A "$dartSdk"); do
+                  [ "$entry" = bin ] && continue
+                  ln -s "$dartSdk/$entry" "$out/bin/cache/dart-sdk/$entry"
+                done
+                for entry in $(ls -A "$dartSdk/bin"); do
+                  [ "$entry" = dart ] && continue
+                  ln -s "$dartSdk/bin/$entry" "$out/bin/cache/dart-sdk/bin/$entry"
+                done
+                dartBin=$(readlink -f ${flutter}/bin/dart)
+                cat > $out/bin/cache/dart-sdk/bin/dart <<SHIM
+        #!${pkgs.runtimeShell}
+        export IMPELLERC=${flutter}/bin/cache/artifacts/engine/linux-x64/impellerc
+        exec $dartBin "\$@"
+        SHIM
+                chmod +x $out/bin/cache/dart-sdk/bin/dart
       '';
 
       # --- Named package sets ---
@@ -159,6 +172,7 @@ SHIM
         clang
         llvmPackages.libclang
         lld
+        zstd
       ];
 
       dartPackages = with pkgs; [
@@ -357,10 +371,7 @@ SHIM
           # (jsPackages: the data pipeline shells out to Node for the
           # tools/carbon-gr2-to-glb model converter)
           python = pkgs.mkShell {
-            packages =
-              pythonPackages
-              ++ jsPackages
-              ++ [ pkgs.rustfs ];
+            packages = pythonPackages ++ jsPackages ++ [ pkgs.rustfs ];
 
             inherit (localeEnv) LANG LC_ALL;
             UV_PYTHON_PREFERENCE = "only-managed";
