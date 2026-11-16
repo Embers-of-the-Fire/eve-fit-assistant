@@ -22,3 +22,10 @@
 - [ ] Upgrade vitest to v5. Blocked repo-wide in renovate.json5; the workers
   are gated on `@cloudflare/vitest-plugin` support
   (cloudflare/workers-sdk#15618). Re-enable once the plugin supports v5.
+- [ ] Migrate Android to built-in Kotlin (`android.builtInKotlin=true`) and remove
+  legacy KGP once a published `fluttertoast` release supports it. The AGP 9.2.1
+  build currently uses legacy KGP 2.4.0 compatibility mode because `fluttertoast`
+  10.0.2, the latest published release, still applies `kotlin-android`. This keeps
+  the build on published dependencies, but retains Flutter's future-deprecation
+  warning and prevents enabling AGP's built-in Kotlin support. Revisit when
+  updating `fluttertoast`.
