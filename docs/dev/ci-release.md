@@ -179,7 +179,10 @@ input (`testing` or `stable`, default `testing`):
 2. Platform build jobs — `android` and `linux` both need `verify`, are blocking, and share
    `.github/actions/setup-build-env` parameterized by dev shell. `windows` runs on
    `windows-latest` with the non-Nix `.github/actions/setup-build-env-windows` composite
-   action.
+   action. Its build step sets `CARGO_BUILD_BUILD_DIR` to `<runner-temp>/efa-cargo-build`,
+   keeping Cargo's intermediate-artifact paths below MSVC `link.exe`'s `MAX_PATH` limit without
+   changing Cargokit's final DLL location; see
+   [Setup & Configuration](./setup-and-config.md) for the equivalent local-build setting.
 3. `publish` — needs `verify`, `android`, `linux`, and `windows`; downloads all platform
    artifacts (binaries plus release-fragment JSONs), merges fragments into one release
    registry through `x build release --track <track> --fragments ...`, then runs the session →

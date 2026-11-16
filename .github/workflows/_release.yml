@@ -209,6 +209,10 @@ jobs:
 
       - name: Build Windows variants
         shell: pwsh
+        env:
+          # Cargo's per-crate artifact layout can exceed link.exe's MAX_PATH limit
+          # under Flutter/Cargokit's nested Windows build directory.
+          CARGO_BUILD_BUILD_DIR: ${{ runner.temp }}/efa-cargo-build
         run: uv run x.py build windows --track "$env:TRACK"
 
       - name: Upload Windows artifacts
