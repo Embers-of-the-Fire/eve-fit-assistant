@@ -21,7 +21,9 @@
   ],
   automerge: false,
   separateMajorMinor: false,
-  dependencyDashboard: true,
+  dependencyDashboard: {
+    enabled: true,
+  },
   lockFileMaintenance: {
     enabled: true,
   },
@@ -45,8 +47,7 @@
   },
   customManagers: [
     {
-      description:
-        "Renovate has no uv manager and its built-in pyenv matcher for .python-version only supports the docker datasource (which renders Python as a Docker dependency), so pyenv is disabled and this file is matched here against the python-version datasource instead",
+      description: 'Renovate has no uv manager and its built-in pyenv matcher for .python-version only supports the docker datasource (which renders Python as a Docker dependency), so pyenv is disabled and this file is matched here against the python-version datasource instead',
       customType: 'regex',
       managerFilePatterns: [
         '/(^|/)\\.python-version$/',
@@ -73,8 +74,7 @@
       ],
     },
     {
-      description:
-        'Bump floors explicitly: all Python deps are open `>=` ranges, and Renovate\'s default replace strategy treats the newest in-range release as current, so no update PR is ever created without this',
+      description: "Bump floors explicitly: all Python deps are open `>=` ranges, and Renovate's default replace strategy treats the newest in-range release as current, so no update PR is ever created without this",
       groupName: 'Python dependencies (uv)',
       matchManagers: [
         'pep621',
@@ -96,8 +96,7 @@
       ],
     },
     {
-      description:
-        'Pin rig: upstream ships breaking changes on every minor bump (0.42 to 0.43 broke efa-chat, see PR #499), so rig updates are manual',
+      description: 'Pin rig: upstream ships breaking changes on every minor bump (0.42 to 0.43 broke efa-chat, see PR #499), so rig updates are manual',
       matchManagers: [
         'cargo',
       ],
@@ -113,8 +112,7 @@
       ],
     },
     {
-      description:
-        'Pin TypeScript 6 repo-wide: svelte-check --tsgo still requires a TS6 + @typescript/native dual install and astro check has no TS7 support at all (needs @astrojs/ts-content-mapper, TS 7.1+); see PR #503',
+      description: 'Pin TypeScript 6 repo-wide: svelte-check --tsgo still requires a TS6 + @typescript/native dual install and astro check has no TS7 support at all (needs @astrojs/ts-content-mapper, TS 7.1+); see PR #503',
       matchManagers: [
         'npm',
       ],
@@ -127,8 +125,7 @@
       enabled: false,
     },
     {
-      description:
-        'Block vitest 5 repo-wide until @cloudflare/vitest-plugin supports it (cloudflare/workers-sdk#15618)',
+      description: 'Block vitest 5 repo-wide until @cloudflare/vitest-plugin supports it (cloudflare/workers-sdk#15618)',
       matchManagers: [
         'npm',
       ],
