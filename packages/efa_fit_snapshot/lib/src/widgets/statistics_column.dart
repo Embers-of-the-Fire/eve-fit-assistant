@@ -49,6 +49,7 @@ class SnapshotStatisticsColumn extends StatelessWidget {
         _WeaponsSection(weapons: stats.weapons),
         _ResourcesSection(resources: stats.resources),
         _DefenseSection(snapshot: snapshot),
+        if (stats.hasEnergyWarfare()) _EnergyWarfareSection(energyWarfare: stats.energyWarfare),
         if (stats.hasNeutralization()) _NeutralizationSection(neutralization: stats.neutralization),
         _MobilityTargetingSection(stats: stats),
         _DronesSection(drones: stats.drones),
@@ -302,6 +303,46 @@ class _DefenseSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EnergyWarfareSection extends StatelessWidget {
+  const _EnergyWarfareSection({required this.energyWarfare});
+
+  final SnapshotStatistics_EnergyWarfare energyWarfare;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.snapshotL10n;
+    final showNeutralizer = energyWarfare.neutralizerGjPerS > 0;
+    final showNosferatu = energyWarfare.nosferatuGjPerS > 0;
+    if (!showNeutralizer && !showNosferatu) return const SizedBox.shrink();
+
+    return ListTile(
+      minTileHeight: 0,
+      leading: efaIconImage(EfaAssets.attrCapacitorCharge, height: 28),
+      title: DefaultTextStyle.merge(
+        style: const TextStyle(fontSize: 16),
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          children: [
+            if (showNeutralizer)
+              Text(
+                l10n.energyWarfareNeutralizer(
+                  rate: energyWarfare.neutralizerGjPerS.toStringAsMaxDecimals(1),
+                ),
+              ),
+            if (showNeutralizer && showNosferatu) const Text(" | "),
+            if (showNosferatu)
+              Text(
+                l10n.energyWarfareNosferatu(
+                  rate: energyWarfare.nosferatuGjPerS.toStringAsMaxDecimals(1),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

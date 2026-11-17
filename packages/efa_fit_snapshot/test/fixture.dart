@@ -146,6 +146,10 @@ FitSnapshot buildFixtureSnapshot({
           bayCapacityM3: 125.0,
           bayUsedM3: 50.0,
         ),
+        energyWarfare: SnapshotStatistics_EnergyWarfare(
+          neutralizerGjPerS: 120.5,
+          nosferatuGjPerS: 40.25,
+        ),
         cargo: SnapshotStatistics_Cargo(
           massKg: 99500000.0,
           capacityM3: 665.0,

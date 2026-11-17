@@ -1,6 +1,7 @@
 @TestOn("vm")
 library;
 
+import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 import "dart:ui" as ui;
@@ -9,7 +10,10 @@ import "package:eve_fit_assistant/config/locale.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/config/type_list.dart";
 import "package:efa_constant/eve.dart";
+import "package:efa_fit/efa_fit.dart";
 import "package:eve_fit_assistant/data/l10n/app_localizations.dart";
+import "package:eve_fit_assistant/features/announcements/repository/announcement_repository.dart";
+import "package:eve_fit_assistant/features/fit_io/snapshot_export.dart";
 import "package:efa_proto/collections.pb.dart";
 import "package:efa_proto/fit.pb.dart" as proto_fit;
 import "package:efa_proto/types.pb.dart" as pb_types;
@@ -52,12 +56,16 @@ native.Item _item([Map<int, double> attributes = const {}]) => native.Item(
   effects: Int32List(0),
 );
 
-native.Ship _emulatedShip({required bool overCapacity}) => native.Ship(
+native.Ship _emulatedShip({
+  required bool overCapacity,
+  Map<int, double> hullAttributes = const {},
+}) => native.Ship(
   hull: _item({
     EveConstAttrID.cpuOutput: 100,
     EveConstExtendedAttrID.cpuFree: overCapacity ? -20 : 20,
     EveConstAttrID.powerOutput: 50,
     EveConstExtendedAttrID.powerFree: 5,
+    ...hullAttributes,
   }),
   modules: const [],
   skills: const [],
@@ -105,10 +113,16 @@ RepoCollectionService _collection() {
   return RepoCollectionService.forTest(collection: collection);
 }
 
-Future<void> _pumpScreenshotPage(WidgetTester tester, {required bool overCapacity}) async {
+Future<void> _pumpScreenshotPage(
+  WidgetTester tester, {
+  required bool overCapacity,
+  Map<int, double> hullAttributes = const {},
+  void Function(WidgetRef ref)? onRef,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        appVersionProvider.overrideWith((_) async => "1.0.0"),
         appSettingServiceProvider.overrideWithValue(
           const AppSetting(
             locale: Locale.en,
@@ -121,7 +135,7 @@ Future<void> _pumpScreenshotPage(WidgetTester tester, {required bool overCapacit
           ),
         ),
         repoCollectionProvider.overrideWithValue(_collection()),
-        localizationDbServiceProvider.overrideWith((ref) => null),
+        localizationDbServiceProvider.overrideWith((ref) async => null),
         imageAssetServiceProvider.overrideWith((ref) => null),
         fitProvider(_fitId).overrideWithBuild(
           (ref, notifier) => FitServiceState.loaded(
@@ -130,17 +144,23 @@ Future<void> _pumpScreenshotPage(WidgetTester tester, {required bool overCapacit
           ),
         ),
         fitEmulatorServiceProvider(_fitId).overrideWithBuild(
-          (ref, notifier) =>
-              FitEmulatorState.emulated(output: _emulatedShip(overCapacity: overCapacity)),
+          (ref, notifier) => FitEmulatorState.emulated(
+            output: _emulatedShip(overCapacity: overCapacity, hullAttributes: hullAttributes),
+          ),
         ),
       ],
-      child: testApp(
-        // The flutter_test font metrics are much wider than real fonts; scale
-        // text down so fixed-width screenshot columns do not overflow.
-        const MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(0.5)),
-          child: FitScreenshotPage(fitId: _fitId),
-        ),
+      child: Consumer(
+        builder: (context, ref, _) {
+          onRef?.call(ref);
+          return testApp(
+            // The flutter_test font metrics are much wider than real fonts; scale
+            // text down so fixed-width screenshot columns do not overflow.
+            const MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(0.5)),
+              child: FitScreenshotPage(fitId: _fitId),
+            ),
+          );
+        },
       ),
     ),
   );
@@ -177,5 +197,45 @@ void main() {
 
     expect(find.byType(FitScreenshotPage), findsOneWidget);
     expect(find.byType(WarningTrigger), findsNothing);
+
+    final l10n = lookupAppLocalizations(const ui.Locale("zh"));
+    expect(find.text(l10n.fitAttributeTabEnergyWarfareNeutralizer(rate: "0.0")), findsNothing);
+    expect(find.text(l10n.fitAttributeTabEnergyWarfareNosferatu(rate: "0.0")), findsNothing);
+  });
+
+  testWidgets("screenshot output includes separate energy warfare rates", (tester) async {
+    await _pumpScreenshotPage(
+      tester,
+      overCapacity: false,
+      hullAttributes: {
+        EveConstExtendedAttrID.energyNeutralizerRate: 120.5,
+        EveConstExtendedAttrID.energyNosferatuRate: 40.25,
+      },
+    );
+
+    final l10n = lookupAppLocalizations(const ui.Locale("zh"));
+    expect(find.byType(EnergyWarfare), findsOneWidget);
+    expect(find.text(l10n.fitAttributeTabEnergyWarfareNeutralizer(rate: "120.5")), findsOneWidget);
+    expect(find.text(l10n.fitAttributeTabEnergyWarfareNosferatu(rate: "40.3")), findsOneWidget);
+  });
+
+  testWidgets("snapshot export preserves the engine energy warfare rates", (tester) async {
+    late WidgetRef ref;
+    await _pumpScreenshotPage(
+      tester,
+      overCapacity: false,
+      hullAttributes: {
+        EveConstExtendedAttrID.energyNeutralizerRate: 120.5,
+        EveConstExtendedAttrID.energyNosferatuRate: 40.25,
+      },
+      onRef: (value) => ref = value,
+    );
+
+    final encoded = await FitSnapshotExporter(ref).export(fitId: _fitId, fit: _fitStorage());
+    final snapshot = decodeFitSnapshot(base64Decode(encoded));
+
+    expect(snapshot.statistics.hasEnergyWarfare(), isTrue);
+    expect(snapshot.statistics.energyWarfare.neutralizerGjPerS, 120.5);
+    expect(snapshot.statistics.energyWarfare.nosferatuGjPerS, 40.25);
   });
 }

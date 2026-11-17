@@ -1278,6 +1278,22 @@
       }
     }
   },
+  "fitAttributeTabEnergyWarfareNeutralizer": "毁电 {rate} GJ/s",
+  "@fitAttributeTabEnergyWarfareNeutralizer": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "fitAttributeTabEnergyWarfareNosferatu": "吸电 {rate} GJ/s",
+  "@fitAttributeTabEnergyWarfareNosferatu": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "fitAttributeTabNeutralizationResistance": "{percent}% 抗性",
   "@fitAttributeTabNeutralizationResistance": {
     "placeholders": {

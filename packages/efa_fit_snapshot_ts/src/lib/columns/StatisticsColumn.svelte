@@ -26,6 +26,7 @@ const stats = $derived(snapshot.statistics);
 const ship = $derived(snapshot.ship?.type);
 const profile = $derived(snapshot.damageProfile);
 
+const energyWarfare = $derived(stats?.energyWarfare);
 const neutralization = $derived(stats?.neutralization);
 const neutPercent = $derived(
     Math.min(Math.max((neutralization?.resistanceRate ?? 0) * 100, 0), 100),
@@ -245,6 +246,33 @@ function holdIcon(kind: HoldKindType): EfaIconName {
                 </tr>
             </tbody>
         </table>
+
+        {#if energyWarfare && (energyWarfare.neutralizerGjPerS > 0 || energyWarfare.nosferatuGjPerS > 0)}
+            <div class="efa-stat-row">
+                <EfaIcon name="capacitor" size={28} />
+                <div class="efa-stat-body">
+                    <div class="efa-stat-line">
+                        {#if energyWarfare.neutralizerGjPerS > 0}
+                            <span>
+                                {ctx.t("energyWarfareNeutralizer", {
+                                    rate: toMaxDecimals(energyWarfare.neutralizerGjPerS, 1),
+                                })}
+                            </span>
+                        {/if}
+                        {#if energyWarfare.neutralizerGjPerS > 0 && energyWarfare.nosferatuGjPerS > 0}
+                            <span class="efa-sep">|</span>
+                        {/if}
+                        {#if energyWarfare.nosferatuGjPerS > 0}
+                            <span>
+                                {ctx.t("energyWarfareNosferatu", {
+                                    rate: toMaxDecimals(energyWarfare.nosferatuGjPerS, 1),
+                                })}
+                            </span>
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        {/if}
 
         {#if neutralization}
             <div class="efa-stat-row">

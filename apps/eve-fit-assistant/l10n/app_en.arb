@@ -635,6 +635,8 @@
   "fitScreenshotCapacitor": "Capacitor",
   "fitScreenshotDroneBandwidth": "Drone bandwidth",
   "fitAttributeTabCapacitorStable": "{percent}% Stable",
+  "fitAttributeTabEnergyWarfareNeutralizer": "Neut {rate} GJ/s",
+  "fitAttributeTabEnergyWarfareNosferatu": "Nos {rate} GJ/s",
   "fitAttributeTabNeutralizationResistance": "{percent}% Resistance",
   "fitAttributeTabNeutralizationBreak": "Break +{rate} GJ/s",
   "fitAttributeTabNeutralizationClear": "Clear ~{amount} GJ",
