@@ -389,4 +389,13 @@ message SnapshotStatistics {
   }
   /// Optional so snapshots created before this field still decode.
   optional Neutralization neutralization = 11;
+
+  /// Nominal offensive capacitor-warfare output of active modules, before
+  /// range, falloff, target-capacitor, or nosferatu gain limitations.
+  message EnergyWarfare {
+    required double neutralizer_gj_per_s = 1;
+    required double nosferatu_gj_per_s = 2;
+  }
+  /// Optional so snapshots created before this field still decode.
+  optional EnergyWarfare energy_warfare = 12;
 }

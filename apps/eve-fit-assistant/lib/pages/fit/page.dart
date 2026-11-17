@@ -80,6 +80,7 @@ part "components/action_icons.dart";
 part "components/add_charge_dialog.dart";
 part "components/attribute/capacitor.dart";
 part "components/attribute/cargo.dart";
+part "components/attribute/energy_warfare.dart";
 part "components/attribute/hp.dart";
 part "components/attribute/miscellaneous.dart";
 part "components/attribute/neutralization.dart";

@@ -22,6 +22,8 @@
   "fighterAbilityBomb": "Bomb",
   "capacitorStable": "{percent}% Stable",
   "capacitorUnstable": "Unstable",
+  "energyWarfareNeutralizer": "Neut {rate} GJ/s",
+  "energyWarfareNosferatu": "Nos {rate} GJ/s",
   "neutralizationResistance": "{percent}% Resistance",
   "neutralizationBreak": "Break +{rate} GJ/s",
   "neutralizationClear": "Clear ~{amount} GJ"

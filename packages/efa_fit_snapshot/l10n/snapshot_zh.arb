@@ -38,6 +38,18 @@
     }
   },
   "capacitorUnstable": "不稳定",
+  "energyWarfareNeutralizer": "毁电 {rate} GJ/s",
+  "@energyWarfareNeutralizer": {
+    "placeholders": {
+      "rate": { "type": "String" }
+    }
+  },
+  "energyWarfareNosferatu": "吸电 {rate} GJ/s",
+  "@energyWarfareNosferatu": {
+    "placeholders": {
+      "rate": { "type": "String" }
+    }
+  },
   "neutralizationResistance": "{percent}% 抗性",
   "@neutralizationResistance": {
     "placeholders": {

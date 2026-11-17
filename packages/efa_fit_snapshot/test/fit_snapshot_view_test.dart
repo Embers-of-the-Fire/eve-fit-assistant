@@ -54,6 +54,8 @@ void main() {
     expect(find.text("High-grade Halo Alpha"), findsOneWidget);
     expect(find.text("Standard Blue Pill"), findsOneWidget);
     expect(find.textContaining("35.0% Stable"), findsOneWidget);
+    expect(find.text("Neut 120.5 GJ/s"), findsOneWidget);
+    expect(find.text("Nos 40.3 GJ/s"), findsOneWidget);
     expect(find.textContaining("EHP"), findsWidgets);
     expect(find.text("99,500,000 kg"), findsOneWidget);
   });
@@ -66,6 +68,8 @@ void main() {
     expect(find.text("425mm 磁轨炮 II"), findsOneWidget);
     expect(find.text("全 5"), findsOneWidget);
     expect(find.textContaining("稳定"), findsOneWidget);
+    expect(find.text("毁电 120.5 GJ/s"), findsOneWidget);
+    expect(find.text("吸电 40.3 GJ/s"), findsOneWidget);
   });
 
   testWidgets("renders without statistics", (tester) async {

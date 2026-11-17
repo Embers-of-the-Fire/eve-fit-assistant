@@ -313,6 +313,14 @@ pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
         holds,
     };
 
+    let neutralizer_rate = get(hull, patch::ATTR_ENERGY_NEUTRALIZER_RATE);
+    let nosferatu_rate = get(hull, patch::ATTR_ENERGY_NOSFERATU_RATE);
+    let energy_warfare = (neutralizer_rate > 0.0 || nosferatu_rate > 0.0).then_some(
+        pb::snapshot_statistics::EnergyWarfare {
+            neutralizer_gj_per_s: neutralizer_rate,
+            nosferatu_gj_per_s: nosferatu_rate,
+        },
+    );
     let warfare_resistance = get_or(hull, attr_id::ENERGY_WARFARE_RESISTANCE, 1.0);
     let break_peak_rate = neutralization_break_peak_rate(peak_delta, warfare_resistance);
     let neutralization = pb::snapshot_statistics::Neutralization {
@@ -335,6 +343,7 @@ pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
         drones,
         cargo,
         neutralization: Some(neutralization),
+        energy_warfare,
     }
 }
 
@@ -432,6 +441,8 @@ mod tests {
             (patch::ATTR_TOTAL_MASS, 1e7),
             (attr_id::CAPACITY, 500.0),
             (attr_id::FLEET_HANGAR_CAPACITY, 10_000.0),
+            (patch::ATTR_ENERGY_NEUTRALIZER_RATE, 120.5),
+            (patch::ATTR_ENERGY_NOSFERATU_RATE, 40.25),
         ]);
         ship.character = item_with(&[
             (attr_id::MAX_ACTIVE_DRONES, 5.0),
@@ -496,6 +507,10 @@ mod tests {
         assert!(neutralization.self_sustainable);
         assert_eq!(neutralization.gj_per_s_to_break, Some(15.0));
         assert!(neutralization.gj_to_clear.is_none());
+
+        let energy_warfare = stats.energy_warfare.expect("energy warfare");
+        assert_eq!(energy_warfare.neutralizer_gj_per_s, 120.5);
+        assert_eq!(energy_warfare.nosferatu_gj_per_s, 40.25);
     }
 
     #[test]
