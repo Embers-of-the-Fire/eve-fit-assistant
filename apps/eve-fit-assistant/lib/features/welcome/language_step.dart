@@ -31,7 +31,7 @@ class LanguageStepPage extends ConsumerWidget {
       // Evaluated after the choice is persisted. In the wizard the per-locale
       // database is usually downloaded eagerly by the provisioning step that
       // follows, so this is a no-op (availability: available) or offers the
-      // §5.2 dialog for checkouts provisioned before the split.
+      // locale-switch dialog for checkouts provisioned before the split.
       unawaited(offerLocaleLocalizationDb(context, ref, value));
     }
 

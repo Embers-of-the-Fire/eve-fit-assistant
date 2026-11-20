@@ -7,7 +7,7 @@ use eve_fit_os::provider::InfoProvider;
 use crate::proto::efos;
 
 /// The engine's own `TypeDogmaItem` lives behind its `protobuf` feature; the
-/// worker defines its own (spec §7.1).
+/// worker defines its own.
 #[derive(Debug, Clone, Default)]
 pub struct TypeDogmaItem {
     pub attributes: Vec<ef::TypeDogmaAttribute>,
@@ -77,7 +77,7 @@ pub fn decode_dogma_effect(entry: &efos::dogma_effects::DogmaEffect) -> ef::Dogm
 
 /// Mirrors `Database::init_from_protobuf`, but never panics: unknown buff
 /// aggregate-mode/operation ints degrade to a default (the bool return flags
-/// the degradation for logging) — a wasm trap is uncatchable (spec §14).
+/// the degradation for logging) — a wasm trap is uncatchable.
 pub fn decode_buff(entry: &efos::buff_collections::Buff) -> (ef::Buff, bool) {
     let mut degraded = false;
     let aggregate_mode = match entry.aggregate_mode {
@@ -149,11 +149,11 @@ pub fn decode_buff(entry: &efos::buff_collections::Buff) -> (ef::Buff, bool) {
     (buff, degraded)
 }
 
-/// Custom `InfoProvider` over hand-built maps of core engine types (spec
-/// §7.1). Getter misses return references to cached zero-value placeholders
+/// Custom `InfoProvider` over hand-built maps of core engine types.
+/// Getter misses return references to cached zero-value placeholders
 /// instead of panicking (the trait returns `&T`; a wasm trap is uncatchable)
-/// and are counted in `miss_count` — a nonzero count indicates a closure bug
-/// (§7.3), not a client error.
+/// and are counted in `miss_count` — a nonzero count indicates a closure bug,
+/// not a client error.
 pub struct FitDataProvider {
     pub types: HashMap<i32, ef::Type>,
     pub type_dogma: HashMap<i32, TypeDogmaItem>,

@@ -44,8 +44,6 @@ class VerificationPartialDownload extends VerificationIssue {
 
 /// Verifies local integrity, repairs interrupted operations, and prunes
 /// unreferenced data.
-///
-/// Follows agent/schemav2/workflow.md §2.7 (Client GC) and §3.7 (Verification).
 class VerificationService {
   VerificationService({
     required this.checkoutService,
@@ -237,7 +235,7 @@ class VerificationService {
 
   /// Prunes unreferenced data.
   ///
-  /// Follows spec §12.2 client deletion rules:
+  /// Client deletion rules:
   /// 1. Collect reachable snapshot hashes from all checkouts and reflogs
   /// 2. Collect referenced blobs from reachable ResourceIndexes
   /// 3. Delete unreferenced snapshots, blobs, tmp files

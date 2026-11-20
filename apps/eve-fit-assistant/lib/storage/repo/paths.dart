@@ -3,8 +3,8 @@ import "package:path/path.dart" as p;
 
 /// Path resolution for the EFA V2 unified storage schema.
 ///
-/// All paths share the `resources/v2/` root. The layout follows
-/// agent/schemav2/schema.md §2 (client-side).
+/// All paths share the `resources/v2/` root; the getters below define the
+/// client-side layout.
 class RepoPaths {
   const RepoPaths._();
 

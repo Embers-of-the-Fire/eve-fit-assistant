@@ -4,23 +4,23 @@ Primitives:
   ident_hash(uri_string)  → SHA-256 hex of identifier URI
   content_hash(bytes)     → SHA-256 hex of raw bytes
 
-Structured hashes:
+Structured hashes (see "V2 Data Generation" in docs/dev/remote-content.md):
   v3 (legacy, metadata-only — still callable for reads/verification):
     snapshot_hash(type, files)  → "efa:{type}:v3\\n" + metadata.json hash
     generation_hash(files)      → "efa:generation:v3\\n" + metadata.json hash
-  v4 (canonical for new snapshots — also binds the typed .pb2 index, spec §7):
+  v4 (canonical for new snapshots — also binds the typed .pb2 index):
     snapshot_hash_v4(type, files)
       → "efa:{type}:v4\\n" + metadata.json hash + "\\n" + {proto}.pb2 hash
 
 Dual-read: ``verify_snapshot_hash`` accepts an entity addressed by either
 protocol (v4 preferred, v3 legacy fallback), enabling a greenfield migration
-where new commits are v4 while pre-existing v3 entities still verify (spec §7).
+where new commits are v4 while pre-existing v3 entities still verify.
 
-Note: ``generation_hash`` intentionally remains v3. The v4 generation protocol
-(spec §7) would cover ``history.pb2``, but each generation's ``history.pb2``
+Note: ``generation_hash`` intentionally remains v3. A v4 generation
+protocol would cover ``history.pb2``, but each generation's ``history.pb2``
 records the generation's own hash in its newest snapshot entries
 (``merge_generation_into_history``), making a v4 generation hash self-referential.
-That is deferred until the §5 revert feature mandates it.
+That is deferred until a revert feature mandates it.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def snapshot_hash(snapshot_type: SnapshotType, files: dict[str, bytes]) -> str:
 
 
 def snapshot_hash_v4(snapshot_type: SnapshotType, files: dict[str, bytes]) -> str:
-    """Compute the v4 structured snapshot hash (spec §7).
+    """Compute the v4 structured snapshot hash.
 
     The hash input binds both the canonical ``metadata.json`` and the typed
     ``.pb2`` index file, so tampering with the resource/release index now
@@ -111,7 +111,7 @@ def verify_snapshot_hash(
 ) -> bool:
     """Return whether ``expected`` matches this snapshot under v4 or legacy v3.
 
-    Dual-read for the greenfield migration (spec §7): new snapshots are v4, but
+    Dual-read for the greenfield migration: new snapshots are v4, but
     pre-existing v3-addressed snapshots must still verify. v4 is preferred when
     the typed ``.pb2`` index is available; v3 is the metadata-only fallback.
     """

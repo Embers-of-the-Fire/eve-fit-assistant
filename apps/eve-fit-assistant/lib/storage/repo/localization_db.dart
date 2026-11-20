@@ -90,7 +90,7 @@ const int _kQueryChunkSize = 500;
 /// lazily and strings are resolved on demand by primary-key lookup — nothing
 /// is decoded up front.
 ///
-/// Each lookup resolves its database through a fixed chain (spec §4.3),
+/// Each lookup resolves its database through a fixed chain,
 /// holding at most one open handle per requested locale:
 ///
 /// 1. the per-locale database, when its entry is in the index;
@@ -127,7 +127,7 @@ class LocalizationDbService {
   final Map<String, Map<int, Completer<String>>> _pending = {};
 
   /// Open database handles, keyed by requested locale — at most one per
-  /// locale (spec §4.3). A `null` value means the chain found no usable
+  /// locale. A `null` value means the chain found no usable
   /// database for that locale.
   final Map<String, SqliteDatabase?> _handles = {};
   final Map<String, Future<SqliteDatabase?>> _pendingHandles = {};
@@ -426,7 +426,7 @@ Future<LocalizationDbService?> localizationDbService(Ref ref) async {
 }
 
 /// Local availability of a locale's localization database for the active
-/// checkout (spec §4.4).
+/// checkout.
 sealed class LocalizationDbAvailability {
   const LocalizationDbAvailability();
 }
@@ -457,7 +457,7 @@ final class LocalizationDbUpdateRequired extends LocalizationDbAvailability {
 /// A `downloadable` result means the locale-switch flow can fetch the blob on
 /// demand; `updateRequired` means only a full data update can bring the
 /// resource in. Old snapshots carrying only the legacy combined database are
-/// **not** `updateRequired`: the §4.3 fallback covers them.
+/// **not** `updateRequired`: the legacy fallback covers them.
 @riverpod
 Future<LocalizationDbAvailability> localizationDbAvailability(Ref ref, String locale) async {
   final store = ref.watch(assetStoreProvider);

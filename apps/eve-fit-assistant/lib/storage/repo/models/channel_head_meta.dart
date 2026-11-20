@@ -5,8 +5,6 @@ part "channel_head_meta.freezed.dart";
 part "channel_head_meta.g.dart";
 
 /// Client-side channel head metadata (channels/{channel}/metadata.json).
-///
-/// schema.md §3.8
 @freezed
 abstract class ChannelHeadMeta with _$ChannelHeadMeta {
   const factory ChannelHeadMeta({

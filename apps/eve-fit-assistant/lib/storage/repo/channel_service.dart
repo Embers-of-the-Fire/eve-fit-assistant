@@ -18,8 +18,6 @@ import "package:fpdart/fpdart.dart";
 
 /// Manages channel discovery, head metadata, and server index.
 ///
-/// Follows agent/schemav2/workflow.md §2.2 (Channel Discovery).
-///
 /// All local persistence goes through a [BlobStore], so every read/write is
 /// asynchronous (OPFS on web is async-only).
 class ChannelService {

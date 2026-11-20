@@ -4,8 +4,6 @@ part "generation_meta.freezed.dart";
 part "generation_meta.g.dart";
 
 /// Generation metadata (channels/refs/{hash}/metadata.json).
-///
-/// schema.md §3.5
 @freezed
 abstract class GenerationMeta with _$GenerationMeta {
   const factory GenerationMeta({

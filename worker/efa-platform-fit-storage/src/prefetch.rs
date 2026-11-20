@@ -40,8 +40,7 @@ pub type SnapshotKey = (String, String);
 type CatalogCache = HashMap<(i64, i64), Rc<Vec<CatalogEntry>>>;
 
 /// Accumulated decoded engine data for one `(server_id, snapshot_hash)`. The
-/// isolate cache is additive: warm requests skip already-seen rows entirely
-/// (spec §7.4).
+/// isolate cache is additive: warm requests skip already-seen rows entirely.
 #[derive(Clone, Default)]
 pub struct SnapshotData {
     pub types: HashMap<i32, eve_fit_os::fit::Type>,
@@ -80,7 +79,7 @@ impl SnapshotData {
     }
 }
 
-/// Row families of `efa-snapshot-registry` (spec §7.2). The codes are
+/// Row families of `efa-snapshot-registry`. The codes are
 /// mirrored in the sync worker and driver
 /// (`worker/efa-platform-data-sync/src/session.ts`,
 /// `bootstrap/data/d1/sync.py`).
@@ -119,7 +118,7 @@ impl Family {
     }
 }
 
-// Isolate cache (spec §7.4): accumulated decoded rows keyed by
+// Isolate cache: accumulated decoded rows keyed by
 // `(server_id, snapshot_hash)`. Unbounded by design (R6): current data sizes
 // make this a few hundred rows per snapshot; revisit with an LRU if memory
 // pressure appears. Only mutated synchronously (never across an `.await`), so
@@ -372,7 +371,7 @@ pub async fn fetch_family(
     Ok(out)
 }
 
-/// The fit's seed type set (spec §7.3, round 0): ship, modules, charges,
+/// The fit's seed type set (round 0): ship, modules, charges,
 /// dynamic base types, drones, fighters, implants, boosters, tactical modes,
 /// skills.
 pub fn seed_type_ids(state: &pb::FitState) -> BTreeSet<i32> {
@@ -454,7 +453,7 @@ fn cached_keys<T>(map: &HashMap<i32, T>) -> HashSet<i32> {
     map.keys().copied().collect()
 }
 
-/// Transitive-closure prefetch (spec §7.3): 3 rounds, ~5–8 queries cold, zero
+/// Transitive-closure prefetch: 3 rounds, ~5–8 queries cold, zero
 /// on warm isolate cache hits. Unknown seed types → 422 `unknown_type`.
 pub async fn prefetch<F, Fut>(
     data: &mut SnapshotData,
@@ -607,7 +606,7 @@ where
         }
     }
 
-    // Type metadata for name/icon resolution (spec §11); missing rows are
+    // Type metadata for name/icon resolution; missing rows are
     // tolerated (empty names, no icon). Includes the mutated type IDs of
     // dynamic items: the snapshot displays the mutated type while the engine
     // calculates on the base type.

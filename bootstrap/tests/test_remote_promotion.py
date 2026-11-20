@@ -1,4 +1,5 @@
-"""Tests for the stable-channel promotion path (snap.plan.md §3).
+"""Tests for the stable-channel promotion path (workflow: docs/dev/ci-release.md
+"Stable Channel Promotion Workflow").
 
 Covers ``SessionManager.promote`` semantics, suppression list management,
 eligibility computation for ``ci release-data promote``, the

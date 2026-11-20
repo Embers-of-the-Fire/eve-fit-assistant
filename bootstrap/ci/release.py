@@ -27,7 +27,11 @@ _APKSIGNER_DIGEST_RE = re.compile(r"certificate SHA-256 digest:\s*([0-9a-fA-F:]+
 
 @dataclass(frozen=True)
 class ReleaseIntent:
-    """Parsed release intent of a ``[version]`` configuration diff (spec §5.1)."""
+    """Parsed release intent of a ``[version]`` configuration diff.
+
+    The version model and the ship/backport procedures live in RELEASING.md;
+    the CI wiring is documented in docs/dev/ci-release.md.
+    """
 
     action: str
     track: Channel | None
@@ -45,7 +49,7 @@ def classify_release_intent(
     *,
     backport_branch: bool = False,
 ) -> ReleaseIntent:
-    """Classify the release intent of a parsed ``[version]`` diff (spec §5.1, R1-R6).
+    """Classify the release intent of a parsed ``[version]`` diff (rules R1-R6).
 
     ``base`` is the version configuration at the merge base (or the backport
     branch's base tag), ``head`` the configuration being merged. At most one
@@ -60,7 +64,7 @@ def classify_release_intent(
 
     if backport_branch and testing_changed:
         raise click.ClickException(
-            "R4 (backport, §6.4): a backport branch diff must not touch "
+            "R4 (backport): a backport branch diff must not touch "
             "[version.testing]; only a [version.stable] patch increment is permitted."
         )
 
@@ -115,7 +119,7 @@ def classify_release_intent(
         )
     if (head.stable.major, head.stable.minor) != (base.stable.major, base.stable.minor):
         raise click.ClickException(
-            "R4 (backport, §6.4): stable major/minor must not change on a backport "
+            "R4 (backport): stable major/minor must not change on a backport "
             "branch; only a patch increment of the current stable line is permitted."
         )
     if head.stable.patch <= base.stable.patch:
@@ -449,10 +453,13 @@ def register_ci_release_commands(ci_group: click.Group) -> None:
         "--backport-branch",
         is_flag=True,
         default=False,
-        help="Classify under backport-branch rules (§6.4) instead of mainline rules.",
+        help=(
+            "Classify under backport-branch rules (see RELEASING.md "
+            '"Backport a stable patch") instead of mainline rules.'
+        ),
     )
     def release_intent(base_ref: str, backport_branch: bool):
-        """Classify the release intent of the merged [version] diff (spec §5.1)."""
+        """Classify the release intent of the merged [version] diff."""
         head = _load_version_from_config(PROJECT_ROOT / "efa.config.toml")
         base = _load_version_from_git_ref(base_ref)
         intent = classify_release_intent(base, head, backport_branch=backport_branch)

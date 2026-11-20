@@ -23,7 +23,7 @@ class RepoHash {
   /// ident_hash = SHA-256(uri_string) — used for blob storage addressing.
   static String hashIdent(String uri) => hashString(uri);
 
-  // ── Structured hashes (agent/schemav2/schema.md §6.2, v3) ──────────────────
+  // ── Structured hashes (v3) ─────────────────────────────────────────────────
 
   /// Computes the structured resource snapshot hash (v3).
   ///
@@ -47,7 +47,7 @@ class RepoHash {
   static String hashGeneration({required String metadataJsonHash}) =>
       hashString("efa:generation:v3\nmetadata.json $metadataJsonHash\n");
 
-  // ── Structured hashes (v4 — also binds the typed .pb2 index, spec §7) ───────
+  // ── Structured hashes (v4 — also binds the typed .pb2 index) ────────────────
   //
   // v4 is the canonical protocol for new snapshots. It binds the `.pb2` index
   // in addition to `metadata.json`, so tampering with the resource/release

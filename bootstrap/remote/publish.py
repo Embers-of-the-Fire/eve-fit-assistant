@@ -1,6 +1,7 @@
 """Publisher — idempotent upload of generations, snapshots, and blobs to S3.
 
-Priority order: blobs → snapshots → generation → head (spec §11.3 remark).
+Priority order: blobs → snapshots → generation → head (see "V2 Publishing
+Rules" in docs/dev/remote-content.md).
 Idempotent: skip if remote file exists (content-addressed, immutable).
 """
 
@@ -493,7 +494,7 @@ class Publisher:
             self._upload_s3(src, remote_path, attrs=attrs)
 
     def _remote_exists(self, remote_path: str) -> bool:
-        """True if the blob already exists at the destination (spec §3.1)."""
+        """True if the blob already exists at the destination."""
         if self.origin_dir is not None:
             return (self.origin_dir / remote_path).exists()
         assert self._client is not None

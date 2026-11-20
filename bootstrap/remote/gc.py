@@ -1,6 +1,6 @@
 """Garbage collection — reachability-based pruning of unreferenced entities.
 
-Reachability algorithm (spec §8.1, §8.3):
+Reachability algorithm:
   1. Start from every channel head → load its `history.pb2`.
   2. The head history is the authoritative reachability root for resource
      snapshots: every `snapshot_hash` it records (and the snapshot's blobs) is
@@ -66,11 +66,11 @@ class GarbageCollector:
     def _collect_for_head(self, head_hash: str, reachable: ReachabilitySet) -> None:
         history = self._load_head_history(head_hash)
         if history is None:
-            # §8.1 step 4: pre-feature head — legacy full parent-chain walk.
+            # Pre-feature head (step 4 above) — legacy full parent-chain walk.
             self._collect_full_chain(head_hash, reachable)
             return
 
-        # §8.1: head history is the reachability root for resource snapshots and
+        # Head history is the reachability root for resource snapshots and
         # their blobs, decoupled from the introducing generation.
         for server in history.servers:
             for snap in server.snapshots:
@@ -79,7 +79,7 @@ class GarbageCollector:
                 reachable.resource_snapshots.add(snap.snapshot_hash)
                 self._collect_resource_blobs(snap.snapshot_hash, reachable)
 
-        # §8.3: retention policy — keep head + last N generations and their
+        # Retention policy — keep head + last N generations and their
         # release snapshots. Pruned generations' resource snapshots survive via
         # the history root above.
         self._collect_retained_generations(head_hash, reachable)
@@ -171,7 +171,7 @@ class GarbageCollector:
         retained: set[str],
         dry_run: bool,
     ) -> list[str]:
-        """§8.2: only the head's `history.pb2` is ever read by clients; strip the
+        """Only the head's `history.pb2` is ever read by clients; strip the
         dead copies from retained non-head generations. Never touch a head."""
         deleted: list[str] = []
         for gen_hash in sorted(retained):

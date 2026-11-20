@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 /// API error rendered as `{ "error": code, "message": msg }` (+ `"issues"`
 /// for `validation_failed`, + `"latest_snapshot_hash"` for
 /// `snapshot_incomplete` when the server has a completed snapshot to fall
-/// back to), per the spec §6 table.
+/// back to).
 #[derive(Debug)]
 pub struct ApiError {
     pub status: u16,

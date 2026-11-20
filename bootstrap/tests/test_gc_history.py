@@ -1,5 +1,5 @@
 """Tests for GC stage 05 — history reachability root, non-head history
-stripping, and generation-retention policy (spec §8.1, §8.2, §8.3)."""
+stripping, and generation-retention policy."""
 
 from __future__ import annotations
 
@@ -127,7 +127,7 @@ def _remaining_generations(tmp_root: Path) -> set[str]:
 
 class TestHistoryReachabilityRoot:
     def test_snapshot_survives_introducer_removal(self, tmp_root: Path) -> None:
-        """§8.1: a snapshot listed in head history stays reachable even when its
+        """A snapshot listed in head history stays reachable even when its
         introducing generation is removed."""
         gens = _build_chain(tmp_root, 2)
         (g1, s1, ih1, ch1), (_g2, s2, _ih2, _ch2) = gens
@@ -141,7 +141,7 @@ class TestHistoryReachabilityRoot:
         assert (ih1, ch1) in reachable.blobs
 
     def test_no_history_head_falls_back_to_full_chain(self, tmp_root: Path) -> None:
-        """§8.1 step 4 / §8.3 test 4: a pre-feature head (no history.pb2) falls
+        """A pre-feature head (no history.pb2) falls
         back to the full parent-chain walk so nothing is wrongly pruned."""
         gens = _build_chain(tmp_root, 2)
         head_hash = gens[1][0]
@@ -162,7 +162,7 @@ class TestHistoryReachabilityRoot:
 
 class TestNonHeadHistoryStripping:
     def test_strip_nonhead_history(self, tmp_root: Path) -> None:
-        """§8.2: after prune only head generations retain history.pb2; non-head
+        """After prune only head generations retain history.pb2; non-head
         retained generations do not; dry_run lists but does not delete."""
         gens = _build_chain(tmp_root, 3)
         g_old, g_mid, g_head = gens[0][0], gens[1][0], gens[2][0]
@@ -184,7 +184,7 @@ class TestNonHeadHistoryStripping:
 
 class TestRetentionPolicy:
     def test_head_only_prunes_intermediates_keeps_snapshots(self, tmp_root: Path) -> None:
-        """§8.3 test 1: head-only policy prunes intermediate generations while
+        """Head-only policy prunes intermediate generations while
         every snapshot in head history (and its blobs) stays reachable."""
         gens = _build_chain(tmp_root, 3)
         gc = GarbageCollector(tmp_root)  # head-only
@@ -200,7 +200,7 @@ class TestRetentionPolicy:
             assert resource_snapshot_dir(tmp_root, s).is_dir()
 
     def test_head_plus_n_retains_n_plus_one(self, tmp_root: Path) -> None:
-        """§8.3 test 2: head + last N keeps exactly N+1 generations."""
+        """Head + last N keeps exactly N+1 generations."""
         gens = _build_chain(tmp_root, 4)
         GarbageCollector(tmp_root, retention_depth=1).prune()
 
@@ -211,7 +211,7 @@ class TestRetentionPolicy:
         assert gens[0][0] not in remaining
 
     def test_orphan_pruned_history_snapshot_kept(self, tmp_root: Path) -> None:
-        """§8.3 test 3: a snapshot referenced only by a pruned generation but
+        """A snapshot referenced only by a pruned generation but
         present in head history is kept; one referenced by neither is pruned."""
         gens = _build_chain(tmp_root, 2)
         snap_store = SnapshotStore(tmp_root)

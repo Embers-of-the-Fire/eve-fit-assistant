@@ -2,7 +2,7 @@ use sha2::{Digest, Sha256};
 
 use crate::proto::fit as pb;
 
-/// Canonical form of a `FitState` (spec §5.1): every repeated collection is
+/// Canonical form of a `FitState`: every repeated collection is
 /// sorted by a stable key so identical fits hash identically regardless of
 /// wire ordering. Map fields are deterministic already (`BTreeMap`, see
 /// build.rs).

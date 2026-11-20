@@ -117,7 +117,7 @@ class AnnouncementRepository {
     return AnnouncementRawFeed(entries: filtered, remoteIds: remoteById.keys.toSet());
   }
 
-  /// Apply the 5-step client-side filter chain for feed eligibility (spec §9.1).
+  /// Apply the 5-step client-side filter chain for feed eligibility.
   bool _filterEntry(
     AnnouncementEntry entry,
     String localeCode,
@@ -149,7 +149,7 @@ class AnnouncementRepository {
     return true;
   }
 
-  /// Merge bundled and remote entries, remote overrides bundled by id (spec §11.3).
+  /// Merge bundled and remote entries, remote overrides bundled by id.
   List<AnnouncementEntry> _mergeEntries({
     required List<AnnouncementEntry> bundled,
     required List<AnnouncementEntry> remote,

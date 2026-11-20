@@ -7,7 +7,7 @@ class LocaleTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(appSettingServiceProvider).locale;
 
-    // §5.3 persistent indicator: while the active locale's localization
+    // Persistent indicator: while the active locale's localization
     // database is not available, say so on the tile. Informational only — the
     // app remains fully usable with placeholder names.
     final availability = ref.watch(localizationDbAvailabilityProvider(locale.name)).value;
