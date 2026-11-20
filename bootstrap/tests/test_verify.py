@@ -151,7 +151,7 @@ class TestSnapshotHash:
 
 
 class TestSnapshotHashV4:
-    """v4 binds the typed .pb2 index in addition to metadata.json (spec §7)."""
+    """v4 binds the typed .pb2 index in addition to metadata.json."""
 
     _META = b'{"schemaVersion":1,"serverId":"test"}'
     _PROTO = b"\x08\x01proto-index-bytes"
@@ -254,7 +254,7 @@ class TestSnapshotStoreV4RoundTrip:
 
 
 class TestVerifierHistory:
-    """Tests for history consistency (§4.3) and reachability (§8.5)."""
+    """Tests for history consistency and reachability."""
 
     _SERVER_ID = "test-server"
 
@@ -293,7 +293,7 @@ class TestVerifierHistory:
 
         return snap_hash, gen_hash
 
-    # -- History consistency (§4.3) --
+    # -- History consistency --
 
     def test_consistent_history(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -321,7 +321,7 @@ class TestVerifierHistory:
             assert issues[0].entity_type == "history"
             assert issues[0].severity == "warning"
 
-    # -- Head history reachability (§8.5) --
+    # -- Head history reachability --
 
     def test_reachable_snapshot(self):
         with tempfile.TemporaryDirectory() as tmpdir:

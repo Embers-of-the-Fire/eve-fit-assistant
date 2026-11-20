@@ -32,14 +32,14 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Custom scheme (spec §5.1) -->
+            <!-- Custom scheme; see docs/dev/app-links.md -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="efa"/>
             </intent-filter>
-            <!-- App Links (spec §5.2); one filter per host, autoVerify -->
+            <!-- App Links; one filter per host, autoVerify. See docs/dev/app-links.md -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>

@@ -145,7 +145,7 @@ fn find_module(
         .find(|m| m.slot_type == slot_type as i32 && m.index == index)
 }
 
-/// Assemble the stored `FitSnapshot` (version 1), spec §9/§11.
+/// Assemble the stored `FitSnapshot` (version 1).
 pub fn assemble(
     request: &pb::FitUploadRequest,
     state: &pb::FitState,

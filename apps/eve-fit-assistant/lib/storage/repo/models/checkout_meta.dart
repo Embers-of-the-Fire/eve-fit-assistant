@@ -5,8 +5,6 @@ part "checkout_meta.freezed.dart";
 part "checkout_meta.g.dart";
 
 /// Individual checkout metadata (checkouts/{id}/metadata.json).
-///
-/// schema.md §3.11
 @freezed
 abstract class CheckoutMeta with _$CheckoutMeta {
   const factory CheckoutMeta({

@@ -5,8 +5,6 @@ part "snapshot_meta.freezed.dart";
 part "snapshot_meta.g.dart";
 
 /// Resource snapshot metadata (assets/resources/{hash}/metadata.json).
-///
-/// schema.md §3.2
 @freezed
 abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
   const factory ResourceSnapshotMeta({
@@ -30,8 +28,6 @@ abstract class ResourceSnapshotMeta with _$ResourceSnapshotMeta {
 }
 
 /// Release snapshot metadata (assets/releases/{hash}/metadata.json).
-///
-/// schema.md §3.3
 @freezed
 abstract class ReleaseSnapshotMeta with _$ReleaseSnapshotMeta {
   const factory ReleaseSnapshotMeta({

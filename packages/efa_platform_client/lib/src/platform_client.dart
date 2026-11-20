@@ -6,7 +6,7 @@ import "package:efa_platform_client/src/dio_options.dart";
 import "package:efa_proto/fit_request.pb.dart";
 import "package:efa_proto/fit_snapshot.pb.dart";
 
-/// A single entry of `GET /platform/internal/posts` (spec §6.3).
+/// A single entry of `GET /platform/internal/posts`.
 class PostSummary {
   const PostSummary({
     required this.postId,
@@ -179,7 +179,7 @@ class ShipDetail {
   final String lastPostAt;
 }
 
-/// The post record of `GET /platform/internal/posts/:id` (spec §6.2).
+/// The post record of `GET /platform/internal/posts/:id`.
 class PostRecord {
   const PostRecord({
     required this.postId,
@@ -260,8 +260,8 @@ class CommentListPage {
   final String? nextCursor;
 }
 
-/// A thread entry of `GET /platform/internal/posts/:id/threads` (spec §6.4;
-/// currently always empty).
+/// A thread entry of `GET /platform/internal/posts/:id/threads`;
+/// currently always empty.
 class ThreadSummary {
   const ThreadSummary({
     required this.id,
@@ -314,7 +314,7 @@ class PlatformApiClient {
   final String origin;
   final Dio _dio;
 
-  /// Cursor-paginated post list (§6.3). [limit] is clamped server-side to
+  /// Cursor-paginated post list. [limit] is clamped server-side to
   /// 1..50 (default 20). [shipTypeId] and [window] filter the listing;
   /// [PlatformTimeWindow.all] sends no `window` parameter.
   Future<PostListPage> listPosts({
@@ -382,7 +382,7 @@ class PlatformApiClient {
   Future<PlatformStats> getStats({String? locale}) async =>
       PlatformStats.fromJson(await _getJson("/platform/internal/stats", {"locale": ?locale}));
 
-  /// The post record (§6.2); null when the post does not exist.
+  /// The post record; null when the post does not exist.
   Future<PostRecord?> getPost(String postId) async {
     try {
       return PostRecord.fromJson(await _getJson("/platform/internal/posts/$postId", const {}));
@@ -392,7 +392,7 @@ class PlatformApiClient {
     }
   }
 
-  /// The stored snapshot behind a post (§6.2); null when the post does not
+  /// The stored snapshot behind a post; null when the post does not
   /// exist.
   Future<FitSnapshot?> getPostSnapshot(String postId) async {
     try {
@@ -403,7 +403,7 @@ class PlatformApiClient {
     }
   }
 
-  /// The stored snapshot addressed directly by fit hash (§6.2); null when the
+  /// The stored snapshot addressed directly by fit hash; null when the
   /// fit does not exist.
   Future<FitSnapshot?> getFitSnapshot(String fitHash) async {
     try {
@@ -414,7 +414,7 @@ class PlatformApiClient {
     }
   }
 
-  /// The stored canonical fit state addressed directly by fit hash (§6.2);
+  /// The stored canonical fit state addressed directly by fit hash;
   /// null when the fit does not exist. Unlike the snapshot, the state is
   /// full-fidelity and is what registered fit links import from.
   Future<FitState?> getFitState(String fitHash) async {
@@ -426,7 +426,7 @@ class PlatformApiClient {
     }
   }
 
-  /// The thread list of a post (§6.4 stub; currently always empty).
+  /// The thread list of a post (stub; currently always empty).
   Future<List<ThreadSummary>> getThreads(String postId) async {
     final json = await _getJson("/platform/internal/posts/$postId/threads", const {});
     return [

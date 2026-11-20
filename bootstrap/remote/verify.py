@@ -1,6 +1,6 @@
 """Verification and repair — integrity checks across the full schema tree.
 
-Verification levels (spec workflow.md §3.7):
+Verification levels:
   1. Channel head integrity — head points to existing generation
   2. Generation integrity — recompute hash matches directory name
   3. Snapshot integrity — recompute hash matches directory name
@@ -405,7 +405,7 @@ class Verifier:
 
         return issues
 
-    # --- History consistency (§4.3) -----------------------------------------
+    # --- History consistency ---------------------------------------------------
 
     def verify_history_consistency(self) -> list[Issue]:
         """Check that each generation's `history.pb2` newest snapshots match its
@@ -481,7 +481,7 @@ class Verifier:
 
         return issues
 
-    # --- History reachability (§8.5) ----------------------------------------
+    # --- History reachability --------------------------------------------------
 
     def verify_history_reachability(self) -> list[Issue]:
         """For each channel head, verify every `snapshot_hash` in the head's

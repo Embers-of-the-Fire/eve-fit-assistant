@@ -75,7 +75,7 @@ class RepoService {
 
   /// Creates a new checkout and triggers resource fetch.
   ///
-  /// Steps per spec §2.3.1:
+  /// Steps:
   /// 1. Resolve the resource snapshot hash from the generation
   /// 2. Create checkout entry and metadata
   /// 3. Trigger resource fetch
@@ -138,7 +138,7 @@ class RepoService {
 
   /// Fetches the latest resource snapshot for the active checkout.
   ///
-  /// Follows spec §13.2. Downloads only changed blobs.
+  /// Downloads only changed blobs.
   Future<Option<String>> fetchResourcesForActiveCheckout({
     required Channel channel,
     required String channelName,

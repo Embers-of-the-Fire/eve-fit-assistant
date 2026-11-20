@@ -16,7 +16,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 
 /// Evaluates the localization database availability of [locale] — called
 /// after [locale] was persisted as the active app locale — and offers the
-/// matching locale-switch flow (spec §5.2):
+/// matching locale-switch flow:
 ///
 /// - `downloadable(size)` → confirmation dialog naming the locale and the
 ///   download size, then a non-dismissible progress dialog; failure offers
@@ -34,7 +34,7 @@ Future<void> offerLocaleLocalizationDb(BuildContext context, WidgetRef ref, Loca
   try {
     availability = await ref.read(localizationDbAvailabilityProvider(locale.name).future);
   } on Object {
-    return; // availability resolution is best-effort; the §5.3 indicator stays
+    return; // availability resolution is best-effort; the persistent indicator stays.
   }
   if (!context.mounted) return;
   // A later locale selection supersedes this flow: discard the availability
@@ -95,7 +95,7 @@ String _formatSize(int bytes) {
 }
 
 /// Non-dismissible progress dialog for a per-locale localization database
-/// download; failure offers retry (spec §5.2).
+/// download; failure offers retry.
 class LocaleDbDownloadDialog extends ConsumerStatefulWidget {
   const LocaleDbDownloadDialog({required this.locale, super.key});
 

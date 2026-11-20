@@ -64,7 +64,8 @@ jobs:
         uses: $/.github/actions/setup-python-env
 
       # The parsed config diff against the pre-push ref decides the release
-      # track (spec §5.1): the labels gate the run, the diff is the intent.
+      # track (RELEASING.md "Version model"): the labels gate the run, the
+      # diff is the intent.
       - name: Classify the merged version diff
         id: intent
         env:

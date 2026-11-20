@@ -17,7 +17,7 @@ enum LocaleDbDownloadFailureReason {
 }
 
 /// State of a per-locale localization database download offered after a
-/// locale switch (spec §5.2).
+/// locale switch.
 @freezed
 sealed class LocaleDbDownloadState with _$LocaleDbDownloadState {
   /// No download has started yet.

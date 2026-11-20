@@ -15,7 +15,7 @@ part "locale_db_download_controller.g.dart";
 /// Mirrors the AI gate's agent-database download: the payload is
 /// hash-verified before it is persisted into the content-addressed store, and
 /// the availability/service providers are invalidated afterwards so names
-/// re-resolve through the §4.3 lookup chain.
+/// re-resolve through the lookup chain.
 @riverpod
 class LocaleDbDownloadController extends _$LocaleDbDownloadController {
   @override

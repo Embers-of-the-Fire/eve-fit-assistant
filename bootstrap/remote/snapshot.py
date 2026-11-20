@@ -131,7 +131,7 @@ class SnapshotStore:
         write_json(temp_dir / "metadata.json", metadata)
         write_pb2(temp_dir / proto_name, index_msg)
 
-        # v4 binds both metadata.json and the typed .pb2 index (spec §7).
+        # v4 binds both metadata.json and the typed .pb2 index.
         files = {
             "metadata.json": (temp_dir / "metadata.json").read_bytes(),
             proto_name: (temp_dir / proto_name).read_bytes(),

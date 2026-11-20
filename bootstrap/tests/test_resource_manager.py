@@ -1,6 +1,6 @@
 """Tests for the V2 ResourceManager — cross-snapshot blob dedup + differential upload.
 
-Locks in the spec §8 behavioral guarantees: dedup, existing-skip, summary math,
+Locks in the ResourceManager behavioral guarantees: dedup, existing-skip, summary math,
 progress no-op equivalence, and parallel safety. All tests run with
 ``Publisher(origin_dir=...)`` (local filesystem transport) so no ``mc`` binary, S3,
 or network is required — ``_remote_exists`` and ``_upload_file`` both resolve to

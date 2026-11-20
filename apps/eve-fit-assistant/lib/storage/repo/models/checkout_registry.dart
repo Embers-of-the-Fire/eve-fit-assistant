@@ -5,8 +5,6 @@ part "checkout_registry.freezed.dart";
 part "checkout_registry.g.dart";
 
 /// Client-side checkout registry (checkouts/checkouts.json).
-///
-/// schema.md §3.10
 @freezed
 abstract class CheckoutRegistry with _$CheckoutRegistry {
   const factory CheckoutRegistry({

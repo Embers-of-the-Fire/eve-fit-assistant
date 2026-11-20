@@ -1459,7 +1459,7 @@ def register_remote_session(remote: click.Group) -> None:
                     click.echo(
                         styled(
                             Style.DIM,
-                            "  Idempotency guard (spec §5.1): the rendered version already "
+                            "  Idempotency guard: the rendered version already "
                             "exists on the target channel. Discard the session with "
                             "'./x remote session discard'.",
                         )

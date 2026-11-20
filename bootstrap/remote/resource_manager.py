@@ -1,4 +1,4 @@
-"""ResourceManager — cross-snapshot blob dedup + differential upload (spec v2-reg).
+"""ResourceManager — cross-snapshot blob dedup + differential upload.
 
 Per-publish singleton (publisher side only). For each unique blob remote path it
 HEAD-checks the destination and skips the PUT when the blob already exists.
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class _Stats:
-    total_registered: int = 0  # every process_blob call, incl. dupes (§5)
+    total_registered: int = 0  # every process_blob call, incl. dupes
     existing: int = 0  # HEAD hit on remote
-    uploaded: int = 0  # processed unique blobs (existing + PUT) — see §4
+    uploaded: int = 0  # processed unique blobs (existing + PUT)
 
 
 class ResourceManager:
@@ -45,7 +45,7 @@ class ResourceManager:
         self._stats = _Stats()
         self._lock = threading.Lock()
 
-    # --- progress bar (§4) ---------------------------------------------------
+    # --- progress bar ---------------------------------------------------------
 
     @contextmanager
     def progress(self) -> Iterator[ResourceManager]:
@@ -55,7 +55,7 @@ class ResourceManager:
             yield self
             return
         self._bar = tqdm(
-            total=self.expected_total,  # None => absolute-count mode (§4)
+            total=self.expected_total,  # None => absolute-count mode
             desc="Blobs",
             unit="file",
             unit_scale=False,
@@ -81,7 +81,9 @@ class ResourceManager:
     def process_blob(self, local_path: Path, remote_path: str) -> None:
         """Register a blob (dedup) and, if new, HEAD-check + upload.
 
-        Inline contract per spec §3.1. Safe to call from worker threads.
+        The contract is defined here in code: dedup under the lock, then the
+        HEAD-check and upload run inline on the caller's thread, so the method
+        is safe to call from worker threads.
         """
         with self._lock:
             self._stats.total_registered += 1
@@ -106,7 +108,7 @@ class ResourceManager:
                 self._stats.uploaded += 1
         self._tick()
 
-    # --- summary (§5) --------------------------------------------------------
+    # --- summary --------------------------------------------------------------
 
     def log_summary(self) -> None:
         s = self._stats

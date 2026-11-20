@@ -299,7 +299,7 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   ///
   /// After a successful transition to [RepoState.active], a non-blocking
   /// background startup sync is launched to discover channels and sync
-  /// generation metadata for the active channel (spec §9).
+  /// generation metadata for the active channel.
   Future<void> initialize() async {
     state = const RepoState.initializing();
     try {
@@ -362,7 +362,7 @@ class RepoStateNotifier extends _$RepoStateNotifier {
   }
 
   /// Non-blocking background sync: discovers channels and syncs generation
-  /// metadata for the active channel (spec §9).
+  /// metadata for the active channel.
   ///
   /// Runs only when remote content is enabled. Failures are logged and never
   /// surfaced to the UI — this is purely additive cache warming.

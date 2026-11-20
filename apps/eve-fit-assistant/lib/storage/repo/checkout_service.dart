@@ -27,8 +27,6 @@ import "package:uuid/uuid.dart";
 /// Manages the checkout lifecycle: creation, deletion, switching, reflog, and
 /// resource fetch orchestration.
 ///
-/// Follows agent/schemav2/workflow.md §2.3-§2.4.
-///
 /// All local persistence goes through a [BlobStore], so every read/write is
 /// asynchronous (OPFS on web is async-only).
 class CheckoutService {
@@ -199,7 +197,7 @@ class CheckoutService {
     return hashes;
   }
 
-  // ── Resource Fetch Pipeline (spec §13.2) ───────────────────────────────────
+  // ── Resource Fetch Pipeline ────────────────────────────────────────────────
 
   /// Fetches the resource snapshot for the active checkout.
   ///
@@ -424,13 +422,13 @@ class CheckoutService {
     return Right(localSnapshotHash);
   }
 
-  // ── Revert (spec §2.8) ─────────────────────────────────────────────────────
+  // ── Revert ─────────────────────────────────────────────────────────────────
 
   /// Reverts a checkout to a previous resource snapshot.
   ///
   /// The target snapshot must have been previously fetched (present in reflog).
   /// Does NOT modify the reflog — it is an append-only history of fetch
-  /// transitions, not user actions (spec §2.8).
+  /// transitions, not user actions.
   Future<Option<String>> revertCheckoutTo(String checkoutId, String targetSnapshotHash) async {
     final meta = await readCheckoutMeta(checkoutId);
     if (meta.isNone()) return const None();

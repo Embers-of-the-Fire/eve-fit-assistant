@@ -57,7 +57,7 @@ pub mod attr_id {
     pub const ICE_HOLD_CAPACITY: i32 = 3136;
 }
 
-/// `item.attributes[id].value ?? base_value ?? 0.0` (spec §10).
+/// `item.attributes[id].value ?? base_value ?? 0.0`.
 fn get(item: &Item, attribute_id: i32) -> f64 {
     get_or(item, attribute_id, 0.0)
 }
@@ -173,7 +173,7 @@ fn defense_layer(hull: &Item, attrs: DefenseLayerAttrs) -> pb::snapshot_statisti
 }
 
 /// Field-for-field port of the app's `_statistics`
-/// (lib/features/fit_io/snapshot_export.dart), spec §10.
+/// (lib/features/fit_io/snapshot_export.dart).
 pub fn build_statistics(ship: &Ship) -> pb::SnapshotStatistics {
     let hull = &ship.hull;
     let character = &ship.character;

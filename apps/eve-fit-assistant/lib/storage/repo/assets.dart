@@ -100,7 +100,7 @@ class AssetStore {
     final indexBytes = resourceIndex.writeToBuffer();
     final metaBytes = canonicalJsonEncode(meta.toJson());
 
-    // Compute snapshot hash (v4) binding metadata.json + resources.pb2 (spec §7).
+    // Compute snapshot hash (v4) binding metadata.json + resources.pb2.
     final metaHash = RepoHash.hashContent(metaBytes);
     final indexHash = RepoHash.hashContent(indexBytes);
     final snapshotHash = RepoHash.hashResourceSnapshotV4(

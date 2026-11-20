@@ -41,7 +41,7 @@ fn rack_capacity(layout: &pb::SnapshotShipLayout, slot_type: i32) -> Option<u32>
     Some(capacity)
 }
 
-/// Structural validation of the upload (spec §6.2 step 2): 400 on failure.
+/// Structural validation of the upload: 400 on failure.
 pub fn validate_structure(request: &pb::FitUploadRequest) -> Result<(), ApiError> {
     if request.fit_name.is_empty() {
         return Err(ApiError::bad_request("fit_name must not be empty"));
@@ -218,7 +218,7 @@ fn fighter_ability(abilities: &[i32]) -> FighterAbility {
 }
 
 /// `FitState` → `FitContainer`, mirroring
-/// `lib/storage/fit/schema.dart::convertToNative` (spec §12).
+/// `lib/storage/fit/schema.dart::convertToNative`.
 pub fn build_container(state: &pb::FitState) -> ef::FitContainer {
     let mut modules = Vec::new();
     for module in &state.modules {
@@ -453,7 +453,7 @@ fn issue_json(issue: &ValidationIssue) -> Value {
     })
 }
 
-/// Run the engine, then validate (spec §6.2 steps 6b–6c). Error-level issues
+/// Run the engine, then validate. Error-level issues
 /// → 422 `validation_failed` with the serialized issue list; warnings do not
 /// block storage.
 pub fn calculate_and_validate(

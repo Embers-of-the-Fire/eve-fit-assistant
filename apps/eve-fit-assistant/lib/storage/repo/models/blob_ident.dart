@@ -2,7 +2,7 @@ import "package:eve_fit_assistant/storage/repo/hash.dart";
 
 /// Identifies a blob by its URI namespace and computes the ident_hash.
 ///
-/// The ident_hash is SHA-256 of the full URI string (spec §5).
+/// The ident_hash is SHA-256 of the full URI string.
 class BlobIdent {
   /// Creates a resource blob ident.
   ///

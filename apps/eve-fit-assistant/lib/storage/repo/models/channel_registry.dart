@@ -5,8 +5,6 @@ part "channel_registry.freezed.dart";
 part "channel_registry.g.dart";
 
 /// Client-side channel registry (channels/channels.json).
-///
-/// schema.md §3.9
 @freezed
 abstract class ChannelRegistry with _$ChannelRegistry {
   const factory ChannelRegistry({

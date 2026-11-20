@@ -58,7 +58,7 @@ fn row_int64(row: &JsValue, index: u32) -> Result<i64, ApiError> {
         .ok_or_else(|| ApiError::internal("D1 row: expected integer column"))
 }
 
-/// Raw byte access for BLOB columns (spec §14): D1 returns ArrayBuffers.
+/// Raw byte access for BLOB columns: D1 returns ArrayBuffers.
 fn row_blob(row: &JsValue, index: u32) -> Result<Vec<u8>, ApiError> {
     let value = js_sys::Reflect::get(row, &JsValue::from_f64(index as f64))
         .map_err(|_| ApiError::internal("D1 row: missing blob column"))?;
@@ -170,7 +170,7 @@ pub async fn fetch_segments(
 }
 
 /// Resolve a snapshot selector to its registry id, requiring the snapshot to
-/// be complete (spec §6.2 step 3): pending rows (`completed_at IS NULL`) are
+/// be complete: pending rows (`completed_at IS NULL`) are
 /// incomplete and resolve to `None`.
 pub async fn resolve_snapshot(
     db: &D1Database,
