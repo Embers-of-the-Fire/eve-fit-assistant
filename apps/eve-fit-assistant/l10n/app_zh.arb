@@ -1369,6 +1369,8 @@
   "shipModelViewerHideTextures": "隐藏纹理",
   "shipModelViewerResetView": "重置视角",
   "shipModelViewerRetry": "重试加载模型",
+  "shipModelViewerLowQuality": "低画质",
+  "shipModelViewerLowQualityTooltip": "该舰船的纹理模型不可用，因此改为显示轻量的纯几何模型。",
   "shipModelPageUnavailable": "该舰船暂无 3D 模型。",
   "shipModelEntryTitle": "3D 模型",
   "appSettingsPageShipSelectTypeDescription": "选择舰船时使用的列表格式。\n按组别分类会按照游戏中的物品组进行分类。\n按市场组别分类会按照市场中的分组进行分类。",
