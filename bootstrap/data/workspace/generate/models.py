@@ -728,7 +728,12 @@ async def generate(
             results: list[dict] = []
             parse_error: str | None = None
             if stats_path.is_file():
-                results, parse_error = parse_stats_report(stats_path.read_text(encoding="utf-8"))
+                try:
+                    raw_stats = stats_path.read_text(encoding="utf-8")
+                except (OSError, UnicodeError) as exc:
+                    parse_error = f"could not read stats report: {exc}"
+                else:
+                    results, parse_error = parse_stats_report(raw_stats)
             else:
                 parse_error = "converter wrote no stats report"
             return ShardReport(
