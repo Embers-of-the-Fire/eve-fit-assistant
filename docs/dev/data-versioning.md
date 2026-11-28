@@ -36,6 +36,22 @@ snapshots carrying them stamp resource index `format_version` 4, which older cli
 reject through the app-update gate (they would otherwise classify the unknown prefixes as
 eager).
 
+The full bake resolves every SOF area's own textures and fixed material parameters,
+reconstructs the four `MaterialMap` region weights independently of the paint mask, and
+emits source-F0 through `KHR_materials_specular`. The `base` variant is an explicit
+lightweight fallback, not an equivalent rendering of `full`. Each conversion shard writes
+full statistics; the step merges process outcomes, missing inputs, LOD/source-area
+associations, texture dimensions, and fixed-approximation decisions into the workspace
+cache's `models/conversion_diagnostics.json`. SOF candidates whose DNA has no source mesh
+are listed as explicit non-displayable skips. Any other resolution failure, missing
+required input, incomplete conversion, or unverified shard fails the step before snapshot
+indexing; file existence alone never counts as conversion success, and an incomplete full
+conversion cannot overwrite a known-good artifact or enter the build-state cache. Full
+textures retain source resolution; the viewer's existing 2048-pixel import cap is an
+explicit quality limit, and decoded texture cost must be reviewed rather than hidden by
+automatic degradation. Validate generated artifacts with the converter's `--validate`
+verb (`--variant full` by default, or `--variant base` for the lightweight artifacts).
+
 The `skyboxes` step bakes every `res:/dx9/scene/{universe,wormholes,abyssal,fitting}/`
 skybox cubemap (`*_cube.dds`, BC6H_SF16 2048² — except y01, the one LDR outlier, which the
 converter decodes from BC7; the fitting cubes are 1024², and the legacy

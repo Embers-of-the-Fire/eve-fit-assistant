@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:efa_proto/types.pb.dart" as pb_types;
+import "package:eve_fit_assistant/components/model/ship_model_resolution.dart";
 import "package:eve_fit_assistant/components/model/skybox_environment.dart";
 import "package:eve_fit_assistant/config/logger.dart";
 import "package:eve_fit_assistant/storage/repo/collection.dart";
@@ -39,6 +40,10 @@ const int _kSkyboxMaxWidth = 2048;
 
 /// App-wide degradation log guard: one message per environment/profile pair.
 final Set<String> _missingShLogKeys = <String>{};
+
+/// App-wide fallback log guard: one message per
+/// type/requested-variant/resolved-variant triple.
+final Set<String> _fallbackLogKeys = <String>{};
 
 enum _ShipModelStatus { loading, ready, unavailable, error }
 
@@ -133,6 +138,22 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
   }
 
   double _framingDistance = 10;
+
+  /// Records a one-time diagnostic when the resolved variant differs from the
+  /// preferred one, so a genuine material-rendering problem can be told apart
+  /// from an explicit low-quality fallback.
+  void _logVariantFallback(ShipModelVariant preferred, ShipModelVariantResolution resolution) {
+    final variant = resolution.variant;
+    if (variant == null || !resolution.isFallback) return;
+    final key = "${widget.typeId}:${preferred.token}->${variant.token}";
+    if (!_fallbackLogKeys.add(key)) return;
+    final message = resolution.fallbackKind == ShipModelFallbackKind.downgradedToGeometryOnly
+        ? "textured variant is unavailable; rendering the geometry-only model "
+              "as an explicit low-quality fallback"
+        : "geometry-only variant is unavailable; rendering the textured model "
+              "as a fallback";
+    debug("ship model ${widget.typeId}: $message");
+  }
 
   void _ensureLoading(ModelAssetService service, ShipModelVariant variant) {
     final key = "${widget.typeId}:${variant.token}";
@@ -464,15 +485,14 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
       data: (service) {
         if (service == null) return fallback;
         final ShipModelVariant preferred = _viewVariant ?? ref.watch(shipModelVariantProvider);
-        var variant = preferred;
-        if (!service.hasShipModel(widget.typeId, variant)) {
-          final other = variant == ShipModelVariant.textured
-              ? ShipModelVariant.geometryOnly
-              : ShipModelVariant.textured;
-          if (!service.hasShipModel(widget.typeId, other)) return fallback;
-          variant = other;
-        }
-        _ensureLoading(service, variant);
+        final resolution = resolveShipModelVariant(
+          preferred: preferred,
+          hasVariant: (v) => service.hasShipModel(widget.typeId, v),
+        );
+        final resolved = resolution.variant;
+        if (resolved == null) return fallback;
+        _logVariantFallback(preferred, resolution);
+        _ensureLoading(service, resolved);
 
         // Model and environment loading remain independent. Environment/profile
         // swaps affect only the live scene's environment, sky, and key light.
@@ -488,7 +508,12 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
 
         final scene = _scene;
         return switch (_status) {
-          _ShipModelStatus.ready when scene != null => _buildViewer(context, scene, variant),
+          _ShipModelStatus.ready when scene != null => _buildViewer(
+            context,
+            scene,
+            resolved,
+            resolution,
+          ),
           _ShipModelStatus.unavailable || _ShipModelStatus.error => _buildFailed(context, fallback),
           _ => const Center(child: CircularProgressIndicator()),
         };
@@ -513,7 +538,12 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
     ],
   );
 
-  Widget _buildViewer(BuildContext context, Scene scene, ShipModelVariant variant) {
+  Widget _buildViewer(
+    BuildContext context,
+    Scene scene,
+    ShipModelVariant variant,
+    ShipModelVariantResolution resolution,
+  ) {
     final l10n = context.l10n;
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final pixelRatio = math.min(MediaQuery.of(context).devicePixelRatio, kShipModelMaxPixelRatio);
@@ -552,20 +582,63 @@ class ShipModelViewerState extends ConsumerState<ShipModelViewer> {
           right: 4,
           child: IconButton.filledTonal(
             visualDensity: VisualDensity.compact,
-            tooltip: variant == ShipModelVariant.textured
+            tooltip: resolution.fallbackKind == ShipModelFallbackKind.downgradedToGeometryOnly
+                ? l10n.shipModelViewerLowQualityTooltip
+                : variant == ShipModelVariant.textured
                 ? l10n.shipModelViewerHideTextures
                 : l10n.shipModelViewerShowTextures,
             icon: Icon(
               variant == ShipModelVariant.textured ? Icons.texture : Icons.texture_outlined,
             ),
-            onPressed: () => setState(() {
-              _viewVariant = variant == ShipModelVariant.textured
-                  ? ShipModelVariant.geometryOnly
-                  : ShipModelVariant.textured;
-            }),
+            onPressed: resolution.fallbackKind == ShipModelFallbackKind.downgradedToGeometryOnly
+                ? null
+                : () => setState(() {
+                    _viewVariant = variant == ShipModelVariant.textured
+                        ? ShipModelVariant.geometryOnly
+                        : ShipModelVariant.textured;
+                  }),
           ),
         ),
+        if (resolution.fallbackKind == ShipModelFallbackKind.downgradedToGeometryOnly)
+          const Positioned(top: 4, left: 4, child: _LowQualityBadge()),
       ],
+    );
+  }
+}
+
+/// Compact warning shown while the viewer renders the geometry-only model
+/// because the preferred textured variant is unavailable. Styled after the
+/// viewer's `IconButton.filledTonal` overlays; the tooltip explains why the
+/// low-quality representation is shown.
+class _LowQualityBadge extends StatelessWidget {
+  const _LowQualityBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: l10n.shipModelViewerLowQualityTooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: scheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded, size: 14, color: scheme.onSecondaryContainer),
+            const SizedBox(width: 4),
+            Text(
+              l10n.shipModelViewerLowQuality,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: scheme.onSecondaryContainer),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
